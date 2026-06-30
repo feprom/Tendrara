@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Module 01 — Introduction to LNG &amp; the Tendrara Facility</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA; --ok:#1F8A4C;
+    --amber:#B26A00;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:var(--sans);color:var(--ink);background:#ECEEF1;-webkit-font-smoothing:antialiased;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px;}
+
+  .deck{width:100%;max-width:1040px;background:var(--bg);border:1px solid var(--line);
+    border-radius:4px;box-shadow:0 10px 40px rgba(0,0,0,.10);display:flex;flex-direction:column;
+    height:min(720px,94vh);overflow:hidden;}
+
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:13px 30px;border-bottom:1px solid var(--line);flex:none;}
+  .brandbar .vendor img{height:32px;display:block;}
+  .clients{display:flex;align-items:center;gap:12px;}
+  .clients .role{font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-soft);writing-mode:vertical-rl;transform:rotate(180deg);}
+  .client-logos{display:flex;align-items:center;gap:13px;}
+  .client-logo{height:23px;width:auto;display:block;}
+  .client-logo.itf{height:26px;}
+  .client-logos .divider{width:1px;height:21px;background:var(--line-strong);}
+  .accent{height:3px;background:var(--crimson);flex:none;}
+
+  .stage{position:relative;flex:1;overflow:hidden;}
+  .slide{position:absolute;inset:0;padding:30px 44px;overflow:auto;opacity:0;visibility:hidden;transition:opacity .22s ease;}
+  .slide.active{opacity:1;visibility:visible;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--crimson);font-weight:700;margin-bottom:9px;}
+  .kicker .sub{color:var(--ink-soft);font-weight:400;}
+  h1{font-size:29px;margin:0 0 6px;letter-spacing:-.01em;line-height:1.1;}
+  h2{font-size:24px;margin:0 0 14px;letter-spacing:-.01em;line-height:1.15;}
+  p.lead{color:var(--ink-soft);font-size:14.5px;line-height:1.58;max-width:72ch;margin:0 0 13px;}
+  ul.points{margin:5px 0 0;padding:0;list-style:none;}
+  ul.points li{position:relative;padding:6px 0 6px 21px;font-size:14px;line-height:1.45;border-bottom:1px solid var(--line);}
+  ul.points li:before{content:"";position:absolute;left:2px;top:13px;width:7px;height:7px;background:var(--crimson);border-radius:1px;}
+  ul.points li b{color:var(--ink);}
+  .muted{color:var(--ink-soft);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px 24px;}
+
+  table.data{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:3px;}
+  table.data th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ink-soft);text-align:left;padding:7px 9px;border-bottom:2px solid var(--line-strong);}
+  table.data td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.data td.k{font-weight:600;white-space:nowrap;}
+  table.data td.v{color:var(--ink-soft);}
+
+  .facts{display:flex;gap:13px;margin-top:14px;flex-wrap:wrap;}
+  .fact{flex:1;min-width:140px;border:1px solid var(--line-strong);border-radius:6px;padding:13px 15px;background:var(--bg-soft);}
+  .fact .n{font-size:24px;font-weight:700;color:var(--crimson);font-family:var(--mono);line-height:1;}
+  .fact .l{font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.35;}
+
+  .flow{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+  .step{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-left:3px solid var(--crimson);
+    border-radius:4px;padding:8px 12px;background:var(--bg-soft);}
+  .step .u{font-family:var(--mono);font-weight:700;font-size:11.5px;color:var(--crimson);min-width:74px;}
+  .step .t{font-size:13px;}
+  .step .t b{color:var(--ink);}
+  .arrow{align-self:center;color:var(--line-strong);font-size:11px;margin:-4px 0;}
+
+  .scalebar{display:flex;align-items:stretch;margin-top:18px;border-radius:6px;overflow:hidden;border:1px solid var(--line-strong);}
+  .scaleseg{padding:13px 11px;font-size:11.5px;text-align:center;}
+  .scaleseg .t{font-weight:700;font-size:12.5px;margin-bottom:3px;}
+  .seg-micro{background:#FBE9EC;color:var(--crimson-dark);flex:1;}
+  .seg-tend{background:var(--crimson);color:#fff;flex:1.1;}
+  .seg-large{background:var(--bg-soft);color:var(--ink-soft);flex:2;}
+
+  .note{margin-top:14px;font-size:11.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:9px;line-height:1.5;}
+  /* figures */
+  .fig{margin-top:8px;text-align:center;}
+  .fig a{display:inline-block;text-decoration:none;}
+  .fig img{max-width:100%;max-height:320px;border:1px solid var(--line-strong);border-radius:5px;background:#fff;cursor:zoom-in;}
+  .fig .cap{font-family:var(--mono);font-size:10px;color:var(--ink-soft);margin-top:6px;letter-spacing:.04em;}
+  .figrow{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:center;}
+  .figrow ul.points li{font-size:13px;}
+  /* team */
+  .team{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap;}
+  .person{flex:1;min-width:220px;border:1px solid var(--line-strong);border-radius:8px;padding:18px 20px;background:var(--bg-soft);}
+  .person .av{width:48px;height:48px;border-radius:50%;background:var(--crimson);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;margin-bottom:12px;font-family:var(--mono);}
+  .person .nm{font-size:20px;font-weight:700;}
+  .person .rl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--crimson);margin-top:3px;}
+  .person .org{font-size:13px;color:var(--ink-soft);margin-top:6px;}
+  /* location */
+  .loc{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;margin-top:8px;align-items:start;}
+  .loc iframe{width:100%;height:300px;border:1px solid var(--line-strong);border-radius:6px;}
+  .coord{font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:4px;padding:9px 12px;display:inline-block;margin:4px 0 12px;}
+  .btn-earth{display:inline-block;background:var(--crimson);color:#fff;text-decoration:none;padding:11px 18px;border-radius:5px;font-weight:600;font-size:14px;}
+  .btn-earth:hover{background:var(--crimson-dark);}
+
+  /* agenda / timeline */
+  .timeline{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:4px;}
+  .timeline td{padding:8px 10px;border-bottom:1px solid var(--line);}
+  .timeline td.seg{font-weight:600;}
+  .timeline td.dur,.timeline td.cum{font-family:var(--mono);white-space:nowrap;}
+  .timeline td.cum{color:var(--ink-soft);text-align:right;}
+  .timeline tr.brk td{background:#FFF7EC;color:var(--amber);}
+  .timeline tr.tot td{border-top:2px solid var(--line-strong);font-weight:700;}
+
+  /* interstitial slides */
+  .inter{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .inter .big{font-size:54px;font-weight:700;font-family:var(--mono);color:var(--crimson);line-height:1;}
+  .inter h2{font-size:30px;margin:14px 0 6px;}
+  .inter p{color:var(--ink-soft);font-size:15px;max-width:50ch;}
+  .inter.brk .big{color:var(--amber);}
+
+  /* nav */
+  .navbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 22px;
+    border-top:1px solid var(--line);flex:none;background:#fff;}
+  .counter{font-family:var(--mono);font-size:12px;color:var(--ink-soft);letter-spacing:.05em;}
+  .navmid{display:flex;align-items:center;gap:10px;}
+  .timebadge{font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--bg-soft);
+    border:1px solid var(--line-strong);border-radius:4px;padding:4px 9px;}
+  .timebadge b{color:var(--crimson);}
+  .navbtns{display:flex;gap:7px;}
+  button.nav{border:1px solid var(--line-strong);background:#fff;color:var(--ink);font-size:13px;font-weight:600;
+    padding:7px 14px;border-radius:4px;cursor:pointer;transition:.12s;}
+  button.nav:hover:not(:disabled){border-color:var(--crimson);color:var(--crimson);}
+  button.nav:disabled{opacity:.4;cursor:not-allowed;}
+  button.nav.primary{background:var(--crimson);color:#fff;border-color:var(--crimson);}
+  button.nav.primary:hover{background:var(--crimson-dark);}
+  button.nav.toggle.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .progress{position:absolute;left:0;right:0;height:2px;background:var(--line);}
+  .progress > i{display:block;height:100%;background:var(--crimson);transition:width .22s;}
+
+  /* instructor drawer */
+  .drawer{position:absolute;left:0;right:0;bottom:0;max-height:46%;background:#1b1d21;color:#e9eaec;
+    border-top:3px solid var(--crimson);transform:translateY(101%);transition:transform .25s ease;
+    overflow:auto;padding:16px 30px 20px;z-index:5;}
+  .drawer.open{transform:translateY(0);}
+  .drawer .dh{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .drawer .dh .tag{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    background:var(--crimson);color:#fff;padding:3px 8px;border-radius:3px;}
+  .drawer .dh .tm{font-family:var(--mono);font-size:11px;color:#b9bcc2;}
+  .drawer .dh .tm b{color:#fff;}
+  .drawer h4{margin:0;font-size:13px;color:#fff;letter-spacing:.02em;}
+  .drawer ul{margin:8px 0 0;padding-left:18px;}
+  .drawer li{font-size:13px;line-height:1.5;margin:4px 0;color:#d6d8dc;}
+  .drawer li b{color:#fff;}
+  .drawer .empty{color:#9a9da3;font-size:13px;}
+
+  @media (max-width:700px){
+    .slide{padding:22px 20px;} h1{font-size:22px;} h2{font-size:19px;}
+    .grid2{grid-template-columns:1fr;} .brandbar{padding:11px 16px;} .navmid .timebadge{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <header class="brandbar">
+    <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" /></div>
+    <div class="clients">
+      <span class="role">Clients</span>
+      <div class="client-logos">
+        <img class="client-logo" src="/images/logoME.png" alt="Manaenergy" />
+        <span class="divider"></span>
+        <img class="client-logo itf" src="/images/logoITF.png" alt="ITF — Italfluid" />
+      </div>
+    </div>
+  </header>
+  <div class="accent"></div>
+
+  <div class="stage" id="stage">
+
+    <!-- 1 COVER -->
+    <section class="slide" data-min="2" data-block="Module open"
+      data-notes='["Welcome the group; confirm everyone registered at tendrara.neo-ware.com/register.","State the module is the foundation for all unit-by-unit modules that follow.","Set expectations: 4-hour module, two content blocks, two breaks, Q&A, then a short exam + evaluation.","Housekeeping: emergency exits, muster point, phones on silent."]'>
+      <div class="kicker">Module 01 · Fundamentals <span class="sub">— 4-hour session</span></div>
+      <h1>Introduction to LNG<br>&amp; the Tendrara Facility</h1>
+      <p class="lead">Tendrara Micro LNG Facilities — operator training program. A plant-wide
+        orientation before the unit-by-unit modules.</p>
+      <div class="facts">
+        <div class="fact"><div class="n">−162&nbsp;°C</div><div class="l">LNG cryogenic temperature</div></div>
+        <div class="fact"><div class="n">600 : 1</div><div class="l">Gas-to-liquid volume reduction</div></div>
+        <div class="fact"><div class="n">~261 t/d</div><div class="l">Design LNG output (HMB)</div></div>
+      </div>
+      <div class="note">Owner: Sound Energy · Vendors: Technical America &amp; Italfluid Geoenergy (ITF) · Off-taker: Afriquia Gaz.</div>
+    </section>
+
+    <!-- 2 SCOPE / OBJECTIVES / AGENDA -->
+    <section class="slide" data-min="8" data-block="Module open"
+      data-notes='["Read the scope aloud: this module is orientation, not unit detail.","Walk through the 5 objectives — these are exactly what the end-of-module exam covers.","Walk the timeline so trainees know when the breaks are. Keep to the clock.","Emphasise the module total is 4:00 and the exam/evaluation at the end is mandatory."]'>
+      <div class="kicker">Scope · Objectives · Agenda</div>
+      <h2>What this module covers</h2>
+      <div class="grid2">
+        <div>
+          <p class="lead" style="margin-bottom:8px;"><b>Scope.</b> A plant-wide orientation: what LNG is,
+            its properties and hazards, and a high-level tour of the Tendrara facility and its process —
+            the foundation for the unit modules that follow.</p>
+          <p class="lead" style="margin:0;font-weight:600;color:var(--ink);">Objectives — by the end you can:</p>
+          <ul class="points">
+            <li>Explain what LNG is (−162 °C, ~600:1) and its composition.</li>
+            <li>State LNG's key properties and the flammable range.</li>
+            <li>Describe the four hazard families &amp; main safeguards.</li>
+            <li>Trace the Tendrara process well-to-truck and name the units.</li>
+            <li>Place Tendrara on the micro→large-scale spectrum.</li>
+          </ul>
+        </div>
+        <div>
+          <table class="timeline">
+            <tr><td class="seg">Block 1 — content</td><td class="dur">1:45</td><td class="cum">1:45</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">2:00</td></tr>
+            <tr><td class="seg">Block 2 — content</td><td class="dur">1:00</td><td class="cum">3:00</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">3:15</td></tr>
+            <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum">3:30</td></tr>
+            <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:00</td></tr>
+            <tr class="tot"><td class="seg">Module total</td><td class="dur">4:00</td><td class="cum"></td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRESENTERS -->
+    <section class="slide" data-min="5" data-block="Block 1"
+      data-notes='["Introduce yourself and your co-presenter — brief background and role on Tendrara.","Set a friendly tone: invite questions throughout, with a dedicated Q&A near the end.","State that Technical America is the technology vendor delivering this training."]'>
+      <div class="kicker">Your instructors</div>
+      <h2>Meet the team</h2>
+      <div class="team">
+        <div class="person"><div class="av">MM</div><div class="nm">Mario Mendizabal</div><div class="rl">Instructor — Technical America</div><div class="org">Tendrara Micro LNG training program</div></div>
+        <div class="person"><div class="av">ZR</div><div class="nm">Zibac Rubio</div><div class="rl">Instructor — Technical America</div><div class="org">Tendrara Micro LNG training program</div></div>
+      </div>
+      <div class="note">Technical America — technology vendor &amp; training provider for the Tendrara Micro LNG facility.</div>
+    </section>
+
+    <!-- PLANT INTRODUCTION -->
+    <section class="slide" data-min="8" data-block="Block 1"
+      data-notes='["Give the one-paragraph identity of the plant: a modular micro-LNG facility monetising Tendrara field gas.","Point at the image — emphasise compact, skid-mounted, remote-site design.","Frame the module journey: overview → location → layout → block diagram → process.","Tie to the off-grid mission: LNG trucked to Afriquia Gaz for Moroccan distribution."]'>
+      <div class="kicker">Introducing the plant</div>
+      <h2>The Tendrara Micro LNG facility</h2>
+      <div class="figrow">
+        <ul class="points">
+          <li>A <b>modular, skid-mounted</b> gas treatment &amp; liquefaction plant in eastern Morocco.</li>
+          <li>Turns raw gas from wells <b>TE-6 &amp; TE-7</b> into specification-grade LNG.</li>
+          <li>~<b>261 t/day</b> LNG, trucked <b>off-grid</b> to Afriquia Gaz.</li>
+          <li>Engineered for a <b>remote field</b>: compact footprint, factory-tested skids.</li>
+        </ul>
+        <div class="fig"><a href="/images/tendrara_hm_tci.png" target="_blank"><img src="/images/tendrara_hm_tci.png" alt="Tendrara facility"></a>
+          <div class="cap">Tendrara facility (click to enlarge)</div></div>
+      </div>
+    </section>
+
+    <!-- LOCATION -->
+    <section class="slide" data-min="6" data-block="Block 1"
+      data-notes='["Show where the plant physically is — eastern Morocco, Tendrara region.","Give the coordinates; the live map lets trainees orient themselves.","Use the Google Earth button on a connected screen for a 3D fly-in if useful.","Mention remoteness — reinforces why a modular / off-grid design was chosen."]'>
+      <div class="kicker">Where it is</div>
+      <h2>Plant location</h2>
+      <div class="loc">
+        <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=33.010611,-2.350528&amp;z=12&amp;output=embed"></iframe>
+        <div>
+          <p class="lead" style="margin-bottom:4px;">Tendrara, eastern Morocco — a remote field location served off-grid by road tanker.</p>
+          <div class="coord">33.010611, −2.350528</div><br>
+          <a class="btn-earth" href="https://earth.google.com/web/search/33.010611,-2.350528" target="_blank">⛰ Open in Google Earth</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- GENERAL ARRANGEMENT -->
+    <section class="slide" data-min="8" data-block="Block 1"
+      data-notes='["Walk the General Arrangement — where each unit physically sits on the plot.","Point out separation of process, utilities, storage and flare for safety.","Note hazardous-area zoning drives equipment selection (Ex-rated) — detailed in the safety block.","Have trainees locate the units they will operate."]'>
+      <div class="kicker">Plant layout</div>
+      <h2>General Arrangement &amp; plant areas</h2>
+      <div class="fig"><a href="/images/tendrara_areas.png" target="_blank"><img src="/images/tendrara_areas.png" alt="Tendrara general arrangement and areas"></a>
+        <div class="cap">Tendrara — General Arrangement / area layout (click to enlarge)</div></div>
+    </section>
+
+    <!-- BLOCK DIAGRAM -->
+    <section class="slide" data-min="7" data-block="Block 1"
+      data-notes='["The simplest mental model of the plant — one box per unit.","Trace the main gas path 200→330→310→350→220, plus the ammonia (340) and BOG (360/370) loops.","Contrast with the detailed process-flow slide that follows.","Anchor: feed enters left, LNG to trucks exits right."]'>
+      <div class="kicker">The plant at a glance</div>
+      <h2>Block diagram</h2>
+      <div class="fig"><a href="/images/proces_description.png" target="_blank"><img src="/images/proces_description.png" alt="Tendrara plant block diagram"></a>
+        <div class="cap">Tendrara LNG — block diagram (click to enlarge)</div></div>
+    </section>
+
+    <!-- 3 WHAT IS LNG -->
+    <section class="slide" data-min="8" data-block="Block 1"
+      data-notes='["Anchor the two headline numbers: −162 °C and 600:1 — repeat them, they recur all module.","Stress the safety inversion: the LIQUID does not burn; only the VAPOUR burns, and only at 5–15 % in air.","Make it concrete: 1 m³ of LNG becomes ~600 m³ of gas — that is why a small spill makes a large cloud.","Tie to Tendrara: the whole point is shrinking gas to truck it off-grid.","Ask: why is odourless a hazard? (no warning before asphyxiation)."]'>
+      <div class="kicker">1 · The product</div>
+      <h2>What is LNG?</h2>
+      <p class="lead"><b>Liquefied Natural Gas</b> is natural gas — mostly <b>methane (CH₄)</b> —
+        purified and cooled to about <b>−162 °C</b> at near-atmospheric pressure, condensing it into a
+        clear, colourless, odourless cryogenic liquid.</p>
+      <ul class="points">
+        <li>Liquefaction shrinks the volume <b>~600:1</b> → economic to store &amp; truck where pipelines don't reach.</li>
+        <li>LNG is <b>not toxic and not corrosive</b>. Its hazards: <b>extremely cold, an asphyxiant, flammable once re-vaporised</b>.</li>
+        <li>The <b>liquid does not burn</b> — only the <b>vapour</b> burns, between ~5 % and ~15 % in air.</li>
+        <li>Tendrara's purpose: monetise field gas and supply LNG <b>off-grid by road tanker</b>.</li>
+      </ul>
+    </section>
+
+    <!-- 4 COMPOSITION -->
+    <section class="slide" data-min="9" data-block="Block 1"
+      data-notes='["Methane always dominates; heavier HCs raise heating value, nitrogen lowers it.","Connect composition to the plant: CO2 and water MUST be removed before cryogenic cooling or they freeze and plug the cold box.","Give the real Tendrara design limits: Unit 330 sweetening designed up to 10 % CO2; Unit 350/NRU up to 7 % N2.","Note the HMB has Summer/Winter and Case 1/Case 2 feed scenarios — exact mol% lives there.","Bridge forward: sweetening (330), dehydration (310) and NRU (350) all exist because of composition."]'>
+      <div class="kicker">2 · Composition</div>
+      <h2>What LNG is made of</h2>
+      <div class="grid2">
+        <table class="data">
+          <tr><th>Component</th><th>Formula</th><th>Typical mol %</th></tr>
+          <tr><td class="k">Methane</td><td class="v">CH₄</td><td><b>85 – 92 %</b></td></tr>
+          <tr><td class="k">Ethane</td><td class="v">C₂H₆</td><td>6 – 10 %</td></tr>
+          <tr><td class="k">Propane</td><td class="v">C₃H₈</td><td>1 – 3 %</td></tr>
+          <tr><td class="k">Butanes</td><td class="v">C₄H₁₀</td><td>&lt; 1 %</td></tr>
+          <tr><td class="k">Nitrogen</td><td class="v">N₂</td><td>0.3 – 1 %</td></tr>
+        </table>
+        <div>
+          <ul class="points">
+            <li>Methane always dominates; composition varies with source, season &amp; treatment.</li>
+            <li><b>Tendrara design limits:</b> sweetening (Unit 330) up to <b>10 % CO₂</b>; liquefaction/NRU (Unit 350) up to <b>7 % N₂</b>.</li>
+            <li>CO₂ &amp; water must be removed first — they <b>freeze and plug</b> the cold box.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">Typical industry ranges shown. Exact feed composition (Summer/Winter, Case 1/2) is defined in the project Heat &amp; Material Balance (21044-PR-HMB-00001).</div>
+    </section>
+
+    <!-- 5 PROPERTIES -->
+    <section class="slide" data-min="10" data-block="Block 1"
+      data-notes='["Walk each property and its operational consequence (third column).","Cold vapour is HEAVIER than air and pools low — this drives where gas detectors go (low level). Warm vapour rises.","LNG floats AND boils on water → links to RPT later. Plant them this thought now.","Clarify normal vs standard reference conditions used in the project documents.","Quick check: at what concentration does methane burn? (5–15 %)."]'>
+      <div class="kicker">3 · Properties</div>
+      <h2>Physical &amp; energy characteristics</h2>
+      <table class="data">
+        <tr><th>Property</th><th>Typical value</th><th>Why it matters</th></tr>
+        <tr><td class="k">Boiling point</td><td><b>≈ −162 °C</b></td><td class="v">Cryogenic — special metallurgy &amp; PPE</td></tr>
+        <tr><td class="k">Liquid density</td><td>430 – 470 kg/m³</td><td class="v">&lt; half of water → <b>LNG floats on water</b></td></tr>
+        <tr><td class="k">Expansion ratio</td><td>≈ 600 : 1</td><td class="v">1 m³ LNG → ~600 m³ gas</td></tr>
+        <tr><td class="k">Calorific value</td><td>~50 – 56 MJ/kg</td><td class="v">High energy per unit mass</td></tr>
+        <tr><td class="k">Flammable range</td><td><b>~5 % – 15 %</b> in air</td><td class="v">Only vapour burns, within these limits</td></tr>
+        <tr><td class="k">Vapour behaviour</td><td>cold = heavy / warm = buoyant</td><td class="v">Cold vapour pools low → detector placement</td></tr>
+      </table>
+      <div class="note">Project reference conditions: Normal 1.013 bara &amp; 0 °C · Standard 14.696 psia (≈1.013 bara) &amp; 60 °F.</div>
+    </section>
+
+    <!-- 6 SCALE -->
+    <section class="slide" data-min="8" data-block="Block 1"
+      data-notes='["Explain there is NO universal definition; IGU small-scale = under 0.5 Mtpa liquefaction.","Place Tendrara at ~261 tpd — upper end of micro / small-scale, far smaller than export trains.","This 261 tpd is now a REAL design figure from the HMB (10,892 kg/h LNG), not an estimate.","Reinforce the value proposition: regional access &amp; import substitution for Morocco, not export volume."]'>
+      <div class="kicker">4 · Scale</div>
+      <h2>What "micro" LNG means — and where Tendrara sits</h2>
+      <p class="lead">No single official definition. The IGU treats liquefaction <b>under 0.5 Mtpa</b> as
+        <b>small-scale</b>; micro-LNG units typically run <b>~10–200 tonnes/day</b>.</p>
+      <div class="scalebar">
+        <div class="scaleseg seg-micro"><div class="t">Micro-LNG</div>~10 – 200 tpd</div>
+        <div class="scaleseg seg-tend"><div class="t">Tendrara</div>~261 tpd (HMB design)</div>
+        <div class="scaleseg seg-large"><div class="t">Large-scale trains</div>4 – 8 Mtpa · 50–100× larger</div>
+      </div>
+      <div class="facts">
+        <div class="fact"><div class="n">16.67 MMSCFD</div><div class="l">Feed gas, inlet (HMB stream F0A)</div></div>
+        <div class="fact"><div class="n">~261 t/day</div><div class="l">LNG output ≈ 10,892 kg/h (HMB)</div></div>
+        <div class="fact"><div class="n">100 Mm³/yr</div><div class="l">Contractual gas as LNG · 10 yrs</div></div>
+      </div>
+      <div class="note">Tendrara output is a <b>design figure from the Heat &amp; Material Balance</b> (~261 tpd LNG), confirming the micro/small-scale band. Phase 2 targets 400 Mm³/yr.</div>
+    </section>
+
+    <!-- 7 PROJECT -->
+    <section class="slide" data-min="8" data-block="Block 1"
+      data-notes='["Introduce the players and who they are to the trainees (their employers among them).","Give the current status honestly: plant in final commissioning; first LNG sales targeted early Q3 2026.","Feed comes from wells TE-6 and TE-7 via the Unit 120 tie-in.","Mention Phase 2 doubles+ the capacity. Status from public Sound Energy disclosures (2026) — update if newer."]'>
+      <div class="kicker">5 · The project</div>
+      <h2>The Tendrara project — status &amp; players</h2>
+      <div class="grid2">
+        <table class="data">
+          <tr><th>Item</th><th>Detail</th></tr>
+          <tr><td class="k">Location</td><td>Tendrara, eastern Morocco</td></tr>
+          <tr><td class="k">Owner / operator</td><td>Sound Energy</td></tr>
+          <tr><td class="k">Plant vendor</td><td>Italfluid Geoenergy (ITF) · Technical America</td></tr>
+          <tr><td class="k">Off-taker</td><td>Afriquia Gaz — 10-yr, 100 Mnm³/yr</td></tr>
+          <tr><td class="k">Feed wells</td><td>TE-6 &amp; TE-7 (Unit 120 tie-in)</td></tr>
+          <tr><td class="k">Product route</td><td>LNG by road tanker</td></tr>
+        </table>
+        <ul class="points">
+          <li><b>Status (2026):</b> gas-gathering system &amp; LNG storage tank tested; plant in <b>final commissioning</b>.</li>
+          <li><b>First LNG sales: early Q3 2026.</b></li>
+          <li>Phase 2 raises capacity toward <b>400 Mm³/yr</b>.</li>
+          <li>Goal: Morocco energy access &amp; import substitution.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 8 PLANT OVERVIEW -->
+    <section class="slide" data-min="6" data-block="Block 1"
+      data-notes='["Define skid-mounted: factory-built, factory-tested modules; field connections at the SKID EDGE.","Why it matters here: remote site, fast install, simplified integration, repeatable quality.","Set up the next slide — the integrated pretreatment → liquefaction → handling scheme.","Stress each step protects the next and respects cryogenic limits."]'>
+      <div class="kicker">6 · The facility</div>
+      <h2>Plant overview</h2>
+      <p class="lead">A <b>modular, skid-mounted</b> gas treatment and liquefaction facility that processes
+        raw gas from wells <b>TE-6 and TE-7</b> and produces specification-grade LNG for <b>road-tanker export</b>,
+        engineered to run reliably in a <b>remote field</b> environment.</p>
+      <ul class="points">
+        <li>Compact footprint, high modularization, <b>factory-tested skids</b>; field connections at the <b>skid edge</b>.</li>
+        <li>Fully integrated scheme: <b>pretreatment → liquefaction → LNG handling</b>.</li>
+        <li>Each step protects downstream equipment, maintains product quality, respects cryogenic limits.</li>
+        <li>Layout designed for <b>continuous operation</b> with safe, controlled shutdowns.</li>
+      </ul>
+    </section>
+
+    <!-- 9 PROCESS FLOW -->
+    <section class="slide" data-min="12" data-block="Block 1"
+      data-notes='["This is the spine of the whole training — have them follow the gas one unit at a time.","Call out WHY each step exists: hydrate prevention, CO2 spec, dryness, precool, liquefy, recover, store.","Note the MR cycle (Unit 350) is the heart; ammonia (340) pre-cools to make it efficient.","Flash/BOG recovery (360/370) is what keeps flaring low in normal operation.","End at Unit 220: atmospheric cryo storage and metered truck loading. This is the last content slide before the break."]'>
+      <div class="kicker">7 · Process flow</div>
+      <h2>From wellhead to truck</h2>
+      <div class="flow">
+        <div class="step"><span class="u">UNIT 200</span><span class="t"><b>Inlet separation &amp; preheat</b> — 3-phase separation, hot-oil heating to prevent hydrates</span></div>
+        <div class="arrow">▼</div>
+        <div class="step"><span class="u">UNIT 330</span><span class="t"><b>Amine sweetening</b> — removes CO₂ to cryogenic spec (designed ≤ 10 % CO₂)</span></div>
+        <div class="arrow">▼</div>
+        <div class="step"><span class="u">UNIT 310</span><span class="t"><b>Mol-sieve dehydration</b> — water &lt; 1 ppmv, prevents ice/hydrate plugging</span></div>
+        <div class="arrow">▼</div>
+        <div class="step"><span class="u">UNIT 340</span><span class="t"><b>Ammonia precooling</b> — single-stage closed loop chills gas before liquefaction</span></div>
+        <div class="arrow">▼</div>
+        <div class="step"><span class="u">UNIT 350</span><span class="t"><b>Liquefaction + NRU</b> — mixed-refrigerant cold box; nitrogen rejection (≤ 7 % N₂)</span></div>
+        <div class="arrow">▼</div>
+        <div class="step"><span class="u">UNIT 360/370</span><span class="t"><b>Flash / BOG recovery</b> — recovers gas to fuel &amp; recycle, minimises flaring</span></div>
+        <div class="arrow">▼</div>
+        <div class="step"><span class="u">UNIT 220</span><span class="t"><b>Storage &amp; truck loading</b> — atmospheric cryo tank, metered loading to road tankers</span></div>
+      </div>
+    </section>
+
+    <!-- BREAK 1 -->
+    <section class="slide inter brk" data-min="15" data-block="Break"
+      data-notes='["15-minute break. Tell trainees the exact return time.","Resume promptly with the design-data slide (Block 2)."]'>
+      <div>
+        <div class="big">☕ 15:00</div>
+        <h2>Break</h2>
+        <p>15 minutes. Please return on time — Block 2 begins with the plant's key design data.</p>
+      </div>
+    </section>
+
+    <!-- ELECTRICAL -->
+    <section class="slide" data-min="10" data-block="Block 2"
+      data-notes='["Open Block 2 with the electrical backbone — the plant largely powers itself.","~15.21 MW from seven Jenbacher gas engines (Units 480/490); show distribution on the single-line.","Electrical safety: isolation &amp; lockout for maintenance; motors in hazardous areas are Ex-rated.","Point to ELD11 as the reference single-line for any electrical isolation."]'>
+      <div class="kicker">Electrical</div>
+      <h2>General electrical single-line</h2>
+      <div class="fig"><a href="/images/ELD11-electrical.png" target="_blank"><img src="/images/ELD11-electrical.png" alt="General electrical single-line ELD11-ING-PR01"></a>
+        <div class="cap">ELD11-ING-PR01 — general electrical scheme (click to enlarge)</div></div>
+    </section>
+
+    <!-- 10 DESIGN DATA -->
+    <section class="slide" data-min="10" data-block="Block 2"
+      data-notes='["Open Block 2 with concrete numbers — anchors credibility.","Feed gas enters at 16.67 MMSCFD, 46 barg, 35 °C; the LNG product leaves at −165.7 °C, near-atmospheric, ~10,892 kg/h ≈ 261 tonnes/day. That 261 tpd is the real design output.","Note the site is at 1434 m altitude (atm ≈ 83.5 kPa) — that affects equipment sizing and is built into the HYSYS design.","Five MR compressor packages (PK-351-1…5) + ammonia precool do the liquefaction; ~15.21 MW from seven Jenbacher engines power the plant.","Materials: CS only to −28 °C, LTCS to −45 °C; cryogenic sections need special alloys. Confirm any number against the current HMB/manual revision."]'>
+      <div class="kicker">8 · Design data</div>
+      <h2>Key design &amp; utility data</h2>
+      <table class="data">
+        <tr><th>Parameter</th><th>Value</th><th>Source / tag</th></tr>
+        <tr><td class="k">Feed gas (inlet · F0A)</td><td><b>16.67 MMSCFD</b> · 46.1 barg · 35 °C</td><td class="v">HMB · FIC-2001 set 16.0</td></tr>
+        <tr><td class="k">LNG product</td><td><b>~261 t/day</b> (10,892 kg/h) · <b>−165.7 °C</b> · 0.12 barg</td><td class="v">HMB (stream LNG)</td></tr>
+        <tr><td class="k">Site / ambient</td><td>1434 m asl · atmospheric ≈ 83.5 kPa</td><td class="v">Design basis</td></tr>
+        <tr><td class="k">Liquefaction</td><td>Mixed refrigerant — <b>5 × MR packages</b> + ammonia precool</td><td class="v">PK-351-1…5 / U340</td></tr>
+        <tr><td class="k">Design limits</td><td>CO₂ ≤ 10 % · N₂ ≤ 7 % · water &lt; 1 ppmv</td><td class="v">U330 / U350 / U310</td></tr>
+        <tr><td class="k">Installed power</td><td><b>~15.21 MW</b> · 7 Jenbacher engines (cos φ 0.8)</td><td class="v">U480/490</td></tr>
+        <tr><td class="k">Materials</td><td>CS to −28 °C · LTCS to −45 °C</td><td class="v">Cryogenic service</td></tr>
+      </table>
+      <div class="note">From the Heat &amp; Material Balance (21044-PR-HMB-00001, design case) &amp; Operating Manual. Confirm current revision before publishing.</div>
+    </section>
+
+    <!-- 11 HAZARDS -->
+    <section class="slide" data-min="8" data-block="Block 2"
+      data-notes='["Cover all four families; for each, ask the group for a real consequence.","Cryogenic: cold burns AND metal embrittlement — never touch uninsulated cold lines.","Asphyxiation: odourless; confined/low areas are the danger — never enter a gas-suspect area without testing.","Flammable cloud: warming vapour within 5–15 % flashes back to the pool.","Spill events: RPT (LNG on water), rollover (tank stratification), BLEVE (vessel rupture). Keep LNG off open water."]'>
+      <div class="kicker">9 · Safety</div>
+      <h2>Principal LNG hazards</h2>
+      <div class="grid2">
+        <ul class="points">
+          <li><b>Cryogenic (cold):</b> −162 °C causes severe cold burns and embrittles unsuitable metals.</li>
+          <li><b>Asphyxiation:</b> vaporising LNG displaces oxygen in low/confined areas — odourless.</li>
+        </ul>
+        <ul class="points">
+          <li><b>Flammable vapour cloud:</b> a warming cloud within 5–15 % can flash-fire to the pool.</li>
+          <li><b>Spill events:</b> <b>RPT</b> (LNG on water), <b>rollover</b> (tank stratification), <b>BLEVE</b> (vessel rupture).</li>
+        </ul>
+      </div>
+      <div class="note">Reminder: the liquid itself doesn't burn — control the <b>vapour</b> and keep LNG <b>off open water</b>.</div>
+    </section>
+
+    <!-- HAZARDOUS AREAS / ATEX + EU STANDARDS -->
+    <section class="slide" data-min="12" data-block="Block 2"
+      data-notes='["Explain area classification: zones where a flammable atmosphere may exist (Zone 0/1/2).","The Ex mark means equipment is certified for explosive atmospheres — never install non-Ex gear in a classified zone.","Walk the European framework: ATEX, IEC/EN 60079, EN 1473 for LNG, PED for pressure equipment.","Tie back to the General Arrangement: hazardous zones drive what equipment goes where."]'>
+      <div class="kicker">Hazardous areas</div>
+      <h2>Ex / ATEX areas &amp; European standards</h2>
+      <div class="figrow">
+        <ul class="points">
+          <li><b>Area classification:</b> Zone 0 / 1 / 2 — where a flammable gas atmosphere may be present.</li>
+          <li><b>Ex / ATEX-marked equipment</b> is certified for explosive atmospheres — mandatory in classified zones.</li>
+          <li><b>ATEX 2014/34/EU</b> (equipment) &amp; <b>1999/92/EC</b> (workplaces).</li>
+          <li><b>IEC/EN 60079</b> explosive atmospheres · <b>EN 1473</b> LNG installations · <b>PED 2014/68/EU</b> pressure equipment.</li>
+        </ul>
+        <div class="fig"><a href="/images/EX-logo.png" target="_blank"><img src="/images/EX-logo.png" alt="Ex ATEX mark" style="max-height:160px;"></a>
+          <div class="cap">Ex mark — equipment for potentially explosive atmospheres</div></div>
+      </div>
+      <div class="note">European set complements NFPA 59A (US). Plant hazardous-area zoning: see the Tendrara area-classification drawings.</div>
+    </section>
+
+    <!-- 12 SAFETY SYSTEMS -->
+    <section class="slide" data-min="12" data-block="Block 2"
+      data-notes='["Map each hazard to a safeguard — this is the core safety message of the module.","Explain the three-level shutdown hierarchy: LSD (local) < PSD (process) < ESD (emergency); ESD can trigger depressurisation/blowdown to flare.","Isolation philosophy: skid-edge isolation, lock-open/lock-closed, car-sealed valves, vessel-entry isolation for maintenance.","High-expansion foam blankets a cryo spill and suppresses the vapour cloud (NFPA/AGA).","Point out personnel safeguards: emergency showers/eye baths, F&G detection (700), fire-fighting (730), N2 purge (600), flare (230)."]'>
+      <div class="kicker">10 · Safeguards</div>
+      <h2>Precautions &amp; safety systems</h2>
+      <div class="grid2">
+        <ul class="points">
+          <li><b>Shutdown hierarchy:</b> LSD (local) → PSD (process) → <b>ESD</b> (emergency, with blowdown to flare).</li>
+          <li><b>Isolation philosophy:</b> skid-edge isolation, car-sealed / locked valves, vessel-entry isolation.</li>
+          <li><b>Fire &amp; Gas (Unit 700):</b> gas, flame &amp; low-temp detectors → ESD logic.</li>
+        </ul>
+        <ul class="points">
+          <li><b>Relief &amp; flare (Unit 230):</b> PSVs &amp; blowdown valves depressurise to flare in upsets.</li>
+          <li><b>High-expansion foam (Unit 730):</b> blankets a cryogenic spill, suppresses the cloud.</li>
+          <li><b>Containment &amp; utilities:</b> bunds/closed drain (550), N₂ purge (600), emergency showers &amp; eye baths.</li>
+        </ul>
+      </div>
+      <div class="note">Per Process Safety &amp; Isolation Philosophy (SAF01-ING-FR01). Standards: NFPA 59A · EN 1473 · GIIGNL.</div>
+    </section>
+
+    <!-- 13 RECAP -->
+    <section class="slide" data-min="8" data-block="Block 2"
+      data-notes='["Recap against the 5 objectives — this is the exam blueprint.","Ask a few quick recall questions to gauge readiness before the exam.","Preview the next module: Unit 200 (LNG Plant Inlet) and Unit 530.","This is the last content slide; the break, Q&A and exam follow."]'>
+      <div class="kicker">Recap · Learning outcomes</div>
+      <h2>By the end of Module 1 you can…</h2>
+      <ul class="points">
+        <li>State what LNG is — its <b>−162 °C</b> cryogenic nature and <b>~600:1</b> expansion.</li>
+        <li>Describe typical <b>methane-dominant composition</b> and why sweetening/dehydration come first.</li>
+        <li>Explain the four hazard families — <b>cold, asphyxiation, flammable vapour, RPT/rollover/BLEVE</b>.</li>
+        <li>Identify safeguards — <b>shutdown hierarchy, F&amp;G, foam, isolation, flare, N₂ purge</b>.</li>
+        <li>Place <b>Tendrara</b> on the scale and trace its <b>well-to-truck</b> process.</li>
+      </ul>
+      <div class="note">Next module: unit-by-unit begins with Unit 200 (LNG Plant Inlet) &amp; Unit 530.</div>
+    </section>
+
+    <!-- BREAK 2 -->
+    <section class="slide inter brk" data-min="15" data-block="Break"
+      data-notes='["Second 15-minute break before Q&A. Give the exact return time."]'>
+      <div>
+        <div class="big">☕ 15:00</div>
+        <h2>Break</h2>
+        <p>15 minutes. Q&amp;A follows, then the module exam and evaluation.</p>
+      </div>
+    </section>
+
+    <!-- Q&A -->
+    <section class="slide inter" data-min="15" data-block="Q&amp;A"
+      data-notes='["Open the floor; if quiet, seed questions from the recap (e.g. why remove CO2 before cooling?).","Capture any plant-specific questions you cannot answer for follow-up with engineering.","Keep to 15 minutes so the exam starts on time."]'>
+      <div>
+        <div class="big">?</div>
+        <h2>Questions &amp; Answers</h2>
+        <p>15 minutes. Open discussion before the assessment.</p>
+      </div>
+    </section>
+
+    <!-- EXAM -->
+    <section class="slide inter" data-min="30" data-block="Assessment"
+      data-notes='["Hand out / open the module exam — covers the 5 objectives.","After the exam, collect the module evaluation form (feedback on content & delivery).","Confirm pass criteria and record attendance/results against each trainee reference (TND-…)."]'>
+      <div>
+        <div class="big">30:00</div>
+        <h2>Exam + Module Evaluation</h2>
+        <p>Module 1 assessment covering the five objectives, followed by the trainee evaluation form.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="navbar">
+    <div class="counter"><span id="cur">01</span> / <span id="total">00</span></div>
+    <div class="navmid">
+      <button class="nav" id="present">⧉ Presenter view</button>
+    </div>
+    <div class="navbtns">
+      <button class="nav" id="prev">‹ Prev</button>
+      <button class="nav primary" id="next">Next ›</button>
+    </div>
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  const cur=document.getElementById('cur'), bar=document.getElementById('bar'),
+        prev=document.getElementById('prev'), next=document.getElementById('next'),
+        present=document.getElementById('present');
+  document.getElementById('total').textContent=String(slides.length).padStart(2,'0');
+
+  // Per-slide data (title, block, minutes, cumulative end) — shared with presenter view
+  const fmt=m=>{const h=Math.floor(m/60),mm=m%60;return h+':' + String(mm).padStart(2,'0');};
+  let acc=0; const data=slides.map(s=>{
+    const m=parseInt(s.dataset.min||'0',10); const start=acc; acc+=m;
+    let notes=[]; try{notes=JSON.parse(s.dataset.notes||'[]');}catch(e){}
+    const t=(s.querySelector('h1,h2')||{}).textContent||'';
+    return {title:t.replace(/\s+/g,' ').trim(), block:s.dataset.block||'', min:m, start:start, end:acc, notes:notes};
+  });
+  const TOTAL=acc;
+
+  // Cross-window sync
+  const bc=('BroadcastChannel' in window)? new BroadcastChannel('tendrara-mod01'):null;
+  let presenterWin=null;
+
+  function render(){
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    cur.textContent=String(i+1).padStart(2,'0');
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    prev.disabled=(i===0); next.disabled=(i===slides.length-1);
+    slides[i].scrollTop=0;
+    if(bc) bc.postMessage({type:'state', index:i});
+  }
+  function show(n){i=Math.max(0,Math.min(slides.length-1,n));render();}
+
+  prev.onclick=()=>show(i-1); next.onclick=()=>show(i+1);
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT')return;
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')show(i+1);
+    if(e.key==='ArrowLeft'||e.key==='PageUp')show(i-1);
+    if(e.key==='Home')show(0); if(e.key==='End')show(slides.length-1);
+  });
+
+  // Presenter requests (from the floating control panel)
+  if(bc) bc.onmessage=(ev)=>{
+    const m=ev.data||{};
+    if(m.type==='goto') show(m.index);
+    else if(m.type==='nav') show(i + (m.dir||0));
+    else if(m.type==='hello') render();   // new presenter connected → push current state
+  };
+
+  // ---- Floating presenter / control panel (separate window for a 2nd screen) ----
+  present.onclick=openPresenter;
+  function openPresenter(){
+    presenterWin=window.open('', 'tendrara_presenter', 'width=560,height=720');
+    if(!presenterWin){ alert('Please allow pop-ups to open the presenter view.'); return; }
+    presenterWin.document.open();
+    presenterWin.document.write(presenterHTML());
+    presenterWin.document.close();
+    // give it the current state shortly after load
+    setTimeout(()=>{ if(bc) bc.postMessage({type:'state', index:i}); }, 200);
+  }
+
+  function presenterHTML(){
+    const DATA=JSON.stringify(data), TOT=TOTAL;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Module 01 — Presenter</title>
+<style>
+  :root{--crimson:#C8102E;--amber:#E0A106;--ink:#e9eaec;--mut:#9a9da3;--line:#2a2d33;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:#161819;color:var(--ink);}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;
+    border-bottom:2px solid var(--crimson);background:#1b1d21;position:sticky;top:0;}
+  .top .ttl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-family:"Consolas",monospace;}
+  .clock{font-family:"Consolas",monospace;font-size:13px;color:var(--ink);}
+  .clock b{color:#fff;} .clock .ahead{color:#39c46e;} .clock .behind{color:#ff5b5b;}
+  .timerbtns button{font-size:11px;border:1px solid var(--line);background:#23262b;color:var(--ink);
+    border-radius:4px;padding:4px 8px;cursor:pointer;margin-left:4px;}
+  .body{padding:16px 18px 90px;}
+  .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:"Consolas",monospace;font-size:12px;color:var(--mut);margin-bottom:8px;}
+  .badge{background:var(--crimson);color:#fff;padding:3px 8px;border-radius:3px;font-weight:700;letter-spacing:.04em;}
+  .badge.blk{background:#33363c;color:#cfd2d7;}
+  .cur-title{font-size:23px;font-weight:700;line-height:1.2;margin:2px 0 4px;color:#fff;}
+  .times{font-family:"Consolas",monospace;font-size:12px;color:var(--mut);margin-bottom:14px;}
+  .times b{color:#fff;}
+  h4{margin:14px 0 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);}
+  ul{margin:0;padding-left:20px;} li{font-size:15px;line-height:1.55;margin:7px 0;color:#dfe1e5;}
+  .next{margin-top:18px;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:#1b1d21;}
+  .next .lbl{font-family:"Consolas",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);}
+  .next .nt{font-size:15px;color:#cfd2d7;margin-top:3px;}
+  .nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;padding:12px 16px;background:#1b1d21;border-top:1px solid var(--line);}
+  .nav button{flex:1;font-size:15px;font-weight:600;border:1px solid var(--line);background:#23262b;color:var(--ink);
+    border-radius:5px;padding:11px;cursor:pointer;}
+  .nav button.p{background:var(--crimson);border-color:var(--crimson);color:#fff;}
+  .nav button:disabled{opacity:.4;cursor:not-allowed;}
+  .pbar{height:3px;background:#23262b;} .pbar i{display:block;height:100%;background:var(--crimson);}
+  /* schedule timeline */
+  .tl{margin:6px 0 16px;}
+  .tllabel{font-family:"Consolas",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;}
+  .tllabel .leg b{color:#fff;} .tllabel .leg .a{color:#39c46e;} .tllabel .leg .p{color:#fff;}
+  .tlbar{position:relative;height:30px;border-radius:5px;overflow:visible;display:flex;background:#23262b;}
+  .seg{height:30px;display:flex;align-items:center;justify-content:center;font-family:"Consolas",monospace;font-size:9px;color:rgba(255,255,255,.65);border-right:1px solid #161819;overflow:hidden;white-space:nowrap;}
+  .seg:last-child{border-right:none;}
+  .seg.c{background:#3a1f25;} .seg.b{background:#4a3a16;} .seg.q{background:#22323a;} .seg.x{background:#2c2230;}
+  .tlslide{position:absolute;top:0;height:30px;border:2px solid #fff;border-radius:3px;background:rgba(255,255,255,.12);pointer-events:none;transition:left .2s,width .2s;z-index:2;}
+  .tlnow{position:absolute;top:-5px;height:40px;width:2px;background:#39c46e;pointer-events:none;display:none;z-index:3;}
+  .tlnow:before{content:"▲";position:absolute;top:-13px;left:50%;transform:translateX(-50%);color:#39c46e;font-size:11px;}
+  .tlticks{position:relative;height:13px;margin-top:3px;}
+  .tlticks span{position:absolute;transform:translateX(-50%);font-family:"Consolas",monospace;font-size:9px;color:var(--mut);white-space:nowrap;}
+</style></head><body>
+  <div class="top">
+    <span class="ttl">Module 01 · Presenter</span>
+    <span class="clock" id="clock">⏱ <b id="elapsed">0:00</b> <span id="delta"></span></span>
+    <span class="timerbtns"><button id="tStart">Start</button><button id="tReset">Reset</button></span>
+  </div>
+  <div class="pbar"><i id="pbar"></i></div>
+  <div class="body">
+    <div class="meta"><span class="badge" id="num">--</span><span class="badge blk" id="blk">--</span></div>
+    <div class="cur-title" id="title">—</div>
+    <div class="times" id="times"></div>
+    <div class="tl">
+      <div class="tllabel"><span>Schedule · 0:00 → 4:00</span>
+        <span class="leg"><span class="a">▲ where you are</span> &nbsp;·&nbsp; <span class="p">▮ where you should be</span></span></div>
+      <div class="tlbar" id="tlbar"><div class="tlslide" id="tlslide"></div><div class="tlnow" id="tlnow"></div></div>
+      <div class="tlticks" id="tlticks"></div>
+    </div>
+    <h4>Talking points</h4>
+    <ul id="notes"></ul>
+    <div class="next"><div class="lbl">Next</div><div class="nt" id="nextt">—</div></div>
+  </div>
+  <div class="nav">
+    <button id="prev">‹ Prev</button>
+    <button class="p" id="next">Next ›</button>
+  </div>
+<script>
+  const DATA=${DATA}, TOTAL=${TOT};
+  const fmt=m=>{const h=Math.floor(m/60),mm=m%60;return h+':'+String(mm).padStart(2,'0');};
+  const bc=new BroadcastChannel('tendrara-mod01');
+  let idx=0;
+  (function buildTimeline(){
+    const norm=b=> b==='Module open'?'Block 1':b;
+    const clsOf=b=>({'Block 1':'c','Block 2':'c','Break':'b','Q&A':'q','Assessment':'x'}[b]||'c');
+    const segs=[];
+    DATA.forEach(d=>{const nb=norm(d.block);const last=segs[segs.length-1];
+      if(last&&last.block===nb){last.min+=d.min;last.end+=d.min;}
+      else segs.push({block:nb,min:d.min,start:(last?last.end:0),end:(last?last.end:0)+d.min});});
+    let html='';segs.forEach(s=>{const w=(s.min/TOTAL*100).toFixed(3);
+      html+='<div class="seg '+clsOf(s.block)+'" style="width:'+w+'%">'+(s.min>=20?s.block:'')+'</div>';});
+    document.getElementById('tlbar').insertAdjacentHTML('afterbegin',html);
+    const bounds=[0];segs.forEach(s=>bounds.push(s.end));
+    document.getElementById('tlticks').innerHTML=bounds.map(b=>'<span style="left:'+(b/TOTAL*100)+'%">'+fmt(b)+'</span>').join('');
+  })();
+  function paint(){
+    const d=DATA[idx];
+    document.getElementById('num').textContent=String(idx+1).padStart(2,'0')+'/'+String(DATA.length).padStart(2,'0');
+    document.getElementById('blk').textContent=d.block;
+    document.getElementById('title').textContent=d.title;
+    document.getElementById('times').innerHTML='This slide <b>'+d.min+' min</b> · runs <b>'+fmt(d.start)+'</b> → <b>'+fmt(d.end)+'</b> · of '+fmt(TOTAL);
+    document.getElementById('notes').innerHTML=d.notes.length? d.notes.map(n=>'<li>'+n+'</li>').join('') : '<li style="color:#777">No notes.</li>';
+    document.getElementById('nextt').textContent= DATA[idx+1]? DATA[idx+1].title : '— end of module —';
+    document.getElementById('pbar').style.width=((idx+1)/DATA.length*100)+'%';
+    document.getElementById('prev').disabled=(idx===0);
+    document.getElementById('next').disabled=(idx===DATA.length-1);
+    document.getElementById('tlslide').style.left=(DATA[idx].start/TOTAL*100)+'%';
+    document.getElementById('tlslide').style.width=(DATA[idx].min/TOTAL*100)+'%';
+    updateDelta();
+  }
+  bc.onmessage=(ev)=>{ if(ev.data&&ev.data.type==='state'){ idx=ev.data.index; paint(); } };
+  document.getElementById('prev').onclick=()=>bc.postMessage({type:'goto',index:Math.max(0,idx-1)});
+  document.getElementById('next').onclick=()=>bc.postMessage({type:'goto',index:Math.min(DATA.length-1,idx+1)});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' ')bc.postMessage({type:'goto',index:Math.min(DATA.length-1,idx+1)});
+    if(e.key==='ArrowLeft')bc.postMessage({type:'goto',index:Math.max(0,idx-1)});
+  });
+  // live session timer vs planned cumulative
+  let running=false, startedAt=0, accumSec=0, raf=null;
+  function curSec(){ return Math.floor(accumSec + (running ? (Date.now()-startedAt)/1000 : 0)); }
+  function tick(){
+    const sec=curSec();
+    document.getElementById('elapsed').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+    const now=document.getElementById('tlnow'); now.style.display='block';
+    now.style.left=Math.min(100,(sec/60)/TOTAL*100)+'%';
+    updateDelta(sec);
+  }
+  function updateDelta(sec){
+    const el=document.getElementById('delta');
+    if(!running && accumSec===0){el.textContent='';return;}
+    if(sec===undefined) sec=curSec();
+    const m=sec/60, d=DATA[idx];
+    if(m > d.end) el.innerHTML='<span class="behind">+'+Math.round(m-d.end)+'m behind</span>';
+    else if(m < d.start) el.innerHTML='<span class="ahead">'+Math.round(d.start-m)+'m ahead</span>';
+    else el.innerHTML='<span style="color:#39c46e">on pace</span>';
+  }
+  document.getElementById('tStart').onclick=function(){
+    if(!running){ running=true; startedAt=Date.now(); this.textContent='Pause'; raf=setInterval(tick,250); tick(); }
+    else { running=false; accumSec=curSec(); clearInterval(raf); this.textContent='Resume'; updateDelta(accumSec); }
+  };
+  document.getElementById('tReset').onclick=function(){
+    running=false; accumSec=0; clearInterval(raf);
+    document.getElementById('elapsed').textContent='0:00';
+    document.getElementById('delta').textContent='';
+    document.getElementById('tStart').textContent='Start';
+    document.getElementById('tlnow').style.display='none';
+  };
+  bc.postMessage({type:'hello'});   // ask deck to push current slide
+  paint();
+<\/script></body></html>`;
+  }
+
+  show(0);
+</script>
+</body>
+</html>
