@@ -2,7 +2,7 @@
 
 Static registration site for the **Tendrara Micro LNG Facilities** training program.
 
-- **Vendor:** Technical America · **Clients:** Mana Energy, ITF
+- **Vendor:** Technical America · **Clients:** Manaenergy, ITF
 - **Backend:** Supabase (registration writes go through the `register_trainee` RPC).
 
 ## Contents
