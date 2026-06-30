@@ -354,7 +354,9 @@
         </div>
         <div class="field full">
           <label for="email">Email <span class="req">*</span></label>
-          <input type="email" id="email" name="email" autocomplete="email" required />
+          <input type="email" id="email" name="email" autocomplete="email" required
+                 pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+                 title="Enter a valid email address, e.g. name@company.com" />
         </div>
 
         <div class="field full">
@@ -538,6 +540,8 @@
           setStatus('Please select a valid company.', 'err');
         } else if (msg.includes('16 years') || msg.includes('date_of_birth')) {
           setStatus('Please enter a valid date of birth (16+).', 'err');
+        } else if (msg.includes('email_format') || error.code === '23514') {
+          setStatus('Please enter a valid email address.', 'err');
         } else {
           setStatus('Something went wrong: ' + error.message, 'err');
         }
