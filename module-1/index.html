@@ -31,6 +31,9 @@
   .client-logo.itf{height:26px;}
   .client-logos .divider{width:1px;height:21px;background:var(--line-strong);}
   .accent{height:3px;background:var(--crimson);flex:none;}
+  /* fullscreen: deck fills the screen */
+  .deck:fullscreen,.deck:-webkit-full-screen{max-width:none;width:100vw;height:100vh;border-radius:0;border:none;box-shadow:none;}
+  .nav.on{background:var(--ink);color:#fff;border-color:var(--ink);}
 
   .stage{position:relative;flex:1;overflow:hidden;}
   .slide{position:absolute;inset:0;padding:30px 44px;overflow:auto;opacity:0;visibility:hidden;transition:opacity .22s ease;}
@@ -566,6 +569,7 @@
     <div class="counter"><span id="cur">01</span> / <span id="total">00</span></div>
     <div class="navmid">
       <button class="nav" id="present">⧉ Presenter view</button>
+      <button class="nav" id="fs">⛶ Fullscreen</button>
     </div>
     <div class="navbtns">
       <button class="nav" id="prev">‹ Prev</button>
@@ -581,7 +585,8 @@
   let i=0;
   const cur=document.getElementById('cur'), bar=document.getElementById('bar'),
         prev=document.getElementById('prev'), next=document.getElementById('next'),
-        present=document.getElementById('present');
+        present=document.getElementById('present'), fs=document.getElementById('fs'),
+        deckEl=document.querySelector('.deck');
   document.getElementById('total').textContent=String(slides.length).padStart(2,'0');
 
   // Per-slide data (title, block, minutes, cumulative end) — shared with presenter view
@@ -614,6 +619,20 @@
     if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')show(i+1);
     if(e.key==='ArrowLeft'||e.key==='PageUp')show(i-1);
     if(e.key==='Home')show(0); if(e.key==='End')show(slides.length-1);
+    if(e.key.toLowerCase()==='f')toggleFs();
+  });
+
+  // Fullscreen
+  function toggleFs(){
+    const d=deckEl;
+    if(!document.fullscreenElement){ (d.requestFullscreen||d.webkitRequestFullscreen).call(d); }
+    else { (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+  }
+  fs.onclick=toggleFs;
+  document.addEventListener('fullscreenchange',()=>{
+    const on=!!document.fullscreenElement;
+    fs.classList.toggle('on',on);
+    fs.textContent= on ? '⛶ Exit full screen' : '⛶ Fullscreen';
   });
 
   // Presenter requests (from the floating control panel)
