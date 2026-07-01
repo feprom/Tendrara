@@ -226,7 +226,7 @@
         <div class="fact"><div class="n">−162&nbsp;°C</div><div class="l">LNG storage temperature</div></div>
         <div class="fact"><div class="n">15.21</div><div class="l">MW installed power</div></div>
       </div>
-      <div class="owner">Client: <b>ManaEnergy</b> · Off-taker: Afriquia Gaz</div>
+      <div class="owner">Client: <b>ManaEnergy</b></div>
     </section>
 
     <!-- 2 COURSE / PROGRAM -->
@@ -326,14 +326,14 @@
 
     <!-- 6 INTRODUCTION TO TENDRARA (carousel) -->
     <section class="slide" data-min="7" data-block="Block 1"
-      data-notes='["Give the plant identity: a modular micro-LNG facility monetising Tendrara field gas.","The images auto-rotate — 3D render, plant areas/GA, and site view. Click any image to enlarge on the shared screen.","Feed comes from wells TE-6 & TE-7; product is ~261 t/day of LNG, trucked off-grid to Afriquia Gaz.","Engineered for a remote field: compact footprint, factory-tested skids."]'>
+      data-notes='["Give the plant identity: a modular micro-LNG facility monetising Tendrara field gas.","The images auto-rotate — 3D render, plant areas/GA, and site view. Click any image to enlarge on the shared screen.","Feed comes from wells TE-6 & TE-7; product is ~261 t/day of LNG, trucked off-grid.","Engineered for a remote field: compact footprint, factory-tested skids."]'>
       <div class="kicker">Introducing the plant</div>
       <h2>The Tendrara Micro LNG facility</h2>
       <div class="figrow" style="grid-template-columns:1fr 1.35fr;">
         <ul class="points">
           <li>A <b>modular, skid-mounted</b> gas treatment &amp; liquefaction plant in eastern Morocco.</li>
           <li>Raw gas from wells <b>TE-6 &amp; TE-7</b> → specification-grade LNG.</li>
-          <li>~<b>261 t/day</b> LNG, trucked <b>off-grid</b> to Afriquia Gaz.</li>
+          <li>~<b>261 t/day</b> LNG, trucked <b>off-grid</b> to distribution.</li>
           <li>Remote field: compact footprint, factory-tested skids.</li>
         </ul>
         <div class="carousel" id="tdCarousel" data-interval="4000">
@@ -389,7 +389,7 @@
 
     <!-- 10 CONTROL SYSTEM / PCS -->
     <section class="slide" data-min="8" data-block="Block 1"
-      data-notes='["Two segregated layers: the PCS runs normal operation; a separate S7-1500F ESD PLC handles safety.","The backbone is PROFINET IO — dual fiber-optic redundant rings using MRP, recovering in under 200 ms; ET 200SP remote I/O on every skid.","Supervision is SIMATIC WinCC SCADA (client-server) with High-Performance HMI faceplates; fixed control-room stations plus ATEX mobile tablets.","Carousel: PLC/network architecture, the PCS overview, and two live HMI screens — Unit 350 (liquefaction) and Unit 220 (storage/loading). Click to enlarge.","Operators must know document 21044-AU-HMI-00002 (HMI Philosophy) before operating."]'>
+      data-notes='["Two segregated layers: the PCS runs normal operation; a separate S7-1500F ESD PLC handles safety.","The backbone is PROFINET IO — dual fiber-optic redundant rings using MRP, recovering in under 200 ms; ET 200SP remote I/O on every skid.","Supervision is SIMATIC WinCC SCADA (client-server) with High-Performance HMI faceplates; fixed control-room stations plus ATEX mobile tablets.","Carousel: PLC/network architecture, and two live HMI screens — Unit 350 (liquefaction) and Unit 220 (storage/loading). Click to enlarge.","Operators must know document 21044-AU-HMI-00002 (HMI Philosophy) before operating."]'>
       <div class="kicker">Facility · Control</div>
       <h2>Control system (PCS) &amp; PROFINET</h2>
       <div class="figrow" style="grid-template-columns:1.35fr 1fr;">
@@ -400,11 +400,10 @@
         </ul>
         <div class="carousel" id="pcsCarousel" data-interval="4000">
           <a class="cimg active" href="/images/PLC-architecture.png" target="_blank"><img src="/images/PLC-architecture.png" alt="PLC / network architecture"></a>
-          <a class="cimg" href="/images/PCS.png" target="_blank"><img src="/images/PCS.png" alt="PCS overview screen"></a>
           <a class="cimg" href="/images/13-HMI-350=2.png" target="_blank"><img src="/images/13-HMI-350=2.png" alt="HMI screen Unit 350"></a>
           <a class="cimg" href="/images/27-HMI-220=2.png" target="_blank"><img src="/images/27-HMI-220=2.png" alt="HMI screen Unit 220"></a>
           <div class="ccap">Auto-rotating · click to enlarge</div>
-          <div class="cdots"><b class="active"></b><b></b><b></b><b></b></div>
+          <div class="cdots"><b class="active"></b><b></b><b></b></div>
         </div>
       </div>
     </section>
@@ -625,8 +624,10 @@
             <li>➜ Safety depends on <b>instrumentation &amp; gas detectors — never on smell.</b></li>
           </ul>
         </div>
-        <div class="carousel empty" id="safetyCarousel" data-interval="4000">
-          <div class="ph"><div class="big">🖼</div>Pictures pending<br>(carousel ready)</div>
+        <div class="carousel" id="safetyCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/EPP.avif" target="_blank"><img src="/images/EPP.avif" alt="Personal protective equipment (PPE)"></a>
+          <div class="ccap">Click to enlarge</div>
+          <div class="cdots"><b class="active"></b></div>
         </div>
       </div>
       <div class="note">Before entering any confined or gas-suspect area: test the atmosphere. Trust the detector, not your nose.</div>
@@ -634,7 +635,7 @@
 
     <!-- 21 SAFETY & ISOLATION PHILOSOPHY (SAF01) -->
     <section class="slide" data-min="9" data-block="Block 2"
-      data-notes='["This is the plant''s formal safety framework — the Process Safety & Isolation Philosophy (SAF01, by Italfluid).","Layers of protection: PCS control, then the independent ESD safety layer, then relief & depressurization to flare.","Shutdown hierarchy: LSD (local) < PSD (process) < ESD (emergency), plus ASD for the loading bay — all driven by the Cause & Effect Matrix.","Isolation for maintenance: positive isolation, double block & bleed, car-sealed / locked valves (CSO/CSC, LO/LC), and vessel-entry isolation.","Personnel safeguards: emergency showers & eye baths, F&G detection, high-expansion foam for cryogenic spills."]'>
+      data-notes='["This is the plant''s formal safety framework — the Process Safety & Isolation Philosophy (SAF01, by Italfluid).","Layers of protection: PCS control, then the independent ESD safety layer, then relief & depressurization to flare.","Shutdown hierarchy: LSD (local) < PSD (process) < ESD (emergency), plus ASD for the loading bay — all driven by the Cause & Effect Matrix.","Isolation for maintenance: positive isolation, double block & bleed, car-sealed / locked valves (CSO/CSC, LO/LC), and vessel-entry isolation.","Personnel safeguards: emergency showers & eye baths, F&G detection, high-expansion foam for cryogenic spills.","Carousel: the LNG storage tank, and the cover page of SAF05-ING-FR01 (Plant on Rental Basis) — downloadable below for reference."]'>
       <div class="kicker">9 · Plant safety framework</div>
       <h2>Process Safety &amp; Isolation Philosophy</h2>
       <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
@@ -649,11 +650,15 @@
             <li><b>Personnel safeguards:</b> emergency showers &amp; eye baths, F&amp;G detection, <b>high-expansion foam</b> for cryogenic spills.</li>
           </ul>
         </div>
-        <div class="carousel empty" id="saf01Carousel" data-interval="4000">
-          <div class="ph"><div class="big">🖼</div>Pictures pending<br>(carousel ready)</div>
+        <div class="carousel" id="saf01Carousel" data-interval="4000">
+          <a class="cimg active" href="/images/tank.jpg" target="_blank"><img src="/images/tank.jpg" alt="LNG storage tank"></a>
+          <a class="cimg" href="/images/SAF05-cover.png" target="_blank"><img src="/images/SAF05-cover.png" alt="SAF05-ING-FR01 cover page"></a>
+          <div class="ccap">Auto-rotating · click to enlarge</div>
+          <div class="cdots"><b class="active"></b><b></b></div>
         </div>
       </div>
-      <div class="note">Source: SAF01-ING-FR01 Rev.2 — Process Safety &amp; Isolation Philosophy (Italfluid). Standards: NFPA 59A · EN 1473 · IEC 60079 (Ex).</div>
+      <div class="note">Source: SAF01-ING-FR01 Rev.2 — Process Safety &amp; Isolation Philosophy (Italfluid). Standards: NFPA 59A · EN 1473 · IEC 60079 (Ex).
+        <br><a class="btn-doc" href="/docs/SAF05-ING-FR01.pdf" target="_blank" style="margin-top:8px;">📄 Download SAF05-ING-FR01 — Plant on Rental Basis (PDF)</a></div>
     </section>
 
     <!-- 22 APPLICATIONS -->
@@ -673,8 +678,10 @@
             <li><b>Off-grid / island supply</b> &amp; <b>virtual pipelines</b> — Tendrara's role for Morocco.</li>
           </ul>
         </div>
-        <div class="carousel empty" id="appsCarousel" data-interval="4000">
-          <div class="ph"><div class="big">🖼</div>Pictures pending<br>(carousel ready)</div>
+        <div class="carousel" id="appsCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/applictionLNG.jpg" target="_blank"><img src="/images/applictionLNG.jpg" alt="LNG applications"></a>
+          <div class="ccap">Click to enlarge</div>
+          <div class="cdots"><b class="active"></b></div>
         </div>
       </div>
     </section>
