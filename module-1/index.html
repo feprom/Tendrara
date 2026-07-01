@@ -112,6 +112,19 @@
   .coord{font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:4px;padding:9px 12px;display:inline-block;margin:4px 0 12px;}
   .btn-earth{display:inline-block;background:var(--crimson);color:#fff;text-decoration:none;padding:11px 18px;border-radius:5px;font-weight:600;font-size:14px;}
   .btn-earth:hover{background:var(--crimson-dark);}
+  /* image carousel */
+  .carousel{position:relative;height:322px;margin-top:8px;}
+  .carousel .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .55s;pointer-events:none;}
+  .carousel .cimg.active{opacity:1;pointer-events:auto;}
+  .carousel .cimg img{max-width:100%;max-height:300px;border:1px solid var(--line-strong);border-radius:5px;background:#0d0f11;cursor:zoom-in;}
+  .carousel .cdots{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3;}
+  .carousel .cdots b{width:9px;height:9px;border-radius:50%;background:#c9ced4;cursor:pointer;display:block;}
+  .carousel .cdots b.active{background:var(--crimson);}
+  .carousel .ccap{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink-soft);letter-spacing:.04em;pointer-events:none;}
+  /* three-image row */
+  .img3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px;}
+  .img3 .fig{margin:0;}
+  .img3 .fig img{max-height:158px;width:100%;object-fit:contain;}
 
   /* agenda / timeline */
   .timeline{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:4px;}
@@ -190,7 +203,7 @@
 
     <!-- 1 COVER -->
     <section class="slide cover3d" data-min="2" data-block="Module open"
-      data-notes='["Welcome the group warmly; confirm everyone registered at tendrara.neo-ware.com/register.","This is Module 1 of a 6-module, 4-hour course — the foundation for everything that follows.","Use the plant 3D view to orient them: this is the facility they will operate.","Point at the headline design parameters — feed, output, temperature, power.","Housekeeping: emergency exits, muster point, phones on silent, ask questions anytime."]'>
+      data-notes='["Welcome the group warmly; confirm everyone registered at tendrara.neo-ware.com/register.","This is Module 001 of an 18-module, 4-hour-each program — the foundation for everything that follows.","Use the plant 3D view to orient them: this is the facility they will operate.","Point at the headline design parameters — feed, output, temperature, power.","Housekeeping: emergency exits, muster point, phones on silent, ask questions anytime."]'>
       <div class="kicker">Module 001 · Fundamentals <span class="sub">— 18-module program</span></div>
       <h1>Natural Gas &amp; LNG<br>Fundamentals</h1>
       <p class="lead">Tendrara Micro LNG Facilities — operator training program.</p>
@@ -203,9 +216,9 @@
       <div class="owner">Client: <b>ManaEnergy</b> · Off-taker: Afriquia Gaz</div>
     </section>
 
-    <!-- 2 COURSE PRESENTATION -->
-    <section class="slide" data-min="6" data-block="Module open"
-      data-notes='["Explain the course is 4 hours, built specifically around the Tendrara Micro LNG facility.","It blends LNG theory with the real plant — theory only matters when tied to what they operate.","Every module follows the same shape: objectives → content → Q&A → exam + evaluation.","Emphasise safety-first, technician-focused: practical rules they will use on shift."]'>
+    <!-- 2 COURSE / PROGRAM -->
+    <section class="slide" data-min="5" data-block="Module open"
+      data-notes='["Explain the program is 18 four-hour modules, delivered live online, running 6 Jul to 15 Aug 2026.","It blends LNG theory with the real Tendrara plant — theory only matters tied to what they operate.","2 Fundamentals modules, then 16 Operation modules unit by unit plus the control room.","Every module: objectives, content, Q&A, exam and evaluation. Safety-first, technician-focused."]'>
       <div class="kicker">Welcome · The program</div>
       <h2>About this training program</h2>
       <p class="lead">A technical program for LNG plant personnel, built around the <b>Tendrara Micro LNG</b>
@@ -223,7 +236,7 @@
     </section>
 
     <!-- 3 INSTRUCTORS -->
-    <section class="slide" data-min="4" data-block="Module open"
+    <section class="slide" data-min="3" data-block="Module open"
       data-notes='["Introduce yourself and your co-presenter — background and role on Tendrara.","Invite questions throughout, with a dedicated Q&A near the end of the module.","State Technical America is the technology vendor and training provider."]'>
       <div class="kicker">Your instructors</div>
       <h2>Meet the team</h2>
@@ -235,7 +248,7 @@
     </section>
 
     <!-- 4 ROADMAP -->
-    <section class="slide" data-min="7" data-block="Module open"
+    <section class="slide" data-min="6" data-block="Module open"
       data-notes='["The full program is 18 four-hour live-online modules — 2 Fundamentals + 16 Operation — running 6 Jul to 15 Aug 2026.","Today is module 001 (Fundamentals) — the vocabulary and safety mindset for everything that follows.","After fundamentals, the program goes unit by unit (200, 330/310, 340, 350 I/II, …) then the control room and plant start-stop.","Each Operation module covers principle of operation, main components, control loops/valves, and daily check & maintenance for that unit."]'>
       <div class="kicker">Roadmap · 18 modules · 4 h each</div>
       <h2>Program roadmap</h2>
@@ -269,19 +282,19 @@
     </section>
 
     <!-- 5 SCOPE / OBJECTIVES / AGENDA -->
-    <section class="slide" data-min="7" data-block="Module open"
-      data-notes='["Read the scope: this module builds the vocabulary and safety mindset.","Walk the objectives — these are exactly what the end-of-module exam covers.","Walk the timeline so trainees know when the breaks are; keep to the clock.","Module total is 4:00; the exam + evaluation at the end is mandatory."]'>
+    <section class="slide" data-min="6" data-block="Module open"
+      data-notes='["Read the scope: this module builds the vocabulary and safety mindset, and orients them to the facility.","Walk the objectives — these are exactly what the end-of-module exam covers.","Walk the timeline so trainees know when the breaks are; keep to the clock.","Module total is 4:00; the exam + evaluation at the end is mandatory."]'>
       <div class="kicker">Scope · Objectives · Agenda</div>
-      <h2>What Module 1 covers</h2>
+      <h2>What Module 001 covers</h2>
       <div class="grid2">
         <div>
           <p class="lead" style="margin:0 0 6px;font-weight:600;color:var(--ink);">Objectives — by the end you can:</p>
           <ul class="points">
             <li>Explain what natural gas and LNG are, and why we liquefy.</li>
+            <li>Orient to the Tendrara facility: layout, electrical, control &amp; ESD.</li>
             <li>Distinguish <b>NG vs LNG vs CNG</b> and their risks.</li>
-            <li>State LNG's key properties and the flammable range.</li>
-            <li>Describe the LNG hazard families &amp; the safety-critical rules.</li>
-            <li>Place Tendrara — and LNG — in the world market.</li>
+            <li>State LNG properties, the flammable range &amp; hazard families.</li>
+            <li>Apply the safety-critical rules (asphyxiation, no odorization, detect-don't-smell).</li>
           </ul>
         </div>
         <div>
@@ -298,25 +311,30 @@
       </div>
     </section>
 
-    <!-- 6 INTRODUCTION TO TENDRARA -->
-    <section class="slide" data-min="8" data-block="Block 1"
-      data-notes='["Give the plant identity: a modular micro-LNG facility monetising Tendrara field gas.","Point at the image — compact, skid-mounted, built for a remote site.","Feed comes from wells TE-6 & TE-7; product is ~261 t/day of LNG.","The mission is off-grid supply: LNG trucked to Afriquia Gaz for Moroccan distribution."]'>
+    <!-- 6 INTRODUCTION TO TENDRARA (carousel) -->
+    <section class="slide" data-min="7" data-block="Block 1"
+      data-notes='["Give the plant identity: a modular micro-LNG facility monetising Tendrara field gas.","The images auto-rotate — 3D render, plant areas/GA, and site view. Click any image to enlarge on the shared screen.","Feed comes from wells TE-6 & TE-7; product is ~261 t/day of LNG, trucked off-grid to Afriquia Gaz.","Engineered for a remote field: compact footprint, factory-tested skids."]'>
       <div class="kicker">Introducing the plant</div>
       <h2>The Tendrara Micro LNG facility</h2>
-      <div class="figrow">
+      <div class="figrow" style="grid-template-columns:1fr 1.35fr;">
         <ul class="points">
           <li>A <b>modular, skid-mounted</b> gas treatment &amp; liquefaction plant in eastern Morocco.</li>
-          <li>Turns raw gas from wells <b>TE-6 &amp; TE-7</b> into specification-grade LNG.</li>
+          <li>Raw gas from wells <b>TE-6 &amp; TE-7</b> → specification-grade LNG.</li>
           <li>~<b>261 t/day</b> LNG, trucked <b>off-grid</b> to Afriquia Gaz.</li>
-          <li>Engineered for a <b>remote field</b>: compact footprint, factory-tested skids.</li>
+          <li>Remote field: compact footprint, factory-tested skids.</li>
         </ul>
-        <div class="fig"><a href="/images/tendrara_hm_tci.png" target="_blank"><img src="/images/tendrara_hm_tci.png" alt="Tendrara facility"></a>
-          <div class="cap">Tendrara facility (click to enlarge)</div></div>
+        <div class="carousel" id="tdCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/3Dview.png" target="_blank"><img src="/images/3Dview.png" alt="Tendrara 3D plant view"></a>
+          <a class="cimg" href="/images/tendrara_areas.png" target="_blank"><img src="/images/tendrara_areas.png" alt="Tendrara plant areas / general arrangement"></a>
+          <a class="cimg" href="/images/tendrara_hm_tci.png" target="_blank"><img src="/images/tendrara_hm_tci.png" alt="Tendrara site view"></a>
+          <div class="ccap">Auto-rotating · click to enlarge</div>
+          <div class="cdots"><b class="active"></b><b></b><b></b></div>
+        </div>
       </div>
     </section>
 
     <!-- 7 LOCATION -->
-    <section class="slide" data-min="6" data-block="Block 1"
+    <section class="slide" data-min="5" data-block="Block 1"
       data-notes='["Show where the plant physically is — eastern Morocco, Tendrara region.","Give the coordinates; the live map lets trainees orient themselves.","Use the Google Earth button on a connected screen for a 3D fly-in.","Remoteness reinforces why a modular / off-grid design was chosen."]'>
       <div class="kicker">Where it is</div>
       <h2>Plant location</h2>
@@ -331,7 +349,7 @@
     </section>
 
     <!-- 8 BLOCK DIAGRAM -->
-    <section class="slide" data-min="7" data-block="Block 1"
+    <section class="slide" data-min="6" data-block="Block 1"
       data-notes='["The simplest mental model of the plant — one box per unit.","Trace the main gas path 200→330→310→350→220, plus the ammonia (340) and BOG (360/370) loops.","This high-level picture is enough for Module 1; later modules open each box.","Anchor: feed enters left, LNG to trucks exits right."]'>
       <div class="kicker">The plant at a glance</div>
       <h2>Tendrara — block diagram</h2>
@@ -339,9 +357,62 @@
         <div class="cap">Tendrara LNG — block diagram (click to enlarge)</div></div>
     </section>
 
-    <!-- 9 LNG IN THE WORLD -->
-    <section class="slide" data-min="10" data-block="Block 1"
-      data-notes='["Frame LNG as what turned natural gas into a globally traded commodity — ships, not just pipelines.","Give the scale: global LNG trade is around 400 million tonnes/year; the big exporters are the US, Qatar and Australia.","Main importers: China, Japan, South Korea and, since 2022, much more of Europe.","Position Tendrara: tiny by world standards (~0.086 Mtpa) but strategic — Morocco entering the LNG map and substituting imports.","Numbers are ~2024 industry context — confirm/update before delivery."]'>
+    <!-- 9 ELECTRICAL SYSTEM -->
+    <section class="slide" data-min="8" data-block="Block 1"
+      data-notes='["The plant runs in island mode — fully independent from any external grid; it powers itself.","Seven Jenbacher gas engines (1,807 kW each) are the primary source; two diesels (1,280 kW each) are for emergency, black-start and backup.","Total installed ~15.21 MW at cos φ 0.8 (~19 MW at cos φ 1.0).","Generation/distribution at 690 V, TN-C; main LV panel in 4 busbar sections with 3 motorized synchronizable tie breakers; 85 kA short-circuit; max 4 gas engines in parallel per energized busbar.","ELD11 single-line is the primary electrical reference for any isolation."]'>
+      <div class="kicker">Facility · Electrical</div>
+      <h2>Electrical &amp; power generation</h2>
+      <div class="figrow" style="grid-template-columns:1fr 1.25fr;">
+        <ul class="points">
+          <li><b>Island mode</b> — autonomous on-site power, independent from any grid.</li>
+          <li><b>7 × Jenbacher</b> gas engines @ 1,807 kW (primary) + <b>2 × diesel</b> @ 1,280 kW (emergency / black-start / backup).</li>
+          <li><b>~15.21 MW</b> installed (cos φ 0.8) · ~19 MW at cos φ 1.0.</li>
+          <li><b>690 V</b>, TN-C · <b>4 busbar sections</b>, 3 synchronizable tie breakers · <b>85 kA</b>; max 4 engines in parallel/busbar.</li>
+        </ul>
+        <div class="fig"><a href="/images/ELD11-electrical.png" target="_blank"><img src="/images/ELD11-electrical.png" alt="Electrical single-line ELD11-ING-PR01"></a>
+          <div class="cap">ELD11-ING-PR01 — single-line (click to enlarge)</div></div>
+      </div>
+    </section>
+
+    <!-- 10 CONTROL SYSTEM / PCS -->
+    <section class="slide" data-min="8" data-block="Block 1"
+      data-notes='["Two segregated layers: the PCS runs normal operation; a separate S7-1500F ESD PLC handles safety.","The backbone is PROFINET IO — dual fiber-optic redundant rings using MRP, recovering in under 200 ms; ET 200SP remote I/O on every skid.","Supervision is SIMATIC WinCC SCADA (client-server) with High-Performance HMI faceplates; fixed control-room stations plus ATEX mobile tablets.","The three images: PLC/network architecture, the PCS overview, and a live HMI screen (Unit 350). Click to enlarge.","Operators must know document 21044-AU-HMI-00002 (HMI Philosophy) before operating."]'>
+      <div class="kicker">Facility · Control</div>
+      <h2>Control system (PCS) &amp; PROFINET</h2>
+      <ul class="points" style="margin-bottom:6px;">
+        <li><b>PCS</b> (normal operation) + independent <b>ESD</b> S7-1500F safety PLC; <b>PROFINET IO</b> backbone — <b>dual redundant fiber rings (MRP, &lt;200 ms)</b>, ET 200SP remote I/O per skid.</li>
+        <li><b>SIMATIC WinCC</b> SCADA (client-server), <b>High-Performance HMI</b>; control-room stations + <b>ATEX mobile tablets</b>; historian, cloud-ready.</li>
+      </ul>
+      <div class="img3">
+        <div class="fig"><a href="/images/PLC-architecture.png" target="_blank"><img src="/images/PLC-architecture.png" alt="PLC / network architecture"></a><div class="cap">Architecture</div></div>
+        <div class="fig"><a href="/images/PCS.png" target="_blank"><img src="/images/PCS.png" alt="PCS overview screen"></a><div class="cap">PCS overview</div></div>
+        <div class="fig"><a href="/images/13-HMI-350=2.png" target="_blank"><img src="/images/13-HMI-350=2.png" alt="HMI screen Unit 350"></a><div class="cap">HMI — Unit 350</div></div>
+      </div>
+    </section>
+
+    <!-- 11 ESD -->
+    <section class="slide" data-min="7" data-block="Block 1"
+      data-notes='["The ESD is a dedicated, independent safety layer — fully separate from the PCS.","It uses a Siemens S7-1500F fail-safe PLC in the control room, with ET 200SP remote I/O near the protected units over high-speed PROFINET.","It collects ESD pushbuttons, fire & gas detectors, critical transmitters and valve feedback; certified fail-safe logic drives the Cause & Effect Matrix (isolation, depressurization, shutdown).","Four shutdown levels: ESD, PSD, LSD, and ASD (abandon shutdown for the LNG loading bay).","The ESD-to-PCS link is informational only — no safety logic depends on the PCS."]'>
+      <div class="kicker">Facility · Safety layer</div>
+      <h2>Emergency Shutdown System (ESD)</h2>
+      <div class="grid2">
+        <ul class="points">
+          <li><b>Independent safety layer</b>, fully separate from the PCS.</li>
+          <li><b>Siemens S7-1500F</b> fail-safe PLC in the control room; <b>ET 200SP</b> remote I/O near protected units over PROFINET.</li>
+          <li>Inputs: <b>ESD pushbuttons, fire &amp; gas detectors, critical transmitters, valve feedback</b>.</li>
+        </ul>
+        <ul class="points">
+          <li>Certified fail-safe logic → <b>Cause &amp; Effect Matrix</b>: isolation, depressurization, shutdown.</li>
+          <li>Shutdown levels: <b>ESD · PSD · LSD · ASD</b> (abandon — LNG loading bay).</li>
+          <li>ESD→PCS link is <b>informational only</b> — no safety logic depends on the PCS.</li>
+        </ul>
+      </div>
+      <div class="note">Per the Process Safety &amp; Isolation Philosophy (SAF01-ING-FR01) and IEC functional-safety requirements.</div>
+    </section>
+
+    <!-- 12 LNG IN THE WORLD -->
+    <section class="slide" data-min="7" data-block="Block 1"
+      data-notes='["Frame LNG as what turned natural gas into a globally traded commodity — ships, not just pipelines.","Global LNG trade is around 400 million tonnes/year; big exporters are the US, Qatar and Australia.","Main importers: China, Japan, South Korea and, since 2022, much more of Europe.","Position Tendrara: tiny by world standards (~0.086 Mtpa) but strategic — Morocco entering the LNG map, substituting imports.","Numbers are ~2024 industry context — confirm before delivery."]'>
       <div class="kicker">Context · LNG in the world</div>
       <h2>LNG's position in the world</h2>
       <p class="lead">Liquefaction turned natural gas into a <b>globally traded commodity</b> — moved by sea, not
@@ -351,10 +422,9 @@
           <li><b>~400 Mtpa</b> global LNG trade (≈2024) and growing.</li>
           <li>Top exporters: <b>United States, Qatar, Australia</b>.</li>
           <li>Top importers: <b>China, Japan, South Korea, Europe</b>.</li>
-          <li>Drivers: energy security &amp; switching from coal/oil to gas.</li>
         </ul>
         <ul class="points">
-          <li><b>Morocco</b> — a new entrant; Tendrara supplies the <b>domestic market</b> (import substitution).</li>
+          <li><b>Morocco</b> — a new entrant; Tendrara supplies the <b>domestic market</b>.</li>
           <li><b>Tendrara ≈ 0.086 Mtpa</b> — a fraction of a single large-scale train.</li>
           <li>Value here is <b>local energy access</b>, not export volume.</li>
         </ul>
@@ -362,8 +432,8 @@
       <div class="note">World figures are approximate industry context (~2024) — confirm before delivery.</div>
     </section>
 
-    <!-- 10 WHAT IS NATURAL GAS -->
-    <section class="slide" data-min="12" data-block="Block 1"
+    <!-- 13 WHAT IS NATURAL GAS -->
+    <section class="slide" data-min="8" data-block="Block 1"
       data-notes='["Define it plainly: a mixture of light hydrocarbons, formed over millions of years underground.","Occurrence: gas fields (pure), associated gas (with crude oil), and unconventional (shale, tight, coalbed).","Physical: colorless, odorless, non-corrosive when treated, and highly flammable in a specific range.","Plant the key safety seed: it is odorless — you cannot smell a leak; detection is by instruments only."]'>
       <div class="kicker">1 · The raw material</div>
       <h2>What is Natural Gas?</h2>
@@ -389,8 +459,8 @@
       </div>
     </section>
 
-    <!-- 11 WHY LIQUEFY -->
-    <section class="slide" data-min="11" data-block="Block 1"
+    <!-- 14 WHY LIQUEFY -->
+    <section class="slide" data-min="7" data-block="Block 1"
       data-notes='["State the problem: as a gas, NG takes up an enormous volume — sea shipping and mass storage are impractical.","The ratio: 1 m3 of LNG equals about 600 m3 of natural gas.","The solution: cool to −162 °C (methane boiling point) so it condenses and shrinks ~600×.","Benefits: LNG carriers, mass storage, off-grid supply, pipeline independence.","Hammer the key concept: LNG is NOT a different fuel — same gas, only the physical state changes."]'>
       <div class="kicker">2 · Why liquefy?</div>
       <h2>Why liquefy natural gas?</h2>
@@ -407,11 +477,11 @@
           <div class="fact"><div class="n">Same gas</div><div class="l">LNG is NOT a different fuel — only the physical state changes</div></div>
         </div>
       </div>
-      <div class="note">Because the state change is physical (not chemical), it demands special metallurgy (stainless / 9% nickel steel) and cryogenic procedures.</div>
+      <div class="note">Because the state change is physical, it demands special metallurgy (stainless / 9% nickel steel) and cryogenic procedures.</div>
     </section>
 
-    <!-- 12 NG vs LNG vs CNG -->
-    <section class="slide" data-min="10" data-block="Block 1"
+    <!-- 15 NG vs LNG vs CNG -->
+    <section class="slide" data-min="7" data-block="Block 1"
       data-notes='["This table is the single most useful comparison in the module — have them copy it.","NG = gas at low/medium pressure, moved by pipeline; risk is explosion/fire from a leak.","LNG = liquid at −162 °C, near-atmospheric; risk is cryogenic + vapor cloud.","CNG = gas at very high pressure (200–250 bar); risk is mechanical rupture, not cold.","Key: LNG uses temperature to shrink volume, CNG uses pressure."]'>
       <div class="kicker">3 · The three states</div>
       <h2>NG vs LNG vs CNG</h2>
@@ -426,8 +496,8 @@
       </table>
     </section>
 
-    <!-- 13 WHAT IS LNG -->
-    <section class="slide" data-min="7" data-block="Block 1"
+    <!-- 16 WHAT IS LNG -->
+    <section class="slide" data-min="6" data-block="Block 1"
       data-notes='["LNG = natural gas cooled to −162 °C (−260 °F), the boiling point of methane at atmospheric pressure.","Clear as water, odorless, non-corrosive if treated; the LIQUID does not burn — only vapor + air within limits.","It vaporizes rapidly on contact with any heat (air, ground, water).","Why not pressurized: LNG is held liquid by TEMPERATURE, not pressure — tanks are giant insulated thermoses at near-atmospheric pressure."]'>
       <div class="kicker">4 · The product</div>
       <h2>What is LNG?</h2>
@@ -441,8 +511,8 @@
       </ul>
     </section>
 
-    <!-- 14 LNG PROPERTIES -->
-    <section class="slide" data-min="8" data-block="Block 1"
+    <!-- 17 LNG PROPERTIES -->
+    <section class="slide" data-min="7" data-block="Block 1"
       data-notes='["Walk each property and its operational consequence.","Cold vapour is HEAVIER than air and pools low — drives gas-detector placement.","LNG floats AND boils on water → links to rapid phase transition later.","Note the Tendrara product leaves at −165.7 °C, near-atmospheric (from the HMB).","Quick check: at what concentration does methane vapour burn? (~5–15 %)."]'>
       <div class="kicker">5 · Properties</div>
       <h2>Key LNG properties</h2>
@@ -453,7 +523,6 @@
         <tr><td class="k">Expansion ratio</td><td>≈ 600 : 1</td><td class="v">1 m³ LNG → ~600 m³ gas</td></tr>
         <tr><td class="k">Calorific value</td><td>~50–56 MJ/kg</td><td class="v">High energy per unit mass</td></tr>
         <tr><td class="k">Flammable range</td><td><b>~5 % – 15 %</b> in air</td><td class="v">Only vapour burns, within these limits</td></tr>
-        <tr><td class="k">Vapour behaviour</td><td>cold = heavy / warm = buoyant</td><td class="v">Cold vapour pools low → detector placement</td></tr>
       </table>
       <div class="note">Tendrara LNG product (HMB): −165.7 °C at ~0.12 barg (near-atmospheric).</div>
     </section>
@@ -468,8 +537,8 @@
       </div>
     </section>
 
-    <!-- 15 LNG PRIMARY HAZARDS -->
-    <section class="slide" data-min="12" data-block="Block 2"
+    <!-- 18 LNG PRIMARY HAZARDS -->
+    <section class="slide" data-min="9" data-block="Block 2"
       data-notes='["Open Block 2 with the core safety message of the whole course.","Cryogenic burns: instant tissue damage on skin contact — never touch uninsulated cold lines.","Material embrittlement: carbon steel becomes brittle like glass and can shatter at LNG temperature.","Vapor cloud: as LNG evaporates it forms a dense, cold cloud that travels with the wind.","Crucial message: LNG does NOT explode as a liquid — the risk is when it evaporates and mixes with air within the flammable range."]'>
       <div class="kicker">6 · Safety</div>
       <h2>Primary LNG hazards</h2>
@@ -486,8 +555,8 @@
       <div class="note"><b>Crucial:</b> LNG does not explode as a liquid — the risk occurs when it <b>evaporates</b> and mixes with air within the <b>~5–15 %</b> flammable range.</div>
     </section>
 
-    <!-- 16 CRYOGENIC HANDLING & MATERIALS -->
-    <section class="slide" data-min="10" data-block="Block 2"
+    <!-- 19 CRYOGENIC HANDLING & MATERIALS -->
+    <section class="slide" data-min="6" data-block="Block 2"
       data-notes='["Because the change is physical, cold service demands specialized metallurgy — stainless steel / 9% nickel steel.","Ordinary carbon steel is limited to about −28 °C; below that it embrittles.","Maintenance realities: specialized gaskets and seals, and controlled cool-down / warm-up procedures.","Rapid vaporization means even a small liquid release makes a large gas volume — respect every cold surface and line."]'>
       <div class="kicker">7 · Cryogenic handling</div>
       <h2>Cryogenic materials &amp; handling</h2>
@@ -499,8 +568,8 @@
       </ul>
     </section>
 
-    <!-- 17 SAFETY-CRITICAL INFO -->
-    <section class="slide" data-min="12" data-block="Block 2"
+    <!-- 20 SAFETY-CRITICAL INFO -->
+    <section class="slide" data-min="8" data-block="Block 2"
       data-notes='["This slide is the safety heart of the module — slow down here.","Non-toxic: NG is not poisonous like carbon monoxide — but it is an ASPHYXIANT.","It displaces oxygen; oxygen-deficient atmospheres (below 19.5%) can be fatal, especially in confined spaces during maintenance.","Odorization: household gas has mercaptan added so you can smell it. In LNG plants the gas is NOT odorized.","Therefore: safety depends entirely on instrumentation and gas detectors — NEVER on the sense of smell."]'>
       <div class="kicker">8 · Safety-critical</div>
       <h2>Critical safety information</h2>
@@ -519,10 +588,29 @@
       <div class="note">Before entering any confined or gas-suspect area: test the atmosphere. Trust the detector, not your nose.</div>
     </section>
 
-    <!-- 18 APPLICATIONS -->
-    <section class="slide" data-min="8" data-block="Block 2"
-      data-notes='["Show why the world wants gas & LNG — it connects the plant to the market.","Power: combined-cycle plants, gas turbines, industrial engines — lower CO2 than coal or heavy fuel oil.","Industry: furnaces, boilers, dryers, precise thermal processes; also feedstock for ammonia (fertilizers) and methanol.","Transport: CNG for urban fleets, LNG for heavy-duty trucking and marine shipping.","Off-grid: island supply and virtual pipelines — exactly Tendrara's role for Morocco."]'>
-      <div class="kicker">9 · Uses</div>
+    <!-- 21 SAFETY & ISOLATION PHILOSOPHY (SAF01) -->
+    <section class="slide" data-min="9" data-block="Block 2"
+      data-notes='["This is the plant''s formal safety framework — the Process Safety & Isolation Philosophy (SAF01, by Italfluid).","Layers of protection: PCS control, then the independent ESD safety layer, then relief & depressurization to flare.","Shutdown hierarchy: LSD (local) < PSD (process) < ESD (emergency), plus ASD for the loading bay — all driven by the Cause & Effect Matrix.","Isolation for maintenance: positive isolation, double block & bleed, car-sealed / locked valves (CSO/CSC, LO/LC), and vessel-entry isolation.","Personnel safeguards: emergency showers & eye baths, F&G detection, high-expansion foam for cryogenic spills."]'>
+      <div class="kicker">9 · Plant safety framework</div>
+      <h2>Process Safety &amp; Isolation Philosophy</h2>
+      <div class="grid2">
+        <ul class="points">
+          <li><b>Layers of protection:</b> PCS control → independent <b>ESD</b> → relief &amp; depressurization to flare.</li>
+          <li><b>Shutdown hierarchy:</b> LSD (local) → PSD (process) → <b>ESD</b> (emergency) → <b>ASD</b> (loading bay), per the <b>Cause &amp; Effect Matrix</b>.</li>
+          <li><b>Relief &amp; depressurization:</b> PSVs &amp; blowdown valves (BDV) route to the flare in upsets.</li>
+        </ul>
+        <ul class="points">
+          <li><b>Isolation for maintenance:</b> positive isolation, double-block-and-bleed, <b>car-sealed / locked valves</b> (CSO/CSC, LO/LC), vessel-entry isolation.</li>
+          <li><b>Personnel safeguards:</b> emergency showers &amp; eye baths, F&amp;G detection, <b>high-expansion foam</b> for cryogenic spills.</li>
+        </ul>
+      </div>
+      <div class="note">Source: SAF01-ING-FR01 Rev.2 — Process Safety &amp; Isolation Philosophy (Italfluid). Standards: NFPA 59A · EN 1473 · IEC 60079 (Ex).</div>
+    </section>
+
+    <!-- 22 APPLICATIONS -->
+    <section class="slide" data-min="6" data-block="Block 2"
+      data-notes='["Show why the world wants gas & LNG — it connects the plant to the market.","Power: combined-cycle plants, gas turbines, industrial engines — lower CO2 than coal or heavy fuel oil.","Industry: furnaces, boilers, dryers; also feedstock for ammonia (fertilizers) and methanol.","Transport: CNG for urban fleets, LNG for heavy-duty trucking and marine shipping.","Off-grid: island supply and virtual pipelines — exactly Tendrara''s role for Morocco."]'>
+      <div class="kicker">10 · Uses</div>
       <h2>Applications of NG &amp; LNG</h2>
       <div class="grid2">
         <ul class="points">
@@ -537,8 +625,8 @@
       </div>
     </section>
 
-    <!-- 19 KEY TECHNICAL MESSAGES -->
-    <section class="slide" data-min="10" data-block="Block 2"
+    <!-- 23 KEY TECHNICAL MESSAGES -->
+    <section class="slide" data-min="7" data-block="Block 2"
       data-notes='["These are the six take-home messages — read them slowly, they are exam material.","1) LNG is liquid by extreme temperature, not pressure. 2) CNG reduces volume by pressure, not cooling.","3) Pipeline NG depends entirely on fixed infrastructure.","4) Hazard by state: NG → explosive/fire; LNG → cryogenic + vapor cloud; CNG → stored mechanical energy.","5) In industrial/LNG plants the gas is NOT odorized. 6) Safety depends on instrumentation & detectors, never on smell."]'>
       <div class="kicker">Take-home</div>
       <h2>Key technical messages</h2>
@@ -552,19 +640,37 @@
       </ul>
     </section>
 
-    <!-- 20 RECAP -->
-    <section class="slide" data-min="8" data-block="Block 2"
-      data-notes='["Recap against the objectives — this is the exam blueprint.","Ask a few quick recall questions to gauge readiness before the exam.","Preview Module 2: Natural Gas Composition & Pre-treatment.","This is the last content slide; the break, Q&A and exam follow."]'>
+    <!-- 24 ABBREVIATIONS -->
+    <section class="slide" data-min="3" data-block="Block 2"
+      data-notes='["Reference slide — the abbreviations used across the whole program.","Do not read every line; point trainees to it and call out a few key ones (ESD, PSD, LSD, BDV, MDMT, PCS, BOG, HMB).","Tell them this will reappear in every unit module."]'>
+      <div class="kicker">Reference</div>
+      <h2>Abbreviations</h2>
+      <div class="fig"><a href="/images/abreviations.png" target="_blank"><img src="/images/abreviations.png" alt="Abbreviations and definitions"></a>
+        <div class="cap">Abbreviations &amp; definitions (click to enlarge)</div></div>
+    </section>
+
+    <!-- 25 UNITS -->
+    <section class="slide" data-min="3" data-block="Block 2"
+      data-notes='["Reference slide — the units of measure and reference conditions used in the project.","Highlight the reference conditions: Normal 1.013 bara & 0 °C; Standard 14.696 psia & 60 °F.","Tell them consistent units matter when reading the HMB and operating data."]'>
+      <div class="kicker">Reference</div>
+      <h2>Units of measure</h2>
+      <div class="fig"><a href="/images/units.png" target="_blank"><img src="/images/units.png" alt="Units of measure"></a>
+        <div class="cap">Units of measure &amp; reference conditions (click to enlarge)</div></div>
+    </section>
+
+    <!-- 26 RECAP -->
+    <section class="slide" data-min="9" data-block="Block 2"
+      data-notes='["Recap against the objectives — this is the exam blueprint.","Ask a few quick recall questions to gauge readiness before the exam.","Preview Module 002: Facility operation, safety & emergency.","This is the last content slide; the break, Q&A and exam follow."]'>
       <div class="kicker">Recap · Learning outcomes</div>
-      <h2>By the end of Module 1 you can…</h2>
+      <h2>By the end of Module 001 you can…</h2>
       <ul class="points">
         <li>Explain what <b>natural gas</b> and <b>LNG</b> are, and <b>why we liquefy</b> (−162 °C, ~600:1).</li>
-        <li>Distinguish <b>NG vs LNG vs CNG</b> and their dominant risks.</li>
-        <li>State LNG's <b>key properties</b> and the <b>~5–15 %</b> flammable range.</li>
-        <li>Describe the <b>hazard families</b> and the <b>safety-critical rules</b> (asphyxiation, no odorization, detect don't smell).</li>
-        <li>Place <b>Tendrara &amp; LNG</b> in the world market.</li>
+        <li>Orient to the <b>Tendrara facility</b> — layout, <b>electrical</b>, <b>control (PCS/PROFINET)</b> &amp; <b>ESD</b>.</li>
+        <li>Distinguish <b>NG vs LNG vs CNG</b>, and state LNG properties &amp; the <b>~5–15 %</b> flammable range.</li>
+        <li>Describe the <b>hazard families</b> &amp; the plant's <b>safety &amp; isolation philosophy</b>.</li>
+        <li>Apply the <b>safety-critical rules</b> (asphyxiation, no odorization, detect-don't-smell).</li>
       </ul>
-      <div class="note">Next module: <b>Module 2 — Natural Gas Composition &amp; Pre-treatment.</b></div>
+      <div class="note">Next module: <b>Module 002 — Facility operation, safety &amp; emergency.</b></div>
     </section>
 
     <!-- BREAK 2 -->
@@ -593,7 +699,7 @@
       <div>
         <div class="big">30:00</div>
         <h2>Exam + Module Evaluation</h2>
-        <p>Module 1 assessment covering the objectives and key messages, followed by the trainee evaluation form.</p>
+        <p>Module 001 assessment covering the objectives and key messages, followed by the trainee evaluation form.</p>
       </div>
     </section>
 
@@ -835,6 +941,20 @@
   }
 
   show(0);
+</script>
+<script>
+  // Image carousel(s): auto-rotate + dot navigation. Images are <a> → click opens full-size.
+  document.querySelectorAll('.carousel').forEach(function(car){
+    var imgs=[].slice.call(car.querySelectorAll('.cimg'));
+    var dots=[].slice.call(car.querySelectorAll('.cdots b'));
+    var ci=0, timer=null, interval=parseInt(car.dataset.interval||'4000',10);
+    function go(n){ci=(n+imgs.length)%imgs.length;
+      imgs.forEach(function(im,k){im.classList.toggle('active',k===ci);});
+      dots.forEach(function(d,k){d.classList.toggle('active',k===ci);});}
+    dots.forEach(function(d,k){d.onclick=function(){go(k);restart();};});
+    function restart(){clearInterval(timer);timer=setInterval(function(){go(ci+1);},interval);}
+    restart();
+  });
 </script>
 </body>
 </html>
