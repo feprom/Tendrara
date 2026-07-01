@@ -112,11 +112,24 @@
   .coord{font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:4px;padding:9px 12px;display:inline-block;margin:4px 0 12px;}
   .btn-earth{display:inline-block;background:var(--crimson);color:#fff;text-decoration:none;padding:11px 18px;border-radius:5px;font-weight:600;font-size:14px;}
   .btn-earth:hover{background:var(--crimson-dark);}
+  .btn-doc{display:inline-flex;align-items:center;gap:7px;background:#fff;color:var(--crimson);border:1.5px solid var(--crimson);
+    text-decoration:none;padding:7px 13px;border-radius:5px;font-weight:600;font-size:12.5px;}
+  .btn-doc:hover{background:var(--crimson);color:#fff;}
   /* image carousel */
   .carousel{position:relative;height:322px;margin-top:8px;}
   .carousel .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .55s;pointer-events:none;}
   .carousel .cimg.active{opacity:1;pointer-events:auto;}
-  .carousel .cimg img{max-width:100%;max-height:300px;border:1px solid var(--line-strong);border-radius:5px;background:#0d0f11;cursor:zoom-in;}
+  .carousel .cimg img{max-width:100%;max-height:300px;border:1px solid var(--line-strong);border-radius:5px;background:#fff;cursor:zoom-in;}
+  .carousel.empty{display:flex;align-items:center;justify-content:center;border:1.5px dashed var(--line-strong);border-radius:6px;background:var(--bg-soft);}
+  .carousel.empty .ph{text-align:center;color:var(--ink-soft);font-family:var(--mono);font-size:12px;letter-spacing:.04em;}
+  .carousel.empty .ph .big{font-size:26px;margin-bottom:6px;}
+  /* reference tables (abbreviations / units) */
+  .reftable{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .reftable th{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);
+    text-align:left;padding:5px 8px;border-bottom:2px solid var(--line-strong);}
+  .reftable td{padding:4px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .reftable td.ab{font-family:var(--mono);font-weight:700;color:var(--crimson);white-space:nowrap;}
+  .refcols{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;}
   .carousel .cdots{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3;}
   .carousel .cdots b{width:9px;height:9px;border-radius:50%;background:#c9ced4;cursor:pointer;display:block;}
   .carousel .cdots b.active{background:var(--crimson);}
@@ -376,17 +389,23 @@
 
     <!-- 10 CONTROL SYSTEM / PCS -->
     <section class="slide" data-min="8" data-block="Block 1"
-      data-notes='["Two segregated layers: the PCS runs normal operation; a separate S7-1500F ESD PLC handles safety.","The backbone is PROFINET IO — dual fiber-optic redundant rings using MRP, recovering in under 200 ms; ET 200SP remote I/O on every skid.","Supervision is SIMATIC WinCC SCADA (client-server) with High-Performance HMI faceplates; fixed control-room stations plus ATEX mobile tablets.","The three images: PLC/network architecture, the PCS overview, and a live HMI screen (Unit 350). Click to enlarge.","Operators must know document 21044-AU-HMI-00002 (HMI Philosophy) before operating."]'>
+      data-notes='["Two segregated layers: the PCS runs normal operation; a separate S7-1500F ESD PLC handles safety.","The backbone is PROFINET IO — dual fiber-optic redundant rings using MRP, recovering in under 200 ms; ET 200SP remote I/O on every skid.","Supervision is SIMATIC WinCC SCADA (client-server) with High-Performance HMI faceplates; fixed control-room stations plus ATEX mobile tablets.","Carousel: PLC/network architecture, the PCS overview, and two live HMI screens — Unit 350 (liquefaction) and Unit 220 (storage/loading). Click to enlarge.","Operators must know document 21044-AU-HMI-00002 (HMI Philosophy) before operating."]'>
       <div class="kicker">Facility · Control</div>
       <h2>Control system (PCS) &amp; PROFINET</h2>
-      <ul class="points" style="margin-bottom:6px;">
-        <li><b>PCS</b> (normal operation) + independent <b>ESD</b> S7-1500F safety PLC; <b>PROFINET IO</b> backbone — <b>dual redundant fiber rings (MRP, &lt;200 ms)</b>, ET 200SP remote I/O per skid.</li>
-        <li><b>SIMATIC WinCC</b> SCADA (client-server), <b>High-Performance HMI</b>; control-room stations + <b>ATEX mobile tablets</b>; historian, cloud-ready.</li>
-      </ul>
-      <div class="img3">
-        <div class="fig"><a href="/images/PLC-architecture.png" target="_blank"><img src="/images/PLC-architecture.png" alt="PLC / network architecture"></a><div class="cap">Architecture</div></div>
-        <div class="fig"><a href="/images/PCS.png" target="_blank"><img src="/images/PCS.png" alt="PCS overview screen"></a><div class="cap">PCS overview</div></div>
-        <div class="fig"><a href="/images/13-HMI-350=2.png" target="_blank"><img src="/images/13-HMI-350=2.png" alt="HMI screen Unit 350"></a><div class="cap">HMI — Unit 350</div></div>
+      <div class="figrow" style="grid-template-columns:1.35fr 1fr;">
+        <ul class="points">
+          <li><b>PCS</b> (normal operation) + independent <b>ESD</b> S7-1500F safety PLC.</li>
+          <li><b>PROFINET IO</b> backbone — <b>dual redundant fiber rings (MRP, &lt;200 ms)</b>, ET 200SP remote I/O per skid.</li>
+          <li><b>SIMATIC WinCC</b> SCADA (client-server), <b>High-Performance HMI</b>; control-room stations + <b>ATEX mobile tablets</b>; historian, cloud-ready.</li>
+        </ul>
+        <div class="carousel" id="pcsCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/PLC-architecture.png" target="_blank"><img src="/images/PLC-architecture.png" alt="PLC / network architecture"></a>
+          <a class="cimg" href="/images/PCS.png" target="_blank"><img src="/images/PCS.png" alt="PCS overview screen"></a>
+          <a class="cimg" href="/images/13-HMI-350=2.png" target="_blank"><img src="/images/13-HMI-350=2.png" alt="HMI screen Unit 350"></a>
+          <a class="cimg" href="/images/27-HMI-220=2.png" target="_blank"><img src="/images/27-HMI-220=2.png" alt="HMI screen Unit 220"></a>
+          <div class="ccap">Auto-rotating · click to enlarge</div>
+          <div class="cdots"><b class="active"></b><b></b><b></b><b></b></div>
+        </div>
       </div>
     </section>
 
@@ -395,41 +414,48 @@
       data-notes='["The ESD is a dedicated, independent safety layer — fully separate from the PCS.","It uses a Siemens S7-1500F fail-safe PLC in the control room, with ET 200SP remote I/O near the protected units over high-speed PROFINET.","It collects ESD pushbuttons, fire & gas detectors, critical transmitters and valve feedback; certified fail-safe logic drives the Cause & Effect Matrix (isolation, depressurization, shutdown).","Four shutdown levels: ESD, PSD, LSD, and ASD (abandon shutdown for the LNG loading bay).","The ESD-to-PCS link is informational only — no safety logic depends on the PCS."]'>
       <div class="kicker">Facility · Safety layer</div>
       <h2>Emergency Shutdown System (ESD)</h2>
-      <div class="grid2">
-        <ul class="points">
-          <li><b>Independent safety layer</b>, fully separate from the PCS.</li>
-          <li><b>Siemens S7-1500F</b> fail-safe PLC in the control room; <b>ET 200SP</b> remote I/O near protected units over PROFINET.</li>
-          <li>Inputs: <b>ESD pushbuttons, fire &amp; gas detectors, critical transmitters, valve feedback</b>.</li>
-        </ul>
-        <ul class="points">
-          <li>Certified fail-safe logic → <b>Cause &amp; Effect Matrix</b>: isolation, depressurization, shutdown.</li>
-          <li>Shutdown levels: <b>ESD · PSD · LSD · ASD</b> (abandon — LNG loading bay).</li>
-          <li>ESD→PCS link is <b>informational only</b> — no safety logic depends on the PCS.</li>
-        </ul>
+      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
+        <div class="grid2" style="gap:8px 18px;">
+          <ul class="points">
+            <li><b>Independent safety layer</b>, fully separate from the PCS.</li>
+            <li><b>Siemens S7-1500F</b> fail-safe PLC in the control room; <b>ET 200SP</b> remote I/O near protected units over PROFINET.</li>
+            <li>Inputs: <b>ESD pushbuttons, fire &amp; gas detectors, critical transmitters, valve feedback</b>.</li>
+          </ul>
+          <ul class="points">
+            <li>Certified fail-safe logic → <b>Cause &amp; Effect Matrix</b>: isolation, depressurization, shutdown.</li>
+            <li>Shutdown levels: <b>ESD · PSD · LSD · ASD</b> (abandon — LNG loading bay).</li>
+            <li>ESD→PCS link is <b>informational only</b> — no safety logic depends on the PCS.</li>
+          </ul>
+        </div>
+        <div class="carousel" id="esdCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/ESD.png" target="_blank"><img src="/images/ESD.png" alt="ESD architecture"></a>
+          <div class="ccap">Click to enlarge</div>
+          <div class="cdots"><b class="active"></b></div>
+        </div>
       </div>
       <div class="note">Per the Process Safety &amp; Isolation Philosophy (SAF01-ING-FR01) and IEC functional-safety requirements.</div>
     </section>
 
     <!-- 12 LNG IN THE WORLD -->
     <section class="slide" data-min="7" data-block="Block 1"
-      data-notes='["Frame LNG as what turned natural gas into a globally traded commodity — ships, not just pipelines.","Global LNG trade is around 400 million tonnes/year; big exporters are the US, Qatar and Australia.","Main importers: China, Japan, South Korea and, since 2022, much more of Europe.","Position Tendrara: tiny by world standards (~0.086 Mtpa) but strategic — Morocco entering the LNG map, substituting imports.","Numbers are ~2024 industry context — confirm before delivery."]'>
+      data-notes='["Frame LNG as what turned natural gas into a globally traded commodity — ships, not just pipelines.","2024 global LNG trade: 411 million tonnes (IGU World LNG Report). Top 5 exporters supply over three-quarters of it: US 88.4 Mt, Australia 81 Mt, Qatar 77.2 Mt, Russia 33.5 Mt, Malaysia 27.7 Mt.","Top 5 importers take ~59%: China 78.6 Mt, Japan 67.7 Mt, South Korea 47.1 Mt, India 26.1 Mt, Taiwan 21.8 Mt.","2026 context: conflict disrupted supply — Qatar halted production in March 2026; the Strait of Hormuz carries ~20% of world LNG shipping, so chokepoint risk is real and current.","Position Tendrara: tiny by world standards (~0.086 Mtpa) but strategic — Morocco entering the LNG map, substituting imports and reducing exposure to these global shocks."]'>
       <div class="kicker">Context · LNG in the world</div>
       <h2>LNG's position in the world</h2>
       <p class="lead">Liquefaction turned natural gas into a <b>globally traded commodity</b> — moved by sea, not
         only by pipeline. Tendrara is Morocco's entry point onto that map.</p>
       <div class="grid2">
         <ul class="points">
-          <li><b>~400 Mtpa</b> global LNG trade (≈2024) and growing.</li>
-          <li>Top exporters: <b>United States, Qatar, Australia</b>.</li>
-          <li>Top importers: <b>China, Japan, South Korea, Europe</b>.</li>
+          <li><b>411 Mt</b> traded globally in 2024 (IGU World LNG Report).</li>
+          <li>Top exporters: <b>US 88.4</b> · <b>Australia 81</b> · <b>Qatar 77.2</b> Mt (&gt;75% from top 5).</li>
+          <li>Top importers: <b>China 78.6</b> · <b>Japan 67.7</b> · <b>S. Korea 47.1</b> Mt.</li>
         </ul>
         <ul class="points">
-          <li><b>Morocco</b> — a new entrant; Tendrara supplies the <b>domestic market</b>.</li>
-          <li><b>Tendrara ≈ 0.086 Mtpa</b> — a fraction of a single large-scale train.</li>
-          <li>Value here is <b>local energy access</b>, not export volume.</li>
+          <li><b>2026:</b> Qatar halted production (Mar 2026) amid regional conflict — Strait of Hormuz carries <b>~20%</b> of world LNG shipping.</li>
+          <li><b>Tendrara ≈ 0.086 Mtpa</b> — tiny by world standards, but reduces Morocco's exposure to these shocks.</li>
+          <li>Value here is <b>local energy access &amp; import substitution</b>, not export volume.</li>
         </ul>
       </div>
-      <div class="note">World figures are approximate industry context (~2024) — confirm before delivery.</div>
+      <div class="note">Source: International Gas Union World LNG Report 2025 (2024 data) + Al Jazeera, 27 Mar 2026 — confirm before delivery as this is a fast-moving situation.</div>
     </section>
 
     <!-- 13 WHAT IS NATURAL GAS -->
@@ -461,20 +487,25 @@
 
     <!-- 14 WHY LIQUEFY -->
     <section class="slide" data-min="7" data-block="Block 1"
-      data-notes='["State the problem: as a gas, NG takes up an enormous volume — sea shipping and mass storage are impractical.","The ratio: 1 m3 of LNG equals about 600 m3 of natural gas.","The solution: cool to −162 °C (methane boiling point) so it condenses and shrinks ~600×.","Benefits: LNG carriers, mass storage, off-grid supply, pipeline independence.","Hammer the key concept: LNG is NOT a different fuel — same gas, only the physical state changes."]'>
+      data-notes='["State the problem: as a gas, NG takes up an enormous volume — sea shipping and mass storage are impractical.","The ratio: 1 m3 of LNG equals about 600 m3 of natural gas.","The solution: cool to −162 °C (methane boiling point) so it condenses and shrinks ~600×.","Benefits: LNG carriers, mass storage, off-grid supply, pipeline independence.","Hammer the key concept: LNG is NOT a different fuel — same gas, only the physical state changes.","The image walks the same chain visually: wellhead gas → liquefy at ~−160 °C → ship, 600× smaller."]'>
       <div class="kicker">2 · Why liquefy?</div>
       <h2>Why liquefy natural gas?</h2>
-      <div class="grid2">
+      <div class="figrow" style="grid-template-columns:1.35fr 1fr;">
         <div>
           <ul class="points">
             <li><b>Problem:</b> as a gas, NG occupies an enormous volume — sea shipping unfeasible, mass storage impossible.</li>
             <li><b>Solution:</b> cool to <b>−162 °C</b> → it condenses to a cryogenic liquid, volume <b>÷ 600</b>.</li>
             <li><b>Benefits:</b> LNG carriers, mass energy storage, off-grid supply, pipeline independence.</li>
           </ul>
+          <div class="facts">
+            <div class="fact"><div class="n">1 : 600</div><div class="l">1 m³ LNG ≈ 600 m³ natural gas</div></div>
+            <div class="fact"><div class="n">Same gas</div><div class="l">LNG is NOT a different fuel — only the physical state changes</div></div>
+          </div>
         </div>
-        <div class="facts" style="flex-direction:column;">
-          <div class="fact"><div class="n">1 : 600</div><div class="l">1 m³ LNG ≈ 600 m³ natural gas</div></div>
-          <div class="fact"><div class="n">Same gas</div><div class="l">LNG is NOT a different fuel — only the physical state changes</div></div>
+        <div class="carousel" id="liquefyCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/LNG.webp" target="_blank"><img src="/images/LNG.webp" alt="What is LNG — gas to liquid to ship"></a>
+          <div class="ccap">Click to enlarge</div>
+          <div class="cdots"><b class="active"></b></div>
         </div>
       </div>
       <div class="note">Because the state change is physical, it demands special metallurgy (stainless / 9% nickel steel) and cryogenic procedures.</div>
@@ -539,10 +570,11 @@
 
     <!-- 18 LNG PRIMARY HAZARDS -->
     <section class="slide" data-min="9" data-block="Block 2"
-      data-notes='["Open Block 2 with the core safety message of the whole course.","Cryogenic burns: instant tissue damage on skin contact — never touch uninsulated cold lines.","Material embrittlement: carbon steel becomes brittle like glass and can shatter at LNG temperature.","Vapor cloud: as LNG evaporates it forms a dense, cold cloud that travels with the wind.","Crucial message: LNG does NOT explode as a liquid — the risk is when it evaporates and mixes with air within the flammable range."]'>
+      data-notes='["Open Block 2 with the core safety message of the whole course — walk the 6-icon summary first.","Six hazard families: flammability, explosion, cryogenic, gas release, high pressure, hazardous atmosphere.","NFPA 704: Health 3, Fire 4, Reactivity 0 — Fire is the dominant rating for LNG.","Cryogenic burns: instant tissue damage on skin contact — never touch uninsulated cold lines.","Material embrittlement: carbon steel becomes brittle like glass and can shatter at LNG temperature.","From the SDS: flash point < −188 °C, auto-ignition 537 °C — LNG itself is very hard to ignite, but its vapour is not.","CRITICAL firefighting rule from the SDS: never put water directly on an LNG pool or leak — it speeds vaporisation and can ice up valves/instruments. Use dry chemical, CO2, or high-expansion foam; water is only for cooling nearby equipment.","Crucial message: LNG does NOT explode as a liquid — the risk is when it evaporates and mixes with air within the flammable range.","Point out the downloadable Safety Data Sheet — trainees can keep it for reference."]'>
       <div class="kicker">6 · Safety</div>
       <h2>Primary LNG hazards</h2>
-      <div class="grid2">
+      <div class="fig" style="margin-top:2px;"><a href="/images/LNGrisk.png" target="_blank"><img src="/images/LNGrisk.png" alt="Main hazards in an LNG plant — NFPA 704 / HMIS ratings" style="max-height:210px;"></a></div>
+      <div class="grid2" style="margin-top:10px;">
         <ul class="points">
           <li><b>Cryogenic burns:</b> instant tissue damage on skin contact with liquid or cold vapour.</li>
           <li><b>Material embrittlement:</b> carbon steel &amp; common metals turn brittle like glass and can shatter.</li>
@@ -552,20 +584,27 @@
           <li><b>Rapid phase transition (RPT):</b> LNG on water can flash-vaporise — keep LNG off open water.</li>
         </ul>
       </div>
-      <div class="note"><b>Crucial:</b> LNG does not explode as a liquid — the risk occurs when it <b>evaporates</b> and mixes with air within the <b>~5–15 %</b> flammable range.</div>
+      <div class="note"><b>Crucial:</b> LNG does not explode as a liquid — the risk occurs when it <b>evaporates</b> and mixes with air within the <b>~5–15 %</b> flammable range.
+        Flash point &lt; −188 °C · auto-ignition 537 °C. <b>Never fight an LNG fire with water on the pool</b> — use dry chemical, CO₂, or high-expansion foam.
+        <br><a class="btn-doc" href="/docs/LNGSafetyData.pdf" target="_blank" style="margin-top:8px;">📄 Download the LNG Safety Data Sheet (PDF)</a></div>
     </section>
 
     <!-- 19 CRYOGENIC HANDLING & MATERIALS -->
     <section class="slide" data-min="6" data-block="Block 2"
-      data-notes='["Because the change is physical, cold service demands specialized metallurgy — stainless steel / 9% nickel steel.","Ordinary carbon steel is limited to about −28 °C; below that it embrittles.","Maintenance realities: specialized gaskets and seals, and controlled cool-down / warm-up procedures.","Rapid vaporization means even a small liquid release makes a large gas volume — respect every cold surface and line."]'>
+      data-notes='["Because the change is physical, cold service demands specialized metallurgy — stainless steel / 9% nickel steel.","Ordinary carbon steel is limited to about −28 °C; below that it embrittles.","Maintenance realities: specialized gaskets and seals, and controlled cool-down / warm-up procedures.","Rapid vaporization means even a small liquid release makes a large gas volume — respect every cold surface and line.","From the SDS — PPE & work rules: cold-insulating gloves, apron, face shield; ground & bond lines during transfer (static); non-sparking tools; NO polyester clothing (static); NO cell phones in the transfer/storage area; electrical equipment must be Class I, Division 1, Group D rated.","First aid for frostbite: warm (100–105 °F) circulating water only — never hot water, never rub the area — then seek medical attention."]'>
       <div class="kicker">7 · Cryogenic handling</div>
       <h2>Cryogenic materials &amp; handling</h2>
-      <ul class="points">
-        <li><b>Metallurgy:</b> cryogenic service needs <b>stainless steel / 9 % nickel steel</b> (or aluminium); carbon steel is limited to ~−28 °C.</li>
-        <li><b>Embrittlement:</b> below their limit, common metals shatter — never expose non-rated equipment to LNG.</li>
-        <li><b>Maintenance:</b> specialized gaskets &amp; seals; controlled <b>cool-down / warm-up</b> procedures.</li>
-        <li><b>Rapid vaporization:</b> a small liquid release becomes a large gas cloud (~600×).</li>
-      </ul>
+      <div class="figrow" style="grid-template-columns:1.35fr 1fr;">
+        <ul class="points">
+          <li><b>Metallurgy:</b> cryogenic service needs <b>stainless steel / 9 % nickel steel</b> (or aluminium); carbon steel is limited to ~−28 °C.</li>
+          <li><b>Embrittlement:</b> below their limit, common metals shatter — never expose non-rated equipment to LNG.</li>
+          <li><b>PPE &amp; work rules (SDS):</b> insulating gloves/apron/face shield; ground &amp; bond during transfer; non-sparking tools; no polyester clothing; no cell phones near LNG; <b>Class I, Div 1, Group D</b> electrical.</li>
+          <li><b>Frostbite first aid:</b> warm water (100–105 °F) only — never hot water, never rub — then seek medical attention.</li>
+        </ul>
+        <div class="carousel empty" id="cryoCarousel" data-interval="4000">
+          <div class="ph"><div class="big">🖼</div>Pictures pending<br>(carousel ready)</div>
+        </div>
+      </div>
     </section>
 
     <!-- 20 SAFETY-CRITICAL INFO -->
@@ -573,17 +612,22 @@
       data-notes='["This slide is the safety heart of the module — slow down here.","Non-toxic: NG is not poisonous like carbon monoxide — but it is an ASPHYXIANT.","It displaces oxygen; oxygen-deficient atmospheres (below 19.5%) can be fatal, especially in confined spaces during maintenance.","Odorization: household gas has mercaptan added so you can smell it. In LNG plants the gas is NOT odorized.","Therefore: safety depends entirely on instrumentation and gas detectors — NEVER on the sense of smell."]'>
       <div class="kicker">8 · Safety-critical</div>
       <h2>Critical safety information</h2>
-      <div class="grid2">
-        <ul class="points">
-          <li><b>Non-toxic</b> — not poisonous like carbon monoxide…</li>
-          <li>…but a serious <b>asphyxiation hazard:</b> it <b>displaces oxygen</b>.</li>
-          <li><b>Oxygen-deficient atmospheres (&lt; 19.5 %)</b> can be fatal — the top risk in confined spaces during maintenance.</li>
-        </ul>
-        <ul class="points">
-          <li><b>Odorization:</b> household gas has mercaptan added so leaks can be smelled.</li>
-          <li><b>In LNG plants the gas is NOT odorized.</b></li>
-          <li>➜ Safety depends on <b>instrumentation &amp; gas detectors — never on smell.</b></li>
-        </ul>
+      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
+        <div class="grid2" style="gap:8px 18px;">
+          <ul class="points">
+            <li><b>Non-toxic</b> — not poisonous like carbon monoxide…</li>
+            <li>…but a serious <b>asphyxiation hazard:</b> it <b>displaces oxygen</b>.</li>
+            <li><b>Oxygen-deficient atmospheres (&lt; 19.5 %)</b> can be fatal — the top risk in confined spaces during maintenance.</li>
+          </ul>
+          <ul class="points">
+            <li><b>Odorization:</b> household gas has mercaptan added so leaks can be smelled.</li>
+            <li><b>In LNG plants the gas is NOT odorized.</b></li>
+            <li>➜ Safety depends on <b>instrumentation &amp; gas detectors — never on smell.</b></li>
+          </ul>
+        </div>
+        <div class="carousel empty" id="safetyCarousel" data-interval="4000">
+          <div class="ph"><div class="big">🖼</div>Pictures pending<br>(carousel ready)</div>
+        </div>
       </div>
       <div class="note">Before entering any confined or gas-suspect area: test the atmosphere. Trust the detector, not your nose.</div>
     </section>
@@ -593,16 +637,21 @@
       data-notes='["This is the plant''s formal safety framework — the Process Safety & Isolation Philosophy (SAF01, by Italfluid).","Layers of protection: PCS control, then the independent ESD safety layer, then relief & depressurization to flare.","Shutdown hierarchy: LSD (local) < PSD (process) < ESD (emergency), plus ASD for the loading bay — all driven by the Cause & Effect Matrix.","Isolation for maintenance: positive isolation, double block & bleed, car-sealed / locked valves (CSO/CSC, LO/LC), and vessel-entry isolation.","Personnel safeguards: emergency showers & eye baths, F&G detection, high-expansion foam for cryogenic spills."]'>
       <div class="kicker">9 · Plant safety framework</div>
       <h2>Process Safety &amp; Isolation Philosophy</h2>
-      <div class="grid2">
-        <ul class="points">
-          <li><b>Layers of protection:</b> PCS control → independent <b>ESD</b> → relief &amp; depressurization to flare.</li>
-          <li><b>Shutdown hierarchy:</b> LSD (local) → PSD (process) → <b>ESD</b> (emergency) → <b>ASD</b> (loading bay), per the <b>Cause &amp; Effect Matrix</b>.</li>
-          <li><b>Relief &amp; depressurization:</b> PSVs &amp; blowdown valves (BDV) route to the flare in upsets.</li>
-        </ul>
-        <ul class="points">
-          <li><b>Isolation for maintenance:</b> positive isolation, double-block-and-bleed, <b>car-sealed / locked valves</b> (CSO/CSC, LO/LC), vessel-entry isolation.</li>
-          <li><b>Personnel safeguards:</b> emergency showers &amp; eye baths, F&amp;G detection, <b>high-expansion foam</b> for cryogenic spills.</li>
-        </ul>
+      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
+        <div class="grid2" style="gap:8px 18px;">
+          <ul class="points">
+            <li><b>Layers of protection:</b> PCS control → independent <b>ESD</b> → relief &amp; depressurization to flare.</li>
+            <li><b>Shutdown hierarchy:</b> LSD (local) → PSD (process) → <b>ESD</b> (emergency) → <b>ASD</b> (loading bay), per the <b>Cause &amp; Effect Matrix</b>.</li>
+            <li><b>Relief &amp; depressurization:</b> PSVs &amp; blowdown valves (BDV) route to the flare in upsets.</li>
+          </ul>
+          <ul class="points">
+            <li><b>Isolation for maintenance:</b> positive isolation, double-block-and-bleed, <b>car-sealed / locked valves</b> (CSO/CSC, LO/LC), vessel-entry isolation.</li>
+            <li><b>Personnel safeguards:</b> emergency showers &amp; eye baths, F&amp;G detection, <b>high-expansion foam</b> for cryogenic spills.</li>
+          </ul>
+        </div>
+        <div class="carousel empty" id="saf01Carousel" data-interval="4000">
+          <div class="ph"><div class="big">🖼</div>Pictures pending<br>(carousel ready)</div>
+        </div>
       </div>
       <div class="note">Source: SAF01-ING-FR01 Rev.2 — Process Safety &amp; Isolation Philosophy (Italfluid). Standards: NFPA 59A · EN 1473 · IEC 60079 (Ex).</div>
     </section>
@@ -612,16 +661,21 @@
       data-notes='["Show why the world wants gas & LNG — it connects the plant to the market.","Power: combined-cycle plants, gas turbines, industrial engines — lower CO2 than coal or heavy fuel oil.","Industry: furnaces, boilers, dryers; also feedstock for ammonia (fertilizers) and methanol.","Transport: CNG for urban fleets, LNG for heavy-duty trucking and marine shipping.","Off-grid: island supply and virtual pipelines — exactly Tendrara''s role for Morocco."]'>
       <div class="kicker">10 · Uses</div>
       <h2>Applications of NG &amp; LNG</h2>
-      <div class="grid2">
-        <ul class="points">
-          <li><b>Power:</b> combined-cycle plants, gas turbines, industrial engines — lower CO₂ than coal/oil.</li>
-          <li><b>Industry:</b> furnaces, boilers, dryers, precise thermal processes.</li>
-          <li><b>Feedstock:</b> ammonia (fertilizers), methanol (plastics, resins).</li>
-        </ul>
-        <ul class="points">
-          <li><b>Transport:</b> CNG for urban fleets; LNG for heavy-duty trucking &amp; marine.</li>
-          <li><b>Off-grid / island supply</b> &amp; <b>virtual pipelines</b> — Tendrara's role for Morocco.</li>
-        </ul>
+      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
+        <div class="grid2" style="gap:8px 18px;">
+          <ul class="points">
+            <li><b>Power:</b> combined-cycle plants, gas turbines, industrial engines — lower CO₂ than coal/oil.</li>
+            <li><b>Industry:</b> furnaces, boilers, dryers, precise thermal processes.</li>
+            <li><b>Feedstock:</b> ammonia (fertilizers), methanol (plastics, resins).</li>
+          </ul>
+          <ul class="points">
+            <li><b>Transport:</b> CNG for urban fleets; LNG for heavy-duty trucking &amp; marine.</li>
+            <li><b>Off-grid / island supply</b> &amp; <b>virtual pipelines</b> — Tendrara's role for Morocco.</li>
+          </ul>
+        </div>
+        <div class="carousel empty" id="appsCarousel" data-interval="4000">
+          <div class="ph"><div class="big">🖼</div>Pictures pending<br>(carousel ready)</div>
+        </div>
       </div>
     </section>
 
@@ -642,20 +696,85 @@
 
     <!-- 24 ABBREVIATIONS -->
     <section class="slide" data-min="3" data-block="Block 2"
-      data-notes='["Reference slide — the abbreviations used across the whole program.","Do not read every line; point trainees to it and call out a few key ones (ESD, PSD, LSD, BDV, MDMT, PCS, BOG, HMB).","Tell them this will reappear in every unit module."]'>
-      <div class="kicker">Reference</div>
+      data-notes='["Reference slide — the abbreviations used across the whole program, from the Operating Manual.","Do not read every line; point trainees to it and call out a few key ones (ESD, PSD, LSD, BDV, MDMT, PCS, BOG, HMB).","Tell them this will reappear in every unit module."]'>
+      <div class="kicker">Reference · from the Operating Manual</div>
       <h2>Abbreviations</h2>
-      <div class="fig"><a href="/images/abreviations.png" target="_blank"><img src="/images/abreviations.png" alt="Abbreviations and definitions"></a>
-        <div class="cap">Abbreviations &amp; definitions (click to enlarge)</div></div>
+      <div class="refcols">
+        <table class="reftable">
+          <tr><th>Abbr.</th><th>Definition</th></tr>
+          <tr><td class="ab">BDV</td><td>Blowdown valve — depressurizes to flare in emergencies</td></tr>
+          <tr><td class="ab">BOG</td><td>Boil-off gas</td></tr>
+          <tr><td class="ab">CRA</td><td>Corrosion Resistant Alloy</td></tr>
+          <tr><td class="ab">CK</td><td>Operator checkpoint</td></tr>
+          <tr><td class="ab">CSC / CSO</td><td>Car sealed closed / open</td></tr>
+          <tr><td class="ab">CS</td><td>Carbon Steel (suitable to MDMT −28 °C)</td></tr>
+          <tr><td class="ab">ESD</td><td>Emergency Shutdown System</td></tr>
+          <tr><td class="ab">FAH / FAL</td><td>Flow alarm high / low</td></tr>
+          <tr><td class="ab">HC</td><td>Hydrocarbon</td></tr>
+          <tr><td class="ab">HMB</td><td>Heat and Material Balance</td></tr>
+          <tr><td class="ab">ITF</td><td>Italfluid Geoenergy S.R.L.</td></tr>
+          <tr><td class="ab">LAH / LAL</td><td>Level alarm high / low (HH/LL = high-high/low-low)</td></tr>
+          <tr><td class="ab">LC / LO</td><td>Locked closed / open</td></tr>
+          <tr><td class="ab">LNG</td><td>Liquefied Natural Gas</td></tr>
+          <tr><td class="ab">LTCS</td><td>Low Temperature Carbon Steel (MDMT −45 °C)</td></tr>
+          <tr><td class="ab">MDMT</td><td>Minimum Design Metal Temperature</td></tr>
+          <tr><td class="ab">MR</td><td>Mixed Refrigerant</td></tr>
+          <tr><td class="ab">NRU</td><td>Nitrogen Rejection Unit</td></tr>
+        </table>
+        <table class="reftable">
+          <tr><th>Abbr.</th><th>Definition</th></tr>
+          <tr><td class="ab">OC</td><td>Operator command (field or PCS)</td></tr>
+          <tr><td class="ab">PAH / PAL</td><td>Pressure alarm high / low (HH/LL = high-high/low-low)</td></tr>
+          <tr><td class="ab">PCS</td><td>Plant Control System (PLC-based)</td></tr>
+          <tr><td class="ab">P&amp;ID</td><td>Piping &amp; Instrumentation Diagram</td></tr>
+          <tr><td class="ab">PFD</td><td>Process Flow Diagram</td></tr>
+          <tr><td class="ab">PFHE</td><td>Plate and Fin Heat Exchanger</td></tr>
+          <tr><td class="ab">PSD</td><td>Process Shutdown System</td></tr>
+          <tr><td class="ab">PSV</td><td>Pressure Safety Valve</td></tr>
+          <tr><td class="ab">SC</td><td>System command (PCS or ESD)</td></tr>
+          <tr><td class="ab">SDV</td><td>Shutdown valve</td></tr>
+          <tr><td class="ab">TAH / TAL</td><td>Temperature alarm high / low (HH/LL = high-high/low-low)</td></tr>
+          <tr><td class="ab">TAM</td><td>Technical America Inc.</td></tr>
+          <tr><td class="ab">TRV</td><td>Thermal Relief Valve</td></tr>
+          <tr><td class="ab">UFD</td><td>Utility Flow Diagram</td></tr>
+        </table>
+      </div>
     </section>
 
     <!-- 25 UNITS -->
     <section class="slide" data-min="3" data-block="Block 2"
-      data-notes='["Reference slide — the units of measure and reference conditions used in the project.","Highlight the reference conditions: Normal 1.013 bara & 0 °C; Standard 14.696 psia & 60 °F.","Tell them consistent units matter when reading the HMB and operating data."]'>
-      <div class="kicker">Reference</div>
+      data-notes='["Reference slide — the units of measure and reference conditions used in the project, from the Operating Manual.","Highlight the reference conditions: Normal 1.013 bara & 0 °C; Standard 14.696 psia & 60 °F.","Tell them consistent units matter when reading the HMB and operating data."]'>
+      <div class="kicker">Reference · from the Operating Manual</div>
       <h2>Units of measure</h2>
-      <div class="fig"><a href="/images/units.png" target="_blank"><img src="/images/units.png" alt="Units of measure"></a>
-        <div class="cap">Units of measure &amp; reference conditions (click to enlarge)</div></div>
+      <div class="refcols">
+        <table class="reftable">
+          <tr><th>Quantity</th><th>Unit(s)</th></tr>
+          <tr><td class="ab">Area</td><td>m²</td></tr>
+          <tr><td class="ab">Concentration</td><td>ppmmol, ppmv, ppmw, ppbw, mg/L, %wt</td></tr>
+          <tr><td class="ab">Density</td><td>kg/m³</td></tr>
+          <tr><td class="ab">Enthalpy</td><td>kJ/kg, kcal/kg</td></tr>
+          <tr><td class="ab">Gas / vapour flow</td><td>Sm³/d, Sm³/h, Nm³/h, am³/h</td></tr>
+          <tr><td class="ab">Gas production capacity</td><td>MMSm³/d, MMSCFD</td></tr>
+          <tr><td class="ab">Heat</td><td>kW, kcal/h, BTU/h</td></tr>
+          <tr><td class="ab">Heat transfer coeff.</td><td>W/(m²·°C), kcal/(h·°C·m²)</td></tr>
+          <tr><td class="ab">Length</td><td>km, m, mm</td></tr>
+          <tr><td class="ab">Liquid production capacity</td><td>m³/d</td></tr>
+        </table>
+        <table class="reftable">
+          <tr><th>Quantity</th><th>Unit(s)</th></tr>
+          <tr><td class="ab">Mass, weight</td><td>kg, ton</td></tr>
+          <tr><td class="ab">Mass / molar flow</td><td>kmol/h, m³/h</td></tr>
+          <tr><td class="ab">Molecular weight</td><td>kg/kmol, g/mol</td></tr>
+          <tr><td class="ab">Power</td><td>MW, kW</td></tr>
+          <tr><td class="ab">Pressure (absolute)</td><td>bara</td></tr>
+          <tr><td class="ab">Pressure (gauge)</td><td>barg</td></tr>
+          <tr><td class="ab">Pressure drop</td><td>bar</td></tr>
+          <tr><td class="ab">Temperature</td><td>°C</td></tr>
+          <tr><td class="ab">Viscosity (dynamic)</td><td>cP</td></tr>
+          <tr><td class="ab">Volume</td><td>m³, bbl</td></tr>
+        </table>
+      </div>
+      <div class="note">Reference conditions — <b>Normal:</b> pN = 1.013 bara, TN = 0 °C · <b>Standard:</b> pS = 14.696 psia ≈ 1.013 bara, TS = 60 °F ≈ 15.5 °C.</div>
     </section>
 
     <!-- 26 RECAP -->
@@ -947,12 +1066,13 @@
   document.querySelectorAll('.carousel').forEach(function(car){
     var imgs=[].slice.call(car.querySelectorAll('.cimg'));
     var dots=[].slice.call(car.querySelectorAll('.cdots b'));
+    if(imgs.length===0) return;              // empty/placeholder carousel — nothing to rotate
     var ci=0, timer=null, interval=parseInt(car.dataset.interval||'4000',10);
     function go(n){ci=(n+imgs.length)%imgs.length;
       imgs.forEach(function(im,k){im.classList.toggle('active',k===ci);});
       dots.forEach(function(d,k){d.classList.toggle('active',k===ci);});}
     dots.forEach(function(d,k){d.onclick=function(){go(k);restart();};});
-    function restart(){clearInterval(timer);timer=setInterval(function(){go(ci+1);},interval);}
+    function restart(){clearInterval(timer);if(imgs.length>1){timer=setInterval(function(){go(ci+1);},interval);}}
     restart();
   });
 </script>
