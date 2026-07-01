@@ -62,6 +62,19 @@
   .fact{flex:1;min-width:140px;border:1px solid var(--line-strong);border-radius:6px;padding:13px 15px;background:var(--bg-soft);}
   .fact .n{font-size:24px;font-weight:700;color:var(--crimson);font-family:var(--mono);line-height:1;}
   .fact .l{font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.35;}
+  /* 3D render cover slide */
+  .slide.cover3d{display:flex;flex-direction:column;color:#fff;
+    background:linear-gradient(180deg,rgba(11,13,15,.80),rgba(11,13,15,.55) 45%,rgba(11,13,15,.82)),url('/images/3Dview.png') center/cover no-repeat;}
+  .slide.cover3d h1{color:#fff;}
+  .slide.cover3d .kicker{color:#ff6478;}
+  .slide.cover3d .kicker .sub{color:#c9ccd1;}
+  .slide.cover3d .lead{color:#e4e6ea;max-width:60ch;}
+  .slide.cover3d .params{margin-top:auto;}
+  .slide.cover3d .fact{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.24);}
+  .slide.cover3d .fact .n{color:#fff;font-size:20px;}
+  .slide.cover3d .fact .l{color:#c7cad0;}
+  .slide.cover3d .owner{margin-top:12px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#aeb2b8;}
+  .slide.cover3d .owner b{color:#fff;}
 
   .flow{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
   .step{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-left:3px solid var(--crimson);
@@ -176,18 +189,18 @@
   <div class="stage" id="stage">
 
     <!-- 1 COVER -->
-    <section class="slide" data-min="2" data-block="Module open"
-      data-notes='["Welcome the group warmly; confirm everyone registered at tendrara.neo-ware.com/register.","This is Module 1 of a 6-module, 4-hour course — the foundation for everything that follows.","Housekeeping: emergency exits, muster point, phones on silent, ask questions anytime."]'>
+    <section class="slide cover3d" data-min="2" data-block="Module open"
+      data-notes='["Welcome the group warmly; confirm everyone registered at tendrara.neo-ware.com/register.","This is Module 1 of a 6-module, 4-hour course — the foundation for everything that follows.","Use the plant 3D view to orient them: this is the facility they will operate.","Point at the headline design parameters — feed, output, temperature, power.","Housekeeping: emergency exits, muster point, phones on silent, ask questions anytime."]'>
       <div class="kicker">Module 1 · Fundamentals <span class="sub">— 6-module course</span></div>
       <h1>Natural Gas &amp; LNG<br>Fundamentals</h1>
-      <p class="lead">Tendrara Micro LNG Facilities — operator training. The opening module: what natural
-        gas and LNG are, their properties and hazards, and where Tendrara sits in the world.</p>
-      <div class="facts">
-        <div class="fact"><div class="n">−162&nbsp;°C</div><div class="l">LNG cryogenic temperature</div></div>
-        <div class="fact"><div class="n">600 : 1</div><div class="l">Gas-to-liquid volume reduction</div></div>
-        <div class="fact"><div class="n">~261 t/d</div><div class="l">Tendrara design LNG output (HMB)</div></div>
+      <p class="lead">Tendrara Micro LNG Facilities — operator training program.</p>
+      <div class="facts params">
+        <div class="fact"><div class="n">16.67</div><div class="l">MMSCFD feed gas (design)</div></div>
+        <div class="fact"><div class="n">~261</div><div class="l">t/day LNG output</div></div>
+        <div class="fact"><div class="n">−162&nbsp;°C</div><div class="l">LNG storage temperature</div></div>
+        <div class="fact"><div class="n">15.21</div><div class="l">MW installed power</div></div>
       </div>
-      <div class="note">Owner: Sound Energy · Vendors: Technical America &amp; Italfluid Geoenergy (ITF) · Off-taker: Afriquia Gaz.</div>
+      <div class="owner">Client: <b>ManaEnergy</b> · Off-taker: Afriquia Gaz</div>
     </section>
 
     <!-- 2 COURSE PRESENTATION -->
