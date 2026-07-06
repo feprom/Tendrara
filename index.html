@@ -1,15 +1,558 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tendrara Micro LNG — Training</title>
-  <!-- The registration form lives at /register/ -->
-  <meta http-equiv="refresh" content="0; url=/register/" />
-  <link rel="canonical" href="/register/" />
-  <script>location.replace('/register/');</script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tendrara Training Platform — Registration Form</title>
+<style>
+  :root {
+    --crimson: #C8102E;
+    --crimson-dark: #9E0C24;
+    --ink: #15171A;
+    --ink-soft: #4A4F57;
+    --line: #E2E5E9;
+    --line-strong: #C9CED4;
+    --bg: #FFFFFF;
+    --bg-soft: #F7F8FA;
+    --ok: #1F8A4C;
+    --sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: "Consolas", "SF Mono", "Courier New", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background:
+      linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 60%, #F2F4F7 100%);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 880px;
+    margin: 0 auto;
+    background: var(--bg);
+    min-height: 100vh;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+
+  /* ---------- Brand header ---------- */
+  .brandbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 22px 40px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brandbar .vendor img { height: 46px; display: block; }
+  .clients {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .clients .role {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+  .client-logos {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .client-logo { height: 30px; width: auto; display: block; }
+  .client-logo.itf { height: 34px; }
+  .client-logos .divider {
+    width: 1px;
+    height: 28px;
+    background: var(--line-strong);
+  }
+
+  .accent { height: 3px; background: var(--crimson); }
+
+  /* ---------- Document title block ---------- */
+  .dochead {
+    padding: 30px 40px 8px;
+  }
+  .docmeta {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    border-bottom: 1px dashed var(--line-strong);
+    padding-bottom: 12px;
+    margin-bottom: 22px;
+  }
+  .docmeta b { color: var(--ink); font-weight: 600; }
+  h1 {
+    font-size: 27px;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .lead {
+    color: var(--ink-soft);
+    font-size: 15px;
+    max-width: 60ch;
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  /* ---------- Form ---------- */
+  form { padding: 26px 40px 48px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px 28px;
+  }
+  .field.full { grid-column: 1 / -1; }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 7px;
+  }
+  label .req { color: var(--crimson); margin-left: 2px; }
+
+  input[type=text],
+  input[type=email],
+  input[type=date],
+  select {
+    width: 100%;
+    padding: 12px 13px;
+    font-size: 15px;
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--bg-soft);
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--crimson);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(200,16,46,.10);
+  }
+  select { appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%234A4F57' stroke-width='1.5' fill='none'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 13px center;
+    padding-right: 34px;
+  }
+
+  /* slider */
+  .slider-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .slider-val {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--crimson);
+  }
+  .slider-val span { font-size: 12px; color: var(--ink-soft); font-weight: 500; }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--crimson) 0%, var(--crimson) var(--pct,0%), var(--line) var(--pct,0%), var(--line) 100%);
+    margin: 14px 0 4px;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--crimson);
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--crimson);
+  }
+  .scale {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 10px; color: var(--ink-soft);
+    letter-spacing: .08em;
+  }
+
+  .actions {
+    margin-top: 30px;
+    display: flex; align-items: center; gap: 18px;
+    border-top: 1px solid var(--line);
+    padding-top: 24px;
+  }
+  button.submit {
+    background: var(--crimson);
+    color: #fff;
+    border: none;
+    padding: 13px 30px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background .15s, transform .05s;
+  }
+  button.submit:hover { background: var(--crimson-dark); }
+  button.submit:active { transform: translateY(1px); }
+  button.submit:disabled { opacity: .55; cursor: not-allowed; }
+  .status { font-size: 14px; }
+  .status.err { color: var(--crimson); }
+  .status.ok  { color: var(--ok); }
+
+  /* success panel */
+  .done {
+    padding: 60px 40px;
+    text-align: center;
+    display: none;
+  }
+  .done.show { display: block; }
+  .grid.hide, .actions.hide, .hide { display: none; }
+  .check {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 3px solid var(--ok); color: var(--ok);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 34px; margin-bottom: 18px;
+  }
+  .done h2 { margin: 0 0 10px; font-size: 24px; }
+  .done .done-lead { color: var(--ink-soft); margin: 0 auto; max-width: 52ch; line-height: 1.6; font-size: 15px; }
+  .done .done-lead b { color: var(--ink); }
+
+  .receipt {
+    text-align: left;
+    max-width: 520px;
+    margin: 30px auto 22px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .receipt-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 18px;
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--line);
+  }
+  .receipt-head .role {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  .receipt-head .ref {
+    font-family: var(--mono); font-size: 11px; color: var(--crimson); font-weight: 700;
+  }
+  .receipt-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0; margin: 0;
+  }
+  .receipt-grid > div {
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .receipt-grid > div:nth-child(odd) { border-right: 1px solid var(--line); }
+  .receipt-grid > div.full { grid-column: 1 / -1; border-right: none; }
+  .receipt-grid dt {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-soft); margin-bottom: 4px;
+  }
+  .receipt-grid dd { margin: 0; font-size: 15px; color: var(--ink); font-weight: 500; word-break: break-word; }
+
+  .done .done-next {
+    color: var(--ink-soft); font-size: 13px; max-width: 48ch;
+    margin: 0 auto; line-height: 1.6;
+  }
+
+  footer {
+    padding: 18px 40px 26px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .08em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+
+  @media (max-width: 620px) {
+    .brandbar { flex-direction: column; align-items: flex-start; gap: 16px; padding: 18px 22px; }
+    .dochead, form { padding-left: 22px; padding-right: 22px; }
+    .grid { grid-template-columns: 1fr; }
+    h1 { font-size: 22px; }
+  }
+</style>
 </head>
 <body>
-  <p>Redirecting to <a href="/register/">the training registration</a>…</p>
+  <main class="sheet">
+
+    <!-- Brand header: vendor (left) + clients (right) -->
+    <header class="brandbar">
+      <div class="vendor">
+        <img src="/images/logoTA.png" alt="Technical America" />
+      </div>
+      <div class="clients">
+        <span class="role">Clients</span>
+        <div class="client-logos">
+          <img class="client-logo" src="/images/logoME.png" alt="Manaenergy — Managem Group" />
+          <span class="divider"></span>
+          <img class="client-logo itf" src="/images/logoITF.png" alt="ITF — Italfluid" />
+        </div>
+      </div>
+    </header>
+    <div class="accent"></div>
+
+    <!-- Document title block -->
+    <section class="dochead">
+      <div class="docmeta">
+        <span><b>Project</b> · Tendrara Micro LNG Facilities</span>
+        <span><b>Vendor</b> · Technical America</span>
+        <span><b>Doc</b> · Training / Registration</span>
+      </div>
+      <h1 id="welcomeTitle">Welcome to the Tendrara Training Platform</h1>
+      <p class="lead" id="welcomeLead">
+        Please register to begin the Tendrara Micro LNG Facilities training program.
+        Your details help us tailor the modules to your role and experience.
+      </p>
+    </section>
+
+    <!-- Form -->
+    <form id="regForm" novalidate>
+      <div class="grid" id="formGrid">
+        <div class="field">
+          <label for="full_name">Full Name <span class="req">*</span></label>
+          <input type="text" id="full_name" name="full_name" autocomplete="name" required />
+        </div>
+        <div class="field">
+          <label for="position">Position <span class="req">*</span></label>
+          <input type="text" id="position" name="position" autocomplete="organization-title" required />
+        </div>
+        <div class="field">
+          <label for="company">Company <span class="req">*</span></label>
+          <select id="company" name="company" required>
+            <option value="" disabled selected>Select your company…</option>
+            <option value="Manaenergy">Manaenergy</option>
+            <option value="ITF">ITF</option>
+            <option value="Technical Group">Technical Group</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="date_of_birth">Date of Birth <span class="req">*</span></label>
+          <input type="date" id="date_of_birth" name="date_of_birth" autocomplete="bday" required />
+        </div>
+        <div class="field full">
+          <label for="email">Email <span class="req">*</span></label>
+          <input type="email" id="email" name="email" autocomplete="email" required
+                 pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+                 title="Enter a valid email address, e.g. name@company.com" />
+        </div>
+
+        <div class="field full">
+          <div class="slider-head">
+            <label for="lng_experience" style="margin:0">Experience in LNG</label>
+            <span class="slider-val"><span id="expOut">0</span> <span>/ 100</span></span>
+          </div>
+          <input type="range" id="lng_experience" name="lng_experience" min="0" max="100" value="0" step="1" />
+          <div class="scale"><span>0 · None</span><span>50 · Intermediate</span><span>100 · Expert</span></div>
+        </div>
+      </div>
+
+      <div class="actions" id="formActions">
+        <button type="submit" class="submit" id="submitBtn">Register</button>
+        <span class="status" id="status"></span>
+      </div>
+    </form>
+
+    <!-- Confirmation page -->
+    <section class="done" id="donePanel">
+      <div class="check">&#10003;</div>
+      <h2>Registration confirmed</h2>
+      <p class="done-lead" id="doneMsg">
+        Thank you, <b id="doneName">trainee</b>. Your registration for the
+        Tendrara Micro LNG Facilities training program has been received.
+      </p>
+
+      <div class="receipt" id="receipt">
+        <div class="receipt-head">
+          <span class="role">Confirmation</span>
+          <span class="ref" id="doneRef">REF —</span>
+        </div>
+        <dl class="receipt-grid">
+          <div><dt>Name</dt><dd id="rcName">—</dd></div>
+          <div><dt>Position</dt><dd id="rcPos">—</dd></div>
+          <div><dt>Company</dt><dd id="rcCompany">—</dd></div>
+          <div><dt>Date of Birth</dt><dd id="rcDob">—</dd></div>
+          <div><dt>Age</dt><dd id="rcAge">—</dd></div>
+          <div><dt>Experience in LNG</dt><dd id="rcExp">—</dd></div>
+          <div class="full"><dt>Email</dt><dd id="rcEmail">—</dd></div>
+        </dl>
+      </div>
+
+      <p class="done-next">
+        A confirmation has been logged. You will receive the module schedule and
+        access details at your registered email address.
+      </p>
+    </section>
+
+    <footer>
+      <span>Technical America — A Technical Group Company</span>
+      <span>Tendrara Micro LNG · Training System</span>
+    </footer>
+  </main>
+
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.js"></script>
+  <script>
+    // Slider live readout + fill
+    const exp = document.getElementById('lng_experience');
+    const expOut = document.getElementById('expOut');
+    function syncSlider() {
+      expOut.textContent = exp.value;
+      exp.style.setProperty('--pct', exp.value + '%');
+    }
+    exp.addEventListener('input', syncSlider);
+    syncSlider();
+
+    // Date-of-birth bounds: 16–100 years old.
+    const dob = document.getElementById('date_of_birth');
+    const today = new Date();
+    const iso = (d) => d.toISOString().slice(0, 10);
+    dob.max = iso(new Date(today.getFullYear() - 16, today.getMonth(), today.getDate()));
+    dob.min = iso(new Date(today.getFullYear() - 100, today.getMonth(), today.getDate()));
+
+    function ageFromDob(dobStr) {
+      if (!dobStr) return null;
+      const b = new Date(dobStr + 'T00:00:00');
+      let a = today.getFullYear() - b.getFullYear();
+      const m = today.getMonth() - b.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < b.getDate())) a--;
+      return a;
+    }
+    function fmtDate(dobStr) {
+      if (!dobStr) return '—';
+      return new Date(dobStr + 'T00:00:00').toLocaleDateString('en-GB',
+        { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    // Supabase client (guard against unconfigured keys)
+    let supa = null;
+    const configured =
+      window.SUPABASE_URL && !window.SUPABASE_URL.includes('YOUR-PROJECT') &&
+      window.SUPABASE_ANON_KEY && !window.SUPABASE_ANON_KEY.includes('YOUR-ANON');
+    if (configured) {
+      supa = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    }
+
+    const form = document.getElementById('regForm');
+    const statusEl = document.getElementById('status');
+    const btn = document.getElementById('submitBtn');
+
+    function setStatus(msg, kind) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status' + (kind ? ' ' + kind : '');
+    }
+
+    function expLabel(v) {
+      if (v === 0) return '0 / 100 · None';
+      if (v < 34) return v + ' / 100 · Beginner';
+      if (v < 67) return v + ' / 100 · Intermediate';
+      if (v < 100) return v + ' / 100 · Advanced';
+      return '100 / 100 · Expert';
+    }
+
+    function showConfirmation(data, note, refCode) {
+      // Hide the form and the welcome intro, reveal the confirmation page.
+      document.getElementById('formGrid').classList.add('hide');
+      document.getElementById('formActions').classList.add('hide');
+      document.getElementById('welcomeTitle').classList.add('hide');
+      document.getElementById('welcomeLead').classList.add('hide');
+
+      document.getElementById('doneName').textContent = data.full_name || 'trainee';
+      document.getElementById('rcName').textContent = data.full_name || '—';
+      document.getElementById('rcPos').textContent = data.position || '—';
+      document.getElementById('rcCompany').textContent = data.company || '—';
+      document.getElementById('rcDob').textContent = fmtDate(data.date_of_birth);
+      const age = ageFromDob(data.date_of_birth);
+      document.getElementById('rcAge').textContent = (age != null) ? age + ' years' : '—';
+      document.getElementById('rcExp').textContent = expLabel(data.lng_experience);
+      document.getElementById('rcEmail').textContent = data.email || '—';
+
+      // Prefer the reference code returned by the database; fall back locally (demo mode).
+      const ref = refCode || ('TND-' + Date.now().toString(36).toUpperCase().slice(-6));
+      document.getElementById('doneRef').textContent = 'REF ' + ref;
+
+      if (note) document.getElementById('doneMsg').textContent = note;
+      document.getElementById('donePanel').classList.add('show');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      const payload = {
+        full_name: document.getElementById('full_name').value.trim(),
+        position: document.getElementById('position').value.trim(),
+        company: document.getElementById('company').value,
+        lng_experience: parseInt(exp.value, 10),
+        email: document.getElementById('email').value.trim().toLowerCase(),
+        date_of_birth: dob.value          // YYYY-MM-DD
+      };
+
+      if (!supa) {
+        // No backend configured yet — let the user see the flow works.
+        console.warn('Supabase not configured. Payload:', payload);
+        showConfirmation(payload);
+        return;
+      }
+
+      btn.disabled = true;
+      setStatus('Submitting…', '');
+
+      // Public write goes through the SECURITY DEFINER RPC (no direct table access).
+      const { data, error } = await supa.rpc('register_trainee', {
+        p_full_name: payload.full_name,
+        p_position: payload.position,
+        p_company: payload.company,
+        p_lng_experience: payload.lng_experience,
+        p_email: payload.email,
+        p_date_of_birth: payload.date_of_birth
+      });
+
+      if (error) {
+        btn.disabled = false;
+        const msg = (error.message || '').toLowerCase();
+        if (error.code === '23505' || msg.includes('already registered')) {
+          setStatus('This email is already registered.', 'err');
+        } else if (msg.includes('invalid') && msg.includes('company')) {
+          setStatus('Please select a valid company.', 'err');
+        } else if (msg.includes('16 years') || msg.includes('date_of_birth')) {
+          setStatus('Please enter a valid date of birth (16+).', 'err');
+        } else if (msg.includes('email_format') || error.code === '23514') {
+          setStatus('Please enter a valid email address.', 'err');
+        } else {
+          setStatus('Something went wrong: ' + error.message, 'err');
+        }
+        return;
+      }
+
+      // RPC returns [{ reference_code, trainee_id }]
+      const ref = Array.isArray(data) && data[0] ? data[0].reference_code : null;
+      showConfirmation(payload, null, ref);
+    });
+  </script>
 </body>
 </html>
