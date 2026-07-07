@@ -1008,8 +1008,12 @@
   });
   const TOTAL=acc;
 
-  const bc=('BroadcastChannel' in window)? new BroadcastChannel('tendrara-mod01'):null;
+  let bc=null; try{ bc=('BroadcastChannel' in window)? new BroadcastChannel('tendrara-mod01'):null; }catch(e){ bc=null; }
   let presenterWin=null;
+  function sendToPresenter(msg){
+    if(bc){ try{ bc.postMessage(msg); }catch(e){} }
+    if(presenterWin && !presenterWin.closed){ try{ presenterWin.postMessage(msg,'*'); }catch(e){} }
+  }
 
   function render(){
     slides.forEach((s,k)=>s.classList.toggle('active',k===i));
@@ -1017,7 +1021,7 @@
     bar.style.width=((i+1)/slides.length*100)+'%';
     prev.disabled=(i===0); next.disabled=(i===slides.length-1);
     slides[i].scrollTop=0;
-    if(bc) bc.postMessage({type:'state', index:i});
+    sendToPresenter({type:'state', index:i});
   }
   function show(n){i=Math.max(0,Math.min(slides.length-1,n));render();}
 
@@ -1042,12 +1046,13 @@
     fs.textContent= on ? '⛶ Exit full screen' : '⛶ Fullscreen';
   });
 
-  if(bc) bc.onmessage=(ev)=>{
-    const m=ev.data||{};
+  function onCmd(m){ m=m||{};
     if(m.type==='goto') show(m.index);
     else if(m.type==='nav') show(i + (m.dir||0));
     else if(m.type==='hello') render();
-  };
+  }
+  if(bc) bc.onmessage=(ev)=>onCmd(ev.data);
+  window.addEventListener('message',(ev)=>onCmd(ev.data));
 
   present.onclick=openPresenter;
   function openPresenter(){
@@ -1056,7 +1061,8 @@
     presenterWin.document.open();
     presenterWin.document.write(presenterHTML());
     presenterWin.document.close();
-    setTimeout(()=>{ if(bc) bc.postMessage({type:'state', index:i}); }, 200);
+    setTimeout(()=>{ sendToPresenter({type:'state', index:i}); }, 300);
+    setTimeout(()=>{ sendToPresenter({type:'state', index:i}); }, 1000);
   }
 
   function presenterHTML(){
@@ -1133,7 +1139,8 @@
 <script>
   const DATA=${DATA}, TOTAL=${TOT};
   const fmt=m=>{const h=Math.floor(m/60),mm=m%60;return h+':'+String(mm).padStart(2,'0');};
-  const bc=new BroadcastChannel('tendrara-mod01');
+  let bc=null; try{ bc=new BroadcastChannel('tendrara-mod01'); }catch(e){ bc=null; }
+  function send(m){ if(bc){ try{ bc.postMessage(m); }catch(e){} } try{ if(window.opener && !window.opener.closed) window.opener.postMessage(m,'*'); }catch(e){} }
   let idx=0;
   (function buildTimeline(){
     const norm=b=> b==='Module open'?'Block 1':b;
@@ -1166,12 +1173,14 @@
     document.getElementById('tlslide').style.width=(DATA[idx].min/TOTAL*100)+'%';
     updateDelta();
   }
-  bc.onmessage=(ev)=>{ if(ev.data&&ev.data.type==='state'){ idx=ev.data.index; paint(); } };
-  document.getElementById('prev').onclick=()=>bc.postMessage({type:'goto',index:Math.max(0,idx-1)});
-  document.getElementById('next').onclick=()=>bc.postMessage({type:'goto',index:Math.min(DATA.length-1,idx+1)});
+  function onState(m){ if(m&&m.type==='state'){ idx=m.index; paint(); } }
+  if(bc) bc.onmessage=(ev)=>onState(ev.data);
+  window.addEventListener('message',(ev)=>onState(ev.data));
+  document.getElementById('prev').onclick=()=>send({type:'goto',index:Math.max(0,idx-1)});
+  document.getElementById('next').onclick=()=>send({type:'goto',index:Math.min(DATA.length-1,idx+1)});
   document.addEventListener('keydown',e=>{
-    if(e.key==='ArrowRight'||e.key===' ')bc.postMessage({type:'goto',index:Math.min(DATA.length-1,idx+1)});
-    if(e.key==='ArrowLeft')bc.postMessage({type:'goto',index:Math.max(0,idx-1)});
+    if(e.key==='ArrowRight'||e.key===' ')send({type:'goto',index:Math.min(DATA.length-1,idx+1)});
+    if(e.key==='ArrowLeft')send({type:'goto',index:Math.max(0,idx-1)});
   });
   let running=false, startedAt=0, accumSec=0, raf=null;
   function curSec(){ return Math.floor(accumSec + (running ? (Date.now()-startedAt)/1000 : 0)); }
@@ -1202,7 +1211,7 @@
     document.getElementById('tStart').textContent='Start';
     document.getElementById('tlnow').style.display='none';
   };
-  bc.postMessage({type:'hello'});
+  send({type:'hello'});
   paint();
 <\/script></body></html>`;
   }
