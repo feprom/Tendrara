@@ -124,6 +124,8 @@
   .counter{font-family:var(--mono);font-size:12px;color:var(--ink-soft);letter-spacing:.05em;}
   .navmid{display:flex;align-items:center;gap:10px;}
   .navbtns{display:flex;gap:7px;}
+  .zpct{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);border:1px solid var(--line-strong);
+    border-radius:4px;padding:6px 9px;min-width:52px;text-align:center;}
   button.nav{border:1px solid var(--line-strong);background:#fff;color:var(--ink);font-size:13px;font-weight:600;
     padding:7px 14px;border-radius:4px;cursor:pointer;transition:.12s;}
   button.nav:hover:not(:disabled){border-color:var(--crimson);color:var(--crimson);}
@@ -643,6 +645,9 @@
     <div class="navmid">
       <button class="nav" id="present">⧉ Presenter view</button>
       <button class="nav" id="fs">⛶ Fullscreen</button>
+      <button class="nav" id="zMinus" title="Smaller (−)">A−</button>
+      <span class="zpct" id="zPct">100%</span>
+      <button class="nav" id="zPlus" title="Bigger (+)">A+</button>
     </div>
     <div class="navbtns">
       <button class="nav" id="prev">‹ Prev</button>
@@ -703,10 +708,48 @@
     else { (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
   }
   fs.onclick=toggleFs;
+
+  // ---- Fullscreen auto-fit + controlled scaling (for remote presentation) ----
+  const BASE_W=1040, BASE_H=720;
+  let userScale=1;
+  try{ userScale=Math.min(1.8,Math.max(0.7,parseFloat(localStorage.getItem('tnd_deck_scale'))||1)); }catch(e){}
+  function applyFit(){
+    const on=!!document.fullscreenElement;
+    const pct=document.getElementById('zPct');
+    if(on){
+      const fit=Math.min(innerWidth/BASE_W, innerHeight/BASE_H);
+      const z=Math.max(0.5, fit*userScale);
+      deckEl.style.transformOrigin='top left';
+      deckEl.style.transform='scale('+z+')';
+      deckEl.style.width=(innerWidth/z)+'px';
+      deckEl.style.height=(innerHeight/z)+'px';
+      deckEl.style.maxWidth='none';
+      if(pct) pct.textContent=Math.round(z*100)+'%';
+    }else{
+      deckEl.style.transform=''; deckEl.style.width=''; deckEl.style.height=''; deckEl.style.maxWidth='';
+      if(pct) pct.textContent='100%';
+    }
+  }
+  function bumpScale(delta){
+    userScale=Math.min(1.8,Math.max(0.7,Math.round((userScale+delta)*100)/100));
+    try{ localStorage.setItem('tnd_deck_scale',String(userScale)); }catch(e){}
+    applyFit();
+  }
+  document.getElementById('zPlus').onclick=()=>bumpScale(+0.1);
+  document.getElementById('zMinus').onclick=()=>bumpScale(-0.1);
+  window.addEventListener('resize',applyFit);
+  document.addEventListener('keydown',e=>{
+    if(!document.fullscreenElement) return;
+    if(e.key==='+'||e.key==='=') bumpScale(+0.1);
+    if(e.key==='-'||e.key==='_') bumpScale(-0.1);
+    if(e.key==='0'){ userScale=1; try{ localStorage.setItem('tnd_deck_scale','1'); }catch(x){} applyFit(); }
+  });
+
   document.addEventListener('fullscreenchange',()=>{
     const on=!!document.fullscreenElement;
     fs.classList.toggle('on',on);
     fs.textContent= on ? '⛶ Exit full screen' : '⛶ Fullscreen';
+    applyFit();
   });
 
   function onCmd(m){ m=m||{};
