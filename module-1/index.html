@@ -123,6 +123,24 @@
   .zdark .sub{font-weight:700;font-size:13.5px;margin-bottom:12px;}
   .zdark p{font-size:13px;line-height:1.55;color:#e6e7e9;margin:0 0 10px;}
   .zdark .fn{font-style:italic;font-size:11.5px;color:#b9bcc2;margin-top:12px;}
+  /* Zibac chain / panels / material lists */
+  .zchain{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:30px;text-align:center;}
+  .zch{position:relative;padding:0 6px;}
+  .zch .n{width:46px;height:46px;border-radius:50%;margin:0 auto 14px;background:#2b2e33;color:#fff;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:17px;}
+  .zch.red .n{background:var(--crimson);}
+  .zch b{display:block;font-size:14.5px;line-height:1.3;margin-bottom:10px;}
+  .zch span{font-size:12px;color:var(--ink-soft);line-height:1.5;display:block;}
+  .zch:not(:last-child):after{content:"\276F";position:absolute;right:-10px;top:66px;color:#d3d7db;font-size:16px;font-weight:700;}
+  .zpanel{background:#17181a;color:#fff;border-radius:12px;padding:18px 24px 16px;margin-top:6px;}
+  .zpanel b{font-size:15.5px;display:block;margin-bottom:9px;color:#fff;}
+  .zpanel p{margin:6px 0;font-size:13.5px;color:#e6e7e9;line-height:1.5;}
+  .zlist{border-radius:12px;padding:18px 22px 16px;}
+  .zlist.pink{background:#FBE9EC;} .zlist.gray{background:#F0F1F3;}
+  .zlist b{color:var(--crimson);font-size:15px;display:block;margin-bottom:9px;}
+  .zlist p{margin:7px 0;font-size:13.5px;color:var(--ink);}
+  .znote-it{font-style:italic;font-size:12.5px;color:var(--ink-soft);margin-top:12px;}
+  .zhc.maroon .hd{background:#8E1D2F;}
+  .zhc .bd.gray{background:var(--bg-soft);}
   /* Zibac agenda + divider */
   .zagenda{display:flex;flex-direction:column;gap:11px;margin-top:12px;}
   .zag{display:flex;align-items:center;gap:16px;}
@@ -670,12 +688,12 @@
       data-notes='["The five links of the LNG value chain, in order.","1 Exploration and production: extraction from underground reservoirs. 2 Processing: removal of water, CO2, H2S and natural gas liquids.","3 Liquefaction: cooling to -162 C in specialized plants — Tendrara is this link.","4 Marine transport: LNG carriers with insulated cryogenic tanks. 5 Regasification and distribution: reheating to gas and pipeline delivery to the consumer."]'>
       <div class="kicker">02 · What is LNG? · Value chain</div>
       <h2>LNG value chain</h2>
-      <div class="flow">
-        <div class="step"><span class="u">1</span><span class="t"><b>Exploration and production</b> — natural gas extraction from underground reservoirs</span></div>
-        <div class="step"><span class="u">2</span><span class="t"><b>Processing</b> — removal of impurities: water, CO₂, H₂S, and natural gas liquids</span></div>
-        <div class="step"><span class="u">3</span><span class="t"><b>Liquefaction</b> — cooling to −162 °C in specialized plants</span></div>
-        <div class="step"><span class="u">4</span><span class="t"><b>Marine transport</b> — LNG carriers with insulated cryogenic tanks</span></div>
-        <div class="step"><span class="u">5</span><span class="t"><b>Regasification and distribution</b> — reheating to gas and pipeline delivery to the consumer</span></div>
+      <div class="zchain">
+        <div class="zch red"><div class="n">1</div><b>Exploration and<br>Production</b><span>Natural gas extraction from underground reservoirs</span></div>
+        <div class="zch"><div class="n">2</div><b>Processing</b><span>Removal of impurities: water, CO₂, H₂S, and natural gas liquids</span></div>
+        <div class="zch red"><div class="n">3</div><b>Liquefaction</b><span>Cooling to −162 °C in specialized plants</span></div>
+        <div class="zch"><div class="n">4</div><b>Marine<br>Transport</b><span>LNG carriers with insulated cryogenic tanks</span></div>
+        <div class="zch red"><div class="n">5</div><b>Regasification and<br>Distribution</b><span>Reheating to gas and pipeline delivery to the consumer</span></div>
       </div>
     </section>
 
@@ -784,25 +802,28 @@
       data-notes='["Fire suppression rule number one: NEVER use water or foam directly on the LNG itself.","Use dry chemical extinguishers: Purple K powder is recommended, with 5 times the extinguishing power of CO2.","Suitable materials: brass, bronze, aluminium, stainless steel. Unsuitable: carbon steel, black iron, plastic, galvanized steel.","At ultra-low temperatures materials become brittle and lose load-bearing capacity.","Note for our plant: the fixed foam systems on the LNG impoundment basins (Module 002) are engineered systems that control vaporization — the rule here is about manual firefighting on the liquid."]'>
       <div class="kicker">04 · LNG safety</div>
       <h2>Materials and fire suppression</h2>
-      <div class="grid2">
-        <div>
-          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Fire suppression</p>
-          <ul class="points">
-            <li><b>NEVER use water or foam on LNG.</b></li>
-            <li>Use <b>dry chemical</b> extinguishers: <b>Purple K</b> recommended — 5× the extinguishing power of CO₂.</li>
-          </ul>
+      <div class="zpanel">
+        <b>Fire Suppression</b>
+        <p>— NEVER use water or foam on LNG</p>
+        <p>— Use dry chemical extinguishers: Purple K powder is recommended, with 5 times the extinguishing power of CO₂</p>
+      </div>
+      <div class="grid2" style="margin-top:14px;">
+        <div class="zlist pink">
+          <b>Suitable Materials</b>
+          <p>— Brass</p>
+          <p>— Bronze</p>
+          <p>— Aluminum</p>
+          <p>— Stainless steel</p>
         </div>
-        <div>
-          <table class="data" style="font-size:13px;">
-            <tr><th>Suitable materials</th><th>Unsuitable materials</th></tr>
-            <tr><td>Brass</td><td>Carbon steel</td></tr>
-            <tr><td>Bronze</td><td>Black iron</td></tr>
-            <tr><td>Aluminium</td><td>Plastic</td></tr>
-            <tr><td>Stainless steel</td><td>Galvanized steel</td></tr>
-          </table>
+        <div class="zlist gray">
+          <b>Unsuitable Materials</b>
+          <p>— Carbon steel</p>
+          <p>— Black iron</p>
+          <p>— Plastic</p>
+          <p>— Galvanized steel</p>
         </div>
       </div>
-      <div class="zstrip">At ultra-low temperatures materials become brittle and lose load-bearing capacity.</div>
+      <div class="znote-it">At ultra-low temperatures, materials become brittle and lose load-bearing capacity.</div>
     </section>
 
     <!-- BREAK 1 -->
@@ -866,12 +887,12 @@
       data-notes='["LNG: high infrastructure cost — liquefaction and regasification plants, cryogenic tanks; competitive cost per unit of energy at large volumes and long distances.","LPG: moderate infrastructure (simple pressurized tanks); widely available; higher cost per unit of energy than natural gas in most markets.","CNG: moderate compression infrastructure; generally low cost per unit of energy; ideal for urban fleets returning to base.","Diesel: minimal, well-established global infrastructure; cost tied to oil price volatility."]'>
       <div class="kicker">05 · Comparison</div>
       <h2>Costs and infrastructure</h2>
-      <ul class="points">
-        <li><b>LNG</b> — <b>high infrastructure cost</b> (liquefaction &amp; regasification plants, cryogenic tanks); competitive cost per unit of energy in <b>large volumes and long distances</b>.</li>
-        <li><b>LPG</b> — moderate infrastructure (simple pressurized tanks); widely available, with a <b>higher cost per unit of energy</b> than natural gas in most markets.</li>
-        <li><b>CNG</b> — moderate compression infrastructure; <b>generally low cost</b> per unit of energy, ideal for urban fleets with return to base.</li>
-        <li><b>Diesel</b> — <b>minimal, consolidated</b> global infrastructure; cost per unit of energy subject to <b>oil price volatility</b>.</li>
-      </ul>
+      <div class="zcards" style="grid-template-columns:repeat(4,1fr);">
+        <div class="zhc red"><div class="hd">LNG</div><div class="bd gray">High infrastructure cost (liquefaction and regasification plants, cryogenic tanks); competitive cost per unit of energy for large volumes and long distances.</div></div>
+        <div class="zhc dark"><div class="hd">LPG</div><div class="bd gray">Moderate infrastructure (simple pressurized tanks); widely available, with a higher cost per unit of energy than natural gas in most markets.</div></div>
+        <div class="zhc maroon"><div class="hd">CNG</div><div class="bd gray">Moderate compression infrastructure; generally low cost per unit of energy, ideal for urban fleets returning to base.</div></div>
+        <div class="zhc black"><div class="hd">Diesel</div><div class="bd gray">Minimal, already well-established global infrastructure; cost per unit of energy subject to oil price volatility.</div></div>
+      </div>
     </section>
 
     <!-- Z24 EMISSIONS · Zibac · 6 -->
