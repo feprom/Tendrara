@@ -77,6 +77,31 @@
   .refresh{background:none;border:1px solid var(--line-strong);border-radius:5px;padding:8px 14px;font-size:13px;cursor:pointer;color:var(--ink-soft);}
   .refresh:hover{border-color:var(--crimson);color:var(--crimson);}
   .scrollbox{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:6px;}
+  /* question bank */
+  .qcard{border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px 16px;margin:10px 0;}
+  .qcard .qhead{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;flex-wrap:wrap;}
+  .qcard .qtext{font-size:14px;font-weight:600;line-height:1.45;max-width:70ch;}
+  .qcard .qnum{font-family:var(--mono);color:var(--crimson);font-weight:700;margin-right:6px;}
+  .qcard .opts{margin:9px 0 0;padding:0;list-style:none;}
+  .qcard .opts li{font-size:13px;padding:3px 0 3px 20px;position:relative;color:var(--ink-soft);}
+  .qcard .opts li.ok{color:var(--ok);font-weight:600;}
+  .qcard .opts li.ok:before{content:"✔";position:absolute;left:0;}
+  .qcard .exp{font-size:12px;color:var(--ink-soft);font-style:italic;margin-top:7px;}
+  .qcard .qbtns{display:flex;gap:8px;flex-wrap:wrap;}
+  .qbadge{font-family:var(--mono);font-size:10px;border-radius:10px;padding:2px 9px;}
+  .qbadge.on{background:#E6F4EC;color:var(--ok);} .qbadge.off{background:#FBEAE9;color:var(--bad);}
+  .qbadge.used{background:var(--bg-soft);color:var(--ink-soft);}
+  .minibtn{background:#fff;border:1px solid var(--line-strong);border-radius:5px;font-size:12px;padding:5px 11px;cursor:pointer;color:var(--ink);}
+  .minibtn:hover{border-color:var(--crimson);color:var(--crimson);}
+  .minibtn.danger:hover{border-color:var(--bad);color:var(--bad);}
+  .qmodal{position:fixed;inset:0;background:rgba(21,23,26,.5);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px;}
+  .qbox{background:#fff;border-radius:10px;padding:22px 24px;width:min(680px,94vw);max-height:92vh;overflow:auto;}
+  .qbox label{margin-top:12px;}
+  .qbox textarea,.qbox input[type=text]{width:100%;font-size:14px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:5px;font-family:var(--sans);}
+  .qbox .optrow{display:flex;align-items:center;gap:10px;margin:7px 0;}
+  .qbox .optrow input[type=radio]{accent-color:var(--crimson);width:17px;height:17px;flex:none;}
+  .qbox .modalbtns{display:flex;gap:10px;margin-top:18px;align-items:center;}
+  select#bankExam{font-size:14px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:5px;background:#fff;max-width:420px;}
   @media(max-width:700px){.wrap{padding:18px 14px 50px;}.brandbar{padding:12px 14px;}}
 </style>
 </head>
@@ -124,6 +149,7 @@
       <button class="tab" data-t="companies">Companies</button>
       <button class="tab" data-t="modules">Modules</button>
       <button class="tab" data-t="results">Evaluation results</button>
+      <button class="tab" data-t="bank">Question bank</button>
       <button class="tab" data-t="links">Exam links</button>
     </div>
 
@@ -166,6 +192,17 @@
       </table></div>
     </section>
 
+    <!-- QUESTION BANK -->
+    <section id="tab-bank" class="hidden">
+      <div class="toolrow">
+        <select id="bankExam"></select>
+        <button class="copybtn" id="qNew">+ New question</button>
+        <span class="muted" id="bankCount"></span>
+      </div>
+      <div class="err" id="bankErr"></div>
+      <div id="bankList"><p class="muted">Loading…</p></div>
+    </section>
+
     <!-- LINKS -->
     <section id="tab-links" class="hidden">
       <h2>Exam links — send to students</h2>
@@ -174,6 +211,27 @@
         <b>Evaluation results</b> automatically.</p>
       <div id="linkList"></div>
     </section>
+  </div>
+</div>
+
+<div class="qmodal hidden" id="qModal">
+  <div class="qbox">
+    <h2 id="qmTitle" style="margin-top:0;">Edit question</h2>
+    <label for="qmText">Question</label>
+    <textarea id="qmText" rows="3"></textarea>
+    <label>Options — select the correct one</label>
+    <div class="optrow"><input type="radio" name="qmCorrect" value="0"><input type="text" id="qmOpt0" placeholder="Option A"></div>
+    <div class="optrow"><input type="radio" name="qmCorrect" value="1"><input type="text" id="qmOpt1" placeholder="Option B"></div>
+    <div class="optrow"><input type="radio" name="qmCorrect" value="2"><input type="text" id="qmOpt2" placeholder="Option C"></div>
+    <div class="optrow"><input type="radio" name="qmCorrect" value="3"><input type="text" id="qmOpt3" placeholder="Option D"></div>
+    <label for="qmExp">Explanation (shown in admin only)</label>
+    <textarea id="qmExp" rows="2"></textarea>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:600;"><input type="checkbox" id="qmActive" checked> Active (served in new exams)</label>
+    <div class="modalbtns">
+      <button class="primary" id="qmSave" style="margin-top:0;">Save question</button>
+      <button class="minibtn" id="qmCancel">Cancel</button>
+      <span class="err" id="qmErr" style="margin:0;"></span>
+    </div>
   </div>
 </div>
 
@@ -217,7 +275,7 @@
   // tabs
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
-    ['students','companies','modules','results','links'].forEach(n => $('tab-' + n).classList.toggle('hidden', n !== t.dataset.t));
+    ['students','companies','modules','results','bank','links'].forEach(n => $('tab-' + n).classList.toggle('hidden', n !== t.dataset.t));
   });
 
   const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
@@ -259,7 +317,7 @@
     $('kModules').textContent = D.totals.modules;
     $('kExams').textContent = D.totals.exams;
     $('kAttempts').textContent = D.totals.attempts;
-    renderStudents(); renderCompanies(); renderModules(); renderResults(); renderLinks();
+    renderStudents(); renderCompanies(); renderModules(); renderResults(); renderLinks(); initBank();
   }
 
   // ---- students
@@ -358,8 +416,107 @@
         '<button class="copybtn" data-url="' + esc(url) + '">Copy link</button></div>';
     }).join('');
     document.querySelectorAll('.copybtn').forEach(b => b.onclick = () => {
+      if (!b.dataset.url) return;
       navigator.clipboard.writeText(b.dataset.url).then(() => { b.textContent = '✔ Copied'; setTimeout(() => b.textContent = 'Copy link', 1500); });
     });
+  }
+
+  // ---- question bank editor ----
+  let bankQuestions = [], editingId = null;
+  function initBank() {
+    const sel = $('bankExam');
+    const cur = sel.value;
+    sel.innerHTML = (D.exams || []).map(e =>
+      '<option value="' + e.id + '">' + esc('Module ' + e.module_code + ' · ' + e.level + ' (' + e.bank + ' questions)') + '</option>').join('');
+    if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+    if (sel.options.length) loadBank();
+  }
+  $('bankExam').addEventListener('change', loadBank);
+
+  async function loadBank() {
+    const el = $('bankErr'); el.style.display = 'none';
+    $('bankList').innerHTML = '<p class="muted">Loading…</p>';
+    const { data, error } = await supa.rpc('admin_list_questions', { p_key: KEY, p_exam_id: $('bankExam').value });
+    if (error) { el.textContent = 'Error: ' + error.message; el.style.display = 'block'; return; }
+    bankQuestions = data || [];
+    renderBank();
+  }
+
+  function renderBank() {
+    const act = bankQuestions.filter(q => q.active).length;
+    $('bankCount').textContent = bankQuestions.length + ' questions · ' + act + ' active' + (act < 12 ? ' — ⚠ fewer than 12 active!' : '');
+    $('bankList').innerHTML = bankQuestions.map((q, i) => {
+      const opts = q.options.map((o, oi) =>
+        '<li class="' + (oi === q.correct_index ? 'ok' : '') + '">' + esc(o) + '</li>').join('');
+      return '<div class="qcard">' +
+        '<div class="qhead"><div class="qtext"><span class="qnum">' + String(i + 1).padStart(2, '0') + '</span>' + esc(q.question) + '</div>' +
+        '<div class="qbtns">' +
+        '<span class="qbadge ' + (q.active ? 'on">active' : 'off">inactive') + '</span>' +
+        (q.in_use ? '<span class="qbadge used">used in attempts</span>' : '') +
+        '<button class="minibtn" data-edit="' + q.id + '">✎ Edit</button>' +
+        '<button class="minibtn" data-toggle="' + q.id + '">' + (q.active ? 'Deactivate' : 'Activate') + '</button>' +
+        (q.in_use ? '' : '<button class="minibtn danger" data-del="' + q.id + '">🗑 Delete</button>') +
+        '</div></div>' +
+        '<ul class="opts">' + opts + '</ul>' +
+        (q.explanation ? '<div class="exp">' + esc(q.explanation) + '</div>' : '') +
+        '</div>';
+    }).join('') || '<p class="muted">No questions in this bank yet.</p>';
+
+    document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openEditor(bankQuestions.find(q => q.id === b.dataset.edit)));
+    document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => toggleActive(bankQuestions.find(q => q.id === b.dataset.toggle)));
+    document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => delQuestion(b.dataset.del));
+  }
+
+  $('qNew').onclick = () => openEditor(null);
+  function openEditor(q) {
+    editingId = q ? q.id : null;
+    $('qmTitle').textContent = q ? 'Edit question' : 'New question';
+    $('qmText').value = q ? q.question : '';
+    for (let i = 0; i < 4; i++) $('qmOpt' + i).value = q ? (q.options[i] || '') : '';
+    document.querySelectorAll('input[name="qmCorrect"]').forEach(r => r.checked = q ? (+r.value === q.correct_index) : r.value === '0');
+    $('qmExp').value = q && q.explanation ? q.explanation : '';
+    $('qmActive').checked = q ? q.active : true;
+    $('qmErr').style.display = 'none';
+    $('qModal').classList.remove('hidden');
+  }
+  $('qmCancel').onclick = () => $('qModal').classList.add('hidden');
+  $('qModal').addEventListener('click', e => { if (e.target === $('qModal')) $('qModal').classList.add('hidden'); });
+
+  $('qmSave').onclick = async () => {
+    const el = $('qmErr'); el.style.display = 'none';
+    const opts = [0,1,2,3].map(i => $('qmOpt' + i).value.trim());
+    const correct = +([...document.querySelectorAll('input[name="qmCorrect"]')].find(r => r.checked) || {}).value;
+    if ($('qmText').value.trim().length < 5) { el.textContent = 'Question is too short.'; el.style.display = 'block'; return; }
+    if (opts.some(o => !o)) { el.textContent = 'All four options are required.'; el.style.display = 'block'; return; }
+    $('qmSave').disabled = true;
+    const { error } = await supa.rpc('admin_save_question', {
+      p_key: KEY, p_id: editingId, p_exam_id: $('bankExam').value,
+      p_question: $('qmText').value.trim(), p_options: opts,
+      p_correct_index: correct, p_explanation: $('qmExp').value.trim(), p_active: $('qmActive').checked });
+    $('qmSave').disabled = false;
+    if (error) { el.textContent = 'Error: ' + error.message; el.style.display = 'block'; return; }
+    $('qModal').classList.add('hidden');
+    await loadBank(); refreshExamCounts();
+  };
+
+  async function toggleActive(q) {
+    const { error } = await supa.rpc('admin_save_question', {
+      p_key: KEY, p_id: q.id, p_exam_id: $('bankExam').value,
+      p_question: q.question, p_options: q.options,
+      p_correct_index: q.correct_index, p_explanation: q.explanation || '', p_active: !q.active });
+    if (error) { alert('Error: ' + error.message); return; }
+    await loadBank(); refreshExamCounts();
+  }
+
+  async function delQuestion(id) {
+    if (!confirm('Delete this question permanently?')) return;
+    const { error } = await supa.rpc('admin_delete_question', { p_key: KEY, p_id: id });
+    if (error) { alert((error.message || '').includes('QUESTION_IN_USE') ? 'This question was already used in attempts — deactivate it instead.' : 'Error: ' + error.message); return; }
+    await loadBank(); refreshExamCounts();
+  }
+
+  async function refreshExamCounts() {
+    try { D = await load(KEY); renderLinks(); initBank(); } catch (e) {}
   }
 </script>
 </body>
