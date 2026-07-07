@@ -102,6 +102,17 @@
   .person .rl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--crimson);margin-top:3px;}
   .person .rl.zr{color:var(--blue);}
   .person .org{font-size:13px;color:var(--ink-soft);margin-top:6px;}
+  /* Zibac agenda + divider */
+  .zagenda{display:flex;flex-direction:column;gap:11px;margin-top:12px;}
+  .zag{display:flex;align-items:center;gap:16px;}
+  .zag .n{width:44px;height:44px;border-radius:50%;background:#2b2e33;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;font-family:Georgia,'Times New Roman',serif;flex:none;}
+  .zag.red .n{background:var(--crimson);}
+  .zag b{display:block;font-size:15.5px;}
+  .zag span{font-size:12.5px;color:var(--ink-soft);}
+  .zdivider{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .zdivider .zk{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--crimson);font-weight:700;margin-bottom:14px;}
+  .zdivider h2{font-size:33px;max-width:24ch;margin:0 0 10px;}
+  .zdivider p{color:var(--ink-soft);font-size:15px;max-width:52ch;}
   /* Zibac card style (matches his PPTX layout) */
   .zcards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:12px;}
   .zcard{border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.05);padding:18px 18px 14px;}
@@ -195,7 +206,6 @@
     <!-- 1 COVER · Mario · 2 -->
     <section class="slide cover3d" data-min="2" data-block="Module open" data-presenter="Mario"
       data-notes='["Welcome the group; confirm everyone registered at tendrara.neo-ware.com/register.","Module 001 of 18 four-hour modules — the foundation for everything that follows.","Use the 3D view to orient them: this is the facility they will operate.","Housekeeping: live-online etiquette, mics muted, questions anytime in chat or voice."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Module 001 · Fundamentals <span class="sub">— 18-module program</span></div>
       <h1>Introduction to LNG &amp;<br>the Tendrara Facility</h1>
       <p class="lead">Tendrara Micro LNG Facilities — operator training program.</p>
@@ -208,10 +218,9 @@
       <div class="owner">Client: <b>ManaEnergy</b></div>
     </section>
 
-    <!-- 2 PROGRAM · Mario · 3 -->
-    <section class="slide" data-min="3" data-block="Module open" data-presenter="Mario"
+    <!-- 2 PROGRAM · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
       data-notes='["18 four-hour modules, live online, 6 Jul – 15 Aug 2026.","2 Fundamentals modules (001 today, 002 next) + 16 Operation modules unit by unit.","Every module: objectives → content → Q&A → exam & evaluation. Safety-first, technician-focused."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Welcome · The program</div>
       <h2>About this training program</h2>
       <p class="lead">A technical program for LNG plant personnel, built around the <b>Tendrara Micro LNG</b>
@@ -231,7 +240,6 @@
     <!-- 3 INSTRUCTORS · Mario · 2 -->
     <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
       data-notes='["Introduce both instructors and how the module is shared.","Mario leads the introduction and everything Tendrara-plant-specific.","Zibac is the LNG specialist — cryogenics, LNG production, properties, safety and fuel comparison.","The colored chip on each slide shows who presents it."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Your instructors</div>
       <h2>Meet the team</h2>
       <div class="team">
@@ -242,10 +250,9 @@
         of every slide indicates the presenter: <b style="color:var(--crimson);">Mario</b> · <b style="color:var(--blue);">Zibac</b>.</div>
     </section>
 
-    <!-- 4 ROADMAP · Mario · 3 -->
-    <section class="slide" data-min="3" data-block="Module open" data-presenter="Mario"
+    <!-- 4 ROADMAP · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
       data-notes='["18 modules: 2 Fundamentals + 16 Operation, 6 Jul – 15 Aug 2026.","Today is 001; Module 002 (facility operation, safety & emergency) follows on 8 Jul.","After fundamentals the program goes unit by unit, then control room, then plant start-stop.","Each Operation module: principle of operation, main components, control loops, valves, daily checks & maintenance."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Roadmap · 18 modules · 4 h each</div>
       <h2>Program roadmap</h2>
       <div class="grid2" style="gap:10px 22px;">
@@ -280,7 +287,6 @@
     <!-- 5 SCOPE / OBJECTIVES / AGENDA · Mario · 3 -->
     <section class="slide" data-min="3" data-block="Module open" data-presenter="Mario"
       data-notes='["Scope: LNG fundamentals + orientation to the Tendrara facility, per the TAM-158 schedule.","Objectives = the exam blueprint; read them out.","Walk the timeline — breaks at 1:45 and 3:00; exam + evaluation at the end is mandatory.","Block 1: Mario covers the plant (first hour), Zibac covers cryogenics & LNG. Block 2: Zibac covers hazards & safety; Mario closes."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Scope · Objectives · Agenda</div>
       <h2>What Module 001 covers</h2>
       <div class="grid2">
@@ -305,8 +311,8 @@
             <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:00</td></tr>
             <tr class="tot"><td class="seg">Module total</td><td class="dur">4:00</td><td class="cum"></td></tr>
           </table>
-          <div class="note" style="margin-top:10px;">Presenters: <b style="color:var(--crimson);">Mario — plant &amp; program (~0:44)</b> ·
-            <b style="color:var(--blue);">Zibac — full LNG agenda 01–06 (~2:01)</b>.</div>
+          <div class="note" style="margin-top:10px;">Presenters: <b style="color:var(--crimson);">Mario — plant &amp; program (~0:39)</b> ·
+            <b style="color:var(--blue);">Zibac — his full deck, slide by slide (~2:06)</b>.</div>
         </div>
       </div>
     </section>
@@ -314,7 +320,6 @@
     <!-- 6 TENDRARA INTRO · Mario · 4 -->
     <section class="slide" data-min="4" data-block="Block 1" data-presenter="Mario"
       data-notes='["Plant identity: a modular micro-LNG facility monetising Tendrara field gas.","Images auto-rotate — 3D render, plant areas/GA, site view. Click to enlarge.","Feed from wells TE-6 & TE-7; product ~261 t/day LNG, trucked off-grid.","Engineered for a remote field: compact footprint, factory-tested skids."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Introducing the plant</div>
       <h2>The Tendrara Micro LNG facility</h2>
       <div class="figrow" style="grid-template-columns:1fr 1.35fr;">
@@ -334,10 +339,9 @@
       </div>
     </section>
 
-    <!-- 7 LOCATION · Mario · 3 -->
-    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Mario"
+    <!-- 7 LOCATION · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Block 1" data-presenter="Mario"
       data-notes='["Eastern Morocco, Tendrara region — remote, served off-grid by road tanker.","Give the coordinates; use the Google Earth button on a connected screen for a 3D fly-in.","Remoteness explains the modular / off-grid design and the 1434 m site elevation (83.5 kPa ambient)."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Where it is</div>
       <h2>Plant location</h2>
       <div class="loc">
@@ -354,7 +358,6 @@
     <!-- 8 FACILITY DESCRIPTION · Mario · 4 -->
     <section class="slide" data-min="4" data-block="Block 1" data-presenter="Mario"
       data-notes='["Walk the general arrangement: process train, storage & loading, utilities, power generation, flare, cabins.","Everything is skid-mounted with battery limits at the inlet delivery manifold and the LNG loading point.","Name the unit families now — the numbers will repeat all through the program.","Condensate from V-201 fuels the hot-oil burners; process water goes to U530 treatment."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Facility description</div>
       <h2>Plant areas &amp; general arrangement</h2>
       <div class="figrow" style="grid-template-columns:1fr 1.3fr;">
@@ -369,20 +372,18 @@
       </div>
     </section>
 
-    <!-- 9 BLOCK DIAGRAM · Mario · 5 -->
-    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Mario"
+    <!-- 9 BLOCK DIAGRAM · Mario · 4 -->
+    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Mario"
       data-notes='["The simplest mental model of the plant — one box per unit.","Trace the main gas path 200→330→310→350→220, plus ammonia (340) and BOG (360/370) loops.","This high-level picture is enough today; later modules open each box.","Anchor: feed enters left, LNG to trucks exits right."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">The plant at a glance</div>
       <h2>Tendrara — block diagram</h2>
       <div class="fig"><a href="/images/proces_description.png" target="_blank"><img src="/images/proces_description.png" alt="Tendrara plant block diagram"></a>
         <div class="cap">Tendrara LNG — block diagram (click to enlarge)</div></div>
     </section>
 
-    <!-- 10 PFD & OPERATING DATA · Mario · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
+    <!-- 10 PFD & OPERATING DATA · Mario · 6 -->
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
       data-notes='["Now put numbers on the block diagram — the typical/design operating data along the gas path.","Feed: 16.67 MMSCFD from TE-6/TE-7, arriving at up to 55 barg; SDV-2001 is the plant inlet ESD valve; PV-2001 regulates inlet pressure; E-201 preheats against hydrates.","Pre-treatment: amine removes CO2 (CO2-rich vent via PCV-3303 at 4.5 barg); mol-sieve TSA dries to spec (regeneration at ~232 °C, twin beds).","Cold end: MR loop cools the gas in the cold box; NGL separated at −75 °C; NRU column T-357 strips nitrogen to ≤1.1 %mol in LNG.","Product: LNG at −165.7 °C, ~0.12 barg to the storage tank; flash & boil-off gas recompressed to 5–6 barg for fuel gas — no routine flaring.","Do not memorise every number today — this table returns in each unit module."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">PFD · Typical operating data</div>
       <h2>Process path &amp; typical operating data</h2>
       <div class="figrow" style="grid-template-columns:1.25fr 1fr;align-items:start;">
@@ -401,507 +402,498 @@
       <div class="note">Authoritative values: HMB 21044-PR-HMB-00001 &amp; Process Description PRO02-ING-FR02. Design ambient: site at 1,434 m (~83.5 kPa).</div>
     </section>
 
-    <!-- 11 WHAT IS CRYOGENICS · Zibac · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["Handover to Zibac — from the plant to the physics that makes it possible. This whole section is NEW for everyone: go slowly, invite questions on every slide.","Cryogenics = producing and studying very low temperatures, as close as possible to absolute zero.","Absolute zero: -273.15 C = 0 K — the theoretical limit where molecular motion ceases. Nothing can be colder.","US National Bureau of Standards: below -150 C (-240 F) is cryogenic. LNG at -162 C is well inside that world.","Same technology family liquefies nitrogen, oxygen, hydrogen and helium — LNG plants share hardware and rules with the industrial-gas industry.","Set the expectation: the next five slides give the vocabulary used for the rest of the whole 18-module program."]'>
-      <span class="pres zr">Zibac</span>
+    <!-- Z01 COVER · Zibac · 1 -->
+    <section class="slide zdivider" data-min="1" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Handover from Mario. This is my own deck, presented slide by slide.","One line of framing: cryogenics, how LNG is produced, its safety, and how it compares against LPG, CNG and Diesel.","July 2026 — prepared in collaboration with Technical America."]'>
+      <div>
+        <div class="zk">Cryogenics · Energy · Liquefied Natural Gas</div>
+        <h2>LNG: from cryogenics<br>to the consumer</h2>
+        <p>Cryogenics fundamentals, how liquefied natural gas is produced, its safety
+          and its comparison against LPG, CNG and Diesel.</p>
+        <p class="muted" style="font-size:12.5px;margin-top:14px;">July 2026 · In collaboration with Technical America</p>
+      </div>
+    </section>
+
+    <!-- Z02 AGENDA · Zibac · 2 -->
+    <section class="slide" data-min="2" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Walk the six sections quickly — this is the map of my whole deck.","Sections 01 to 03 before the break; 04 to 06 after it.","Tell the group: everything is new for most of you — stop me and ask at any slide."]'>
+      <div class="kicker">Contents</div>
+      <h2>Agenda</h2>
+      <div class="zagenda">
+        <div class="zag red"><div class="n">01</div><div><b>Cryogenics Fundamentals</b><span>What cryogenics is, physical quantities, and cryogenic liquid behavior</span></div></div>
+        <div class="zag"><div class="n">02</div><div><b>What is LNG?</b><span>Definition, composition, properties, and unit conversion</span></div></div>
+        <div class="zag red"><div class="n">03</div><div><b>Value Chain, Costs, and Technology</b><span>Liquefaction, cost distribution, and plant types</span></div></div>
+        <div class="zag"><div class="n">04</div><div><b>LNG Safety</b><span>Hazards, protective equipment, first aid, and materials</span></div></div>
+        <div class="zag red"><div class="n">05</div><div><b>LNG vs LPG vs CNG vs Diesel Comparison</b><span>Energy density, costs, emissions, and uses</span></div></div>
+        <div class="zag"><div class="n">06</div><div><b>Advantages, Challenges, and Conclusions</b><span>Summary for decision-making</span></div></div>
+      </div>
+    </section>
+
+    <!-- Z03 WHAT IS CRYOGENICS · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Cryogenics: the branch of physics that studies the effect and production of very low temperatures — generating temperatures as close as possible to absolute zero.","Absolute zero: 0 K = -273.15 C, the theoretical limit where molecular motion ceases.","US National Bureau of Standards: below -150 C (-240 F) is cryogenic.","Industrial gases liquefied in this range: nitrogen, oxygen, hydrogen, helium — and natural gas.","Land the strip: LNG is handled at -162 C, well below the threshold."]'>
       <div class="kicker">01 · Cryogenics fundamentals</div>
       <h2>What is cryogenics?</h2>
-      <p class="lead">The branch of physics that studies the production and effects of <b>very low temperatures</b> —
-        as close as possible to absolute zero.</p>
-      <div class="facts">
-        <div class="fact"><div class="n">−273.15 °C</div><div class="l">absolute zero (0 K) — molecular motion ceases</div></div>
-        <div class="fact"><div class="n">−150 °C</div><div class="l">cryogenic threshold (US NBS) · −240 °F</div></div>
-        <div class="fact"><div class="n">−162 °C</div><div class="l">LNG handling temperature</div></div>
-      </div>
-      <ul class="points" style="margin-top:12px;">
-        <li>Gases liquefied in this range: <b>nitrogen, oxygen, hydrogen, helium — and natural gas (LNG)</b>.</li>
-        <li>LNG plants share technology and safety rules with the <b>industrial-gas</b> world.</li>
+      <p class="lead">Cryogenics is the branch of physics that studies the effect and production of <b>very low
+        temperatures</b>: the process of generating temperatures as close as possible to absolute zero.</p>
+      <ul class="points">
+        <li>Absolute zero (<b>0 K</b>) equals <b>−273.15 °C</b>: the theoretical limit where molecular motion ceases.</li>
+        <li>The <b>US National Bureau of Standards</b> considers temperatures below <b>−150 °C (−240 °F)</b> to be cryogenic.</li>
+        <li>Industrial gases liquefied in this range include <b>nitrogen, oxygen, hydrogen, helium, and natural gas (LNG)</b>.</li>
       </ul>
+      <div class="facts">
+        <div class="fact"><div class="n">−273.15 °C</div><div class="l">absolute zero (0 K)</div></div>
+        <div class="fact"><div class="n">−150 °C</div><div class="l">cryogenic threshold (US NBS) · −240 °F</div></div>
+      </div>
       <div class="zstrip">LNG is handled at −162 °C: well below the cryogenic threshold.</div>
     </section>
 
-    <!-- 12 FUNDAMENTAL PHYSICAL QUANTITIES · Zibac · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["Three quantities describe everything we operate: pressure, temperature, density. Explain each card in detail.","Pressure: P = F/A, force per unit area. Key plant distinction: GAUGE vs ABSOLUTE — barg vs bara. The HMB and every instrument reading use this; atmospheric here is only ~83.5 kPa because the site is at 1434 m.","Temperature: linked to internal energy. Conversions to master: K = C + 273.15, R = F + 459.67. US vendor data often comes in F and Rankine.","Density: mass per volume. LNG is ~450 kg/m3 and it CHANGES with temperature — warmer LNG is lighter; this drives stratification later.","Dry air reference: N2 78, O2 21, Ar 0.93, CO2 0.03 percent. Memorize O2 = 21 — the asphyxiation limit of 19.5 comes back in the safety block.","Quick checks: which is bigger, 5 barg or 5 bara? What is 0 C in Kelvin?"]'>
-      <span class="pres zr">Zibac</span>
+    <!-- Z04 PHYSICAL QUANTITIES · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Three working quantities — one card each.","Pressure: P = F/A, force applied per unit of surface area. Units: PSI, Atm, Bar, MPa.","Temperature: scalar quantity linked to the internal energy of a thermodynamic system. Units: F, R (Rankine), C, K.","Density: mass per unit of volume. Units: lb/gal, lb/ft3, kg/m3.","Strip: dry air reference — N2 78, O2 21, Ar 0.93, CO2 0.03 percent. It returns in the safety section."]'>
       <div class="kicker">01 · Cryogenics fundamentals</div>
       <h2>Fundamental physical quantities</h2>
       <div class="zcards">
         <div class="zcard">
           <div class="ic">P</div>
           <h3>Pressure</h3>
-          <p>P = F / A — force applied per unit of surface area. In the plant: <b>gauge (barg)</b> vs <b>absolute (bara)</b>.</p>
+          <p>P = F / A — force applied per unit of surface area.</p>
           <div class="units"><b>Units:</b> PSI · Atm · Bar · MPa</div>
         </div>
         <div class="zcard dark">
           <div class="ic">T</div>
           <h3>Temperature</h3>
-          <p>Scalar quantity linked to the internal energy of a thermodynamic system. K = °C + 273.15.</p>
+          <p>Scalar quantity linked to the internal energy of a thermodynamic system.</p>
           <div class="units"><b>Units:</b> °F · °R (Rankine) · °C · K</div>
         </div>
         <div class="zcard dark">
           <div class="ic">ρ</div>
           <h3>Density</h3>
-          <p>Mass per unit of volume. LNG ≈ 450 kg/m³ — and it <b>changes with temperature</b>.</p>
+          <p>Mass per unit of volume.</p>
           <div class="units"><b>Units:</b> lb/gal · lb/ft³ · kg/m³</div>
         </div>
       </div>
       <div class="zstrip">Dry air composition (reference): Nitrogen 78 % · Oxygen 21 % · Argon 0.93 % · CO₂ 0.03 %</div>
     </section>
 
-    <!-- 13 STATES OF MATTER · Zibac · 5 -->
-    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["A state is a collection of properties of a material — and it can be changed by changing those properties.","Solid: incompressible, low molecular movement. Liquid: moderately compressible, low movement. Gas: compressible, free movement.","Key idea to land: the molecules are THE SAME — what changes is their distance and energy level, from cold to hot.","Liquefaction is nothing exotic: it is a controlled state change — remove energy until the gas becomes liquid.","Ask the room: what do we add or remove to change state? (Energy — heat.) That question is the bridge to the next slide."]'>
-      <span class="pres zr">Zibac</span>
+    <!-- Z05 STATES OF MATTER · Zibac · 4 -->
+    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["A state is a collection of properties of a material; it can be altered by changing those properties.","Solid: incompressible, low molecular movement. Liquid: moderately compressible, low movement. Gas: compressible, free movement.","The molecules are the same — at different distances and energy levels, from cold to hot."]'>
       <div class="kicker">01 · Cryogenics fundamentals</div>
       <h2>States of matter</h2>
-      <p class="lead">A state is a collection of properties of a material; it can be altered by <b>changing those properties</b>.</p>
+      <p class="lead">A state is a collection of properties of a material; it can be altered by changing those properties.</p>
       <div class="zcards">
-        <div class="zcard dark">
-          <div class="ic">S</div>
-          <h3>Solid</h3>
-          <p>Incompressible and low molecular movement.</p>
-        </div>
-        <div class="zcard">
-          <div class="ic">L</div>
-          <h3>Liquid</h3>
-          <p>Moderately compressible and low molecular movement.</p>
-        </div>
-        <div class="zcard dark">
-          <div class="ic">G</div>
-          <h3>Gas</h3>
-          <p>Compressible and free molecular movement.</p>
-        </div>
+        <div class="zcard dark"><div class="ic">S</div><h3>Solid</h3><p>Incompressible and low molecular movement.</p></div>
+        <div class="zcard"><div class="ic">L</div><h3>Liquid</h3><p>Moderately compressible and low molecular movement.</p></div>
+        <div class="zcard dark"><div class="ic">G</div><h3>Gas</h3><p>Compressible and free molecular movement.</p></div>
       </div>
-      <div class="zstrip">The molecules are the same — at different distances and energy levels: cold → hot.
-        Liquefaction is a <b>controlled state change</b>: remove energy until the gas condenses.</div>
+      <div class="zstrip">The molecules are the same, at different distances and energy levels: cold → hot.</div>
     </section>
 
-    <!-- 14 KEY CRYOGENIC CONCEPTS · Zibac · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["Six words that explain everything an LNG tank does. Take them one by one, with the plant example for each.","SATURATION: in a closed vessel, liquid and vapor coexist in equilibrium at the same temperature — that is the normal condition of the Tendrara LNG tank.","SUBCOOLING: pressure in the gas phase raised above that of the saturated vapor — how we keep pumps happy.","VAPORIZATION: add heat to a saturated liquid and it becomes gas — this is boil-off (BOG), recovered by Unit 360.","CONDENSATION: remove heat from the gas and it returns to liquid — the cold box in one word.","CAVITATION: vapor bubbles forming inside a liquid — what destroys an LNG pump running with too little suction head.","STRATIFICATION: warmer, lighter liquid floats on colder, denser liquid inside the tank — the seed of rollover, which we cover in the safety block.","Check understanding before moving on — these six terms return in every unit module."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">01 · Cryogenics fundamentals · Behaviour</div>
-      <h2>Six key cryogenic concepts</h2>
-      <div class="zcards mini">
-        <div class="zcard">
-          <div class="ic">1</div><h3>Saturation</h3>
-          <p>Closed vessel: liquid + vapor coexist in equilibrium at the same temperature.</p>
-        </div>
-        <div class="zcard dark">
-          <div class="ic">2</div><h3>Subcooling</h3>
-          <p>Gas-phase pressure raised above that of the saturated vapor.</p>
-        </div>
-        <div class="zcard dark">
-          <div class="ic">3</div><h3>Vaporization</h3>
-          <p>Liquid → gas when heat is added to the saturated liquid (= boil-off).</p>
-        </div>
-        <div class="zcard dark">
-          <div class="ic">4</div><h3>Condensation</h3>
-          <p>Gas → liquid when heat is removed (= what the cold box does).</p>
-        </div>
-        <div class="zcard dark">
-          <div class="ic">5</div><h3>Cavitation</h3>
-          <p>Vapor bubbles forming inside a liquid — destroys pumps.</p>
-        </div>
-        <div class="zcard">
-          <div class="ic">6</div><h3>Stratification</h3>
-          <p>Warm (lighter) liquid migrates up; cold stays at the bottom — seed of rollover.</p>
-        </div>
-      </div>
-      <div class="zstrip">Master these six words — they explain everything an LNG tank does, and they return in every unit module.</div>
-    </section>
-
-    <!-- 15 CRYOGENIC LIQUID BEHAVIOUR · Zibac · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["Now the behaviour that follows from those concepts — with the two numbers everyone must remember.","Liquid growth: add heat and pressure, molecules gain energy and occupy more space. Real example: 100 L becomes 125 L going from 0 to 150 psig — same 81 kg of liquid. That is why tanks keep a vapor space and are NEVER filled 100 percent.","Flash loss: vent a liquid-nitrogen tank from 120 psig to 0 psig and ~31 percent evaporates instantly. Lesson: pressure management IS inventory management.","Pressure-temperature: higher pressure means higher saturation temperature. Density-temperature: warmer liquid is less dense.","Connect forward: these two relationships drive tank pressure control and the BOG system at Tendrara.","Take questions here — this slide is the heart of the cryogenics section."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">01 · Cryogenics fundamentals · Behaviour</div>
-      <h2>Cryogenic liquid behaviour</h2>
-      <div class="grid2">
-        <div>
-          <div class="facts" style="margin-top:0;">
-            <div class="fact"><div class="n">+25 %</div><div class="l">liquid growth: 100 L → 125 L from 0 → 150 psig (same 81 kg)</div></div>
-            <div class="fact"><div class="n">−31 %</div><div class="l">flash loss venting an LN₂ tank 120 psig → 0 psig</div></div>
-          </div>
-        </div>
-        <ul class="points">
-          <li><b>P–T:</b> higher pressure → higher saturation temperature.</li>
-          <li><b>ρ–T:</b> higher temperature → lower liquid density.</li>
-          <li>Tanks keep a <b>vapor space</b> — never filled 100 %, so relief valves stay closed.</li>
-          <li><b>Pressure management = inventory management.</b></li>
-        </ul>
-      </div>
-      <div class="zstrip">These same principles govern the Tendrara LNG storage tank and every cryogenic line on site.</div>
-    </section>
-
-    <!-- 16 HEAT TRANSFER & NER · Zibac · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["Heat always flows hot to cold — in an LNG plant the enemy is heat LEAKING IN. Three mechanisms, three cards.","Conduction — direct contact: piping and supports. Stainless steel conducts moderately; aluminium and copper conduct a lot.","Convection — density-driven flow of heat: fought with vacuum insulation (no medium, no convection).","Radiation — depends on surface emissivity: fought with multi-layer super-insulation and white-painted tanks.","Insulation performance: vacuum + perlite is 10-15x better than conventional mechanical insulation; vacuum + multilayer is another 2-3x better than perlite.","NER — Normal Evaporation Rate: percent of contents that boils off per day at atmospheric pressure and 21 C. The figure of merit of any cryogenic tank.","Close the section: at Tendrara boil-off is not lost — Unit 360 recovers it to fuel gas."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">01 · Cryogenics fundamentals · Heat ingress</div>
-      <h2>Heat transfer, insulation &amp; NER</h2>
-      <div class="zcards mini">
-        <div class="zcard">
-          <div class="ic">C</div><h3>Conduction</h3>
-          <p>Direct contact: piping, supports. SS = medium · Al/Cu = high conductivity.</p>
-        </div>
-        <div class="zcard dark">
-          <div class="ic">V</div><h3>Convection</h3>
-          <p>Density-gradient heat flow → fought with <b>vacuum</b> insulation.</p>
-        </div>
-        <div class="zcard dark">
-          <div class="ic">R</div><h3>Radiation</h3>
-          <p>Surface emissivity → super-insulation, white-painted tanks.</p>
-        </div>
-      </div>
-      <div class="facts" style="margin-top:12px;">
-        <div class="fact"><div class="n">10–15×</div><div class="l">vacuum + perlite vs conventional insulation</div></div>
-        <div class="fact"><div class="n">2–3×</div><div class="l">vacuum + multilayer vs perlite</div></div>
-        <div class="fact"><div class="n">NER</div><div class="l">boil-off in %/day @ atm pressure &amp; 21 °C</div></div>
-      </div>
-      <div class="zstrip">Boil-off is not lost at Tendrara: the BOG system (U360) recovers it to fuel gas — covered in the unit modules.</div>
-    </section>
-
-    <!-- 17 WHAT IS NATURAL GAS · Zibac · 5 -->
-    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["A mixture of light hydrocarbons formed underground over millions of years.","Occurrence: gas fields (like Tendrara), associated gas with crude, unconventional (shale, tight, coalbed).","Colorless, odorless, non-corrosive when treated, highly flammable in a specific range.","Plant the key safety seed: odorless — you cannot smell a leak; detection is by instruments only."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">02 · What is LNG · The raw material</div>
-      <h2>What is natural gas?</h2>
-      <p class="lead"><b>Natural gas</b> is a mixture of <b>light hydrocarbons</b> (mainly methane), formed by decomposition
-        of organic matter over millions of years under pressure and temperature underground.</p>
-      <div class="grid2">
-        <div>
-          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Where it is found</p>
-          <ul class="points">
-            <li><b>Gas fields</b> — pure gas reservoirs (Tendrara).</li>
-            <li><b>Associated gas</b> — together with crude oil.</li>
-            <li><b>Unconventional</b> — shale, tight gas, coalbed methane.</li>
-          </ul>
-        </div>
-        <div>
-          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Physical characteristics</p>
-          <ul class="points">
-            <li><b>Colorless &amp; odorless</b> (odorant only added for domestic use).</li>
-            <li><b>Non-corrosive</b> when properly treated &amp; sweetened.</li>
-            <li><b>Highly flammable</b> within a specific range in air.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- 19 WHAT IS LNG · Zibac · 6 -->
+    <!-- Z06 KEY CONCEPTS · Zibac · 6 -->
     <section class="slide" data-min="6" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["LNG = natural gas cooled to ≈ −162 °C (methane boiling point at atmospheric pressure).","Composition (Zibac chart): methane ~92%, ethane 4.5%, propane & heavier 2.5%, N2/other 1% — typical values, vary by source. Range 85–95% methane.","Density ≈ 450 kg/m³ — less than half of water → LNG floats on water.","The LIQUID does not burn — only vapor mixed with air within limits.","Kept liquid by TEMPERATURE, not pressure — the tank is a giant thermos at near-atmospheric pressure.","It vaporizes rapidly on contact with any heat: air, ground, water."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">02 · What is LNG · The product</div>
+      data-notes='["Six definitions, one by one — take time here, they are the vocabulary of the whole program.","Saturation: state in a closed vessel where liquid and gas coexist in equilibrium at the same temperature.","Subcooling: increase of pressure in the gas phase above that of the saturated vapor.","Vaporization: liquid to gas when energy (heat) is added to the saturated liquid. Condensation: gas to liquid when energy is removed.","Cavitation: formation of vapor bubbles within a liquid.","Stratification: warmer (less dense) liquid migrates upward while colder liquid remains at the bottom of the tank."]'>
+      <div class="kicker">01 · Cryogenics fundamentals</div>
+      <h2>Key concepts in cryogenic behavior</h2>
+      <div class="zcards mini">
+        <div class="zcard"><div class="ic">1</div><h3>Saturation</h3><p>State in a closed vessel where liquid and gas coexist in equilibrium at the same temperature.</p></div>
+        <div class="zcard dark"><div class="ic">2</div><h3>Subcooling</h3><p>Increase in pressure in the gas phase above that of the saturated vapor.</p></div>
+        <div class="zcard dark"><div class="ic">3</div><h3>Vaporization</h3><p>Liquid → gas when energy (heat) is added to the saturated liquid.</p></div>
+        <div class="zcard dark"><div class="ic">4</div><h3>Condensation</h3><p>Gas → liquid when energy (heat) is removed from the gas.</p></div>
+        <div class="zcard dark"><div class="ic">5</div><h3>Cavitation</h3><p>Formation of vapor bubbles within a liquid.</p></div>
+        <div class="zcard"><div class="ic">6</div><h3>Stratification</h3><p>Warmer (less dense) liquid migrates upward while colder liquid remains at the bottom of the tank.</p></div>
+      </div>
+    </section>
+
+    <!-- Z07 CRYOGENIC LIQUID BEHAVIOR · Zibac · 6 -->
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Liquid growth: as heat and pressure are added, molecules gain energy and occupy more space; the liquid expands inside the tank.","Pressure-temperature: the higher the pressure, the higher the saturation temperature of the liquid.","Density-temperature: the higher the temperature, the lower the density of the liquid.","Cryogenic cylinders are filled to safe levels to leave expansion room (vapor space) and prevent relief valves from opening.","Two numbers to remember: 25 percent volume growth (100 L to 125 L, 0 to 150 psig, same 81 kg) and 31 percent flash loss venting an LN2 tank from 120 psig to 0 psig."]'>
+      <div class="kicker">01 · Cryogenics fundamentals</div>
+      <h2>Cryogenic liquid behavior</h2>
+      <ul class="points">
+        <li><b>Liquid growth:</b> adding heat and pressure, molecules gain energy and occupy more space; the liquid <b>expands</b> inside the tank.</li>
+        <li><b>Pressure–temperature:</b> the higher the pressure, the higher the saturation temperature.</li>
+        <li><b>Density–temperature:</b> the higher the temperature, the lower the liquid density.</li>
+        <li>Cylinders are filled to <b>safe levels</b> to leave expansion room (<b>vapor space</b>) and keep relief valves closed.</li>
+      </ul>
+      <div class="facts">
+        <div class="fact"><div class="n">25 %</div><div class="l">volume growth: 100 L → 125 L from 0 to 150 psig (same weight: 81 kg)</div></div>
+        <div class="fact"><div class="n">31 %</div><div class="l">instantaneous flash loss: LN₂ tank at 120 psig vented to 0 psig</div></div>
+      </div>
+      <div class="zstrip">These same principles apply to stored and transported LNG.</div>
+    </section>
+
+    <!-- Z08 HEAT TRANSFER · Zibac · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Heat is energy transported from a hot object to a cold one, through three mechanisms.","Conduction: direct contact — piping, supports; stainless steel medium value, aluminium and copper high value.","Convection: heat movement by density gradients between the cold inside and the warm outside — vacuum insulation, pressure-building vaporizer coil.","Radiation: energy transfer by surface emissivity — multi-layer super-insulation, tanks painted white."]'>
+      <div class="kicker">01 · Cryogenics fundamentals</div>
+      <h2>Heat transfer</h2>
+      <p class="lead">Energy transported from a hot object to a cold one, through <b>three mechanisms</b>:</p>
+      <div class="zcards mini">
+        <div class="zcard"><div class="ic">C</div><h3>Conduction</h3><p>Direct contact between objects or within one. Examples: piping, supports; stainless steel (medium), aluminium/copper (high).</p></div>
+        <div class="zcard dark"><div class="ic">V</div><h3>Convection</h3><p>Heat moved by density gradients between internal cold and external heat. Examples: vacuum insulation, pressure-building vaporizer coil.</p></div>
+        <div class="zcard dark"><div class="ic">R</div><h3>Radiation</h3><p>Energy transfer as a function of surface emissivity. Examples: multi-layer super-insulation, tanks painted white.</p></div>
+      </div>
+    </section>
+
+    <!-- Z09 INSULATION & NER · Zibac · 4 -->
+    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Two insulation families: vacuum + perlite is 10-15x better than conventional mechanical insulation; vacuum + multilayer (super-insulation) is 2-3x better than perlite.","NER, Normal Evaporation Rate: measures the thermal efficiency of a cryogenic storage tank, in percent per day under normal conditions — atmospheric pressure and 21 C.","Careful: NER is NOT a loss rate under pressure or economizer operation."]'>
+      <div class="kicker">01 · Cryogenics fundamentals</div>
+      <h2>Thermal insulation and NER</h2>
+      <div class="grid2">
+        <div>
+          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Types of insulation</p>
+          <ul class="points">
+            <li><b>Vacuum + Perlite</b> — 10–15× better than conventional mechanical insulation.</li>
+            <li><b>Vacuum + Multi-layer (super-insulation)</b> — 2–3× better than perlite insulation.</li>
+          </ul>
+        </div>
+        <div class="zcard">
+          <div class="ic">NER</div>
+          <h3>Normal Evaporation Rate</h3>
+          <p>Measures the thermal efficiency of a cryogenic storage tank, expressed in <b>%/day</b> under normal
+            conditions (atmospheric pressure and 21 °C).</p>
+          <p><b>Not</b> a loss rate under pressure / economizer operation.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Z10 WHAT IS LNG · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["LNG: natural gas cooled to a liquid state at approximately -162 C, to make it easier to store and transport over long distances where pipelines do not exist.","Composed mainly of methane, 85 to 95 percent — the chart shows the typical composition: methane 92, ethane 4.5, propane and heavier 2.5, nitrogen and other 1.","Cryogenic liquid, density about 450 kg/m3 — less than half that of water.","Colorless, odorless, non-toxic and non-corrosive.","Volume shrinks about 600 times upon liquefaction: 1 m3 of LNG equals 600 Sm3 of natural gas."]'>
+      <div class="kicker">02 · What is LNG?</div>
       <h2>What is LNG?</h2>
-      <div class="figrow" style="grid-template-columns:1.35fr 1fr;">
+      <div class="figrow" style="grid-template-columns:1.25fr 1fr;">
         <div>
-          <p class="lead"><b>LNG</b> is natural gas cooled to <b>≈ −162 °C</b> — the boiling point of methane at atmospheric
-            pressure — condensing it into a clear, odourless cryogenic liquid.</p>
+          <p class="lead"><b>Liquefied Natural Gas (LNG)</b> is natural gas cooled to a liquid state, at approximately
+            <b>−162 °C</b>, to make it easier to store and transport over long distances where pipelines do not exist.</p>
           <ul class="points">
-            <li>Mainly <b>methane (85–95 %, typically ~92 %)</b> · non-toxic · non-corrosive.</li>
-            <li>Density ≈ <b>450 kg/m³</b> — less than half of water → <b>floats on water</b>.</li>
-            <li><b>Non-flammable as a liquid</b> — only the vapour burns, within limits.</li>
-            <li>Held liquid by <b>temperature, not pressure</b> — insulated tank at near-atmospheric pressure.</li>
-            <li><b>Rapid vaporization</b> on contact with heat (air, ground, water).</li>
+            <li>Composed mainly of <b>methane (85–95 %)</b>.</li>
+            <li>Cryogenic liquid: density ≈ <b>450 kg/m³</b> (less than half that of water).</li>
+            <li><b>Colorless, odorless, non-toxic and non-corrosive.</b></li>
+            <li>Volume shrinks about <b>600×</b> upon liquefaction (1 m³ LNG = 600 Sm³ of natural gas).</li>
           </ul>
         </div>
-        <div class="carousel" id="lngCarousel" data-interval="4500">
-          <a class="cimg active" href="/images/zibac/lng-composition.svg" target="_blank"><img src="/images/zibac/lng-composition.svg" alt="Typical LNG composition — Zibac"></a>
-          <a class="cimg" href="/images/LNG.webp" target="_blank"><img src="/images/LNG.webp" alt="What is LNG"></a>
-          <div class="ccap">Auto-rotating · click to enlarge</div>
-          <div class="cdots"><b class="active"></b><b></b></div>
-        </div>
+        <div class="fig"><a href="/images/zibac/lng-composition.svg" target="_blank"><img src="/images/zibac/lng-composition.svg" alt="Typical LNG composition" style="max-height:300px;"></a>
+          <div class="cap">Typical composition of liquefied natural gas</div></div>
       </div>
     </section>
 
-    <!-- 20 PROPERTIES & CONVERSIONS · Zibac · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["Walk each property and its operational consequence.","Boiling point −162 °C → special metallurgy & PPE. Density < half of water → floats. 600:1 expansion → small leak, big gas volume.","Tendrara product (HMB): −165.7 °C at ~0.12 barg.","Unit conversions: useful for loading & invoicing — 1 LNG gallon = 82.6 scf = 82,644 BTU; 1 tonne = 621 gallons; energy: 1.68 LNG gal ≈ 1 diesel gal.","Quick check: at what vapor concentration does methane burn? (~5–15 %) — full detail after the break."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">02 · What is LNG · Properties</div>
-      <h2>Key properties &amp; unit conversions</h2>
-      <div class="grid2">
-        <table class="data" style="font-size:12.5px;">
-          <tr><th>Property</th><th>Value</th><th>Why it matters</th></tr>
-          <tr><td class="k">Boiling point</td><td><b>≈ −162 °C</b></td><td class="v">cryogenic metallurgy &amp; PPE</td></tr>
-          <tr><td class="k">Liquid density</td><td>430–470 kg/m³</td><td class="v">floats on water</td></tr>
-          <tr><td class="k">Expansion</td><td>≈ 600 : 1</td><td class="v">small leak → big gas volume</td></tr>
-          <tr><td class="k">Calorific value</td><td>~50–56 MJ/kg</td><td class="v">high energy per kg</td></tr>
-          <tr><td class="k">Flammable range</td><td><b>~5–15 %</b> in air</td><td class="v">only vapour burns</td></tr>
-        </table>
-        <table class="data" style="font-size:12.5px;">
-          <tr><th>Conversion</th><th>Value</th></tr>
-          <tr><td class="k">1 LNG gallon</td><td>82.6 scf of natural gas</td></tr>
-          <tr><td class="k">1 LNG gallon</td><td>82,644 BTU</td></tr>
-          <tr><td class="k">1 LNG tonne</td><td>621 LNG gallons</td></tr>
-          <tr><td class="k">1 LNG gallon (weight)</td><td>3.5 lb</td></tr>
-          <tr><td class="k">Energy equivalence</td><td><b>1.68 LNG gal ≈ 1 diesel gal</b></td></tr>
-        </table>
-      </div>
-      <div class="note">Tendrara LNG product (HMB): <b>−165.7 °C at ~0.12 barg</b> (near-atmospheric).</div>
+    <!-- Z11 UNIT CONVERSIONS · Zibac · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["A reference table for sizing storage volumes, transport and cost per unit of energy.","1 LNG gallon = 82.6 standard cubic feet of natural gas = 82,644 BTU.","1 LNG tonne = 621 LNG gallons; 1 LNG gallon weighs 3.5 lb.","Energy equivalence: 1.68 LNG gallons = 1 diesel gallon."]'>
+      <div class="kicker">02 · What is LNG?</div>
+      <h2>LNG unit conversions</h2>
+      <table class="data">
+        <tr><th>Equivalence</th><th>Value</th></tr>
+        <tr><td class="k">1 LNG gallon</td><td>82.6 standard cubic feet of natural gas</td></tr>
+        <tr><td class="k">1 LNG gallon</td><td>82,644 BTU</td></tr>
+        <tr><td class="k">1 LNG tonne</td><td>621 LNG gallons</td></tr>
+        <tr><td class="k">1 LNG gallon (weight)</td><td>3.5 lb</td></tr>
+        <tr><td class="k">Energy equivalence</td><td><b>1.68 LNG gallons = 1 diesel gallon</b></td></tr>
+      </table>
+      <div class="zstrip">A useful reference for sizing storage volumes, transport, and cost per unit of energy.</div>
     </section>
 
-    <!-- 18 WHY LIQUEFY / HOW LNG IS OBTAINED · Zibac · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["Problem: as a gas, NG occupies enormous volume — solution: cool to −162 °C and it shrinks ~600×.","How LNG is obtained: (1) pretreatment to LNG spec — CO2 ≤50 ppmv, H2S ≤4 ppmv, H2O ≤1 ppmw, Hg ≤0.01 µg/Nm³ — to prevent freezing & corrosion; (2) cascade refrigeration cycles (propane, ethylene, methane or mixtures); (3) condensation at −162 °C; (4) storage at atmospheric pressure in double-walled cryogenic tanks.","Plant types: base-load >3 Mtpa tied to a field; peak-shaving on the grid (~200 t/d liq / 6000 t/d vap); small-scale <500,000 tpa by truck — Tendrara is small-scale (~86,000 tpa) with a mixed-refrigerant loop.","Licensor landscape: APCI C3MR/AP-X (~80 trains, market leader), ConocoPhillips Cascade, Shell DMR, Linde MFC.","Key concept: LNG is NOT a different fuel — same gas, only the physical state changes."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">03 · Value chain &amp; technology · Obtaining LNG</div>
-      <h2>Why liquefy — and how LNG is obtained</h2>
-      <div class="grid2">
-        <div>
-          <div class="flow">
-            <div class="step"><span class="u">1 · PRETREAT</span><span class="t">To spec: CO₂ ≤ <b>50 ppmv</b> · H₂S ≤ <b>4 ppmv</b> · H₂O ≤ <b>1 ppmw</b> · Hg ≤ 0.01 µg/Nm³</span></div>
-            <div class="step"><span class="u">2 · COOL</span><span class="t"><b>Cascade refrigeration</b> — propane, ethylene, methane or <b>mixed refrigerant</b> (Tendrara: MR)</span></div>
-            <div class="step"><span class="u">3 · LIQUEFY</span><span class="t">Condenses at <b>−162 °C</b> → volume <b>÷ 600</b></span></div>
-            <div class="step"><span class="u">4 · STORE</span><span class="t">Double-walled cryogenic tank at <b>atmospheric pressure</b></span></div>
-          </div>
-          <div class="facts" style="margin-top:10px;">
-            <div class="fact"><div class="n">1 : 600</div><div class="l">1 m³ LNG ≈ 600 Sm³ natural gas</div></div>
-            <div class="fact"><div class="n">Same gas</div><div class="l">only the physical state changes</div></div>
-          </div>
-        </div>
-        <div>
-          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Liquefaction plant types</p>
-          <ul class="points">
-            <li><b>Base-load</b> — &gt; 3 Mtpa, tied to a gas field; most world capacity.</li>
-            <li><b>Peak-shaving</b> — grid-connected (~200 t/d liq · 6,000 t/d vap).</li>
-            <li><b>Small-scale</b> — &lt; 500,000 tpa, truck/small-ship distribution → <b>Tendrara (~86,000 tpa)</b>.</li>
-            <li><b>Licensors:</b> APCI C3MR/AP-X (~80 trains) · ConocoPhillips Cascade · Shell DMR · Linde MFC.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- 18b VALUE CHAIN & COSTS · Zibac · 5 -->
-    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["The full journey of the molecule, and where the money goes — straight from my agenda section 03.","Five links: exploration & production → processing (remove water, CO2, H2S, NGLs) → liquefaction at -162 C → marine transport in insulated carriers → regasification & distribution to the consumer.","Cost distribution (indicative, varies by project): production & processing 15-20, liquefaction plant 30-45, marine transport 10-30, regasification terminal 15-25 percent.","Key takeaway: LIQUEFACTION is the most capital-intensive stage of the entire chain.","Position Tendrara on the map: we ARE the liquefaction link — and instead of ships, our transport link is road tankers (virtual pipeline).","Marine transport cost varies strongly with distance to the destination market."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">03 · Value chain, costs &amp; technology</div>
-      <h2>The LNG value chain — and where the money goes</h2>
+    <!-- Z12 VALUE CHAIN · Zibac · 4 -->
+    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["The five links of the LNG value chain, in order.","1 Exploration and production: extraction from underground reservoirs. 2 Processing: removal of water, CO2, H2S and natural gas liquids.","3 Liquefaction: cooling to -162 C in specialized plants — Tendrara is this link.","4 Marine transport: LNG carriers with insulated cryogenic tanks. 5 Regasification and distribution: reheating to gas and pipeline delivery to the consumer."]'>
+      <div class="kicker">02 · What is LNG? · Value chain</div>
+      <h2>LNG value chain</h2>
       <div class="flow">
-        <div class="step"><span class="u">1 · E&amp;P</span><span class="t"><b>Exploration &amp; production</b> — extraction from underground reservoirs</span></div>
-        <div class="step"><span class="u">2 · PROCESS</span><span class="t"><b>Processing</b> — removal of water, CO₂, H₂S and natural gas liquids</span></div>
-        <div class="step"><span class="u">3 · LIQUEFY</span><span class="t"><b>Liquefaction</b> at −162 °C in specialized plants — <b>Tendrara is this link</b></span></div>
-        <div class="step"><span class="u">4 · SHIP</span><span class="t"><b>Marine transport</b> — insulated cryogenic LNG carriers <span class="muted">(at Tendrara: road tankers)</span></span></div>
-        <div class="step"><span class="u">5 · REGAS</span><span class="t"><b>Regasification &amp; distribution</b> — reheated to gas, delivered to the consumer</span></div>
+        <div class="step"><span class="u">1</span><span class="t"><b>Exploration and production</b> — natural gas extraction from underground reservoirs</span></div>
+        <div class="step"><span class="u">2</span><span class="t"><b>Processing</b> — removal of impurities: water, CO₂, H₂S, and natural gas liquids</span></div>
+        <div class="step"><span class="u">3</span><span class="t"><b>Liquefaction</b> — cooling to −162 °C in specialized plants</span></div>
+        <div class="step"><span class="u">4</span><span class="t"><b>Marine transport</b> — LNG carriers with insulated cryogenic tanks</span></div>
+        <div class="step"><span class="u">5</span><span class="t"><b>Regasification and distribution</b> — reheating to gas and pipeline delivery to the consumer</span></div>
       </div>
-      <div class="facts" style="margin-top:10px;">
-        <div class="fact"><div class="n">15–20 %</div><div class="l">production &amp; processing</div></div>
-        <div class="fact"><div class="n">30–45 %</div><div class="l">liquefaction plant — the biggest share</div></div>
-        <div class="fact"><div class="n">10–30 %</div><div class="l">marine transport (distance-driven)</div></div>
+    </section>
+
+    <!-- Z13 COST DISTRIBUTION · Zibac · 4 -->
+    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["The liquefaction plant accounts for the largest share of total investment in the LNG chain.","Production and processing 15-20, liquefaction plant 30-45, marine transport 10-30, regasification terminal 15-25 percent.","Key takeaways: liquefaction is the most capital-intensive stage of the entire chain; marine transport varies widely with distance to the destination market.","Ranges are indicative; they vary by project and location."]'>
+      <div class="kicker">03 · Value chain, costs, and technology</div>
+      <h2>Cost distribution across the value chain</h2>
+      <p class="lead">The <b>liquefaction plant</b> accounts for the largest share of total investment in the LNG chain.</p>
+      <div class="facts">
+        <div class="fact"><div class="n">15–20 %</div><div class="l">production and processing</div></div>
+        <div class="fact"><div class="n">30–45 %</div><div class="l">liquefaction plant</div></div>
+        <div class="fact"><div class="n">10–30 %</div><div class="l">marine transport</div></div>
         <div class="fact"><div class="n">15–25 %</div><div class="l">regasification terminal</div></div>
       </div>
-      <div class="zstrip">Liquefaction is the most capital-intensive stage of the whole chain — indicative ranges, they vary by project and location.</div>
+      <ul class="points" style="margin-top:12px;">
+        <li><b>Liquefaction is the most capital-intensive stage</b> of the entire chain.</li>
+        <li>Marine transport costs vary widely depending on <b>distance to the destination market</b>.</li>
+      </ul>
+      <div class="zstrip">Indicative ranges; vary by project and location.</div>
+    </section>
+
+    <!-- Z14 LIQUEFACTION PROCESS · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Processed natural gas undergoes cascade refrigeration cycles that progressively cool it until it condenses into liquid at atmospheric pressure.","Pretreatment specs: CO2 max 50 ppmv, H2S max 4 ppmv, water max 1 ppmw, mercury max 0.01 ug/Nm3 — to prevent corrosion and freezing.","Cascade cooling: heat exchangers with refrigerants — propane, ethylene, methane or mixtures.","Liquefaction at -162 C; storage in double-walled cryogenic tanks at atmospheric pressure, ready for loading.","Strip: atmospheric pressure — LNG is stored without pressurization, unlike CNG."]'>
+      <div class="kicker">03 · Value chain, costs, and technology</div>
+      <h2>The liquefaction process</h2>
+      <div class="flow">
+        <div class="step"><span class="u">1 · PRETREAT</span><span class="t">CO₂ (max. <b>50 ppmv</b>) · H₂S (max. <b>4 ppmv</b>) · water (max. <b>1 ppmw</b>) · mercury (max. 0.01 µg/Nm³) — to avoid corrosion and freezing</span></div>
+        <div class="step"><span class="u">2 · COOL</span><span class="t"><b>Cascade cooling</b> — heat exchangers with refrigerants (propane, ethylene, methane, or mixtures)</span></div>
+        <div class="step"><span class="u">3 · LIQUEFY</span><span class="t">The gas reaches <b>−162 °C</b> and turns into liquid</span></div>
+        <div class="step"><span class="u">4 · STORE</span><span class="t"><b>Double-walled cryogenic tanks</b> at atmospheric pressure, ready for loading</span></div>
+      </div>
+      <div class="facts" style="margin-top:10px;">
+        <div class="fact"><div class="n">−162 °C</div><div class="l">liquefaction temperature</div></div>
+        <div class="fact"><div class="n">1/600</div><div class="l">volume reduction vs. natural gas</div></div>
+      </div>
+      <div class="zstrip">Atmospheric pressure: LNG is stored without needing pressurization, unlike CNG.</div>
+    </section>
+
+    <!-- Z15 TECHNOLOGIES & PLANT TYPES · Zibac · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Three plant types. Base-load: over 3 Mtpa per year, tied to a specific gas field — most of world capacity.","Peak-shaving: about 200 t/day liquefaction and 6000 t/day vaporization, grid-connected — liquefy in low demand, vaporize in peaks (common in the US).","Small-scale: under 500,000 tpa, continuous smaller production, distributed by trucks or small vessels — Tendrara belongs here.","Licensors: APCI C3MR / AP-X, market leader since the 1970s with about 80 trains; ConocoPhillips Cascade (Trinidad, Egypt, Alaska, Australia, Equatorial Guinea); Shell DMR and Linde/Statoil MFC."]'>
+      <div class="kicker">03 · Value chain, costs, and technology</div>
+      <h2>Technologies and plant types</h2>
+      <div class="zcards">
+        <div class="zcard"><div class="ic">B</div><h3>Base-load</h3><p><b>&gt; 3 Mtpa/year.</b> Large plants tied to a specific gas field; most of the world capacity.</p></div>
+        <div class="zcard dark"><div class="ic">P</div><h3>Peak-shaving</h3><p><b>≈200 t/day liq · 6,000 t/day vap.</b> Grid-connected; liquefy in low demand, vaporize in peaks (common in the US).</p></div>
+        <div class="zcard dark"><div class="ic">S</div><h3>Small-scale</h3><p><b>&lt; 500,000 tpa.</b> Continuous smaller-scale production; trucks or small vessels to specific customers.</p></div>
+      </div>
+      <ul class="points" style="margin-top:10px;">
+        <li><b>APCI C3MR / AP-X</b> — market leader since the 1970s, ~80 trains in operation.</li>
+        <li><b>ConocoPhillips Cascade</b> — Trinidad, Egypt, Alaska, Australia, Equatorial Guinea.</li>
+        <li><b>Shell DMR</b> (dual mixed refrigerant) and <b>Linde/Statoil MFC</b> — alternative cascade processes.</li>
+      </ul>
+    </section>
+
+    <!-- Z16 LNG SAFETY · Zibac · 6 -->
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["The three headline numbers: flammability range 5-15 percent by volume in air; autoignition 540 C; density 450 kg/m3 vs water 1000.","LNG vapor is lighter than air above -110 C and disperses; below that it is heavier and can accumulate at ground level.","Evaporated LNG can displace oxygen and create asphyxiation risk in confined spaces.","Rollover: stratified layers of different densities in a storage tank can trigger a sudden vapor release if they invert.","LNG is NOT flammable in its liquid state — it only burns in gaseous phase, mixed with air within its flammability range."]'>
+      <div class="kicker">04 · LNG safety</div>
+      <h2>LNG safety</h2>
+      <div class="facts">
+        <div class="fact"><div class="n">5–15 %</div><div class="l">flammability range (% vol. in air)</div></div>
+        <div class="fact"><div class="n">540 °C</div><div class="l">autoignition temperature</div></div>
+        <div class="fact"><div class="n">450 kg/m³</div><div class="l">LNG density (water: 1,000 kg/m³)</div></div>
+      </div>
+      <p class="lead" style="margin:12px 0 4px;font-weight:600;color:var(--ink);">Key safety considerations</p>
+      <ul class="points">
+        <li>LNG vapor is <b>lighter than air above −110 °C</b> and disperses; below that temperature it is <b>heavier</b> and can accumulate at ground level.</li>
+        <li>Evaporated LNG can <b>displace oxygen</b> and create an <b>asphyxiation risk</b> in confined spaces.</li>
+        <li><b>Rollover:</b> stratified layers of different densities in a storage tank can trigger a <b>sudden vapor release</b> if they invert.</li>
+        <li>LNG is <b>not flammable in its liquid state</b>: it only burns in gaseous phase, mixed with air within its flammability range.</li>
+      </ul>
+    </section>
+
+    <!-- Z17 PPE & FIRST AID · Zibac · 4 -->
+    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["PPE: hard hat and face shield; safety glasses under the face shield; long cryogenic gloves; aluminized and/or flame-resistant apron, or Nomex suit with no open pockets; long-sleeve shirt, pants and work boots; personal CH4 detector.","First aid — skin contact: remove contaminated clothing, rinse with cold or lukewarm water (never hot), seek medical attention if blisters or frostbite occur.","Asphyxiation: move to fresh air, artificial respiration or oxygen if needed, immediate medical attention.","Eye contact: rinse with cold or lukewarm water, protect the eyes from light, seek medical attention; no medication without guidance.","Ingestion: do not induce vomiting, rinse the mouth, give water or milk; immediate medical attention."]'>
+      <div class="kicker">04 · LNG safety</div>
+      <h2>Protective equipment and first aid</h2>
+      <div class="grid2">
+        <div>
+          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Personal protective equipment</p>
+          <ul class="points">
+            <li>Hard hat and <b>face shield</b> · safety glasses (under the shield).</li>
+            <li><b>Long cryogenic gloves</b>.</li>
+            <li>Aluminized / flame-resistant apron, or <b>Nomex suit with no open pockets</b>.</li>
+            <li>Long-sleeve shirt, pants, work boots · <b>personal CH₄ detector</b>.</li>
+          </ul>
+        </div>
+        <div>
+          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">First aid</p>
+          <ul class="points">
+            <li><b>Skin:</b> remove contaminated clothing, rinse with <b>cold or lukewarm water (never hot)</b>; medical attention for blisters/frostbite.</li>
+            <li><b>Asphyxiation:</b> fresh air, artificial respiration or O₂; immediate medical attention.</li>
+            <li><b>Eyes:</b> rinse cold/lukewarm, protect from light, medical attention.</li>
+            <li><b>Ingestion:</b> do not induce vomiting; rinse mouth, water or milk; immediate medical attention.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Z18 MATERIALS & FIRE SUPPRESSION · Zibac · 4 -->
+    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Fire suppression rule number one: NEVER use water or foam directly on the LNG itself.","Use dry chemical extinguishers: Purple K powder is recommended, with 5 times the extinguishing power of CO2.","Suitable materials: brass, bronze, aluminium, stainless steel. Unsuitable: carbon steel, black iron, plastic, galvanized steel.","At ultra-low temperatures materials become brittle and lose load-bearing capacity.","Note for our plant: the fixed foam systems on the LNG impoundment basins (Module 002) are engineered systems that control vaporization — the rule here is about manual firefighting on the liquid."]'>
+      <div class="kicker">04 · LNG safety</div>
+      <h2>Materials and fire suppression</h2>
+      <div class="grid2">
+        <div>
+          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Fire suppression</p>
+          <ul class="points">
+            <li><b>NEVER use water or foam on LNG.</b></li>
+            <li>Use <b>dry chemical</b> extinguishers: <b>Purple K</b> recommended — 5× the extinguishing power of CO₂.</li>
+          </ul>
+        </div>
+        <div>
+          <table class="data" style="font-size:13px;">
+            <tr><th>Suitable materials</th><th>Unsuitable materials</th></tr>
+            <tr><td>Brass</td><td>Carbon steel</td></tr>
+            <tr><td>Bronze</td><td>Black iron</td></tr>
+            <tr><td>Aluminium</td><td>Plastic</td></tr>
+            <tr><td>Stainless steel</td><td>Galvanized steel</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="zstrip">At ultra-low temperatures materials become brittle and lose load-bearing capacity.</div>
     </section>
 
     <!-- BREAK 1 -->
     <section class="slide inter brk" data-min="15" data-block="Break" data-presenter="—"
-      data-notes='["15-minute break. Give the exact return time.","Block 2 (Zibac): flammability, hazards, spill behaviour and safety precautions."]'>
+      data-notes='["15-minute break. Give the exact return time.","After the break: sections 05 and 06 — the fuels comparison and conclusions."]'>
       <div>
         <div class="big">☕ 15:00</div>
         <h2>Break</h2>
-        <p>15 minutes. Block 2 begins with LNG flammability and hazards.</p>
+        <p>15 minutes. Next: LNG vs LPG vs CNG vs Diesel.</p>
       </div>
     </section>
 
-    <!-- 18 FLAMMABILITY · Zibac · 7 -->
-    <section class="slide" data-min="7" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["The single most important number set of the course: methane burns only between ~5% and 15% in air.","Below 5% too lean, above 15% too rich — but a rich cloud DILUTES toward the flammable band at its edges.","Autoignition ~540 °C; flash point < −188 °C — the liquid itself is essentially always above its flash point, but the LIQUID does not burn: only vapour + air.","Vapour density trick: colder than ≈ −110 °C the vapour is heavier than air and hugs the ground; warmer, it becomes lighter and disperses upward.","This drives detector placement and why LNG clouds are dangerous at ground level early in a release."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">04 · LNG safety · Flammability</div>
-      <h2>Flammability of LNG</h2>
-      <div class="facts">
-        <div class="fact"><div class="n">5–15 %</div><div class="l">flammable range (% vol. methane in air)</div></div>
-        <div class="fact"><div class="n">~540 °C</div><div class="l">autoignition temperature</div></div>
-        <div class="fact"><div class="n">&lt; −188 °C</div><div class="l">flash point (vapour ignites readily)</div></div>
-        <div class="fact"><div class="n">−110 °C</div><div class="l">vapour buoyancy crossover vs air</div></div>
-      </div>
-      <ul class="points" style="margin-top:12px;">
-        <li>The <b>liquid does not burn</b> — only <b>vapour mixed with air</b> within the 5–15 % window.</li>
-        <li>Below 5 % too lean · above 15 % too rich — but a rich cloud <b>dilutes into the flammable band at its edges</b>.</li>
-        <li>Cold vapour (&lt; ≈ −110 °C) is <b>heavier than air</b> and accumulates at ground level; as it warms it rises and disperses.</li>
-      </ul>
-    </section>
-
-    <!-- 19 HAZARDOUS CHARACTERISTICS · Zibac · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["Walk the hazard families using the NFPA diamond image: Health 3, Fire 4, Reactivity 0.","Cryogenic burns: instant tissue damage on contact with liquid or cold vapour/metal.","Embrittlement: carbon steel turns glass-brittle at LNG temperature and can shatter.","Vapour cloud: dense, cold, travels with the wind. Rollover: stratified tank layers can invert and release vapour suddenly.","RPT — rapid phase transition: LNG on water can flash to vapour explosively without fire.","Crucial: LNG does NOT explode as a liquid — the risk appears when it evaporates and mixes with air in the flammable range."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">04 · LNG safety · Hazards</div>
-      <h2>Hazardous characteristics</h2>
-      <div class="fig" style="margin-top:2px;"><a href="/images/LNGrisk.png" target="_blank"><img src="/images/LNGrisk.png" alt="Main hazards in an LNG plant" style="max-height:200px;"></a></div>
-      <div class="grid2" style="margin-top:10px;">
-        <ul class="points">
-          <li><b>Cryogenic burns</b> — instant tissue damage on contact.</li>
-          <li><b>Embrittlement</b> — carbon steel shatters at LNG temperature.</li>
-          <li><b>Asphyxiation</b> — vapour displaces oxygen (next slides).</li>
-        </ul>
-        <ul class="points">
-          <li><b>Vapour cloud</b> — dense, cold, travels with the wind.</li>
-          <li><b>Rollover</b> — stratified tank layers invert → sudden vapour release.</li>
-          <li><b>RPT</b> — LNG on water can flash-vaporize violently.</li>
-        </ul>
-      </div>
-      <div class="note"><b>Crucial:</b> LNG does not explode as a liquid — risk appears when it <b>evaporates</b> and mixes with air within <b>5–15 %</b>.
-        <a class="btn-doc" href="/docs/LNGSafetyData.pdf" target="_blank" style="margin-left:10px;">📄 LNG Safety Data Sheet (PDF)</a></div>
-    </section>
-
-    <!-- 20 LNG SPILL & VAPOR CLOUD BASICS · Zibac · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["What actually happens when LNG escapes: pool forms → boils furiously on contact with warm ground → white visible cloud (condensed moisture).","The visible cloud is NOT the flammable boundary — the flammable envelope can extend beyond the visible edge.","Cold cloud hugs the ground and drifts downwind; as it warms past ≈ −110 °C it lifts and disperses.","On water: no ice layer forms, boiling stays violent → possible RPT.","Containment concept: spills are directed to impoundment basins where vaporization is controlled (foam — Module 002).","Never walk into or drive through a vapour cloud; ignition can flash back to the pool."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">04 · LNG safety · Spill behaviour</div>
-      <h2>LNG spill &amp; vapor-cloud basics</h2>
-      <div class="flow">
-        <div class="step"><span class="u">1 · SPILL</span><span class="t">LNG pools and <b>boils violently</b> on warm ground — vapour ≈ 600× the liquid volume</span></div>
-        <div class="step"><span class="u">2 · CLOUD</span><span class="t">Cold, dense cloud <b>hugs the ground</b> and drifts downwind — the white cloud is condensed moisture, <b>not</b> the flammable edge</span></div>
-        <div class="step"><span class="u">3 · WARM-UP</span><span class="t">Above ≈ <b>−110 °C</b> vapour becomes lighter than air, lifts and disperses</span></div>
-        <div class="step"><span class="u">4 · CONTAIN</span><span class="t">Spills route to <b>impoundment basins</b>; vaporization is controlled with foam (→ Module 002)</span></div>
-      </div>
-      <ul class="points" style="margin-top:10px;">
-        <li>On <b>water</b>: no ice layer, violent boiling → possible <b>rapid phase transition</b> (RPT).</li>
-        <li><b>Never</b> enter or drive through a vapour cloud — ignition can <b>flash back</b> to the pool.</li>
-      </ul>
-    </section>
-
-    <!-- 21 SAFETY PRECAUTIONS · Zibac · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["The safety heart of the module — slow down.","Non-toxic: NG is not poisonous like CO — but it is an ASPHYXIANT: it displaces oxygen.","Below 19.5% O2 the atmosphere is oxygen-deficient and can be fatal — the top risk in confined spaces during maintenance.","Odorization: household gas smells because mercaptan is ADDED. In LNG plants the gas is NOT odorized.","Therefore: safety depends entirely on instrumentation and gas detectors — never on your nose.","Before entering any confined or gas-suspect area: test the atmosphere. Trust the detector."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">04 · LNG safety · Precautions</div>
-      <h2>Critical safety precautions</h2>
-      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
-        <div class="grid2" style="gap:8px 18px;">
-          <ul class="points">
-            <li><b>Non-toxic</b> — not poisonous like carbon monoxide…</li>
-            <li>…but a serious <b>asphyxiation hazard:</b> it <b>displaces oxygen</b>.</li>
-            <li><b>O₂ &lt; 19.5 %</b> = oxygen-deficient, can be fatal — top risk in <b>confined spaces</b>.</li>
-          </ul>
-          <ul class="points">
-            <li><b>Odorization:</b> household gas has mercaptan added.</li>
-            <li><b>In LNG plants the gas is NOT odorized.</b></li>
-            <li>➜ Safety depends on <b>instrumentation &amp; gas detectors — never on smell.</b></li>
-          </ul>
-        </div>
-        <div class="carousel" id="safetyCarousel" data-interval="4000">
-          <a class="cimg active" href="/images/tank.jpg" target="_blank"><img src="/images/tank.jpg" alt="LNG storage tank"></a>
-          <div class="ccap">Click to enlarge</div>
-          <div class="cdots"><b class="active"></b></div>
-        </div>
-      </div>
-      <div class="note">Before entering any confined or gas-suspect area: <b>test the atmosphere</b>. Trust the detector, not your nose.</div>
-    </section>
-
-    <!-- 22 PPE & FIRST AID · Zibac · 6 -->
-    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["PPE for cryogenic work: hard hat + face shield, safety glasses underneath, LONG cryogenic gloves, aluminized/flame-resistant apron or Nomex without open pockets, long sleeves, boots, personal CH4 detector.","Work rules: ground & bond during transfer; non-sparking tools; no polyester clothing (static); no phones near LNG; Ex-rated electrical only.","First aid — skin contact: remove contaminated clothing, rinse with COLD or lukewarm water (never hot), never rub; medical attention for blisters/frostbite.","Asphyxiation: fresh air, oxygen/artificial respiration if needed, immediate medical attention.","Eyes: rinse cold/lukewarm water, protect from light, medical attention."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">04 · LNG safety · PPE &amp; first aid</div>
-      <h2>PPE &amp; first aid</h2>
-      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
-        <div class="grid2" style="gap:8px 18px;">
-          <ul class="points">
-            <li><b>PPE:</b> hard hat + face shield · safety glasses · <b>long cryogenic gloves</b> · aluminized / flame-resistant apron or Nomex (no open pockets) · long sleeves &amp; boots · <b>personal CH₄ detector</b>.</li>
-            <li><b>Work rules:</b> ground &amp; bond during transfer · non-sparking tools · <b>no polyester</b> (static) · no phones near LNG · Ex-rated electrical only.</li>
-          </ul>
-          <ul class="points">
-            <li><b>Skin contact:</b> rinse with <b>cold/lukewarm water — never hot, never rub</b>; medical care for blisters/frostbite.</li>
-            <li><b>Asphyxiation:</b> fresh air, O₂ / artificial respiration, immediate medical attention.</li>
-            <li><b>Eyes:</b> rinse cold/lukewarm water, protect from light, seek medical care.</li>
-          </ul>
-        </div>
-        <div class="carousel" id="ppeCarousel" data-interval="4000">
-          <a class="cimg active" href="/images/EPP.avif" target="_blank"><img src="/images/EPP.avif" alt="Cryogenic PPE"></a>
-          <div class="ccap">Click to enlarge</div>
-          <div class="cdots"><b class="active"></b></div>
-        </div>
+    <!-- Z19 SECTION DIVIDER · Zibac · 1 -->
+    <section class="slide zdivider" data-min="1" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Welcome back. Announce the section: comparison of LNG against LPG, CNG and Diesel.","We compare physical state, energy density, costs, emissions and applications."]'>
+      <div>
+        <div class="zk">Next section</div>
+        <h2>Comparison: LNG vs LPG,<br>CNG, and Diesel</h2>
+        <p>Physical state, energy density, costs, emissions, and applications.</p>
       </div>
     </section>
 
-    <!-- 23 MATERIALS & FIRE SUPPRESSION · Zibac · 5 -->
+    <!-- Z20 THE OTHER FUELS · Zibac · 5 -->
     <section class="slide" data-min="5" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["At ultra-low temperature, materials embrittle and lose load capacity.","Suitable: stainless steel, aluminium, brass, bronze (and 9% nickel steel). NOT suitable: carbon steel, black iron, galvanized steel, plastic.","Fire rule #1: NEVER put water on an LNG pool or leak — it adds heat, accelerates vaporization and can ice up valves.","Use dry chemical extinguishers (Purple K ≈ 5× the power of CO2) for gas fires; water only to cool surrounding equipment.","High-expansion foam on LNG impoundments controls vaporization/radiation — full detail in Module 002."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">04 · LNG safety · Materials &amp; fire</div>
-      <h2>Materials &amp; fire suppression</h2>
-      <div class="grid2">
-        <div>
-          <table class="data" style="font-size:13px;">
-            <tr><th>Suitable (cryogenic)</th><th>Not suitable</th></tr>
-            <tr><td>Stainless steel · 9 % Ni steel</td><td>Carbon steel</td></tr>
-            <tr><td>Aluminium</td><td>Black iron</td></tr>
-            <tr><td>Brass · Bronze</td><td>Galvanized steel · Plastic</td></tr>
-          </table>
-        </div>
-        <ul class="points">
-          <li><b>NEVER put water on an LNG pool</b> — it adds heat, accelerates vaporization, ices up valves.</li>
-          <li><b>Dry chemical</b> (Purple K ≈ 5× CO₂ power) for gas fires; water only to <b>cool surrounding equipment</b>.</li>
-          <li><b>High-expansion foam</b> on impoundments controls vaporization → Module 002.</li>
-        </ul>
+      data-notes='["Introduce the three contenders before comparing.","LPG, liquefied petroleum gas: a mix of propane and butane, byproduct of oil and natural gas processing; liquefies at low pressure and ambient temperature.","CNG, compressed natural gas: natural gas (mostly methane) compressed to 200-250 bar, stored in gaseous state at ambient temperature.","Diesel: liquid hydrocarbon at ambient temperature and pressure, widely used in heavy transport and industry."]'>
+      <div class="kicker">05 · Comparison</div>
+      <h2>The other fuels in comparison</h2>
+      <div class="zcards">
+        <div class="zcard"><div class="ic">LPG</div><h3>Liquefied Petroleum Gas</h3><p>Mix of <b>propane and butane</b>, byproduct of oil and natural gas processing. Liquefies at <b>low pressure and ambient temperature</b>.</p></div>
+        <div class="zcard dark"><div class="ic">CNG</div><h3>Compressed Natural Gas</h3><p>Natural gas (mostly methane) compressed to <b>200–250 bar</b>, stored in <b>gaseous state</b> at ambient temperature.</p></div>
+        <div class="zcard dark"><div class="ic">D</div><h3>Diesel</h3><p>Liquid hydrocarbon at ambient temperature and pressure, widely used in <b>heavy transport and industry</b>.</p></div>
       </div>
-      <div class="note">At ultra-low temperatures materials become brittle and lose load-bearing capacity — never expose non-rated equipment to LNG.</div>
     </section>
 
-    <!-- 24 COMPARATIVA · Zibac · 6 -->
-    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["Position LNG among the alternatives the trainees know.","LPG = propane/butane, liquid at ambient temperature under 2–10 bar. CNG = methane compressed to 200–250 bar, still a gas. Diesel = ambient liquid.","LNG wins on volume for long distance / no pipeline; CNG for urban fleets; diesel on infrastructure simplicity.","Zibac charts — energy density: by MASS all similar (LNG 50, LPG 47, CNG 50, Diesel 43 MJ/kg); by VOLUME they differ (LNG 23, LPG 25, CNG 9.5, Diesel 36 MJ/L) — volume is where the storage method matters.","Emissions (illustrative, diesel = 100): CNG 55, LNG 60, LPG 75 — natural gas burns cleanest: no sulfur, minimal particulates.","Exam favourite: LNG shrinks volume by COLD, CNG by PRESSURE."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">05 · LNG vs LPG vs CNG vs Diesel</div>
-      <h2>LNG vs LPG vs CNG vs Diesel</h2>
-      <table class="data" style="font-size:11.5px;">
-        <tr><th>Criterion</th><th>LNG</th><th>LPG</th><th>CNG</th><th>Diesel</th></tr>
-        <tr><td class="k">State</td><td><b>Cryogenic liquid</b></td><td>Pressurized liquid</td><td>Compressed gas</td><td>Liquid</td></tr>
-        <tr><td class="k">Temperature · Pressure</td><td><b>≈ −162 °C</b> · atm</td><td>Ambient · 2–10 bar</td><td>Ambient · <b>200–250 bar</b></td><td>Ambient · atm</td></tr>
-        <tr><td class="k">Emissions</td><td><b>Low</b></td><td>Medium</td><td><b>Low</b></td><td>High (NOx, PM)</td></tr>
-        <tr><td class="k">Main use</td><td>Long distance · marine · off-grid</td><td>Residential · agro</td><td>Urban fleets</td><td>Heavy transport</td></tr>
+    <!-- Z21 PHYSICAL STATE & STORAGE · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["The physical state table — walk it column by column.","LNG: cryogenic liquid at about -162 C, atmospheric pressure, double-walled cryogenic tank.","LPG: pressurized liquid at ambient temperature, 2-10 bar, pressurized cylinder.","CNG: compressed gas, ambient, 200-250 bar, high-pressure cylinder. Diesel: liquid, ambient, atmospheric, simple tank."]'>
+      <div class="kicker">05 · Comparison</div>
+      <h2>Physical state and storage conditions</h2>
+      <table class="data">
+        <tr><th></th><th>LNG</th><th>LPG</th><th>CNG</th><th>Diesel</th></tr>
+        <tr><td class="k">Physical state</td><td><b>Cryogenic liquid</b></td><td>Pressurized liquid</td><td>Compressed gas</td><td>Liquid</td></tr>
+        <tr><td class="k">Temperature</td><td><b>≈ −162 °C</b></td><td>Ambient</td><td>Ambient</td><td>Ambient</td></tr>
+        <tr><td class="k">Typical pressure</td><td>Atmospheric</td><td>2–10 bar</td><td><b>200–250 bar</b></td><td>Atmospheric</td></tr>
+        <tr><td class="k">Tank type</td><td>Double-walled cryogenic</td><td>Pressurized cylinder</td><td>High-pressure cylinder</td><td>Simple tank</td></tr>
       </table>
-      <div class="carousel" id="compCarousel" data-interval="5000" style="height:252px;">
-        <a class="cimg active" href="/images/zibac/energy-density.svg" target="_blank"><img src="/images/zibac/energy-density.svg" alt="Energy density by mass and volume" style="max-height:228px;"></a>
-        <a class="cimg" href="/images/zibac/emissions.svg" target="_blank"><img src="/images/zibac/emissions.svg" alt="Relative emissions" style="max-height:228px;"></a>
-        <div class="ccap">Auto-rotating · click to enlarge</div>
-        <div class="cdots"><b class="active"></b><b></b></div>
-      </div>
-      <div class="note">Key: LNG reduces volume by <b>cold</b>, CNG by <b>pressure</b>. Fuel choice depends on distance, volume and infrastructure.</div>
     </section>
 
-    <!-- 24b ADVANTAGES & CONCLUSIONS · Zibac · 4 -->
-    <section class="slide" data-min="4" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["Close my part with the decision-making summary — section 06 of the agenda.","Advantages: lower carbon footprint than diesel and petroleum liquids; high energy density enables long-distance transport; enables gas trade without pipelines; clean combustion — no sulfur, minimal particulates.","Challenges: high investment in liquefaction, regasification and vessels; a cold chain that must hold -162 C at all times; price volatility and oversupply risk in the global market; methane leaks along the chain if not managed.","Conclusions: cryogenics shrinks gas 600x and makes it a global commodity; mastering P, T, density, saturation and stratification is what lets us operate it SAFELY; the optimal fuel always depends on distance, volume and infrastructure at destination.","Hand back to Mario for the module recap."]'>
-      <span class="pres zr">Zibac</span>
-      <div class="kicker">06 · Advantages, challenges &amp; conclusions</div>
-      <h2>LNG — advantages, challenges &amp; conclusions</h2>
+    <!-- Z22 ENERGY DENSITY · Zibac · 7 -->
+    <section class="slide" data-min="7" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["My two charts. By MASS all four fuels are similar: LNG 50, LPG 47, CNG 50, Diesel 43 MJ/kg.","By VOLUME they differ strongly: LNG 23, LPG 25, CNG only 9.5, Diesel 36 MJ/L.","Message: the storage method is what changes the game — compression (CNG) sacrifices volumetric density; liquefaction recovers most of it.","Typical approximate values; they vary by composition and measurement conditions."]'>
+      <div class="kicker">05 · Comparison</div>
+      <h2>Energy density</h2>
+      <div class="fig"><a href="/images/zibac/energy-density.svg" target="_blank"><img src="/images/zibac/energy-density.svg" alt="Energy density by mass and by volume" style="max-height:340px;"></a>
+        <div class="cap">Click to enlarge</div></div>
+      <div class="note">Typical approximate values; vary by composition and measurement conditions.</div>
+    </section>
+
+    <!-- Z23 COSTS & INFRASTRUCTURE · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["LNG: high infrastructure cost — liquefaction and regasification plants, cryogenic tanks; competitive cost per unit of energy at large volumes and long distances.","LPG: moderate infrastructure (simple pressurized tanks); widely available; higher cost per unit of energy than natural gas in most markets.","CNG: moderate compression infrastructure; generally low cost per unit of energy; ideal for urban fleets returning to base.","Diesel: minimal, well-established global infrastructure; cost tied to oil price volatility."]'>
+      <div class="kicker">05 · Comparison</div>
+      <h2>Costs and infrastructure</h2>
+      <ul class="points">
+        <li><b>LNG</b> — <b>high infrastructure cost</b> (liquefaction &amp; regasification plants, cryogenic tanks); competitive cost per unit of energy in <b>large volumes and long distances</b>.</li>
+        <li><b>LPG</b> — moderate infrastructure (simple pressurized tanks); widely available, with a <b>higher cost per unit of energy</b> than natural gas in most markets.</li>
+        <li><b>CNG</b> — moderate compression infrastructure; <b>generally low cost</b> per unit of energy, ideal for urban fleets with return to base.</li>
+        <li><b>Diesel</b> — <b>minimal, consolidated</b> global infrastructure; cost per unit of energy subject to <b>oil price volatility</b>.</li>
+      </ul>
+    </section>
+
+    <!-- Z24 EMISSIONS · Zibac · 6 -->
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Natural gas — LNG and CNG — burns more cleanly than petroleum-derived liquid fuels: lower CO2, NOx, SOx and particulate matter.","LNG / CNG: lower carbon footprint and virtually no sulfur or particulate emissions.","LPG: intermediate — cleaner than diesel but more carbon than natural gas.","Diesel: highest NOx and particulates; needs additional after-treatment systems.","The chart is illustrative, diesel = 100: CNG 55, LNG 60, LPG 75."]'>
+      <div class="kicker">05 · Comparison</div>
+      <h2>Emissions and sustainability</h2>
+      <div class="figrow" style="grid-template-columns:1fr 1.2fr;">
+        <ul class="points">
+          <li><b>LNG / CNG:</b> lower carbon footprint, virtually <b>no sulfur or particulate</b> emissions.</li>
+          <li><b>LPG:</b> intermediate — cleaner than diesel, more carbon than natural gas.</li>
+          <li><b>Diesel:</b> highest <b>NOx and particulate</b> emissions; requires additional after-treatment.</li>
+        </ul>
+        <div class="fig"><a href="/images/zibac/emissions.svg" target="_blank"><img src="/images/zibac/emissions.svg" alt="Relative emissions" style="max-height:280px;"></a>
+          <div class="cap">Click to enlarge</div></div>
+      </div>
+    </section>
+
+    <!-- Z25 APPLICATIONS · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Where each fuel wins.","LNG: long-haul heavy transport, marine shipping, power generation, areas without pipeline access — exactly the Tendrara case.","LPG: residential and commercial heating and cooking, forklifts, autogas vehicles, agricultural use.","CNG: urban vehicles, buses, fleets returning to a refueling base.","Diesel: heavy transport, rail, backup power generation, construction machinery."]'>
+      <div class="kicker">05 · Comparison</div>
+      <h2>Typical applications and uses</h2>
+      <div class="zcards mini" style="grid-template-columns:repeat(2,1fr);">
+        <div class="zcard"><div class="ic">N</div><h3>LNG</h3><p>Long-haul heavy transport, marine shipping, power generation, and areas <b>without pipeline access</b>.</p></div>
+        <div class="zcard dark"><div class="ic">P</div><h3>LPG</h3><p>Residential/commercial heating and cooking, forklifts, autogas vehicles, agricultural use.</p></div>
+        <div class="zcard dark"><div class="ic">C</div><h3>CNG</h3><p>Urban vehicles, buses, and fleets returning to a refueling base.</p></div>
+        <div class="zcard dark"><div class="ic">D</div><h3>Diesel</h3><p>Heavy transport, rail, backup power generation, and construction machinery.</p></div>
+      </div>
+    </section>
+
+    <!-- Z26 COMPARATIVE SUMMARY · Zibac · 6 -->
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["The summary table — this is the exam-ready view of section 05.","Energy density by mass: high for LNG, CNG and diesel, medium-high LPG. By volume: diesel high, LNG and LPG medium-high, CNG low.","Storage: cryogenic / pressurized / high pressure / simple. Emissions: low for LNG and CNG, medium LPG, high diesel.","Infrastructure: complex for LNG, moderate LPG and CNG, minimal diesel.","Main uses: long distance and marine for LNG; residential and agro for LPG; urban fleets for CNG; heavy transport for diesel."]'>
+      <div class="kicker">05 · Comparison</div>
+      <h2>Comparative summary</h2>
+      <table class="data" style="font-size:12.5px;">
+        <tr><th>Criterion</th><th>LNG</th><th>LPG</th><th>CNG</th><th>Diesel</th></tr>
+        <tr><td class="k">Energy density (mass)</td><td><b>High</b></td><td>Medium-high</td><td>High</td><td>High</td></tr>
+        <tr><td class="k">Energy density (volume)</td><td>Medium-high</td><td>Medium-high</td><td><b>Low</b></td><td><b>High</b></td></tr>
+        <tr><td class="k">Storage</td><td>Cryogenic</td><td>Pressurized</td><td>High pressure</td><td>Simple</td></tr>
+        <tr><td class="k">Emissions</td><td><b>Low</b></td><td>Medium</td><td><b>Low</b></td><td>High</td></tr>
+        <tr><td class="k">Infrastructure required</td><td>Complex</td><td>Moderate</td><td>Moderate</td><td>Minimal</td></tr>
+        <tr><td class="k">Main use</td><td>Long distance / marine</td><td>Residential / agro</td><td>Urban / fleets</td><td>Heavy transport</td></tr>
+      </table>
+    </section>
+
+    <!-- Z27 ADVANTAGES & CHALLENGES · Zibac · 7 -->
+    <section class="slide" data-min="7" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Section 06 — the decision-making summary.","Advantages: lower carbon footprint vs diesel and petroleum liquids; high energy density enabling efficient long-distance transport; enables international gas trade without pipelines; clean combustion, no sulfur or significant particulates.","Challenges: high investment in liquefaction plants, regasification and specialized vessels; complex cold chain — must keep -162 C at all times; oversupply risk and price volatility in the global market; methane emissions (leaks) along the chain if not properly managed."]'>
+      <div class="kicker">06 · Advantages, challenges, and conclusions</div>
+      <h2>Advantages and challenges of LNG</h2>
       <div class="grid2">
         <div>
           <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Advantages</p>
           <ul class="points">
-            <li><b>Lower carbon footprint</b> than diesel and other petroleum liquids.</li>
-            <li><b>High energy density</b> → efficient long-distance transport.</li>
-            <li>Enables <b>gas trade without pipelines</b> (ships, trucks).</li>
-            <li><b>Clean combustion</b> — no sulfur, minimal particulates.</li>
+            <li><b>Lower carbon footprint</b> than diesel and other petroleum-derived liquids.</li>
+            <li><b>High energy density</b> — efficient long-distance transport.</li>
+            <li>Enables <b>international gas trade without pipelines</b>.</li>
+            <li><b>Clean combustion</b>: no sulfur or significant particulate matter.</li>
           </ul>
         </div>
         <div>
           <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Challenges</p>
           <ul class="points">
-            <li><b>High investment</b> — liquefaction, regasification, vessels.</li>
-            <li><b>Cold chain</b> — must hold −162 °C at all times.</li>
-            <li><b>Price volatility</b> / oversupply risk in the global market.</li>
-            <li><b>Methane leaks</b> along the chain if not managed.</li>
+            <li><b>High investment</b> — liquefaction, regasification, specialized vessels.</li>
+            <li><b>Complex cold chain</b> — requires −162 °C at all times.</li>
+            <li>Risk of <b>oversupply and price volatility</b> in the global market.</li>
+            <li><b>Methane emissions (leaks)</b> along the chain if not properly managed.</li>
           </ul>
         </div>
       </div>
-      <div class="zstrip">The optimal fuel depends on <b>distance, volume and infrastructure at destination</b> — cryogenics is what turns natural gas into a global commodity.</div>
+    </section>
+
+    <!-- Z28 IN SUMMARY · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Close with the four conclusions, slowly.","Cryogenics makes it possible to liquefy natural gas at -162 C, shrinking its volume about 600 times and allowing it to be shipped by sea to any destination.","Understanding pressure, temperature, density, and the phenomena of saturation, vaporization and stratification is key to operating LNG safely.","Against LPG, CNG and Diesel, LNG combines high energy density with lower emissions — at the cost of more cryogenic infrastructure and strict safety protocols.","The optimal fuel choice depends on distance, volume to transport, and infrastructure available at destination. Thank you — back to Mario for the module recap."]'>
+      <div class="kicker">06 · Conclusions</div>
+      <h2>In summary</h2>
+      <ul class="points">
+        <li><b>Cryogenics</b> makes it possible to liquefy natural gas at <b>−162 °C</b>, shrinking its volume <b>~600×</b> and allowing it to be shipped by sea to any destination.</li>
+        <li>Understanding <b>pressure, temperature, density</b> and the phenomena of <b>saturation, vaporization and stratification</b> is key to operating LNG safely.</li>
+        <li>Compared to LPG, CNG and Diesel, LNG combines <b>high energy density with lower emissions</b>, though it requires greater investment in cryogenic infrastructure and strict safety protocols.</li>
+        <li>The optimal fuel choice depends on <b>distance, volume to be transported, and infrastructure</b> available at the destination.</li>
+      </ul>
+      <div class="zstrip"><b>Thank you.</b> — back to Mario for the Tendrara recap, Q&amp;A and the module exam.</div>
     </section>
 
     <!-- 25 ABBREVIATIONS · Mario · 1 -->
     <section class="slide" data-min="1" data-block="Block 2" data-presenter="Mario"
       data-notes='["Reference slide — from the Operating Manual; do not read every line.","Call out the key ones: ESD, PSD, LSD, BDV, PCS, BOG, HMB, MDMT.","This table reappears in every unit module."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Reference · from the Operating Manual</div>
       <h2>Abbreviations</h2>
       <div class="refcols">
@@ -945,7 +937,6 @@
     <!-- 26 UNITS · Mario · 1 -->
     <section class="slide" data-min="1" data-block="Block 2" data-presenter="Mario"
       data-notes='["Reference slide — units of measure and reference conditions from the Operating Manual.","Highlight the reference conditions: Normal 1.013 bara & 0 °C; Standard 14.696 psia & 60 °F.","Consistent units matter when reading the HMB and operating data."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Reference · from the Operating Manual</div>
       <h2>Units of measure</h2>
       <div class="refcols">
@@ -979,7 +970,6 @@
     <!-- 27 KEY MESSAGES & RECAP · Mario · 6 -->
     <section class="slide" data-min="6" data-block="Block 2" data-presenter="Mario"
       data-notes='["Read the key messages slowly — they are exam material.","Ask 2–3 quick recall questions: flammable range? why no odorization? what happens to LNG on water?","Preview Module 002 (8 Jul): facility operation, access & workflow, emergency systems, vapor cloud, foam & fire control.","Break, Q&A and exam follow."]'>
-      <span class="pres mm">Mario</span>
       <div class="kicker">Take-home · Recap</div>
       <h2>Key messages — Module 001</h2>
       <ul class="points">
