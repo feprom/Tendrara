@@ -129,7 +129,7 @@
   .zcards.mini h3{font-size:13.5px;}
   .zcards.mini p{font-size:11.8px;margin:0;}
   .loc{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;margin-top:8px;align-items:start;}
-  .loc iframe{width:100%;height:300px;border:1px solid var(--line-strong);border-radius:6px;}
+  .loc iframe{width:100%;height:420px;border:1px solid var(--line-strong);border-radius:6px;}
   .coord{font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--bg-soft);border:1px solid var(--line-strong);border-radius:4px;padding:9px 12px;display:inline-block;margin:4px 0 12px;}
   .btn-earth{display:inline-block;background:var(--crimson);color:#fff;text-decoration:none;padding:11px 18px;border-radius:5px;font-weight:600;font-size:14px;}
   .btn-earth:hover{background:var(--crimson-dark);}
@@ -317,8 +317,8 @@
       </div>
     </section>
 
-    <!-- 6 TENDRARA INTRO · Mario · 4 -->
-    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Mario"
+    <!-- 6 TENDRARA INTRO · Mario · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Mario"
       data-notes='["Plant identity: a modular micro-LNG facility monetising Tendrara field gas.","Images auto-rotate — 3D render, plant areas/GA, site view. Click to enlarge.","Feed from wells TE-6 & TE-7; product ~261 t/day LNG, trucked off-grid.","Engineered for a remote field: compact footprint, factory-tested skids."]'>
       <div class="kicker">Introducing the plant</div>
       <h2>The Tendrara Micro LNG facility</h2>
@@ -345,7 +345,7 @@
       <div class="kicker">Where it is</div>
       <h2>Plant location</h2>
       <div class="loc">
-        <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=33.010611,-2.350528&amp;z=12&amp;output=embed"></iframe>
+        <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=33.010611,-2.350528&amp;z=5&amp;t=k&amp;output=embed"></iframe>
         <div>
           <p class="lead" style="margin-bottom:4px;">Tendrara, eastern Morocco — a remote field location served off-grid by road tanker.
             Site elevation <b>1,434 m</b> (ambient ~83.5 kPa).</p>
@@ -355,8 +355,8 @@
       </div>
     </section>
 
-    <!-- 8 FACILITY DESCRIPTION · Mario · 4 -->
-    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Mario"
+    <!-- 8 FACILITY DESCRIPTION · Mario · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Mario"
       data-notes='["Walk the general arrangement: process train, storage & loading, utilities, power generation, flare, cabins.","Everything is skid-mounted with battery limits at the inlet delivery manifold and the LNG loading point.","Name the unit families now — the numbers will repeat all through the program.","Condensate from V-201 fuels the hot-oil burners; process water goes to U530 treatment."]'>
       <div class="kicker">Facility description</div>
       <h2>Plant areas &amp; general arrangement</h2>
@@ -372,8 +372,32 @@
       </div>
     </section>
 
-    <!-- 9 BLOCK DIAGRAM · Mario · 4 -->
+    <!-- 9 SITE CONDITIONS · Mario · 4 -->
     <section class="slide" data-min="4" data-block="Block 1" data-presenter="Mario"
+      data-notes='["A high, dry, harsh site — these conditions shape how the plant is designed and operated. Walk the chart left to right.","Altitude 1,434 m: ambient pressure is only ~83.5 kPa — the HYSYS simulation and the HMB are run at this pressure, not at sea level.","Summer: day averages peak at 37 C (extremes above 40 C) — air-cooled condensers work hardest; U340 brings extra condenser fans online as ambient rises.","Winter: nights average ~3 C in January with frost, and OCCASIONAL LIGHT SNOW on the high plateau — this is why E-201 preheats the feed gas against hydrates (the winter case of the Process Description).","Day-night swing is 10-13 C all year — expect thermal cycling on piping and instruments between rounds.","Desert wind: the chergui, a hot, dry, dust-laden Saharan wind — dust loads the inlet filters (F-201A/B) and equipment fins; that is also why critical enclosures are sealed and tanks painted white.","Very dry: 1-4 rain days per month, humidity near 18 percent in summer."]'>
+      <div class="kicker">Where it is · Site conditions</div>
+      <h2>Site conditions — a high-altitude desert plateau</h2>
+      <div class="figrow" style="grid-template-columns:1.45fr 1fr;align-items:start;">
+        <div class="fig" style="margin-top:2px;"><a href="/images/site-temperature.svg" target="_blank"><img src="/images/site-temperature.svg" alt="Tendrara ambient temperature through the year" style="max-height:335px;"></a>
+          <div class="cap">Monthly average day / night temperatures (click to enlarge)</div></div>
+        <div>
+          <div class="facts" style="margin-top:0;">
+            <div class="fact"><div class="n">1,434 m</div><div class="l">altitude — ambient ~<b>83.5 kPa</b> (HMB/HYSYS basis)</div></div>
+            <div class="fact"><div class="n">3→37 °C</div><div class="l">average night-to-day span across the year (Δ34 °C)</div></div>
+          </div>
+          <ul class="points" style="margin-top:10px;">
+            <li><b>Summer:</b> ~37 °C days — <b>air-cooled condensers</b> at maximum duty (U340 adds fans).</li>
+            <li><b>Winter:</b> frost at night and <b>occasional light snow</b> — E-201 feed preheat vs <b>hydrates</b>.</li>
+            <li><b>Desert wind (chergui):</b> hot, dry, <b>dust-laden</b> — loads inlet filters F-201A/B &amp; fins.</li>
+            <li><b>Very dry:</b> 1–4 rain days/month · ~18 % humidity in summer · 10–13 °C day-night swing.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">Climatology: 12+ yr monthly averages (WorldWeatherOnline) at 33.0106 N, 2.3505 W. Plant-specific design values: project design basis / HMB govern.</div>
+    </section>
+
+    <!-- 10 BLOCK DIAGRAM · Mario · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Mario"
       data-notes='["The simplest mental model of the plant — one box per unit.","Trace the main gas path 200→330→310→350→220, plus ammonia (340) and BOG (360/370) loops.","This high-level picture is enough today; later modules open each box.","Anchor: feed enters left, LNG to trucks exits right."]'>
       <div class="kicker">The plant at a glance</div>
       <h2>Tendrara — block diagram</h2>
@@ -381,8 +405,8 @@
         <div class="cap">Tendrara LNG — block diagram (click to enlarge)</div></div>
     </section>
 
-    <!-- 10 PFD & OPERATING DATA · Mario · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
+    <!-- 11 PFD & OPERATING DATA · Mario · 5 -->
+    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Mario"
       data-notes='["Now put numbers on the block diagram — the typical/design operating data along the gas path.","Feed: 16.67 MMSCFD from TE-6/TE-7, arriving at up to 55 barg; SDV-2001 is the plant inlet ESD valve; PV-2001 regulates inlet pressure; E-201 preheats against hydrates.","Pre-treatment: amine removes CO2 (CO2-rich vent via PCV-3303 at 4.5 barg); mol-sieve TSA dries to spec (regeneration at ~232 °C, twin beds).","Cold end: MR loop cools the gas in the cold box; NGL separated at −75 °C; NRU column T-357 strips nitrogen to ≤1.1 %mol in LNG.","Product: LNG at −165.7 °C, ~0.12 barg to the storage tank; flash & boil-off gas recompressed to 5–6 barg for fuel gas — no routine flaring.","Do not memorise every number today — this table returns in each unit module."]'>
       <div class="kicker">PFD · Typical operating data</div>
       <h2>Process path &amp; typical operating data</h2>
