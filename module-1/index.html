@@ -1054,4 +1054,70 @@
     document.getElementById('title').textContent=d.title;
     document.getElementById('times').innerHTML='This slide <b>'+d.min+' min</b> · runs <b>'+fmt(d.start)+'</b> → <b>'+fmt(d.end)+'</b> · of '+fmt(TOTAL);
     document.getElementById('notes').innerHTML=d.notes.length? d.notes.map(n=>'<li>'+n+'</li>').join('') : '<li style="color:#777">No notes.</li>';
-    document.getElementById('nextt').textC
+    document.getElementById('nextt').textContent= DATA[idx+1]? (DATA[idx+1].presenter?'['+DATA[idx+1].presenter+'] ':'')+DATA[idx+1].title : '— end of module —';
+    document.getElementById('pbar').style.width=((idx+1)/DATA.length*100)+'%';
+    document.getElementById('prev').disabled=(idx===0);
+    document.getElementById('next').disabled=(idx===DATA.length-1);
+    document.getElementById('tlslide').style.left=(DATA[idx].start/TOTAL*100)+'%';
+    document.getElementById('tlslide').style.width=(DATA[idx].min/TOTAL*100)+'%';
+    updateDelta();
+  }
+  bc.onmessage=(ev)=>{ if(ev.data&&ev.data.type==='state'){ idx=ev.data.index; paint(); } };
+  document.getElementById('prev').onclick=()=>bc.postMessage({type:'goto',index:Math.max(0,idx-1)});
+  document.getElementById('next').onclick=()=>bc.postMessage({type:'goto',index:Math.min(DATA.length-1,idx+1)});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' ')bc.postMessage({type:'goto',index:Math.min(DATA.length-1,idx+1)});
+    if(e.key==='ArrowLeft')bc.postMessage({type:'goto',index:Math.max(0,idx-1)});
+  });
+  let running=false, startedAt=0, accumSec=0, raf=null;
+  function curSec(){ return Math.floor(accumSec + (running ? (Date.now()-startedAt)/1000 : 0)); }
+  function tick(){
+    const sec=curSec();
+    document.getElementById('elapsed').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+    const now=document.getElementById('tlnow'); now.style.display='block';
+    now.style.left=Math.min(100,(sec/60)/TOTAL*100)+'%';
+    updateDelta(sec);
+  }
+  function updateDelta(sec){
+    const el=document.getElementById('delta');
+    if(!running && accumSec===0){el.textContent='';return;}
+    if(sec===undefined) sec=curSec();
+    const m=sec/60, d=DATA[idx];
+    if(m > d.end) el.innerHTML='<span class="behind">+'+Math.round(m-d.end)+'m behind</span>';
+    else if(m < d.start) el.innerHTML='<span class="ahead">'+Math.round(d.start-m)+'m ahead</span>';
+    else el.innerHTML='<span style="color:#39c46e">on pace</span>';
+  }
+  document.getElementById('tStart').onclick=function(){
+    if(!running){ running=true; startedAt=Date.now(); this.textContent='Pause'; raf=setInterval(tick,250); tick(); }
+    else { running=false; accumSec=curSec(); clearInterval(raf); this.textContent='Resume'; updateDelta(accumSec); }
+  };
+  document.getElementById('tReset').onclick=function(){
+    running=false; accumSec=0; clearInterval(raf);
+    document.getElementById('elapsed').textContent='0:00';
+    document.getElementById('delta').textContent='';
+    document.getElementById('tStart').textContent='Start';
+    document.getElementById('tlnow').style.display='none';
+  };
+  bc.postMessage({type:'hello'});
+  paint();
+<\/script></body></html>`;
+  }
+
+  show(0);
+</script>
+<script>
+  document.querySelectorAll('.carousel').forEach(function(car){
+    var imgs=[].slice.call(car.querySelectorAll('.cimg'));
+    var dots=[].slice.call(car.querySelectorAll('.cdots b'));
+    if(imgs.length===0) return;
+    var ci=0, timer=null, interval=parseInt(car.dataset.interval||'4000',10);
+    function go(n){ci=(n+imgs.length)%imgs.length;
+      imgs.forEach(function(im,k){im.classList.toggle('active',k===ci);});
+      dots.forEach(function(d,k){d.classList.toggle('active',k===ci);});}
+    dots.forEach(function(d,k){d.onclick=function(){go(k);restart();};});
+    function restart(){clearInterval(timer);if(imgs.length>1){timer=setInterval(function(){go(ci+1);},interval);}}
+    restart();
+  });
+</script>
+</body>
+</html>
