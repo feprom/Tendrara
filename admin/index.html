@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tendrara Training — Administration</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA;
+    --ok:#1F8A4C; --bad:#B3261E; --blue:#0B5CAD;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;}
+  body{font-family:var(--sans);color:var(--ink);min-height:100vh;background:#F2F4F7;-webkit-font-smoothing:antialiased;}
+  .sheet{max-width:1180px;margin:0 auto;background:var(--bg);min-height:100vh;border-left:1px solid var(--line);border-right:1px solid var(--line);}
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 30px;border-bottom:1px solid var(--line);}
+  .brandbar .vendor img{height:32px;display:block;}
+  .brandbar .ttl{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);}
+  .accent{height:3px;background:var(--crimson);}
+  .wrap{padding:26px 30px 60px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--crimson);font-weight:700;margin-bottom:8px;}
+  h1{font-size:24px;margin:0 0 6px;} h2{font-size:18px;margin:0 0 12px;}
+  p.lead{color:var(--ink-soft);font-size:14px;line-height:1.6;margin:0 0 14px;max-width:75ch;}
+  .card{border:1px solid var(--line-strong);border-radius:8px;background:var(--bg-soft);padding:22px 24px;max-width:480px;}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;}
+  input[type=password],input[type=search]{width:100%;font-size:15px;padding:11px 13px;border:1px solid var(--line-strong);border-radius:5px;font-family:var(--sans);}
+  input:focus{outline:2px solid var(--crimson);border-color:var(--crimson);}
+  button.primary{background:var(--crimson);color:#fff;border:none;font-size:15px;font-weight:600;padding:11px 20px;border-radius:5px;cursor:pointer;margin-top:14px;}
+  button.primary:hover{background:var(--crimson-dark);}
+  .err{color:var(--bad);font-size:13.5px;margin-top:10px;display:none;}
+  .hidden{display:none;}
+  /* KPI */
+  .kpis{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 20px;}
+  .kpi{flex:1;min-width:150px;border:1px solid var(--line-strong);border-radius:8px;padding:14px 16px;background:var(--bg-soft);}
+  .kpi .n{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--crimson);line-height:1;}
+  .kpi .l{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+  /* tabs */
+  .tabs{display:flex;gap:6px;border-bottom:2px solid var(--line);margin:6px 0 18px;flex-wrap:wrap;}
+  .tab{border:none;background:none;font-size:14px;font-weight:600;color:var(--ink-soft);padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;}
+  .tab.on{color:var(--crimson);border-bottom-color:var(--crimson);}
+  /* tables */
+  table.data{width:100%;border-collapse:collapse;font-size:13px;}
+  table.data th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);
+    text-align:left;padding:8px 10px;border-bottom:2px solid var(--line-strong);position:sticky;top:0;background:#fff;}
+  table.data th[data-k]{cursor:pointer;user-select:none;white-space:nowrap;}
+  table.data th[data-k]:hover{color:var(--crimson);}
+  table.data th .dir{color:var(--crimson);font-size:9px;margin-left:3px;}
+  a.decklink{display:inline-block;color:var(--crimson);font-weight:600;text-decoration:none;font-size:12.5px;border:1px solid var(--crimson);border-radius:4px;padding:3px 10px;}
+  a.decklink:hover{background:var(--crimson);color:#fff;}
+  table.data td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.data tr:hover td{background:var(--bg-soft);}
+  .mono{font-family:var(--mono);}
+  .muted{color:var(--ink-soft);}
+  .right{text-align:right;}
+  /* bars */
+  .cbar{display:flex;align-items:center;gap:10px;margin:8px 0;}
+  .cbar .nm{width:160px;font-size:13.5px;font-weight:600;}
+  .cbar .bar{flex:1;height:22px;background:var(--bg-soft);border:1px solid var(--line);border-radius:4px;overflow:hidden;}
+  .cbar .bar i{display:block;height:100%;background:var(--crimson);}
+  .cbar .ct{width:46px;font-family:var(--mono);font-weight:700;text-align:right;}
+  /* results badges */
+  .score-badge{display:inline-block;font-family:var(--mono);font-size:12px;font-weight:700;border-radius:4px;padding:3px 8px;min-width:52px;text-align:center;}
+  .score-badge.pass{background:#E6F4EC;color:var(--ok);border:1px solid #BFE3CE;}
+  .score-badge.fail{background:#FBEAE9;color:var(--bad);border:1px solid #F0C6C3;}
+  .score-badge.none{background:var(--bg-soft);color:var(--line-strong);border:1px dashed var(--line-strong);}
+  .att{font-size:10px;color:var(--ink-soft);display:block;margin-top:2px;}
+  /* links tab */
+  .linkrow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:8px 0;background:#fff;flex-wrap:wrap;}
+  .linkrow .lt{flex:1;min-width:240px;}
+  .linkrow .lt b{display:block;font-size:14px;}
+  .linkrow .lt span{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);word-break:break-all;}
+  .copybtn{background:#fff;color:var(--crimson);border:1.5px solid var(--crimson);font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:5px;cursor:pointer;}
+  .copybtn:hover{background:var(--crimson);color:#fff;}
+  .toolrow{display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+  .toolrow input[type=search]{max-width:320px;}
+  .refresh{background:none;border:1px solid var(--line-strong);border-radius:5px;padding:8px 14px;font-size:13px;cursor:pointer;color:var(--ink-soft);}
+  .refresh:hover{border-color:var(--crimson);color:var(--crimson);}
+  .scrollbox{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:6px;}
+  @media(max-width:700px){.wrap{padding:18px 14px 50px;}.brandbar{padding:12px 14px;}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="brandbar">
+    <div class="vendor"><img src="/images/logoTA.png" alt="Technical America"></div>
+    <div class="ttl">Tendrara Micro LNG · Training Administration</div>
+  </header>
+  <div class="accent"></div>
+
+  <!-- KEY GATE -->
+  <div class="wrap" id="gate">
+    <div class="kicker">Restricted access</div>
+    <h1>Administration</h1>
+    <p class="lead">Enter the administration key to open the dashboard.</p>
+    <div class="card">
+      <label for="key">Admin key</label>
+      <input type="password" id="key" autocomplete="current-password">
+      <button class="primary" id="loginBtn">Open dashboard →</button>
+      <div class="err" id="gateErr"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="wrap hidden" id="dash">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+      <div>
+        <div class="kicker">Dashboard</div>
+        <h1>Training administration</h1>
+        <p class="lead" id="stamp"></p>
+      </div>
+      <button class="refresh" id="refreshBtn">↻ Refresh data</button>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="n" id="kTrainees">–</div><div class="l">registered students</div></div>
+      <div class="kpi"><div class="n" id="kModules">–</div><div class="l">available modules</div></div>
+      <div class="kpi"><div class="n" id="kExams">–</div><div class="l">active exams</div></div>
+      <div class="kpi"><div class="n" id="kAttempts">–</div><div class="l">submitted exam attempts</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab on" data-t="students">Students</button>
+      <button class="tab" data-t="companies">Companies</button>
+      <button class="tab" data-t="modules">Modules</button>
+      <button class="tab" data-t="results">Evaluation results</button>
+      <button class="tab" data-t="links">Exam links</button>
+    </div>
+
+    <!-- STUDENTS -->
+    <section id="tab-students">
+      <div class="toolrow">
+        <input type="search" id="qStudents" placeholder="Search name, email, company, ref…">
+        <span class="muted" id="stCount"></span>
+      </div>
+      <div class="scrollbox"><table class="data" id="tblStudents">
+        <thead><tr><th data-k="ref">Ref<span class="dir"></span></th><th data-k="name">Name<span class="dir"></span></th><th data-k="position">Position<span class="dir"></span></th><th data-k="company">Company<span class="dir"></span></th><th data-k="email">Email<span class="dir"></span></th><th class="right" data-k="age">Age<span class="dir"></span></th><th class="right" data-k="experience">LNG exp.<span class="dir"></span></th><th data-k="registered">Registered<span class="dir"></span></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <!-- COMPANIES -->
+    <section id="tab-companies" class="hidden">
+      <h2>Registrations per company</h2>
+      <div id="companyBars"></div>
+    </section>
+
+    <!-- MODULES -->
+    <section id="tab-modules" class="hidden">
+      <h2>Available modules</h2>
+      <div class="scrollbox"><table class="data" id="tblModules">
+        <thead><tr><th data-k="sequence">#<span class="dir"></span></th><th data-k="code">Code<span class="dir"></span></th><th data-k="category">Category<span class="dir"></span></th><th data-k="title">Title<span class="dir"></span></th><th class="right" data-k="hours">Hours<span class="dir"></span></th><th data-k="forecast">Forecast<span class="dir"></span></th><th>Deck</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="tab-results" class="hidden">
+      <div class="toolrow">
+        <input type="search" id="qResults" placeholder="Search student…">
+        <span class="muted">Best score per exam · attempts shown below each score</span>
+      </div>
+      <div class="scrollbox"><table class="data" id="tblResults">
+        <thead><tr><th data-k="ref">Ref<span class="dir"></span></th><th data-k="name">Name<span class="dir"></span></th><th data-k="company">Company<span class="dir"></span></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <!-- LINKS -->
+    <section id="tab-links" class="hidden">
+      <h2>Exam links — send to students</h2>
+      <p class="lead">Each student opens the link, enters their registered email and takes the exam
+        (12 random questions from the bank, random order, pass mark 70 %). Results appear in
+        <b>Evaluation results</b> automatically.</p>
+      <div id="linkList"></div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<script>
+  const supa = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  const $ = id => document.getElementById(id);
+  let KEY = sessionStorage.getItem('tnd_admin_key') || '';
+  let D = null;
+
+  async function load(key) {
+    const { data, error } = await supa.rpc('admin_dashboard', { p_key: key });
+    if (error) throw error;
+    return data;
+  }
+
+  $('loginBtn').onclick = async () => {
+    const el = $('gateErr'); el.style.display = 'none';
+    const key = $('key').value.trim();
+    if (!key) return;
+    $('loginBtn').disabled = true;
+    try {
+      D = await load(key);
+      KEY = key; sessionStorage.setItem('tnd_admin_key', key);
+      $('gate').classList.add('hidden'); $('dash').classList.remove('hidden');
+      render();
+    } catch (e) {
+      el.textContent = (e.message || '').includes('BAD_ADMIN_KEY') ? 'Invalid admin key.' : 'Error: ' + e.message;
+      el.style.display = 'block';
+    }
+    $('loginBtn').disabled = false;
+  };
+  $('key').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+
+  $('refreshBtn').onclick = async () => { try { D = await load(KEY); render(); } catch (e) { alert('Refresh failed: ' + e.message); } };
+
+  // auto-login if key in session
+  if (KEY) { load(KEY).then(d => { D = d; $('gate').classList.add('hidden'); $('dash').classList.remove('hidden'); render(); }).catch(() => sessionStorage.removeItem('tnd_admin_key')); }
+
+  // tabs
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+    ['students','companies','modules','results','links'].forEach(n => $('tab-' + n).classList.toggle('hidden', n !== t.dataset.t));
+  });
+
+  const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
+  const fdate = s => s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+  // ---- column sorting (all tables) ----
+  const DECKS = { '001': '/module-1/', '002': '/module-2/' };
+  const sortState = { students: { k: 'ref', d: 1 }, modules: { k: 'sequence', d: 1 }, results: { k: 'ref', d: 1 } };
+  function cmp(a, b) {
+    const an = a == null || a === '', bn = b == null || b === '';
+    if (an && bn) return 0; if (an) return 1; if (bn) return -1;   // nulls last
+    if (typeof a === 'number' && typeof b === 'number') return a - b;
+    return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+  }
+  function sortRows(rows, stateKey, getVal) {
+    const s = sortState[stateKey];
+    return rows.slice().sort((x, y) => cmp(getVal(x, s.k), getVal(y, s.k)) * s.d);
+  }
+  function bindSort(tableId, stateKey, renderFn) {
+    $(tableId).tHead.addEventListener('click', e => {
+      const th = e.target.closest('th'); if (!th || !th.dataset.k) return;
+      const s = sortState[stateKey];
+      if (s.k === th.dataset.k) s.d = -s.d; else { s.k = th.dataset.k; s.d = 1; }
+      renderFn();
+    });
+  }
+  function paintArrows(tableId, stateKey) {
+    const s = sortState[stateKey];
+    $(tableId).tHead.querySelectorAll('th[data-k]').forEach(th => {
+      let el = th.querySelector('.dir');
+      if (!el) { el = document.createElement('span'); el.className = 'dir'; th.appendChild(el); }
+      el.textContent = th.dataset.k === s.k ? (s.d === 1 ? '▲' : '▼') : '';
+    });
+  }
+
+  function render() {
+    $('stamp').textContent = 'Data as of ' + new Date(D.generated_at).toLocaleString('en-GB');
+    $('kTrainees').textContent = D.totals.trainees;
+    $('kModules').textContent = D.totals.modules;
+    $('kExams').textContent = D.totals.exams;
+    $('kAttempts').textContent = D.totals.attempts;
+    renderStudents(); renderCompanies(); renderModules(); renderResults(); renderLinks();
+  }
+
+  // ---- students
+  function renderStudents() {
+    const q = ($('qStudents').value || '').toLowerCase();
+    let rows = (D.trainees || []).filter(t =>
+      !q || [t.name, t.email, t.company, t.ref, t.position].join(' ').toLowerCase().includes(q));
+    rows = sortRows(rows, 'students', (t, k) => t[k]);
+    paintArrows('tblStudents', 'students');
+    $('stCount').textContent = rows.length + ' of ' + (D.trainees || []).length;
+    $('tblStudents').tBodies[0].innerHTML = rows.map(t =>
+      '<tr><td class="mono">' + esc(t.ref) + '</td><td><b>' + esc(t.name) + '</b></td><td>' + esc(t.position) +
+      '</td><td>' + esc(t.company) + '</td><td class="mono">' + esc(t.email) + '</td><td class="right">' + (t.age ?? '—') +
+      '</td><td class="right">' + (t.experience ?? 0) + '%</td><td class="muted">' + fdate(t.registered) + '</td></tr>').join('');
+  }
+  $('qStudents').addEventListener('input', renderStudents);
+  bindSort('tblStudents', 'students', renderStudents);
+
+  // ---- companies
+  function renderCompanies() {
+    const cs = D.companies || [];
+    const max = Math.max(1, ...cs.map(c => c.count));
+    $('companyBars').innerHTML = cs.map(c =>
+      '<div class="cbar"><div class="nm">' + esc(c.name) + '</div><div class="bar"><i style="width:' +
+      (c.count / max * 100) + '%"></i></div><div class="ct">' + c.count + '</div></div>').join('') ||
+      '<p class="muted">No registrations yet.</p>';
+  }
+
+  // ---- modules
+  function renderModules() {
+    const rows = sortRows(D.modules || [], 'modules', (m, k) => m[k]);
+    paintArrows('tblModules', 'modules');
+    $('tblModules').tBodies[0].innerHTML = rows.map(m => {
+      const deck = DECKS[m.code] ? '<a class="decklink" href="' + DECKS[m.code] + '" target="_blank">Open deck ↗</a>' : '<span class="muted">—</span>';
+      return '<tr><td class="mono">' + m.sequence + '</td><td class="mono"><b>' + esc(m.code) + '</b></td><td>' + esc(m.category) +
+        '</td><td>' + esc(m.title) + '</td><td class="right">' + (m.hours || 4) + '</td><td class="muted">' + fdate(m.forecast) + '</td><td>' + deck + '</td></tr>';
+    }).join('');
+  }
+  bindSort('tblModules', 'modules', renderModules);
+
+  // ---- results (per-student grid vs exams)
+  function examKey(e) { return e.module_code + '·' + e.level; }
+  function renderResults() {
+    const exams = (D.exams || []);
+    const head = $('tblResults').tHead.rows[0];
+    while (head.cells.length > 3) head.deleteCell(-1);
+    exams.forEach(e => {
+      const th = document.createElement('th');
+      th.dataset.k = 'exam:' + examKey(e);
+      th.innerHTML = 'M' + e.module_code + '<br>' + e.level.slice(0, 3).toUpperCase() + '<span class="dir"></span>';
+      head.appendChild(th);
+    });
+    const byTrainee = {};
+    (D.results || []).forEach(r => { (byTrainee[r.trainee_id] = byTrainee[r.trainee_id] || {})[examKey(r)] = r; });
+
+    const q = ($('qResults').value || '').toLowerCase();
+    let rows = (D.trainees || []).filter(t => !q || [t.name, t.company, t.ref].join(' ').toLowerCase().includes(q));
+    rows = sortRows(rows, 'results', (t, k) => {
+      if (k.startsWith('exam:')) {
+        const r = (byTrainee[t.id] || {})[k.slice(5)];
+        return r ? Number(r.best_score) : null;
+      }
+      return t[k];
+    });
+    paintArrows('tblResults', 'results');
+    $('tblResults').tBodies[0].innerHTML = rows.map(t => {
+      const cells = exams.map(e => {
+        const r = (byTrainee[t.id] || {})[examKey(e)];
+        if (!r) return '<td><span class="score-badge none">—</span></td>';
+        const cls = r.passed ? 'pass' : 'fail';
+        return '<td><span class="score-badge ' + cls + '">' + r.best_score + '%</span>' +
+               '<span class="att">' + r.attempts + ' attempt' + (r.attempts > 1 ? 's' : '') + ' · last ' + fdate(r.last_at) + '</span></td>';
+      }).join('');
+      return '<tr><td class="mono">' + esc(t.ref) + '</td><td><b>' + esc(t.name) + '</b></td><td>' + esc(t.company) + '</td>' + cells + '</tr>';
+    }).join('');
+  }
+  $('qResults').addEventListener('input', renderResults);
+  bindSort('tblResults', 'results', renderResults);
+
+  // ---- links
+  function renderLinks() {
+    const base = location.origin + '/exam/';
+    const deckRows = Object.keys(DECKS).map(code => {
+      const url = location.origin + DECKS[code];
+      return '<div class="linkrow"><div class="lt"><b>Module ' + code + ' — presentation deck</b>' +
+        '<span>' + esc(url) + '</span></div>' +
+        '<a class="decklink" href="' + DECKS[code] + '" target="_blank">Open ↗</a>' +
+        '<button class="copybtn" data-url="' + esc(url) + '">Copy link</button></div>';
+    }).join('');
+    $('linkList').innerHTML = '<h2 style="margin-top:0;">Module decks</h2>' + deckRows +
+      '<h2 style="margin-top:22px;">Exams</h2>' + (D.exams || []).map(e => {
+      const url = base + '?m=' + e.module_code + '&l=' + e.level;
+      return '<div class="linkrow"><div class="lt"><b>' + esc(e.title) + '</b>' +
+        '<span>' + esc(url) + '</span>' +
+        '<span class="muted" style="font-family:var(--sans);font-size:11.5px;">Bank: ' + e.bank + ' questions · serves ' + e.questions_per_attempt + ' random · pass ' + e.pass_score + '%</span></div>' +
+        '<button class="copybtn" data-url="' + esc(url) + '">Copy link</button></div>';
+    }).join('');
+    document.querySelectorAll('.copybtn').forEach(b => b.onclick = () => {
+      navigator.clipboard.writeText(b.dataset.url).then(() => { b.textContent = '✔ Copied'; setTimeout(() => b.textContent = 'Copy link', 1500); });
+    });
+  }
+</script>
+</body>
+</html>

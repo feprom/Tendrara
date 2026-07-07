@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Module 002 — Facility Operation, Safety &amp; Emergency</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA; --ok:#1F8A4C;
+    --amber:#B26A00; --blue:#0B5CAD;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:var(--sans);color:var(--ink);background:#ECEEF1;-webkit-font-smoothing:antialiased;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px;}
+
+  .deck{width:100%;max-width:1040px;background:var(--bg);border:1px solid var(--line);
+    border-radius:4px;box-shadow:0 10px 40px rgba(0,0,0,.10);display:flex;flex-direction:column;
+    height:min(720px,94vh);overflow:hidden;}
+
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:13px 30px;border-bottom:1px solid var(--line);flex:none;}
+  .brandbar .vendor img{height:32px;display:block;}
+  .clients{display:flex;align-items:center;gap:12px;}
+  .clients .role{font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-soft);writing-mode:vertical-rl;transform:rotate(180deg);}
+  .client-logos{display:flex;align-items:center;gap:13px;}
+  .client-logo{height:23px;width:auto;display:block;}
+  .client-logo.itf{height:26px;}
+  .client-logos .divider{width:1px;height:21px;background:var(--line-strong);}
+  .accent{height:3px;background:var(--crimson);flex:none;}
+  .deck:fullscreen,.deck:-webkit-full-screen{max-width:none;width:100vw;height:100vh;border-radius:0;border:none;box-shadow:none;}
+  .nav.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  .stage{position:relative;flex:1;overflow:hidden;}
+  .slide{position:absolute;inset:0;padding:30px 44px;overflow:auto;opacity:0;visibility:hidden;transition:opacity .22s ease;}
+  .slide.active{opacity:1;visibility:visible;}
+  .pres{position:absolute;top:16px;right:28px;font-family:var(--mono);font-size:10px;font-weight:700;
+    letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;border:1.5px solid;z-index:4;}
+  .pres.mm{color:var(--crimson);border-color:var(--crimson);background:#FBE9EC;}
+  .pres.zr{color:var(--blue);border-color:var(--blue);background:#EAF3FB;}
+  .cover3d .pres.mm{color:#fff;border-color:#ff6478;background:rgba(200,16,46,.55);}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--crimson);font-weight:700;margin-bottom:9px;}
+  .kicker .sub{color:var(--ink-soft);font-weight:400;}
+  h1{font-size:29px;margin:0 0 6px;letter-spacing:-.01em;line-height:1.1;}
+  h2{font-size:24px;margin:0 0 14px;letter-spacing:-.01em;line-height:1.15;}
+  p.lead{color:var(--ink-soft);font-size:14.5px;line-height:1.58;max-width:72ch;margin:0 0 13px;}
+  ul.points{margin:5px 0 0;padding:0;list-style:none;}
+  ul.points li{position:relative;padding:6px 0 6px 21px;font-size:14px;line-height:1.45;border-bottom:1px solid var(--line);}
+  ul.points li:before{content:"";position:absolute;left:2px;top:13px;width:7px;height:7px;background:var(--crimson);border-radius:1px;}
+  ul.points li b{color:var(--ink);}
+  .muted{color:var(--ink-soft);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px 24px;}
+
+  table.data{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:3px;}
+  table.data th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ink-soft);text-align:left;padding:7px 9px;border-bottom:2px solid var(--line-strong);}
+  table.data td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.data td.k{font-weight:600;white-space:nowrap;}
+  table.data td.v{color:var(--ink-soft);}
+
+  .facts{display:flex;gap:13px;margin-top:14px;flex-wrap:wrap;}
+  .fact{flex:1;min-width:140px;border:1px solid var(--line-strong);border-radius:6px;padding:13px 15px;background:var(--bg-soft);}
+  .fact .n{font-size:24px;font-weight:700;color:var(--crimson);font-family:var(--mono);line-height:1;}
+  .fact .l{font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.35;}
+  .slide.cover3d{display:flex;flex-direction:column;color:#fff;
+    background:linear-gradient(180deg,rgba(11,13,15,.80),rgba(11,13,15,.55) 45%,rgba(11,13,15,.82)),url('/images/tendrara_hm_tci.png') center/cover no-repeat;}
+  .slide.cover3d h1{color:#fff;}
+  .slide.cover3d .kicker{color:#ff6478;}
+  .slide.cover3d .kicker .sub{color:#c9ccd1;}
+  .slide.cover3d .lead{color:#e4e6ea;max-width:60ch;}
+  .slide.cover3d .params{margin-top:auto;}
+  .slide.cover3d .fact{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.24);}
+  .slide.cover3d .fact .n{color:#fff;font-size:20px;}
+  .slide.cover3d .fact .l{color:#c7cad0;}
+  .slide.cover3d .owner{margin-top:12px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#aeb2b8;}
+  .slide.cover3d .owner b{color:#fff;}
+
+  .flow{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+  .step{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-left:3px solid var(--crimson);
+    border-radius:4px;padding:8px 12px;background:var(--bg-soft);}
+  .step .u{font-family:var(--mono);font-weight:700;font-size:11.5px;color:var(--crimson);min-width:74px;}
+  .step .t{font-size:13px;}
+  .step .t b{color:var(--ink);}
+
+  .note{margin-top:14px;font-size:11.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:9px;line-height:1.5;}
+  .fig{margin-top:8px;text-align:center;}
+  .fig a{display:inline-block;text-decoration:none;}
+  .fig img{max-width:100%;max-height:320px;border:1px solid var(--line-strong);border-radius:5px;background:#fff;cursor:zoom-in;}
+  .fig .cap{font-family:var(--mono);font-size:10px;color:var(--ink-soft);margin-top:6px;letter-spacing:.04em;}
+  .figrow{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:center;}
+  .figrow ul.points li{font-size:13px;}
+  .carousel{position:relative;height:322px;margin-top:8px;}
+  .carousel .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .55s;pointer-events:none;}
+  .carousel .cimg.active{opacity:1;pointer-events:auto;}
+  .carousel .cimg img{max-width:100%;max-height:300px;border:1px solid var(--line-strong);border-radius:5px;background:#fff;cursor:zoom-in;}
+  .carousel .cdots{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3;}
+  .carousel .cdots b{width:9px;height:9px;border-radius:50%;background:#c9ced4;cursor:pointer;display:block;}
+  .carousel .cdots b.active{background:var(--crimson);}
+  .carousel .ccap{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink-soft);letter-spacing:.04em;pointer-events:none;}
+  .btn-doc{display:inline-flex;align-items:center;gap:7px;background:#fff;color:var(--crimson);border:1.5px solid var(--crimson);
+    text-decoration:none;padding:7px 13px;border-radius:5px;font-weight:600;font-size:12.5px;}
+  .btn-doc:hover{background:var(--crimson);color:#fff;}
+
+  .timeline{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:4px;}
+  .timeline td{padding:8px 10px;border-bottom:1px solid var(--line);}
+  .timeline td.seg{font-weight:600;}
+  .timeline td.dur,.timeline td.cum{font-family:var(--mono);white-space:nowrap;}
+  .timeline td.cum{color:var(--ink-soft);text-align:right;}
+  .timeline tr.brk td{background:#FFF7EC;color:var(--amber);}
+  .timeline tr.tot td{border-top:2px solid var(--line-strong);font-weight:700;}
+
+  .inter{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .inter .big{font-size:54px;font-weight:700;font-family:var(--mono);color:var(--crimson);line-height:1;}
+  .inter h2{font-size:30px;margin:14px 0 6px;}
+  .inter p{color:var(--ink-soft);font-size:15px;max-width:50ch;}
+  .inter.brk .big{color:var(--amber);}
+
+  .navbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 22px;
+    border-top:1px solid var(--line);flex:none;background:#fff;}
+  .counter{font-family:var(--mono);font-size:12px;color:var(--ink-soft);letter-spacing:.05em;}
+  .navmid{display:flex;align-items:center;gap:10px;}
+  .navbtns{display:flex;gap:7px;}
+  button.nav{border:1px solid var(--line-strong);background:#fff;color:var(--ink);font-size:13px;font-weight:600;
+    padding:7px 14px;border-radius:4px;cursor:pointer;transition:.12s;}
+  button.nav:hover:not(:disabled){border-color:var(--crimson);color:var(--crimson);}
+  button.nav:disabled{opacity:.4;cursor:not-allowed;}
+  button.nav.primary{background:var(--crimson);color:#fff;border-color:var(--crimson);}
+  button.nav.primary:hover{background:var(--crimson-dark);}
+  .progress{position:absolute;left:0;right:0;height:2px;background:var(--line);}
+  .progress > i{display:block;height:100%;background:var(--crimson);transition:width .22s;}
+
+  @media (max-width:700px){
+    .slide{padding:22px 20px;} h1{font-size:22px;} h2{font-size:19px;}
+    .grid2{grid-template-columns:1fr;} .brandbar{padding:11px 16px;}
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <header class="brandbar">
+    <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" /></div>
+    <div class="clients">
+      <span class="role">Clients</span>
+      <div class="client-logos">
+        <img class="client-logo" src="/images/logoME.png" alt="Manaenergy" />
+        <span class="divider"></span>
+        <img class="client-logo itf" src="/images/logoITF.png" alt="ITF — Italfluid" />
+      </div>
+    </div>
+  </header>
+  <div class="accent"></div>
+
+  <div class="stage" id="stage">
+
+    <!-- 1 COVER · Mario · 2 -->
+    <section class="slide cover3d" data-min="2" data-block="Module open" data-presenter="Mario"
+      data-notes='["Welcome back — Module 002 of 18, second and last Fundamentals module.","Today: how the facility is operated day to day, and what protects it — and you — when something goes wrong.","Everything today is plant-specific: this is YOUR plant, not generic LNG theory.","Housekeeping: same 4-hour format, breaks at 1:45 and 3:00, exam at the end."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Module 002 · Fundamentals <span class="sub">— 18-module program</span></div>
+      <h1>Facility Operation,<br>Safety &amp; Emergency</h1>
+      <p class="lead">Tendrara Micro LNG Facilities — operator training program.</p>
+      <div class="facts params">
+        <div class="fact"><div class="n">I1–I4</div><div class="l">shutdown levels ESD·PSD·LSD·ASD</div></div>
+        <div class="fact"><div class="n">2,000</div><div class="l">l/min per firewater monitor @ 7 barg</div></div>
+        <div class="fact"><div class="n">AFFF 3 %</div><div class="l">foam concentrate — 55 min for LNG tank</div></div>
+        <div class="fact"><div class="n">≥ 2</div><div class="l">evacuation routes from every location</div></div>
+      </div>
+      <div class="owner">Client: <b>ManaEnergy</b></div>
+    </section>
+
+    <!-- 2 SCOPE / OBJECTIVES / AGENDA · Mario · 5 -->
+    <section class="slide" data-min="5" data-block="Module open" data-presenter="Mario"
+      data-notes='["Scope per the TAM-158 schedule: facility operation, access & workflow; emergency systems; safety & emergency plan; vapor cloud, foam & fire control.","Objectives = the exam blueprint; read them out.","Block 1 is mostly Mario (operating the plant + emergency systems); Block 2 is mostly Zibac (LNG emergencies: spill, foam, fire).","Same 4-hour skeleton — breaks at 1:45 and 3:00."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Scope · Objectives · Agenda</div>
+      <h2>What Module 002 covers</h2>
+      <div class="grid2">
+        <div>
+          <p class="lead" style="margin:0 0 6px;font-weight:600;color:var(--ink);">Objectives — by the end you can:</p>
+          <ul class="points">
+            <li>Describe how the <b>Tendrara facility is operated</b>: philosophy, workflow, rounds &amp; logs.</li>
+            <li>Apply the <b>site access rules</b> and identify hazardous (ATEX) areas.</li>
+            <li>Describe the <b>emergency systems</b>: ESD, shutdown hierarchy I1–I4, F&amp;G, alarms.</li>
+            <li>Explain the <b>safety &amp; emergency plan</b>: escape, evacuation, muster.</li>
+            <li>Explain <b>LNG vapor-cloud behaviour</b> and spill scenarios.</li>
+            <li>Describe <b>expansion foam &amp; fire control</b> — what to use, and what never to use.</li>
+          </ul>
+        </div>
+        <div>
+          <table class="timeline">
+            <tr><td class="seg">Block 1 — content</td><td class="dur">1:45</td><td class="cum">1:45</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">2:00</td></tr>
+            <tr><td class="seg">Block 2 — content</td><td class="dur">1:00</td><td class="cum">3:00</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">3:15</td></tr>
+            <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum">3:30</td></tr>
+            <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:00</td></tr>
+            <tr class="tot"><td class="seg">Module total</td><td class="dur">4:00</td><td class="cum"></td></tr>
+          </table>
+          <div class="note" style="margin-top:10px;">Presenters: <b style="color:var(--crimson);">Mario — operation &amp; plant systems (~1:42)</b> ·
+            <b style="color:var(--blue);">Zibac — LNG emergencies &amp; fire control (~1:03)</b>.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 RECAP M001 · Zibac · 5 -->
+    <section class="slide" data-min="5" data-block="Module open" data-presenter="Zibac"
+      data-notes='["Quick-fire recap — ask the group, do not lecture.","What temperature is LNG? (−162 °C). Flammable range? (5–15 %). Why can you not smell a leak? (not odorized).","What happens to cold vapour? (heavier than air below ≈ −110 °C, hugs the ground).","Never put water on an LNG pool. These five facts drive everything in today module."]'>
+      <span class="pres zr">Zibac</span>
+      <div class="kicker">Warm-up · From Module 001</div>
+      <h2>Five facts you must still know</h2>
+      <ul class="points">
+        <li>LNG is natural gas held liquid at <b>≈ −162 °C by temperature, not pressure</b> — volume ÷ 600.</li>
+        <li>Vapour burns only between <b>5–15 %</b> in air; the liquid itself does not burn.</li>
+        <li>Cold vapour (&lt; ≈ −110 °C) is <b>heavier than air</b> — it pools low and drifts with the wind.</li>
+        <li>Plant gas is <b>NOT odorized</b> — leak detection is by <b>instruments, never smell</b>.</li>
+        <li><b>Never water on an LNG pool</b> — it accelerates vaporization.</li>
+      </ul>
+      <div class="note">Today we turn these facts into plant systems and emergency response at Tendrara.</div>
+    </section>
+
+    <!-- 4 OPERATION OVERVIEW · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
+      data-notes='["How the plant actually runs: designed for continuous, highly automated operation under the PCS.","Operators supervise, adjust and verify — the PCS holds the process at set points; the independent ESD system protects it.","Normal cycle: start-up → continuous operation & monitoring → field rounds → truck loading → (rare) shutdown.","Fuel-gas autobalance: flash/BOG is fully consumed as fuel or recycled — no routine flaring; condensate from V-201 fuels the hot-oil burners.","Black start capability: diesel generators bring the plant back from dead bus; gas engines carry normal load.","Modes to name now (detail in later modules): black start, normal start-up, normal operation, normal shutdown, emergency shutdown."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Operation · Overview</div>
+      <h2>How Tendrara is operated</h2>
+      <div class="grid2">
+        <ul class="points">
+          <li><b>Continuous, highly automated</b> operation — the PCS holds the process at set points.</li>
+          <li>Operators <b>supervise, adjust, verify</b> — console + field rounds.</li>
+          <li>Independent <b>ESD system</b> protects the plant regardless of the PCS.</li>
+          <li><b>Fuel-gas autobalance:</b> flash/BOG fully used as fuel or recycled — <b>no routine flaring</b>.</li>
+        </ul>
+        <div>
+          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Operating modes</p>
+          <ul class="points">
+            <li><b>Black start</b> — diesel generators from dead bus.</li>
+            <li><b>Normal start-up</b> → <b>normal operation</b> (design point).</li>
+            <li><b>Normal shutdown</b> — planned, sequenced.</li>
+            <li><b>Emergency shutdown</b> — automatic, this module.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">Daily reality: monitor the console, walk the rounds, complete checkpoints (CK), load trucks, keep the logs — next slides.</div>
+    </section>
+
+    <!-- 5 ACCESS & HAZARDOUS AREAS · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
+      data-notes='["Site access: remote fenced site; only trained, authorized personnel; emergency-vehicle circulation designed into the layout.","Hazardous area classification (SAF01 §4.1): zones where explosive gas atmospheres can occur — equipment there must be Ex/ATEX rated.","Rule: no phones, no non-Ex tools or electronics inside classified areas; no polyester clothing; grounding/bonding for transfers.","PPE on site: hard hat, safety glasses, flame-resistant clothing, boots; add cryogenic PPE and personal CH4 detector for LNG work.","Field electrical: Class/zone-rated only; mobile HMI tablets on site are ATEX-rated.","Access to any confined or gas-suspect space: atmosphere test first — trust the detector."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Operation · Access</div>
+      <h2>Plant access &amp; hazardous (ATEX) areas</h2>
+      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
+        <div class="grid2" style="gap:8px 18px;">
+          <ul class="points">
+            <li><b>Authorized, trained personnel only</b> — fenced remote site, controlled access.</li>
+            <li><b>Hazardous area classification</b> (SAF01): zones with possible explosive atmospheres → <b>Ex/ATEX-rated equipment only</b>.</li>
+            <li><b>No phones / non-Ex electronics</b> inside classified areas; non-sparking tools.</li>
+          </ul>
+          <ul class="points">
+            <li><b>PPE on site:</b> hard hat, glasses, FR clothing, boots + <b>cryo PPE &amp; CH₄ detector</b> for LNG work.</li>
+            <li><b>Grounding &amp; bonding</b> for every transfer operation.</li>
+            <li><b>Confined/gas-suspect spaces:</b> atmosphere test before entry.</li>
+          </ul>
+        </div>
+        <div class="carousel" id="atexCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/EX-logo.png" target="_blank"><img src="/images/EX-logo.png" alt="Ex / ATEX marking"></a>
+          <a class="cimg" href="/images/tendrara_areas.png" target="_blank"><img src="/images/tendrara_areas.png" alt="Plant areas"></a>
+          <div class="ccap">Auto-rotating · click to enlarge</div>
+          <div class="cdots"><b class="active"></b><b></b></div>
+        </div>
+      </div>
+      <div class="note">Layout provides circulation and turning radii for the largest emergency-service vehicles (SAF01 §9.1).</div>
+    </section>
+
+    <!-- 6 OPERATING WORKFLOW · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
+      data-notes='["The Operating Manual writes procedures as sequenced steps tagged CK / OC / SC — learn this language today.","CK = operator checkpoint (verify in field or on HMI); OC = operator command; SC = system (automatic) command.","Typical operator workload: console monitoring, field rounds with checkpoints, hydrate watch on the inlet, TSA bed cycles in dehydration, amine unit checks, fuel-gas balance, truck loading.","Alarm handling: every alarm has a defined response — acknowledge, diagnose, act; HH/LL levels trip PSD/LSD automatically.","Logs: daily & periodic operational logs and event records (time-stamped in the PCS) — traceability is mandatory; logs are covered in depth in Module 115.","Shift handover: state of the plant, active alarms, ongoing work — never skip it."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Operation · Workflow</div>
+      <h2>Operating workflow — rounds, CK &amp; logs</h2>
+      <div class="grid2">
+        <div>
+          <table class="data" style="font-size:13px;">
+            <tr><th>Tag</th><th>Meaning</th></tr>
+            <tr><td class="k" style="color:var(--crimson);">CK</td><td>Operator <b>checkpoint</b> — verify in field / on HMI</td></tr>
+            <tr><td class="k" style="color:var(--crimson);">OC</td><td>Operator <b>command</b> (field or PCS)</td></tr>
+            <tr><td class="k" style="color:var(--crimson);">SC</td><td><b>System command</b> — automatic (PCS or ESD)</td></tr>
+          </table>
+          <ul class="points" style="margin-top:10px;">
+            <li><b>Alarm handling:</b> acknowledge → diagnose → act; <b>HH/LL trips act automatically</b> (PSD/LSD).</li>
+            <li><b>Shift handover:</b> plant state, active alarms, ongoing work.</li>
+          </ul>
+        </div>
+        <ul class="points">
+          <li><b>Console monitoring</b> — trends, set points, alarm summary.</li>
+          <li><b>Field rounds</b> with checkpoints: leaks, noise, vibration, icing, levels.</li>
+          <li><b>Recurring duties:</b> inlet hydrate watch · TSA bed cycles (U310) · amine unit checks (U330) · fuel-gas balance · truck loading.</li>
+          <li><b>Logs:</b> daily &amp; periodic operational logs; PCS time-stamped events — full traceability (→ Module 115).</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 7 PCS & HMI · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
+      data-notes='["Two segregated layers: PCS runs normal operation; a separate S7-1500F safety PLC runs ESD (next slides).","Backbone: PROFINET IO — dual redundant fiber-optic rings (MRP, recovery < 200 ms); ET 200SP remote I/O on every skid.","Supervision: SIMATIC WinCC SCADA, High-Performance HMI faceplates; control-room stations + ATEX mobile tablets.","Carousel: PLC/network architecture and two live HMI screens — U350 liquefaction and U220 storage/loading.","Operators must know the HMI Philosophy (21044-AU-HMI-00002) before operating."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Operation · Control room</div>
+      <h2>Control system (PCS) &amp; HMI</h2>
+      <div class="figrow" style="grid-template-columns:1.35fr 1fr;">
+        <ul class="points">
+          <li><b>PCS</b> (normal operation) + independent <b>ESD</b> S7-1500F safety PLC.</li>
+          <li><b>PROFINET IO</b> — dual redundant fiber rings (<b>MRP, &lt; 200 ms</b>), ET 200SP remote I/O per skid.</li>
+          <li><b>SIMATIC WinCC</b> SCADA · High-Performance HMI · control-room stations + <b>ATEX mobile tablets</b>.</li>
+          <li>Time-stamped event logging → operator response &amp; traceability.</li>
+        </ul>
+        <div class="carousel" id="pcsCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/PLC-architecture.png" target="_blank"><img src="/images/PLC-architecture.png" alt="PLC / network architecture"></a>
+          <a class="cimg" href="/images/13-HMI-350=2.png" target="_blank"><img src="/images/13-HMI-350=2.png" alt="HMI Unit 350"></a>
+          <a class="cimg" href="/images/27-HMI-220=2.png" target="_blank"><img src="/images/27-HMI-220=2.png" alt="HMI Unit 220"></a>
+          <div class="ccap">Auto-rotating · click to enlarge</div>
+          <div class="cdots"><b class="active"></b><b></b><b></b></div>
+        </div>
+      </div>
+      <div class="note">Reference: HMI Philosophy 21044-AU-HMI-00002. Control room detail → Modules 114–115.</div>
+    </section>
+
+    <!-- 8 ELECTRICAL · Mario · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
+      data-notes='["Island mode — the plant powers itself, independent of any grid.","7 × Jenbacher gas engines (1,807 kW each) for normal duty; 2 × diesel (1,280 kW each) for emergency, black start and backup.","~15.21 MW installed at cos φ 0.8; generation & distribution at 690 V, TN-C.","Main LV panel: 4 busbar sections, 3 motorized synchronizable tie breakers, 85 kA; max 4 gas engines in parallel per energized busbar.","On ESD: main generation shuts down and the emergency diesels start, feeding the emergency panel — remember this for the shutdown slides.","ELD11 single-line is the primary electrical reference for any isolation."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Operation · Electrical</div>
+      <h2>Electrical &amp; power generation</h2>
+      <div class="figrow" style="grid-template-columns:1fr 1.25fr;">
+        <ul class="points">
+          <li><b>Island mode</b> — autonomous on-site power, no external grid.</li>
+          <li><b>7 × Jenbacher</b> gas engines @ 1,807 kW + <b>2 × diesel</b> @ 1,280 kW (emergency / black start / backup).</li>
+          <li><b>~15.21 MW</b> installed (cos φ 0.8) · <b>690 V</b>, TN-C · 4 busbar sections · 85 kA.</li>
+          <li><b>On ESD:</b> main generation trips → <b>emergency diesels start</b> → emergency panel users.</li>
+        </ul>
+        <div class="fig"><a href="/images/ELD11-electrical.png" target="_blank"><img src="/images/ELD11-electrical.png" alt="Electrical single-line ELD11"></a>
+          <div class="cap">ELD11-ING-PR01 — single-line (click to enlarge)</div></div>
+      </div>
+    </section>
+
+    <!-- 9 TRUCK LOADING · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
+      data-notes='["The most frequent hands-on operation: LNG out by road tanker from loading skids S-221/S-222 (redundant), pumps P-221A/B & P-222A/B.","Dead-man philosophy: loading requires operator PRESENCE in the bay to initiate and continue transfer.","Pre-checks (CK): truck positioned, parking brake engaged; grounding cable connected and permissive active; vapor-return & liquid hoses secure.","Truck cooldown first: automatic precool sequence (pump at reduced speed, ~12 m³/h) until lines and truck are at cryogenic temperature; LNG used is metered and recorded for invoicing.","Then loading under continuous supervision with ramped flow; analyzers monitor LNG quality; totalizers record the transfer.","The bay has its own abandon shutdown (ASD) — covered in the shutdown hierarchy."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Operation · Product out</div>
+      <h2>LNG truck loading</h2>
+      <div class="flow">
+        <div class="step"><span class="u">1 · CHECK</span><span class="t"><b>CK:</b> truck positioned + parking brake · <b>grounding cable + permissive</b> · hoses connected &amp; secure</span></div>
+        <div class="step"><span class="u">2 · COOL</span><span class="t"><b>Automatic precool</b> at reduced flow (~12 m³/h) until truck &amp; lines are cryogenic — LNG metered for invoicing</span></div>
+        <div class="step"><span class="u">3 · LOAD</span><span class="t">Ramped flow under <b>continuous operator supervision</b> — <b>dead-man philosophy</b>: presence required to start &amp; continue</span></div>
+        <div class="step"><span class="u">4 · CLOSE</span><span class="t">Stop pump, drain &amp; disconnect, totalizers + analyzer record saved to the database</span></div>
+      </div>
+      <ul class="points" style="margin-top:10px;">
+        <li>Redundant skids <b>S-221 / S-222</b> · pumps <b>P-221A/B, P-222A/B</b> · vacuum-insulated transfer lines.</li>
+        <li>The loading bay has a dedicated <b>Abandon Shutdown (ASD)</b> → shutdown hierarchy, next.</li>
+      </ul>
+    </section>
+
+    <!-- 10 LAYERS OF PROTECTION · Mario · 7 -->
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
+      data-notes='["Frame everything that follows: protection is LAYERED — if one layer fails, the next catches the event.","Layer 1: PCS control & alarms keep the process at set point. Layer 2: automatic shutdowns (LSD/PSD/ESD/ASD). Layer 3: relief & depressurization — PSVs and BDVs to flare.","Layer 4: passive protection — spacing, impoundment basins, drainage. Layer 5: active fire protection — F&G detection, firewater, foam. Layer 6: escape & evacuation.","Per SAF01 (Process Safety & Isolation Philosophy, Italfluid) and API RP 14C.","Block 1 covers layers 1–3 + detection; Block 2 covers spill behaviour, foam, fire control and evacuation."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Emergency systems · The framework</div>
+      <h2>Layers of protection</h2>
+      <div class="flow">
+        <div class="step"><span class="u">LAYER 1</span><span class="t"><b>PCS control &amp; alarms</b> — keep the process at set point</span></div>
+        <div class="step"><span class="u">LAYER 2</span><span class="t"><b>Automatic shutdowns</b> — LSD · PSD · ESD · ASD (independent of PCS)</span></div>
+        <div class="step"><span class="u">LAYER 3</span><span class="t"><b>Relief &amp; depressurization</b> — PSVs &amp; BDVs route to flare</span></div>
+        <div class="step"><span class="u">LAYER 4</span><span class="t"><b>Passive protection</b> — spacing · LNG impoundment basins · drainage</span></div>
+        <div class="step"><span class="u">LAYER 5</span><span class="t"><b>Active fire protection</b> — F&amp;G detection · firewater · foam · extinguishers</span></div>
+        <div class="step"><span class="u">LAYER 6</span><span class="t"><b>Escape &amp; evacuation</b> — alarms · routes · muster</span></div>
+      </div>
+      <div class="note">Source: SAF01-ING-FR01 Rev.2 — Process Safety &amp; Isolation Philosophy · API RP 14C · NFPA 59A / EN 1473.</div>
+    </section>
+
+    <!-- 11 ESD SYSTEM · Mario · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
+      data-notes='["The ESD is a dedicated, independent safety layer — fully separate from the PCS, per API RP 14C.","Siemens S7-1500F fail-safe PLC in the control room; ET 200SP remote I/O near protected units over PROFINET.","Inputs: ESD pushbuttons (in the plant AND along escape ways), fire & gas detectors, critical transmitters, valve feedback.","Certified fail-safe logic executes the Cause & Effect Matrix (SAF12-ING-FR01): isolation, depressurization, shutdown.","The ESD→PCS link is informational only — no safety function depends on the PCS.","Manual activation matters: anyone can hit an ESD button on the way out — that is why they line the escape routes."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Emergency systems · ESD</div>
+      <h2>Emergency Shutdown System (ESD)</h2>
+      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
+        <div class="grid2" style="gap:8px 18px;">
+          <ul class="points">
+            <li><b>Independent safety layer</b> — fully separate from the PCS (API RP 14C).</li>
+            <li><b>Siemens S7-1500F</b> fail-safe PLC · <b>ET 200SP</b> remote I/O over PROFINET.</li>
+            <li>Inputs: <b>ESD pushbuttons</b> (plant + <b>along escape ways</b>), F&amp;G detectors, critical transmitters, valve feedback.</li>
+          </ul>
+          <ul class="points">
+            <li>Fail-safe logic executes the <b>Cause &amp; Effect Matrix</b> (SAF12-ING-FR01): isolation · depressurization · shutdown.</li>
+            <li><b>ESD→PCS link is informational only.</b></li>
+            <li>Anyone can activate ESD manually on the way out.</li>
+          </ul>
+        </div>
+        <div class="carousel" id="esdCarousel" data-interval="4000">
+          <a class="cimg active" href="/images/ESD.png" target="_blank"><img src="/images/ESD.png" alt="ESD architecture"></a>
+          <div class="ccap">Click to enlarge</div>
+          <div class="cdots"><b class="active"></b></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12 SHUTDOWN HIERARCHY · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
+      data-notes='["The four intervention levels from SAF01 §6 — memorize the table.","I1 ESD: manual (pushbuttons, incl. escape ways) or automatic (fire detection in process areas/loading bay, LNG spill detection in tank area). Effects: close plant inlet & outlets, depressurize, main power generation trips → emergency diesels start.","I2 PSD: gas detection in process areas, process parameters out of set point (PAHH/LAHH/TAHH…), flare pilot loss, power plant or hot-oil/refrigeration shutdowns, instrument-air low, smoke in cabins. Effects: close process inlet/outlets — some units may keep running.","I3 LSD: package-level — ammonia unit, MR unit, BOG unit 360, LNG pump skids, hot oil, power gen; local pushbuttons or package logic (e.g. LAHH-3111, LALL-3103, PAHH-2201).","I4 ASD: loading-bay abandon shutdown — gas detection or LNG spill (low-temperature probe) closes all XV valves on both loading pumps; no impact on the rest of the process.","Escalation logic: LSD isolates a package, PSD stops the process, ESD shuts down and depressurizes the whole plant."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Emergency systems · Hierarchy</div>
+      <h2>Shutdown hierarchy — I1 to I4</h2>
+      <table class="data" style="font-size:12px;">
+        <tr><th>Level</th><th>Name</th><th>Activated by</th><th>Effect</th></tr>
+        <tr><td class="k" style="color:var(--crimson);">I1 · ESD</td><td>Emergency Shutdown</td><td class="v">Pushbuttons (plant + escape ways) · fire detection · LNG spill detection (tank area)</td><td class="v"><b>Close plant inlet &amp; outlets · depressurize · main power trips → emergency diesels</b></td></tr>
+        <tr><td class="k">I2 · PSD</td><td>Process Shutdown</td><td class="v">Gas detection · PAHH/LAHH/TAHH… · flare pilot loss · instrument-air low · smoke in cabins</td><td class="v">Close process inlet/outlets — some units may keep running</td></tr>
+        <tr><td class="k">I3 · LSD</td><td>Local Shutdown</td><td class="v">Local pushbuttons · package logic (NH₃, MR, BOG U360, LNG pumps, hot oil, power gen)</td><td class="v">Isolate/stop the affected package only</td></tr>
+        <tr><td class="k">I4 · ASD</td><td>Loading-bay Abandon</td><td class="v">Bay gas detection · LNG spill (low-temp probe) · local pushbuttons</td><td class="v">Close all loading-pump XV valves — no impact on the process</td></tr>
+      </table>
+      <div class="note">All levels execute the <b>Cause &amp; Effect Matrix</b> (SAF12-ING-FR01). ESD/PSD/ASD run in one integrated system, fully independent from the PCS.</div>
+    </section>
+
+    <!-- 13 F&G DETECTION · Zibac · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["Handover to Zibac. Detection is the trigger for everything automatic — walk the detector map (SAF01 §6.3).","Gas zone 1: inlet (SDV-2001) to dehydration (SDV-3560) — CH4 detectors over units 200/310/330.","Gas zone 2: cold box to LNG separator (SDV-2201/2202) — units 221/350/370.","Loading bay: CH4 + fire detectors + low-temperature spill probes → ASD or ESD per scenario (Block 2 detail).","Gas engines (U480): CH4 + fire detection → alarm to control cabin, plant ESD, CO2 extinguishers, emergency black start.","Cabins (MCC, control room, offices): smoke detectors voting 2 of 2 → plant ESD (process cabins) + CO2 extinguishers.","IR flame detectors cover compressors, pumps, vessels & valves in the process area; final positions set during construction."]'>
+      <span class="pres zr">Zibac</span>
+      <div class="kicker">Emergency systems · Detection</div>
+      <h2>Fire &amp; Gas detection</h2>
+      <table class="data" style="font-size:12.5px;">
+        <tr><th>Area</th><th>Detection</th><th>Automatic action</th></tr>
+        <tr><td class="k">Gas zone 1 — inlet→dehydration<br><span class="muted">(SDV-2001 → SDV-3560)</span></td><td class="v">CH₄ detectors (U200 · 310 · 330)</td><td class="v">PSD on confirmed gas</td></tr>
+        <tr><td class="k">Gas zone 2 — cold box→LNG sep.<br><span class="muted">(SDV-3560 → SDV-2201/2202)</span></td><td class="v">CH₄ detectors (U221 · 350 · 370)</td><td class="v">PSD on confirmed gas</td></tr>
+        <tr><td class="k">Process area (equipment)</td><td class="v"><b>IR flame detectors</b> — compressors, pumps, vessels, valves</td><td class="v">ESD on fire</td></tr>
+        <tr><td class="k">Loading bay (S-221/S-222)</td><td class="v">CH₄ + fire + <b>low-temperature spill probes</b></td><td class="v">ASD / ESD per scenario (Block 2)</td></tr>
+        <tr><td class="k">Gas engines (U480)</td><td class="v">CH₄ + fire detection</td><td class="v">Alarm → plant ESD · CO₂ · <b>black start</b></td></tr>
+        <tr><td class="k">Cabins (MCC · control · offices)</td><td class="v">Smoke detectors, <b>2 of 2 voting</b></td><td class="v">Alarm → plant ESD (process cabins) + CO₂</td></tr>
+      </table>
+      <div class="note">Detection = the automatic trigger of the shutdown hierarchy. Unit 700 (F&amp;G) is detailed in Module 113.</div>
+    </section>
+
+    <!-- 14 ALARM SYSTEM · Zibac · 7 -->
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Zibac"
+      data-notes='["When something trips, the plant TELLS you — learn the sounds.","General audible alarm: siren above the control-room roof, managed by the PCS, powered from UPS batteries — it works even in a blackout.","Differentiated tones: PSD, ESD, Forced Evacuation and Gas Leakage each sound different.","PSD: pitched intermittent sound until the parameter is restored and manually reset on the PCS.","Forced evacuation: LOW tone, intermittent — that sound means one thing: leave, now, to the muster point.","ESD also has a pneumatic siren on panel 100-CP-001 — continuous pitched tone, manually silenced by the operator once conditions are restored.","Drill the group: which sound means evacuate?"]'>
+      <span class="pres zr">Zibac</span>
+      <div class="kicker">Emergency systems · Alarms</div>
+      <h2>General alarm system — know the sounds</h2>
+      <ul class="points">
+        <li><b>Siren above the control-room roof</b>, managed by the PCS, <b>UPS-powered</b> — works in a blackout.</li>
+        <li><b>Differentiated tones</b> for: <b>PSD · ESD · Forced Evacuation · Gas Leakage</b>.</li>
+        <li><b>PSD:</b> pitched, intermittent — until the parameter is restored &amp; manually reset on the PCS.</li>
+        <li><b>Forced Evacuation:</b> <b>low tone, intermittent</b> — means <b>leave now</b> to the muster point.</li>
+        <li><b>ESD:</b> additional <b>pneumatic siren</b> on panel 100-CP-001 — continuous pitched tone, silenced manually once conditions are restored.</li>
+      </ul>
+      <div class="note">Exam favourite: the low intermittent tone = forced evacuation. If in doubt — evacuate.</div>
+    </section>
+
+    <!-- BREAK 1 -->
+    <section class="slide inter brk" data-min="15" data-block="Break" data-presenter="—"
+      data-notes='["15-minute break. Give the exact return time.","Block 2: emergency plan, spill & vapor cloud, foam and fire control."]'>
+      <div>
+        <div class="big">☕ 15:00</div>
+        <h2>Break</h2>
+        <p>15 minutes. Block 2: the emergency plan, LNG spills, foam &amp; fire control.</p>
+      </div>
+    </section>
+
+    <!-- 15 SAFETY & EMERGENCY PLAN · Mario · 8 -->
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Mario"
+      data-notes='["The plan in one line: alarm sounds → stop work safely → follow your escape route → muster → account for everyone.","Escape: at least TWO evacuation routes from every location, oriented in different directions, never obstructed.","Cabins: antipanic doors opening in the escape direction, never lockable, self-illuminated signs.","Blackout case: control cabin, MCC and 2 other cabins stay lit from UPS; UPS also feeds 1 central lighting pole + 3 entrance-door emergency lights.","Personnel safeguards: safety showers & eye baths at hazardous-chemical areas; ESD pushbuttons line the escape ways.","Emergency vehicles: layout designed for their access & turning radii.","Assign now: who calls external services, who counts heads at muster — roles must be known BEFORE the alarm."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Emergency plan</div>
+      <h2>Safety &amp; emergency plan — escape &amp; evacuation</h2>
+      <div class="grid2">
+        <ul class="points">
+          <li><b>≥ 2 evacuation routes</b> from every location, in <b>different directions</b>, never obstructed.</li>
+          <li>Cabins: <b>antipanic doors</b> opening toward escape, never lockable, <b>self-illuminated signs</b>.</li>
+          <li><b>ESD pushbuttons along the escape ways</b> — activate on your way out.</li>
+        </ul>
+        <ul class="points">
+          <li><b>Blackout:</b> control/MCC/2 cabins on <b>UPS lighting</b> + 1 central pole + 3 entrance lights.</li>
+          <li><b>Safety showers &amp; eye baths</b> in chemical-hazard areas.</li>
+          <li>Layout sized for <b>emergency-vehicle access</b> &amp; turning radii.</li>
+        </ul>
+      </div>
+      <div class="flow" style="margin-top:12px;">
+        <div class="step"><span class="u">ON ALARM</span><span class="t"><b>Stop work safely → escape route → muster point → head count</b> — know your route and your role beforehand</span></div>
+      </div>
+      <div class="note">Source: SAF01 §9 (Escape &amp; Evacuation). Site emergency-response roles to be confirmed with the client HSE plan.</div>
+    </section>
+
+    <!-- 16 SPILL & VAPOR CLOUD · Zibac · 9 -->
+    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Bring Module 001 physics to the Tendrara layout.","A spill pools and boils; vapour is ~600× the liquid volume; the cold cloud hugs the ground and drifts downwind until it warms past ≈ −110 °C and lifts.","Tendrara containment: LNG spills in the tank & loading areas drain to the LNG IMPOUNDMENT basin (NFPA 59A concept) — away from equipment and people.","Detection: LOW-TEMPERATURE sensors in the impoundment/collection areas — cryogenic liquid arriving is detected by cold, not gas.","On detection: foam pourers + deluge activate on the impoundment; shutdown per the hierarchy (ASD/ESD).","Tank rollover: stratified layers can invert → sudden vapour release — prevented by density/level monitoring and mixing (unit module 107).","The white cloud is condensed moisture — the flammable envelope can extend beyond it; keep everyone upwind & uphill."]'>
+      <span class="pres zr">Zibac</span>
+      <div class="kicker">LNG emergencies · Spill</div>
+      <h2>LNG spill &amp; vapor-cloud behaviour at Tendrara</h2>
+      <div class="flow">
+        <div class="step"><span class="u">SPILL</span><span class="t">LNG pools &amp; boils — vapour ≈ <b>600×</b> liquid volume; cold cloud <b>hugs the ground</b>, drifts downwind, lifts above ≈ <b>−110 °C</b></span></div>
+        <div class="step"><span class="u">CONTAIN</span><span class="t">Tank &amp; loading-area spills drain to the <b>LNG impoundment basin</b> (NFPA 59A) — away from equipment &amp; people</span></div>
+        <div class="step"><span class="u">DETECT</span><span class="t"><b>Low-temperature sensors</b> — cryogenic liquid is detected by <b>cold</b>, not gas</span></div>
+        <div class="step"><span class="u">ACT</span><span class="t"><b>Foam pourers + deluge</b> activate on the impoundment · shutdown per hierarchy (ASD/ESD)</span></div>
+      </div>
+      <ul class="points" style="margin-top:10px;">
+        <li><b>Rollover:</b> stratified tank layers can invert → sudden vapour release — prevented by monitoring &amp; mixing (→ Module 107).</li>
+        <li>The <b>visible white cloud ≠ flammable edge</b> — stay upwind, uphill, and out of the cloud.</li>
+      </ul>
+    </section>
+
+    <!-- 17 LOADING-BAY SCENARIOS · Zibac · 8 -->
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["The two design scenarios at the loading bay, straight from SAF01 §6.3 — this is exam material.","Scenario A — LNG spillover, NO ignition: CH4/low-temp detection → ASD I4 (no impact on the process). Spill collects in the LNG impoundment; foam pourer + deluge valve activated by the low-temperature sensors.","Scenario B — LNG spillover WITH fire: fire detection → full ESD + manual CO2 extinguisher intervention locally. Spill still collects in the impoundment with foam + deluge; emergency power generation black-starts.","Note the philosophy: same containment either way; ignition escalates the shutdown level from ASD to ESD.","Remind them of the dead-man philosophy — the operator is IN the bay, so personal escape comes first; the automatics do the isolation."]'>
+      <span class="pres zr">Zibac</span>
+      <div class="kicker">LNG emergencies · Scenarios</div>
+      <h2>Loading-bay spill scenarios (SAF01)</h2>
+      <table class="data">
+        <tr><th>Scenario</th><th>Detection</th><th>Automatic response</th></tr>
+        <tr>
+          <td class="k">A · LNG spillover,<br>no ignition</td>
+          <td class="v">CH₄ detectors · low-temperature probes</td>
+          <td class="v"><b>ASD (I4)</b> — no impact on the process · spill collected in the <b>LNG impoundment</b> · <b>foam pourer + deluge</b> activated by low-temp sensors</td>
+        </tr>
+        <tr>
+          <td class="k">B · LNG spillover<br>with fire</td>
+          <td class="v">Fire detectors</td>
+          <td class="v"><b>Full ESD</b> + manual CO₂ extinguisher intervention · impoundment + foam + deluge as above · <b>emergency power black start</b></td>
+        </tr>
+      </table>
+      <ul class="points" style="margin-top:10px;">
+        <li>Same containment either way — <b>ignition escalates ASD → ESD</b>.</li>
+        <li>Operator in the bay (dead-man): <b>personal escape first</b> — the automatics handle isolation.</li>
+      </ul>
+    </section>
+
+    <!-- 18 FIREWATER · Zibac · 8 -->
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Golden rule first: firewater at Tendrara is for COOLING exposures and making foam solution — never onto the LNG pool itself.","Monitors: fixed, generally on hydrants, adjustable nozzle up to 2,000 l/min at 7.0 barg; ≥15 m from protected equipment; 360° rotation, 80° elevation, ≥40 m horizontal reach.","Hose reels: along the pipe rack & near compressors every 50 m — 30 m of 1-inch hose, ~1,000 l/min at 7 barg.","Deluge valves: automatic or manual water / foam-water deluge in the LNG storage tank area and loading bay.","Process areas have NO deluge: on fire detection, operators direct the foam monitor at the burning unit and cool neighbours with water monitors & hydrants.","Design basis: one fire at a time; fire assumed contained in its fire area; spring-well filtered water."]'>
+      <span class="pres zr">Zibac</span>
+      <div class="kicker">Fire control · Water</div>
+      <h2>Firewater system</h2>
+      <div class="facts">
+        <div class="fact"><div class="n">2,000</div><div class="l">l/min per fixed monitor @ 7.0 barg · ≥ 40 m reach · 360°/80°</div></div>
+        <div class="fact"><div class="n">50 m</div><div class="l">hose-reel spacing (pipe rack &amp; compressors) — 30 m of 1&quot; hose, ~1,000 l/min</div></div>
+        <div class="fact"><div class="n">≥ 15 m</div><div class="l">monitor stand-off from protected equipment</div></div>
+      </div>
+      <ul class="points" style="margin-top:12px;">
+        <li><b>Deluge (water / foam-water):</b> LNG storage tank area &amp; loading bay — automatic or manual.</li>
+        <li><b>Process areas — no deluge:</b> operators aim the <b>foam monitor</b> at the unit on fire and <b>cool surrounding units</b> with water monitors &amp; hydrants.</li>
+        <li>Design basis: <b>one fire at a time</b>, contained within its fire area.</li>
+        <li><b>Water is for cooling exposures &amp; foam-making — never onto the LNG pool.</b></li>
+      </ul>
+    </section>
+
+    <!-- 19 FOAM SYSTEMS · Zibac · 9 -->
+    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Foam concentrate: AFFF mixed at 3% in water; premixed solution formed at local bladder-tank stations (pressure proportioning) with refilling nozzle, proportioner and delivery valves; central storage refillable from lorry tanks & barrels.","Autonomy: 55 minutes of foam for the LNG (fixed-roof) tank; 30 minutes per confined process fire area.","Application rates (NFPA-aligned): 10.0 l/min/m² fixed-roof tank · 10.2 l/min/m² vessels · 20.4 l/min/m² pumps.","Low-expansion foam controls burning liquid-hydrocarbon fires (flash point < 65 °C); on LNG impoundments, foam blankets the pool to CONTROL VAPORIZATION and radiation — it does not extinguish the pool.","Mobile: foam trailers with premixer connect to hydrants on one side and fire chambers on the other; monitor trailers.","Repeat the rule: foam ON the impoundment per design; never a straight water jet on LNG."]'>
+      <span class="pres zr">Zibac</span>
+      <div class="kicker">Fire control · Foam</div>
+      <h2>Foam systems — AFFF &amp; foam for LNG</h2>
+      <div class="grid2">
+        <div>
+          <div class="facts" style="margin-top:0;">
+            <div class="fact"><div class="n">AFFF 3 %</div><div class="l">concentrate in water · bladder-tank stations, pressure proportioning</div></div>
+            <div class="fact"><div class="n">55 / 30</div><div class="l">min autonomy — LNG tank / each process fire area</div></div>
+          </div>
+          <ul class="points" style="margin-top:10px;">
+            <li><b>Mobile:</b> foam trailers with premixer (hydrant ↔ fire chambers) + monitor trailers.</li>
+          </ul>
+        </div>
+        <div>
+          <table class="data" style="font-size:12.5px;">
+            <tr><th>Application (low-expansion)</th><th>Rate</th></tr>
+            <tr><td class="k">Fixed-roof tank</td><td>10.0 l/min/m²</td></tr>
+            <tr><td class="k">Vessels</td><td>10.2 l/min/m²</td></tr>
+            <tr><td class="k">Pumps</td><td>20.4 l/min/m²</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="note"><b>On LNG impoundments, foam blankets the pool to control vaporization &amp; radiation — it does not "extinguish" the pool.</b>
+        Low-expansion foam extinguishes liquid-hydrocarbon fires (flash point &lt; 65 °C). Never a straight water jet on LNG.</div>
+    </section>
+
+    <!-- 20 FIRE CONTROL & EXTINGUISHERS · Zibac · 8 -->
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
+      data-notes='["Agent selection by target (SAF01 §7.2): low-expansion foam for liquid hydrocarbons; dry chemical powder (class B-C) for small gas fires; water spray to protect exposures; CO2 total flooding for unmanned enclosures; clean agent for manned ones.","Extinguisher inventory: portable 12 kg & 6 kg dry chemical, 5 kg & 3 kg CO2; wheeled 50 kg dry chemical & 30 kg CO2.","Placement rule: in process & utility units, max 15 m travel distance to a portable extinguisher — hung on pipe racks & access stairways; spares stored for immediate replacement.","Small gas fire: dry chemical knocks it down — but if you cannot isolate the gas source, DO NOT extinguish; let it burn controlled and cool exposures (re-ignition of an unburnt cloud is worse).","Cabin fires: CO2/clean agent + 2oo2 smoke detection from Block 1.","Everyone on site must know where their two nearest extinguishers and their escape route are."]'>
+      <span class="pres zr">Zibac</span>
+      <div class="kicker">Fire control · Agents</div>
+      <h2>Fire control &amp; extinguishers</h2>
+      <div class="grid2">
+        <table class="data" style="font-size:12px;">
+          <tr><th>Target</th><th>Agent</th></tr>
+          <tr><td class="k">Liquid HC fires</td><td class="v">Low-expansion <b>foam</b> (flash pt &lt; 65 °C)</td></tr>
+          <tr><td class="k">Small gas fires</td><td class="v"><b>Dry chemical powder</b> (class B-C)</td></tr>
+          <tr><td class="k">Exposure protection</td><td class="v"><b>Water spray</b> (cooling only)</td></tr>
+          <tr><td class="k">Unmanned enclosures</td><td class="v"><b>CO₂ total flooding</b></td></tr>
+          <tr><td class="k">Manned enclosures</td><td class="v"><b>Clean agent</b></td></tr>
+        </table>
+        <ul class="points">
+          <li><b>Portables:</b> 12 / 6 kg dry chemical · 5 / 3 kg CO₂ · <b>Wheeled:</b> 50 kg DC · 30 kg CO₂.</li>
+          <li><b>≤ 15 m</b> travel distance to an extinguisher in process &amp; utility units; spares kept for immediate replacement.</li>
+          <li><b>Gas fire you cannot isolate → do not extinguish:</b> controlled burn + cool exposures beats an unburnt cloud.</li>
+        </ul>
+      </div>
+      <div class="note">Layout &amp; specs: SAF02-ING-FR04 · SAF07-ING-PR02 (Safety Equipment Layout).</div>
+    </section>
+
+    <!-- 21 KEY MESSAGES & RECAP · Mario · 10 -->
+    <section class="slide" data-min="10" data-block="Block 2" data-presenter="Mario"
+      data-notes='["Read slowly — exam blueprint. Ask quick recall questions between items.","1) The plant runs itself at set point; you supervise, verify (CK) and log. 2) Ex areas: rated equipment only, no phones, detector always.","3) Four shutdown levels: LSD package → PSD process → ESD plant+depressurize+diesels → ASD loading bay.","4) Detection triggers automatics: gas → PSD, fire → ESD, cold (low-temp probes) → foam+deluge.","5) Know the sounds: low intermittent tone = forced evacuation; ≥2 escape routes; ESD buttons on the way out.","6) LNG fire logic: never water on the pool; foam controls vaporization; dry chemical for gas fires; do not extinguish what you cannot isolate.","Preview Module 101 (10 Jul): Unit 200 inlet & 530 water treatment — the unit-by-unit phase begins."]'>
+      <span class="pres mm">Mario</span>
+      <div class="kicker">Take-home · Recap</div>
+      <h2>Key messages — Module 002</h2>
+      <ul class="points">
+        <li><b>1 ·</b> The PCS runs the plant at set point — operators <b>supervise, verify (CK) and log</b>; the ESD protects it independently.</li>
+        <li><b>2 ·</b> Hazardous areas: <b>Ex-rated equipment only, no phones, personal detector</b>, ground &amp; bond.</li>
+        <li><b>3 ·</b> Shutdown hierarchy: <b>LSD package → PSD process → ESD plant</b> (depressurize + emergency diesels) → <b>ASD</b> loading bay.</li>
+        <li><b>4 ·</b> Detection drives automatics: <b>gas → PSD · fire → ESD · cold → foam + deluge</b> on the impoundment.</li>
+        <li><b>5 ·</b> Alarms: <b>low intermittent tone = forced evacuation</b> · ≥ 2 escape routes · hit ESD buttons on the way out.</li>
+        <li><b>6 ·</b> Fire logic: <b>never water on an LNG pool</b> · foam controls vaporization · dry chemical for gas fires · <b>don't extinguish what you can't isolate</b>.</li>
+      </ul>
+      <div class="note">Next: <b>Module 101 — UNIT 200 LNG Plant Inlet &amp; 530 Process Water Treatment</b> (10 Jul) — the unit-by-unit phase begins.
+        <a class="btn-doc" href="/docs/SAF05-ING-FR01.pdf" target="_blank" style="margin-left:10px;">📄 SAF05-ING-FR01 (PDF)</a></div>
+    </section>
+
+    <!-- BREAK 2 -->
+    <section class="slide inter brk" data-min="15" data-block="Break" data-presenter="—"
+      data-notes='["Second 15-minute break before Q&A. Give the exact return time."]'>
+      <div>
+        <div class="big">☕ 15:00</div>
+        <h2>Break</h2>
+        <p>15 minutes. Q&amp;A follows, then the module exam and evaluation.</p>
+      </div>
+    </section>
+
+    <!-- Q&A -->
+    <section class="slide inter" data-min="15" data-block="Q&amp;A" data-presenter="Both"
+      data-notes='["Both instructors on. Seed questions if quiet: which tone means evacuate? what does ASD close? why no water on LNG?","Capture plant-specific questions for follow-up with engineering.","Keep to 15 minutes so the exam starts on time."]'>
+      <div>
+        <div class="big">?</div>
+        <h2>Questions &amp; Answers</h2>
+        <p>15 minutes. Open discussion before the assessment.</p>
+      </div>
+    </section>
+
+    <!-- EXAM -->
+    <section class="slide inter" data-min="30" data-block="Assessment" data-presenter="Both"
+      data-notes='["Open the module exam — objectives + key messages, incl. the shutdown hierarchy table and the alarm tones.","Then the module evaluation form.","Record attendance/results against each trainee reference (TND-…)."]'>
+      <div>
+        <div class="big">30:00</div>
+        <h2>Exam + Module Evaluation</h2>
+        <p>Module 002 assessment covering the objectives and key messages, followed by the trainee evaluation form.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="navbar">
+    <div class="counter"><span id="cur">01</span> / <span id="total">00</span></div>
+    <div class="navmid">
+      <button class="nav" id="present">⧉ Presenter view</button>
+      <button class="nav" id="fs">⛶ Fullscreen</button>
+    </div>
+    <div class="navbtns">
+      <button class="nav" id="prev">‹ Prev</button>
+      <button class="nav primary" id="next">Next ›</button>
+    </div>
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  const cur=document.getElementById('cur'), bar=document.getElementById('bar'),
+        prev=document.getElementById('prev'), next=document.getElementById('next'),
+        present=document.getElementById('present'), fs=document.getElementById('fs'),
+        deckEl=document.querySelector('.deck');
+  document.getElementById('total').textContent=String(slides.length).padStart(2,'0');
+
+  const fmt=m=>{const h=Math.floor(m/60),mm=m%60;return h+':' + String(mm).padStart(2,'0');};
+  let acc=0; const data=slides.map(s=>{
+    const m=parseInt(s.dataset.min||'0',10); const start=acc; acc+=m;
+    let notes=[]; try{notes=JSON.parse(s.dataset.notes||'[]');}catch(e){}
+    const t=(s.querySelector('h1,h2')||{}).textContent||'';
+    return {title:t.replace(/\s+/g,' ').trim(), block:s.dataset.block||'', presenter:s.dataset.presenter||'', min:m, start:start, end:acc, notes:notes};
+  });
+  const TOTAL=acc;
+
+  const bc=('BroadcastChannel' in window)? new BroadcastChannel('tendrara-mod02'):null;
+  let presenterWin=null;
+
+  function render(){
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    cur.textContent=String(i+1).padStart(2,'0');
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    prev.disabled=(i===0); next.disabled=(i===slides.length-1);
+    slides[i].scrollTop=0;
+    if(bc) bc.postMessage({type:'state', index:i});
+  }
+  function show(n){i=Math.max(0,Math.min(slides.length-1,n));render();}
+
+  prev.onclick=()=>show(i-1); next.onclick=()=>show(i+1);
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT')return;
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')show(i+1);
+    if(e.key==='ArrowLeft'||e.key==='PageUp')show(i-1);
+    if(e.key==='Home')show(0); if(e.key==='End')show(slides.length-1);
+    if(e.key.toLowerCase()==='f')toggleFs();
+  });
+
+  function toggleFs(){
+    const d=deckEl;
+    if(!document.fullscreenElement){ (d.requestFullscreen||d.webkitRequestFullscreen).call(d); }
+    else { (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+  }
+  fs.onclick=toggleFs;
+  document.addEventListener('fullscreenchange',()=>{
+    const on=!!document.fullscreenElement;
+    fs.classList.toggle('on',on);
+    fs.textContent= on ? '⛶ Exit full screen' : '⛶ Fullscreen';
+  });
+
+  if(bc) bc.onmessage=(ev)=>{
+    const m=ev.data||{};
+    if(m.type==='goto') show(m.index);
+    else if(m.type==='nav') show(i + (m.dir||0));
+    else if(m.type==='hello') render();
+  };
+
+  present.onclick=openPresenter;
+  function openPresenter(){
+    presenterWin=window.open('', 'tendrara_presenter02', 'width=560,height=720');
+    if(!presenterWin){ alert('Please allow pop-ups to open the presenter view.'); return; }
+    presenterWin.document.open();
+    presenterWin.document.write(presenterHTML());
+    presenterWin.document.close();
+    setTimeout(()=>{ if(bc) bc.postMessage({type:'state', index:i}); }, 200);
+  }
+
+  function presenterHTML(){
+    const DATA=JSON.stringify(data), TOT=TOTAL;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Module 002 — Presenter</title>
+<style>
+  :root{--crimson:#C8102E;--blue:#4d9fe8;--amber:#E0A106;--ink:#e9eaec;--mut:#9a9da3;--line:#2a2d33;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:#161819;color:var(--ink);}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;
+    border-bottom:2px solid var(--crimson);background:#1b1d21;position:sticky;top:0;}
+  .top .ttl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-family:"Consolas",monospace;}
+  .clock{font-family:"Consolas",monospace;font-size:13px;color:var(--ink);}
+  .clock b{color:#fff;} .clock .ahead{color:#39c46e;} .clock .behind{color:#ff5b5b;}
+  .timerbtns button{font-size:11px;border:1px solid var(--line);background:#23262b;color:var(--ink);
+    border-radius:4px;padding:4px 8px;cursor:pointer;margin-left:4px;}
+  .body{padding:16px 18px 90px;}
+  .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:"Consolas",monospace;font-size:12px;color:var(--mut);margin-bottom:8px;}
+  .badge{background:var(--crimson);color:#fff;padding:3px 8px;border-radius:3px;font-weight:700;letter-spacing:.04em;}
+  .badge.blk{background:#33363c;color:#cfd2d7;}
+  .badge.pr{background:#3a1f25;color:#ff98a6;}
+  .badge.pr.zr{background:#16293c;color:var(--blue);}
+  .cur-title{font-size:23px;font-weight:700;line-height:1.2;margin:2px 0 4px;color:#fff;}
+  .times{font-family:"Consolas",monospace;font-size:12px;color:var(--mut);margin-bottom:14px;}
+  .times b{color:#fff;}
+  h4{margin:14px 0 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);}
+  ul{margin:0;padding-left:20px;} li{font-size:15px;line-height:1.55;margin:7px 0;color:#dfe1e5;}
+  .next{margin-top:18px;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:#1b1d21;}
+  .next .lbl{font-family:"Consolas",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);}
+  .next .nt{font-size:15px;color:#cfd2d7;margin-top:3px;}
+  .nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;padding:12px 16px;background:#1b1d21;border-top:1px solid var(--line);}
+  .nav button{flex:1;font-size:15px;font-weight:600;border:1px solid var(--line);background:#23262b;color:var(--ink);
+    border-radius:5px;padding:11px;cursor:pointer;}
+  .nav button.p{background:var(--crimson);border-color:var(--crimson);color:#fff;}
+  .nav button:disabled{opacity:.4;cursor:not-allowed;}
+  .pbar{height:3px;background:#23262b;} .pbar i{display:block;height:100%;background:var(--crimson);}
+  .tl{margin:6px 0 16px;}
+  .tllabel{font-family:"Consolas",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;}
+  .tllabel .leg b{color:#fff;} .tllabel .leg .a{color:#39c46e;} .tllabel .leg .p{color:#fff;}
+  .tlbar{position:relative;height:30px;border-radius:5px;overflow:visible;display:flex;background:#23262b;}
+  .seg{height:30px;display:flex;align-items:center;justify-content:center;font-family:"Consolas",monospace;font-size:9px;color:rgba(255,255,255,.65);border-right:1px solid #161819;overflow:hidden;white-space:nowrap;}
+  .seg:last-child{border-right:none;}
+  .seg.c{background:#3a1f25;} .seg.b{background:#4a3a16;} .seg.q{background:#22323a;} .seg.x{background:#2c2230;}
+  .tlslide{position:absolute;top:0;height:30px;border:2px solid #fff;border-radius:3px;background:rgba(255,255,255,.12);pointer-events:none;transition:left .2s,width .2s;z-index:2;}
+  .tlnow{position:absolute;top:-5px;height:40px;width:2px;background:#39c46e;pointer-events:none;display:none;z-index:3;}
+  .tlnow:before{content:"▲";position:absolute;top:-13px;left:50%;transform:translateX(-50%);color:#39c46e;font-size:11px;}
+  .tlticks{position:relative;height:13px;margin-top:3px;}
+  .tlticks span{position:absolute;transform:translateX(-50%);font-family:"Consolas",monospace;font-size:9px;color:var(--mut);white-space:nowrap;}
+</style></head><body>
+  <div class="top">
+    <span class="ttl">Module 002 · Presenter</span>
+    <span class="clock" id="clock">⏱ <b id="elapsed">0:00</b> <span id="delta"></span></span>
+    <span class="timerbtns"><button id="tStart">Start</button><button id="tReset">Reset</button></span>
+  </div>
+  <div class="pbar"><i id="pbar"></i></div>
+  <div class="body">
+    <div class="meta"><span class="badge" id="num">--</span><span class="badge blk" id="blk">--</span><span class="badge pr" id="pres">--</span></div>
+    <div class="cur-title" id="title">—</div>
+    <div class="times" id="times"></div>
+    <div class="tl">
+      <div class="tllabel"><span>Schedule · 0:00 → 4:00</span>
+        <span class="leg"><span class="a">▲ where you are</span> &nbsp;·&nbsp; <span class="p">▮ where you should be</span></span></div>
+      <div class="tlbar" id="tlbar"><div class="tlslide" id="tlslide"></div><div class="tlnow" id="tlnow"></div></div>
+      <div class="tlticks" id="tlticks"></div>
+    </div>
+    <h4>Talking points</h4>
+    <ul id="notes"></ul>
+    <div class="next"><div class="lbl">Next</div><div class="nt" id="nextt">—</div></div>
+  </div>
+  <div class="nav">
+    <button id="prev">‹ Prev</button>
+    <button class="p" id="next">Next ›</button>
+  </div>
+<script>
+  const DATA=${DATA}, TOTAL=${TOT};
+  const fmt=m=>{const h=Math.floor(m/60),mm=m%60;return h+':'+String(mm).padStart(2,'0');};
+  const bc=new BroadcastChannel('tendrara-mod02');
+  let idx=0;
+  (function buildTimeline(){
+    const norm=b=> b==='Module open'?'Block 1':b;
+    const clsOf=b=>({'Block 1':'c','Block 2':'c','Break':'b','Q&A':'q','Assessment':'x'}[b]||'c');
+    const segs=[];
+    DATA.forEach(d=>{const nb=norm(d.block);const last=segs[segs.length-1];
+      if(last&&last.block===nb){last.min+=d.min;last.end+=d.min;}
+      else segs.push({block:nb,min:d.min,start:(last?last.end:0),end:(last?last.end:0)+d.min});});
+    let html='';segs.forEach(s=>{const w=(s.min/TOTAL*100).toFixed(3);
+      html+='<div class="seg '+clsOf(s.block)+'" style="width:'+w+'%">'+(s.min>=20?s.block:'')+'</div>';});
+    document.getElementById('tlbar').insertAdjacentHTML('afterbegin',html);
+    const bounds=[0];segs.forEach(s=>bounds.push(s.end));
+    document.getElementById('tlticks').innerHTML=bounds.map(b=>'<span style="left:'+(b/TOTAL*100)+'%">'+fmt(b)+'</span>').join('');
+  })();
+  function paint(){
+    const d=DATA[idx];
+    document.getElementById('num').textContent=String(idx+1).padStart(2,'0')+'/'+String(DATA.length).padStart(2,'0');
+    document.getElementById('blk').textContent=d.block;
+    const pe=document.getElementById('pres');
+    pe.textContent='▸ '+(d.presenter||'—');
+    pe.className='badge pr'+(d.presenter==='Zibac'?' zr':'');
+    document.getElementById('title').textContent=d.title;
+    document.getElementById('times').innerHTML='This slide <b>'+d.min+' min</b> · runs <b>'+fmt(d.start)+'</b> → <b>'+fmt(d.end)+'</b> · of '+fmt(TOTAL);
+    document.getElementById('notes').innerHTML=d.notes.length? d.notes.map(n=>'<li>'+n+'</li>').join('') : '<li style="color:#777">No notes.</li>';
+    document.getElementById('nextt').textContent= DATA[idx+1]? (DATA[idx+1].presenter?'['+DATA[idx+1].presenter+'] ':'')+DATA[idx+1].title : '— end of module —';
+    document.getElementById('pbar').style.width=((idx+1)/DATA.length*100)+'%';
+    document.getElementById('prev').disabled=(idx===0);
+    document.getElementById('next').disabled=(idx===DATA.length-1);
+    document.getElementById('tlslide').style.left=(DATA[idx].start/TOTAL*100)+'%';
+    document.getElementById('tlslide').style.width=(DATA[idx].min/TOTAL*100)+'%';
+    updateDelta();
+  }
+  bc.onmessage=(ev)=>{ if(ev.data&&ev.data.type==='state'){ idx=ev.data.index; paint(); } };
+  document.getElementById('prev').onclick=()=>bc.postMessage({type:'goto',index:Math.max(0,idx-1)});
+  document.getElementById('next').onclick=()=>bc.postMessage({type:'goto',index:Math.min(DATA.length-1,idx+1)});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' ')bc.postMessage({type:'goto',index:Math.min(DATA.length-1,idx+1)});
+    if(e.key==='ArrowLeft')bc.postMessage({type:'goto',index:Math.max(0,idx-1)});
+  });
+  let running=false, startedAt=0, accumSec=0, raf=null;
+  function curSec(){ return Math.floor(accumSec + (running ? (Date.now()-startedAt)/1000 : 0)); }
+  function tick(){
+    const sec=curSec();
+    document.getElementById('elapsed').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+    const now=document.getElementById('tlnow'); now.style.display='block';
+    now.style.left=Math.min(100,(sec/60)/TOTAL*100)+'%';
+    updateDelta(sec);
+  }
+  function updateDelta(sec){
+    const el=document.getElementById('delta');
+    if(!running && accumSec===0){el.textContent='';return;}
+    if(sec===undefined) sec=curSec();
+    const m=sec/60, d=DATA[idx];
+    if(m > d.end) el.innerHTML='<span class="behind">+'+Math.round(m-d.end)+'m behind</span>';
+    else if(m < d.start) el.innerHTML='<span class="ahead">'+Math.round(d.start-m)+'m ahead</span>';
+    else el.innerHTML='<span style="color:#39c46e">on pace</span>';
+  }
+  document.getElementById('tStart').onclick=function(){
+    if(!running){ running=true; startedAt=Date.now(); this.textContent='Pause'; raf=setInterval(tick,250); tick(); }
+    else { running=false; accumSec=curSec(); clearInterval(raf); this.textContent='Resume'; updateDelta(accumSec); }
+  };
+  document.getElementById('tReset').onclick=function(){
+    running=false; accumSec=0; clearInterval(raf);
+    document.getElementById('elapsed').textContent='0:00';
+    document.getElementById('delta').textContent='';
+    document.getElementById('tStart').textContent='Start';
+    document.getElementById('tlnow').style.display='none';
+  };
+  bc.postMessage({type:'hello'});
+  paint();
+<\/script></body></html>`;
+  }
+
+  show(0);
+</script>
+<script>
+  document.querySelectorAll('.carousel').forEach(function(car){
+    var imgs=[].slice.call(car.querySelectorAll('.cimg'));
+    var dots=[].slice.call(car.querySelectorAll('.cdots b'));
+    if(imgs.length===0) return;
+    var ci=0, timer=null, interval=parseInt(car.dataset.interval||'4000',10);
+    function go(n){ci=(n+imgs.length)%imgs.length;
+      imgs.forEach(function(im,k){im.classList.toggle('active',k===ci);});
+      dots.forEach(function(d,k){d.classList.toggle('active',k===ci);});}
+    dots.forEach(function(d,k){d.onclick=function(){go(k);restart();};});
+    function restart(){clearInterval(timer);if(imgs.length>1){timer=setInterval(function(){go(ci+1);},interval);}}
+    restart();
+  });
+</script>
+</body>
+</html>

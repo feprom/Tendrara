@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tendrara Training — Module Exam</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA;
+    --ok:#1F8A4C; --bad:#B3261E; --blue:#0B5CAD;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;}
+  body{font-family:var(--sans);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;
+    background:linear-gradient(180deg,#fff 0%,#fff 60%,#F2F4F7 100%);}
+  .sheet{max-width:880px;margin:0 auto;background:var(--bg);min-height:100vh;
+    border-left:1px solid var(--line);border-right:1px solid var(--line);}
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 34px;border-bottom:1px solid var(--line);}
+  .brandbar .vendor img{height:34px;display:block;}
+  .clients{display:flex;align-items:center;gap:13px;}
+  .client-logo{height:23px;} .client-logo.itf{height:26px;}
+  .clients .divider{width:1px;height:21px;background:var(--line-strong);}
+  .accent{height:3px;background:var(--crimson);}
+  .wrap{padding:34px 34px 60px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--crimson);font-weight:700;margin-bottom:8px;}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.01em;}
+  p.lead{color:var(--ink-soft);font-size:14.5px;line-height:1.6;margin:0 0 16px;max-width:70ch;}
+  .card{border:1px solid var(--line-strong);border-radius:8px;background:var(--bg-soft);padding:22px 24px;max-width:560px;}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;}
+  input[type=email]{width:100%;font-size:15px;padding:11px 13px;border:1px solid var(--line-strong);border-radius:5px;font-family:var(--sans);}
+  input[type=email]:focus{outline:2px solid var(--crimson);border-color:var(--crimson);}
+  button.primary{background:var(--crimson);color:#fff;border:none;font-size:15px;font-weight:600;
+    padding:12px 22px;border-radius:5px;cursor:pointer;margin-top:14px;}
+  button.primary:hover{background:var(--crimson-dark);}
+  button.primary:disabled{opacity:.5;cursor:not-allowed;}
+  .err{color:var(--bad);font-size:13.5px;margin-top:10px;line-height:1.5;display:none;}
+  .meta{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0 4px;}
+  .chip{font-family:var(--mono);font-size:11px;letter-spacing:.06em;border:1px solid var(--line-strong);
+    border-radius:20px;padding:5px 12px;background:#fff;color:var(--ink-soft);}
+  .chip b{color:var(--crimson);}
+  /* exam */
+  .exambar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:2px solid var(--crimson);
+    display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 34px;}
+  .exambar .who{font-size:13px;color:var(--ink-soft);} .exambar .who b{color:var(--ink);}
+  .exambar .clock{font-family:var(--mono);font-size:15px;font-weight:700;}
+  .exambar .clock.warn{color:var(--bad);}
+  .prog{font-family:var(--mono);font-size:12px;color:var(--ink-soft);}
+  .q{border:1px solid var(--line);border-radius:8px;padding:18px 20px;margin:14px 0;background:#fff;}
+  .q .qt{font-size:15px;font-weight:600;line-height:1.5;margin-bottom:12px;}
+  .q .qt .n{color:var(--crimson);font-family:var(--mono);margin-right:8px;}
+  .opt{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border:1px solid var(--line);
+    border-radius:6px;margin:7px 0;cursor:pointer;font-size:14px;line-height:1.45;transition:.12s;}
+  .opt:hover{border-color:var(--crimson);}
+  .opt input{margin-top:2px;accent-color:var(--crimson);}
+  .opt.sel{border-color:var(--crimson);background:#FBE9EC;}
+  .submitrow{margin:26px 0 10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .unanswered{color:var(--bad);font-size:13.5px;}
+  /* result */
+  .result{max-width:560px;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;margin-top:10px;}
+  .result .head{padding:26px;text-align:center;color:#fff;}
+  .result .head.pass{background:var(--ok);} .result .head.fail{background:var(--bad);}
+  .result .score{font-family:var(--mono);font-size:44px;font-weight:700;line-height:1;}
+  .result .verdict{font-size:15px;margin-top:8px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;}
+  .result .body{padding:20px 24px;background:#fff;}
+  .result table{width:100%;border-collapse:collapse;font-size:14px;}
+  .result td{padding:8px 4px;border-bottom:1px solid var(--line);}
+  .result td:last-child{text-align:right;font-family:var(--mono);}
+  .hidden{display:none;}
+  .note{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+  @media(max-width:640px){.wrap{padding:22px 18px 50px;}.brandbar{padding:12px 18px;}.exambar{padding:10px 18px;}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="brandbar">
+    <div class="vendor"><img src="/images/logoTA.png" alt="Technical America"></div>
+    <div class="clients">
+      <img class="client-logo" src="/images/logoME.png" alt="Manaenergy">
+      <span class="divider"></span>
+      <img class="client-logo itf" src="/images/logoITF.png" alt="ITF">
+    </div>
+  </header>
+  <div class="accent"></div>
+
+  <!-- STEP 1: EMAIL GATE -->
+  <div class="wrap" id="gate">
+    <div class="kicker">Tendrara Micro LNG · Training evaluation</div>
+    <h1 id="gateTitle">Module exam</h1>
+    <p class="lead">Enter the <b>email address you registered with</b> to start your exam.
+      Questions are selected and ordered randomly for each attempt. Your result is saved automatically.</p>
+    <div class="meta" id="gateMeta"></div>
+    <div class="card">
+      <label for="email">Registered email</label>
+      <input type="email" id="email" placeholder="name@company.com" autocomplete="email">
+      <button class="primary" id="startBtn">Start exam →</button>
+      <div class="err" id="gateErr"></div>
+    </div>
+    <p class="note">Not registered yet? <a href="/register/" style="color:var(--crimson);">Register here</a> first, then return to this link.</p>
+  </div>
+
+  <!-- STEP 2: EXAM -->
+  <div id="exam" class="hidden">
+    <div class="exambar">
+      <div class="who"><b id="tName"></b> · <span id="tRef" style="font-family:var(--mono);"></span></div>
+      <div class="prog"><span id="answered">0</span>/<span id="qcount">0</span> answered</div>
+      <div class="clock" id="clock">30:00</div>
+    </div>
+    <div class="wrap">
+      <div class="kicker" id="examKicker"></div>
+      <h1 id="examTitle"></h1>
+      <p class="lead">Answer every question, then press <b>Submit exam</b>. The timer is a guide —
+        your answers are graded when you submit.</p>
+      <div id="qlist"></div>
+      <div class="submitrow">
+        <button class="primary" id="submitBtn">Submit exam</button>
+        <span class="unanswered" id="unansweredMsg"></span>
+      </div>
+      <div class="err" id="examErr"></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: RESULT -->
+  <div class="wrap hidden" id="resultWrap">
+    <div class="kicker">Evaluation result</div>
+    <h1>Exam submitted</h1>
+    <div class="result">
+      <div class="head" id="resHead">
+        <div class="score" id="resScore">–</div>
+        <div class="verdict" id="resVerdict">–</div>
+      </div>
+      <div class="body">
+        <table>
+          <tr><td>Trainee</td><td id="resName">–</td></tr>
+          <tr><td>Exam</td><td id="resExam">–</td></tr>
+          <tr><td>Correct answers</td><td id="resCorrect">–</td></tr>
+          <tr><td>Pass mark</td><td id="resPass">–</td></tr>
+        </table>
+        <p class="note">Your result has been recorded. You may close this page.
+          If a retake is required, your instructor will send you the link again.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<script>
+  const supa = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  const params = new URLSearchParams(location.search);
+  const MOD = (params.get('m') || '001').trim();
+  const LVL = (params.get('l') || 'intermediate').trim().toLowerCase();
+  const LVL_LABEL = LVL.charAt(0).toUpperCase() + LVL.slice(1);
+
+  document.getElementById('gateTitle').textContent = 'Module ' + MOD + ' exam — ' + LVL_LABEL;
+  document.getElementById('gateMeta').innerHTML =
+    '<span class="chip">Module <b>' + MOD + '</b></span>' +
+    '<span class="chip">Level <b>' + LVL_LABEL + '</b></span>' +
+    '<span class="chip">Randomized questions</span>';
+
+  let attempt = null, email = '', answers = {}, timerId = null, inExam = false;
+
+  const $ = id => document.getElementById(id);
+  const showErr = (el, msg) => { el.textContent = msg; el.style.display = 'block'; };
+  const ERRMAP = {
+    'EMAIL_NOT_REGISTERED': 'This email is not registered. Please register first at /register/ and try again.',
+    'EXAM_NOT_FOUND': 'This exam is not available. Check the link with your instructor.',
+    'NO_QUESTIONS': 'The exam has no questions configured yet. Contact your instructor.',
+    'ALREADY_SUBMITTED': 'This attempt was already submitted.',
+    'EMAIL_MISMATCH': 'The email does not match this attempt.'
+  };
+  const friendly = e => { const m = (e && e.message) || ''; for (const k in ERRMAP) if (m.includes(k)) return ERRMAP[k]; return 'Something went wrong: ' + m; };
+
+  $('startBtn').onclick = async () => {
+    const el = $('gateErr'); el.style.display = 'none';
+    email = $('email').value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { showErr(el, 'Please enter a valid email address.'); return; }
+    $('startBtn').disabled = true;
+    const { data, error } = await supa.rpc('start_exam', { p_email: email, p_module_code: MOD, p_level: LVL });
+    $('startBtn').disabled = false;
+    if (error) { showErr(el, friendly(error)); return; }
+    attempt = data;
+    answers = {};
+    renderExam();
+  };
+
+  function renderExam() {
+    $('gate').classList.add('hidden');
+    $('exam').classList.remove('hidden');
+    inExam = true;
+    $('tName').textContent = attempt.trainee_name;
+    $('tRef').textContent = attempt.reference_code || '';
+    $('examKicker').textContent = 'Module ' + attempt.module_code + ' · ' + LVL_LABEL + ' · ' + attempt.questions.length + ' questions';
+    $('examTitle').textContent = attempt.exam_title;
+    $('qcount').textContent = attempt.questions.length;
+
+    const list = $('qlist'); list.innerHTML = '';
+    attempt.questions.forEach((q, qi) => {
+      const div = document.createElement('div'); div.className = 'q';
+      const letters = ['A','B','C','D'];
+      div.innerHTML = '<div class="qt"><span class="n">' + String(qi+1).padStart(2,'0') + '</span>' + escapeHtml(q.question) + '</div>' +
+        q.options.map((o, oi) =>
+          '<label class="opt" data-q="' + q.id + '" data-o="' + oi + '">' +
+          '<input type="radio" name="q_' + q.id + '" value="' + oi + '"> <span><b>' + letters[oi] + '.</b> ' + escapeHtml(o) + '</span></label>'
+        ).join('');
+      list.appendChild(div);
+    });
+
+    list.addEventListener('change', e => {
+      if (e.target.type !== 'radio') return;
+      const lab = e.target.closest('.opt');
+      const qid = lab.dataset.q;
+      answers[qid] = parseInt(lab.dataset.o, 10);
+      document.querySelectorAll('.opt[data-q="' + qid + '"]').forEach(x => x.classList.toggle('sel', x === lab));
+      $('answered').textContent = Object.keys(answers).length;
+    });
+
+    startTimer((attempt.duration_min || 30) * 60);
+    window.scrollTo(0, 0);
+  }
+
+  function startTimer(total) {
+    let left = total;
+    const clock = $('clock');
+    const paint = () => {
+      const m = Math.floor(left / 60), s = left % 60;
+      clock.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      clock.classList.toggle('warn', left <= 300);
+    };
+    paint();
+    timerId = setInterval(() => { left--; paint(); if (left <= 0) { clearInterval(timerId); doSubmit(true); } }, 1000);
+  }
+
+  $('submitBtn').onclick = () => {
+    const missing = attempt.questions.length - Object.keys(answers).length;
+    if (missing > 0) {
+      $('unansweredMsg').textContent = missing + ' question(s) unanswered — they will count as incorrect.';
+      if (!confirm(missing + ' question(s) are unanswered and will count as incorrect.\nSubmit anyway?')) return;
+    }
+    doSubmit(false);
+  };
+
+  async function doSubmit(auto) {
+    if (!inExam) return;
+    inExam = false;
+    clearInterval(timerId);
+    $('submitBtn').disabled = true;
+    const payload = {}; for (const k in answers) payload[k] = answers[k];
+    const { data, error } = await supa.rpc('submit_exam', { p_attempt_id: attempt.attempt_id, p_email: email, p_answers: payload });
+    if (error) { inExam = true; $('submitBtn').disabled = false; showErr($('examErr'), friendly(error)); return; }
+    $('exam').classList.add('hidden');
+    $('resultWrap').classList.remove('hidden');
+    const pass = data.passed;
+    $('resHead').className = 'head ' + (pass ? 'pass' : 'fail');
+    $('resScore').textContent = data.score + '%';
+    $('resVerdict').textContent = pass ? '✔ Passed' : '✘ Not passed';
+    $('resName').textContent = attempt.trainee_name + ' (' + (attempt.reference_code || '') + ')';
+    $('resExam').textContent = attempt.exam_title;
+    $('resCorrect').textContent = data.correct + ' of ' + data.total;
+    $('resPass').textContent = data.pass_score + '%';
+    window.scrollTo(0, 0);
+  }
+
+  window.addEventListener('beforeunload', e => { if (inExam) { e.preventDefault(); e.returnValue = ''; } });
+
+  function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+</body>
+</html>
