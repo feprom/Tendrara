@@ -87,6 +87,8 @@
   .qcard .opts li.ok{color:var(--ok);font-weight:600;}
   .qcard .opts li.ok:before{content:"✔";position:absolute;left:0;}
   .qcard .exp{font-size:12px;color:var(--ink-soft);font-style:italic;margin-top:7px;}
+  .qcard .ref{font-family:var(--mono);font-size:10.5px;color:var(--blue);margin-top:6px;}
+  .qcard .ref.missing{color:var(--bad);}
   .qcard .qbtns{display:flex;gap:8px;flex-wrap:wrap;}
   .qbadge{font-family:var(--mono);font-size:10px;border-radius:10px;padding:2px 9px;}
   .qbadge.on{background:#E6F4EC;color:var(--ok);} .qbadge.off{background:#FBEAE9;color:var(--bad);}
@@ -227,6 +229,8 @@
     <div class="optrow"><input type="radio" name="qmCorrect" value="3"><input type="text" id="qmOpt3" placeholder="Option D"></div>
     <label for="qmExp">Explanation (shown in admin only)</label>
     <textarea id="qmExp" rows="2"></textarea>
+    <label for="qmRef">Reference — where this is stated (deck slide · source document)</label>
+    <input type="text" id="qmRef" placeholder="e.g. M001 deck — &quot;LNG safety&quot; · SAF01-ING-FR01 §6.2">
     <label style="display:flex;align-items:center;gap:8px;font-weight:600;"><input type="checkbox" id="qmActive" checked> Active (served in new exams)</label>
     <div class="modalbtns">
       <button class="primary" id="qmSave" style="margin-top:0;">Save question</button>
@@ -460,6 +464,8 @@
         '</div></div>' +
         '<ul class="opts">' + opts + '</ul>' +
         (q.explanation ? '<div class="exp">' + esc(q.explanation) + '</div>' : '') +
+        (q.reference ? '<div class="ref">Ref: ' + esc(q.reference) + '</div>'
+                     : '<div class="ref missing">Ref: — missing (add the source for control)</div>') +
         '</div>';
     }).join('') || '<p class="muted">No questions in this bank yet.</p>';
 
@@ -476,6 +482,7 @@
     for (let i = 0; i < 4; i++) $('qmOpt' + i).value = q ? (q.options[i] || '') : '';
     document.querySelectorAll('input[name="qmCorrect"]').forEach(r => r.checked = q ? (+r.value === q.correct_index) : r.value === '0');
     $('qmExp').value = q && q.explanation ? q.explanation : '';
+    $('qmRef').value = q && q.reference ? q.reference : '';
     $('qmActive').checked = q ? q.active : true;
     $('qmErr').style.display = 'none';
     $('qModal').classList.remove('hidden');
@@ -493,7 +500,8 @@
     const { error } = await supa.rpc('admin_save_question', {
       p_key: KEY, p_id: editingId, p_exam_id: $('bankExam').value,
       p_question: $('qmText').value.trim(), p_options: opts,
-      p_correct_index: correct, p_explanation: $('qmExp').value.trim(), p_active: $('qmActive').checked });
+      p_correct_index: correct, p_explanation: $('qmExp').value.trim(), p_active: $('qmActive').checked,
+      p_reference: $('qmRef').value.trim() });
     $('qmSave').disabled = false;
     if (error) { el.textContent = 'Error: ' + error.message; el.style.display = 'block'; return; }
     $('qModal').classList.add('hidden');
@@ -504,7 +512,8 @@
     const { error } = await supa.rpc('admin_save_question', {
       p_key: KEY, p_id: q.id, p_exam_id: $('bankExam').value,
       p_question: q.question, p_options: q.options,
-      p_correct_index: q.correct_index, p_explanation: q.explanation || '', p_active: !q.active });
+      p_correct_index: q.correct_index, p_explanation: q.explanation || '', p_active: !q.active,
+      p_reference: q.reference || '' });
     if (error) { alert('Error: ' + error.message); return; }
     await loadBank(); refreshExamCounts();
   }
