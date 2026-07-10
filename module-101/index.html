@@ -238,8 +238,8 @@
       <div class="note">Function (§3.4): primary separation &amp; conditioning — remove water and condensates, control pressure, prevent hydrates.</div>
     </section>
 
-    <!-- 5 OPERATING SUMMARY · Mario · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
+    <!-- 5 OPERATING SUMMARY · Mario · 7 -->
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
       data-notes='["This is Table 3.1 of the Operating Manual — the one-page identity card of the unit. Exam material.","Inputs: raw gas up to 55 barg through SDV-2024, plus corrosion inhibitor injection upstream of the first separator.","Outputs: conditioned gas to U330 regulated by FV-2001; water to U530; condensates to the hot oil buffer as fuel.","Key specs: hydrate prevention by TIC-2002 on E-201; pressure by PV-2001; flow by FIC-2001; PSVs plus PAHH/TAHH/LALL/LAHH trips with blowdown via BDV-2004.","Walk the table slowly — every row returns later in the module."]'>
       <div class="kicker">Unit 200 · Operating summary <span class="sub">— Manual §3.1</span></div>
       <h2>Operating summary</h2>
@@ -252,8 +252,20 @@
       </table>
     </section>
 
-    <!-- 6 GA & RISK LOCATION · Mario · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
+
+    <!-- 5b PROCESS DIAGRAM · Mario · 6 -->
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
+      data-notes='["Process Diagram PRO10-ING-PR14 — the PFD of the inlet separator, first sheet of the Unit 200 flow path.","Walk it left to right: feed gas from wellhead → SDV-2024 (ESD, highlighted) with corrosion inhibitor injection → V-202 inlet 3-phase separator.","Top line: gas &amp; condensates to E-201 · BDV-2027 blowdown to flare with restriction orifice.","Bottom: condensates via SDV-2025 / LV-2021 re-commingled with the gas · water via SDV-2026 / LV-2022 to the Process Water Package.","Teach the fluid color code (legend): gas yellow, condensates green, process water blue — same convention on every PFD of the plant."]'>
+      <div class="kicker">Process Diagram <span class="sub">— PRO10-ING-PR14 · Inlet Separator</span></div>
+      <h2>Process diagram — V-202 inlet separator</h2>
+      <div class="fig" style="margin-top:4px;">
+        <a href="/images/pfd-1.png" target="_blank"><img src="/images/pfd-1.png" alt="Process Flow Diagram - Inlet Separator (PRO10-ING-PR14)" style="max-height:440px;"></a>
+        <div class="cap">PRO10-ING-PR14 (21044-PR-PFD-00001) — Process Flow Diagram · Inlet Separator — click to enlarge</div>
+      </div>
+    </section>
+
+    <!-- 6 GA & RISK LOCATION · Mario · 5 -->
+    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Mario"
       data-notes='["Figure 3.1 — general arrangement with risk locations highlighted.","Two physical areas: skid S-202 with the V-202 inlet separator sits at the plant inlet corner near the vehicle gate; skid S-201 with V-201 sits along the pipe rack next to the U330 skids.","Highlighted zones are the risk locations — hydrocarbon inventory under pressure.","Know these locations for your field rounds and your escape routes — gas zone 1 detectors cover this area."]'>
       <div class="kicker">Unit 200 · Layout <span class="sub">— Manual §3.2, Fig. 3.1</span></div>
       <h2>General arrangement &amp; risk location</h2>
@@ -269,8 +281,8 @@
       </div>
     </section>
 
-    <!-- 7 PROCESS I — RECEPTION & V-202 · Mario · 10 -->
-    <section class="slide" data-min="10" data-block="Block 1" data-presenter="Mario"
+    <!-- 7 PROCESS I — RECEPTION & V-202 · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
       data-notes='["Start walking the gas through the unit — first stage.","SDV-2024 is the PLANT INLET shutdown valve — the primary emergency isolation of the incoming pipeline.","Corrosion inhibitor (package XX-201) is injected into the gas line before V-202 — protects downstream equipment against acidic compounds, moisture and CO2.","V-202 inlet three-phase separator: water out to the Process Water Package; condensates are re-commingled with the gas leaving the vessel and travel together downstream.","V-202 has its own level loops LIC-2021/2022 with LV-2021/2022, outlets SDV-2025 (condensate) and SDV-2026 (water) — you will see them on the HMI later."]'>
       <div class="kicker">Process · Stage 1 <span class="sub">— Manual §3.4</span></div>
       <h2>Gas reception &amp; first separation — V-202</h2>
@@ -285,8 +297,8 @@
       </ul>
     </section>
 
-    <!-- 8 PROCESS II — E-201 HEATING · Mario · 10 -->
-    <section class="slide" data-min="10" data-block="Block 1" data-presenter="Mario"
+    <!-- 8 PROCESS II — E-201 HEATING · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
       data-notes='["Second stage: heating. From V-202 the gas passes SDV-2001 — the INLET SKID shutdown valve, isolating the U200 skid for local shutdown or maintenance.","E-201 is a shell-and-tube exchanger heated by HOT OIL — it raises gas temperature to prevent hydrate formation, critical in winter operation.","Control: TIC-2002 regulates the gas outlet temperature by throttling the hot oil flow with TV-2002.","Link back to Module 001 site conditions: Tendrara winters bring frost and occasional snow — this exchanger is the hydrate defense.","Ask: what happens if E-201 loses hot oil on a cold day? Hydrate risk downstream — TAHH/TALL monitoring and trip logic protect it."]'>
       <div class="kicker">Process · Stage 2 <span class="sub">— Manual §3.4</span></div>
       <h2>Heating &amp; hydrate prevention — E-201</h2>
