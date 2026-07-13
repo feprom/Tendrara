@@ -1342,23 +1342,20 @@
         </svg>
       </div>
 
-      <div class="grid2" style="margin-top:10px;">
-        <div class="hcard eqc"><div class="hh"><span>⚠ PSD — Process Shut Down</span><span>6</span></div><div class="hb">
-          <div class="hval"><span class="k">PAHH-2002</span><span class="v">HH inlet pressure</span></div>
-          <div class="hval"><span class="k">PAHH-2021</span><span class="v">HH pressure V-202</span></div>
-          <div class="hval"><span class="k">TAHH-2002</span><span class="v">HH temperature (V-201)</span></div>
-          <div class="hval"><span class="k">LAHH-2003</span><span class="v">HH light level V-201 · 90%</span></div>
-          <div class="hval"><span class="k">LAHH-2021</span><span class="v">HH level V-202</span></div>
-          <div class="hval"><span class="k">ZSH-2005</span><span class="v">rupture disk RD-2005 burst</span></div>
-        </div></div>
-        <div class="hcard bdw"><div class="hh"><span>⚠ LSD — Local Shut Down</span><span>4</span></div><div class="hb">
-          <div class="hval"><span class="k">LALL-2003</span><span class="v">LL light level V-201 · 10%</span></div>
-          <div class="hval"><span class="k">LALL-2004</span><span class="v">LL heavy level V-201</span></div>
-          <div class="hval"><span class="k">LALL-2021</span><span class="v">LL light level V-202</span></div>
-          <div class="hval"><span class="k">LALL-2022</span><span class="v">LL heavy level V-202</span></div>
-        </div></div>
-      </div>
-      <div class="routing">Pattern: <b>HH → PSD</b> (stop the process) · <b>LL level → LSD</b> (close the affected outlet — gas blow-by). The full logic is the Cause &amp; Effect matrix (next slide).</div>
+      <table class="data" style="font-size:11px;margin-top:10px;">
+        <tr><th>Alarm</th><th>Action</th><th>Instrument</th><th>Equipment</th><th>Set point</th><th>Meaning</th></tr>
+        <tr><td class="k" style="color:var(--crimson);">PAHH-2002</td><td class="k" style="color:var(--crimson);">PSD</td><td class="k">PT-2002</td><td class="k">Plant inlet</td><td class="v">—</td><td class="v">High-high inlet pressure</td></tr>
+        <tr><td class="k" style="color:var(--crimson);">PAHH-2021</td><td class="k" style="color:var(--crimson);">PSD</td><td class="k">PIT-2021</td><td class="k">V-202</td><td class="v">—</td><td class="v">High-high pressure</td></tr>
+        <tr><td class="k" style="color:var(--crimson);">LAHH-2021</td><td class="k" style="color:var(--crimson);">PSD</td><td class="k">LSHH-2021</td><td class="k">V-202</td><td class="v">DI</td><td class="v">High-high liquid level</td></tr>
+        <tr><td class="k" style="color:var(--crimson);">LAHH-2003</td><td class="k" style="color:var(--crimson);">PSD</td><td class="k">LT-2003</td><td class="k">V-201</td><td class="v">600 mm (90%)</td><td class="v">High-high light liquid level</td></tr>
+        <tr><td class="k" style="color:var(--crimson);">TAHH-2002</td><td class="k" style="color:var(--crimson);">PSD</td><td class="k">TT-2001</td><td class="k">V-201</td><td class="v">—</td><td class="v">High-high temperature</td></tr>
+        <tr><td class="k" style="color:var(--crimson);">ZSH-2005</td><td class="k" style="color:var(--crimson);">PSD</td><td class="k">ZS-2005</td><td class="k">RD-2005 (E-201)</td><td class="v">—</td><td class="v">Rupture disk burst (hot oil)</td></tr>
+        <tr><td class="k" style="color:var(--amber);">LALL-2021</td><td class="k" style="color:var(--amber);">LSD</td><td class="k">LSLL-2021</td><td class="k">V-202</td><td class="v">DI</td><td class="v">Low-low light liquid level</td></tr>
+        <tr><td class="k" style="color:var(--amber);">LALL-2022</td><td class="k" style="color:var(--amber);">LSD</td><td class="k">LSLL-2022</td><td class="k">V-202</td><td class="v">DI</td><td class="v">Low-low heavy liquid level</td></tr>
+        <tr><td class="k" style="color:var(--amber);">LALL-2003</td><td class="k" style="color:var(--amber);">LSD</td><td class="k">LT-2003</td><td class="k">V-201</td><td class="v">150 mm (10%)</td><td class="v">Low-low light liquid level</td></tr>
+        <tr><td class="k" style="color:var(--amber);">LALL-2004</td><td class="k" style="color:var(--amber);">LSD</td><td class="k">LS-2004</td><td class="k">V-201</td><td class="v">DI</td><td class="v">Low-low heavy liquid level</td></tr>
+      </table>
+      <div class="note">Pattern: <b>HH → PSD</b> (stop the process) · <b>LL level → LSD</b> (close the affected outlet — gas blow-by). Each alarm always carries its <b>instrument</b> and <b>equipment</b> (per plant_alarms). Full logic: Cause &amp; Effect matrix (next slide).</div>
     </section>
 
     <!-- 19 CAUSE & EFFECT · Mario · 8 -->
