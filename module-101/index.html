@@ -179,6 +179,7 @@
   .hcard.iso .hh{background:#C8102E;} .hcard.bdw .hh{background:#B26A00;}
   .hcard.rel .hh{background:#7A3FB3;} .hcard.ctl .hh{background:#0B5CAD;}
   .vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;}
+  .mgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px;}
   .doclink{color:var(--crimson);font-weight:700;text-decoration:none;}
   .doclink:hover{text-decoration:underline;}
   .docstat{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.04em;}
@@ -1121,31 +1122,145 @@
     <!-- 15 INSTRUMENTATION · Mario · 9 -->
     <section class="slide" data-min="9" data-block="Block 2" data-presenter="Mario"
       data-notes='["Table 3.5 has 37 instruments — here are the ones you actually watch.","Flow: FT-2001 feed gas 0..25 MMSCFD; FT-2011/FT-2012 water and condensate outlet flows from V-201.","Pressure: PT-2001/2002 feed gas, PT-2003 gas to dehydration — all 0..100 barg; PDG-2001 filter DP.","Temperature: TT-2001 feed gas, TT-2002 E-201 outlet.","Levels on V-201: LT-2001 light, LT-2002 heavy, LT-2003 total, plus LSLL-2004 independent switch.","Quality: AE/AT-2001 feed gas analyzer. Position: ZSH/ZSL on every SDV and BDV.","Where a printed range is garbled in the extraction, the instrument datasheet governs."]'>
-      <div class="kicker">Operating interface <span class="sub">— Manual §3.5.3, Table 3.5</span></div>
+      <div class="kicker">Operating interface <span class="sub">— Manual §3.5.3 · Table 3.5 (37 instruments)</span></div>
       <h2>Instrumentation — what you watch</h2>
-      <div class="grid2">
-        <table class="data" style="font-size:12px;">
-          <tr><th>Variable</th><th>Key instruments</th></tr>
-          <tr><td class="k">Flow</td><td class="v"><b>FT-2001</b> feed gas (0..25 MMSCFD) · FT-2011 water · FT-2012 condensate</td></tr>
-          <tr><td class="k">Pressure</td><td class="v"><b>PT-2001 / PT-2002</b> feed · <b>PT-2003</b> to dehydration (0..100 barg) · <b>PDG-2001</b> filter ΔP</td></tr>
-          <tr><td class="k">Temperature</td><td class="v"><b>TT-2001</b> feed gas · <b>TT-2002</b> E-201 outlet</td></tr>
-        </table>
-        <table class="data" style="font-size:12px;">
-          <tr><th>Variable</th><th>Key instruments</th></tr>
-          <tr><td class="k">Level (V-201)</td><td class="v"><b>LT-2001</b> light · <b>LT-2002</b> heavy · <b>LT-2003</b> total · <b>LSLL-2004</b> switch</td></tr>
-          <tr><td class="k">Quality</td><td class="v"><b>AE / AT-2001</b> feed gas analyzer (%mol)</td></tr>
-          <tr><td class="k">Position</td><td class="v"><b>ZSH / ZSL</b> on every SDV &amp; BDV · ZSH-2005 on rupture disk RD-2005</td></tr>
-        </table>
+
+      <div class="mapwrap">
+        <div class="lbl"><span>Unit 200 — measurement points</span>
+          <span class="you" style="font-weight:400;"><b style="color:#0B5CAD;">P</b> · <b style="color:#1F8A4C;">F</b> · <b style="color:#B26A00;">T</b> · <b style="color:#7A3FB3;">L</b> · <b style="color:#0E7C86;">A quality</b> · <b style="color:#8a9099;">Z position</b></span></div>
+        <svg viewBox="0 0 1000 168" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="iah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#666"/></marker></defs>
+          <!-- inlet instruments cluster -->
+          <text x="8" y="40" font-family="Consolas,monospace" font-size="8" fill="#0B5CAD">PT-2001 / PT-2002</text>
+          <text x="8" y="52" font-family="Consolas,monospace" font-size="8" fill="#1F8A4C">FT-2001 · FE-2001</text>
+          <text x="8" y="64" font-family="Consolas,monospace" font-size="8" fill="#B26A00">TT-2001</text>
+          <text x="8" y="76" font-family="Consolas,monospace" font-size="8" fill="#0E7C86">AE / AT-2001</text>
+          <line x1="70" y1="80" x2="120" y2="92" stroke="#C9CED4" stroke-width="1"/>
+          <!-- feed line + chain -->
+          <line x1="70" y1="96" x2="150" y2="96" stroke="#666" stroke-width="2.5" marker-end="url(#iah)"/>
+          <rect x="66" y="90" width="10" height="10" transform="rotate(45 71 96)" fill="#8a9099"/>
+          <text x="71" y="118" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#8a9099">ZSH/ZSL</text>
+          <rect x="152" y="74" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="210" y="96" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">V-202</text>
+          <text x="210" y="110" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#8a9099">1st sep</text>
+          <text x="210" y="140" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#7A3FB3">LSHH/LSLL-2021/22</text>
+          <line x1="268" y1="96" x2="308" y2="96" stroke="#666" stroke-width="2.5" marker-end="url(#iah)"/>
+          <rect x="310" y="74" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="368" y="96" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">E-201</text>
+          <text x="368" y="110" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#8a9099">heater</text>
+          <text x="368" y="60" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#B26A00">TT-2002 outlet</text>
+          <line x1="368" y1="64" x2="368" y2="74" stroke="#C9CED4" stroke-width="1"/>
+          <line x1="426" y1="96" x2="466" y2="96" stroke="#666" stroke-width="2.5" marker-end="url(#iah)"/>
+          <rect x="468" y="74" width="126" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="531" y="96" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">F-201A/B</text>
+          <text x="531" y="110" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#8a9099">filters</text>
+          <text x="531" y="60" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#0B5CAD">PDG-2001 ΔP · PG-2001A/B</text>
+          <line x1="531" y1="64" x2="531" y2="74" stroke="#C9CED4" stroke-width="1"/>
+          <line x1="594" y1="96" x2="634" y2="96" stroke="#666" stroke-width="2.5" marker-end="url(#iah)"/>
+          <rect x="636" y="74" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="694" y="96" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">V-201</text>
+          <text x="694" y="110" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#8a9099">final sep</text>
+          <text x="694" y="56" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#7A3FB3">LT-2001/02/03 · PG-2002</text>
+          <line x1="694" y1="60" x2="694" y2="74" stroke="#C9CED4" stroke-width="1"/>
+          <text x="694" y="140" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#7A3FB3">LSLL-2004</text>
+          <line x1="752" y1="96" x2="792" y2="96" stroke="#666" stroke-width="2.5" marker-end="url(#iah)"/>
+          <text x="826" y="90" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#0B5CAD">PT-2003</text>
+          <rect x="800" y="80" width="70" height="32" rx="4" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.3"/>
+          <text x="835" y="100" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#C8102E">U330</text>
+        </svg>
       </div>
-      <div class="note">Full list: Table 3.5 (37 items). Ranges per the instrument datasheets where the manual print is unclear.</div>
+
+      <div class="mgrid" id="itiles">
+        <button class="objtile" style="--acc:#8a9099" data-v="Z"><div class="ic">⊕</div><div class="n">9</div><div class="l">Position (Z)</div></button>
+        <button class="objtile" style="--acc:#0B5CAD" data-v="P"><div class="ic">◔</div><div class="n">8</div><div class="l">Pressure (P)</div></button>
+        <button class="objtile" style="--acc:#1F8A4C" data-v="F"><div class="ic">⇢</div><div class="n">7</div><div class="l">Flow (F)</div></button>
+        <button class="objtile" style="--acc:#7A3FB3" data-v="L"><div class="ic">▤</div><div class="n">6</div><div class="l">Level (L)</div></button>
+        <button class="objtile" style="--acc:#B26A00" data-v="T"><div class="ic">☼</div><div class="n">3</div><div class="l">Temp (T)</div></button>
+        <button class="objtile" style="--acc:#0E7C86" data-v="A"><div class="ic">⚗</div><div class="n">2</div><div class="l">Quality (A)</div></button>
+      </div>
+      <div class="routing"><b>37 field instruments</b> (Table 3.5) · click a family for the detailed list — range (calibrated span), units, signal &amp; maker (+ RD-2005 rupture disk, RO-2004 orifice).</div>
+
+      <div class="objmodal" id="imodal">
+        <div class="objbox">
+          <div class="objhd"><span id="ititle">—</span><button id="iclose" aria-label="close">✕</button></div>
+          <div class="objtblwrap" id="iwrap"></div>
+          <div class="objfoot">Source: plant_instruments (local copy) · Unit 200 · range = calibrated span</div>
+        </div>
+      </div>
     </section>
 
     <!-- 16 CONTROL LOOPS · Mario · 10 -->
     <section class="slide" data-min="10" data-block="Block 2" data-presenter="Mario"
       data-notes='["Table 3.7 — the seven controllers of Unit 200. This is the core of Block 2.","FIC-2001: feed gas flow on FV-2001, range 0..25 MMSCFD, set point 16.0 — the throughput knob of the whole plant.","PIC-2001: feed gas pressure on PV-2001, set point 45.0 barg — stability for everything downstream.","TIC-2002: E-201 outlet temperature on TV-2002 — the hydrate defense.","Four level controllers: LIC-2001/2002 on V-201 (LV-2012/2011), LIC-2021/2022 on V-202 (LV-2021/2022).","Ask the group: which loop would you adjust to raise plant throughput? (FIC-2001) — and which one must you NEVER starve in winter? (TIC-2002)."]'>
-      <div class="kicker">Operating interface <span class="sub">— Manual §3.5.5, Table 3.7</span></div>
+      <div class="kicker">Operating interface <span class="sub">— Manual §3.5.5 · Table 3.7 (7 loops)</span></div>
       <h2>Control loops &amp; set points</h2>
-      <table class="data" style="font-size:12.5px;">
+
+      <div class="mapwrap">
+        <div class="lbl"><span>Unit 200 — control loops on the flow</span>
+          <span class="you" style="font-weight:400;"><b style="color:#C8102E;">● process (F·P·T)</b> · <b style="color:#0B5CAD;">● level</b></span></div>
+        <svg viewBox="0 0 1000 176" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="cah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#666"/></marker></defs>
+          <!-- chain -->
+          <text x="8" y="130" font-family="Consolas,monospace" font-size="8" fill="#666">FEED</text>
+          <line x1="46" y1="126" x2="150" y2="126" stroke="#666" stroke-width="2.5" marker-end="url(#cah)"/>
+          <rect x="152" y="104" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="210" y="130" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">V-202</text>
+          <line x1="268" y1="126" x2="308" y2="126" stroke="#666" stroke-width="2.5" marker-end="url(#cah)"/>
+          <rect x="310" y="104" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="368" y="130" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">E-201</text>
+          <line x1="426" y1="126" x2="466" y2="126" stroke="#666" stroke-width="2.5" marker-end="url(#cah)"/>
+          <rect x="468" y="104" width="126" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="531" y="130" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">F-201A/B</text>
+          <line x1="594" y1="126" x2="634" y2="126" stroke="#666" stroke-width="2.5" marker-end="url(#cah)"/>
+          <rect x="636" y="104" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="694" y="130" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">V-201</text>
+          <line x1="752" y1="126" x2="800" y2="126" stroke="#666" stroke-width="2.5" marker-end="url(#cah)"/>
+          <rect x="838" y="110" width="66" height="32" rx="4" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.3"/>
+          <text x="871" y="130" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#C8102E">U330</text>
+
+          <!-- loop bubbles (ISA): function top / number bottom -->
+          <!-- V-202 levels (blue) -->
+          <line x1="188" y1="62" x2="188" y2="104" stroke="#0B5CAD" stroke-width="1.2"/>
+          <circle cx="188" cy="46" r="16" fill="#fff" stroke="#0B5CAD" stroke-width="2"/>
+          <text x="188" y="44" text-anchor="middle" font-family="Consolas,monospace" font-size="7" font-weight="700" fill="#0B5CAD">LIC</text>
+          <text x="188" y="53" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#0B5CAD">2021</text>
+          <line x1="232" y1="62" x2="232" y2="104" stroke="#0B5CAD" stroke-width="1.2"/>
+          <circle cx="232" cy="46" r="16" fill="#fff" stroke="#0B5CAD" stroke-width="2"/>
+          <text x="232" y="44" text-anchor="middle" font-family="Consolas,monospace" font-size="7" font-weight="700" fill="#0B5CAD">LIC</text>
+          <text x="232" y="53" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#0B5CAD">2022</text>
+          <text x="210" y="100" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#8a9099">LV-2021/2022</text>
+          <!-- E-201 temperature (crimson) -->
+          <line x1="368" y1="62" x2="368" y2="104" stroke="#C8102E" stroke-width="1.2"/>
+          <circle cx="368" cy="46" r="16" fill="#fff" stroke="#C8102E" stroke-width="2"/>
+          <text x="368" y="44" text-anchor="middle" font-family="Consolas,monospace" font-size="7" font-weight="700" fill="#C8102E">TIC</text>
+          <text x="368" y="53" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#C8102E">2002</text>
+          <text x="368" y="100" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#8a9099">TV-2002</text>
+          <!-- inlet pressure (crimson) at PV-2001 -->
+          <line x1="447" y1="62" x2="447" y2="126" stroke="#C8102E" stroke-width="1.2"/>
+          <circle cx="447" cy="46" r="16" fill="#fff" stroke="#C8102E" stroke-width="2"/>
+          <text x="447" y="44" text-anchor="middle" font-family="Consolas,monospace" font-size="7" font-weight="700" fill="#C8102E">PIC</text>
+          <text x="447" y="53" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#C8102E">2001</text>
+          <text x="447" y="140" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#8a9099">PV-2001</text>
+          <!-- V-201 levels (blue) -->
+          <line x1="678" y1="62" x2="678" y2="104" stroke="#0B5CAD" stroke-width="1.2"/>
+          <circle cx="678" cy="46" r="16" fill="#fff" stroke="#0B5CAD" stroke-width="2"/>
+          <text x="678" y="44" text-anchor="middle" font-family="Consolas,monospace" font-size="7" font-weight="700" fill="#0B5CAD">LIC</text>
+          <text x="678" y="53" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#0B5CAD">2001</text>
+          <line x1="722" y1="62" x2="722" y2="104" stroke="#0B5CAD" stroke-width="1.2"/>
+          <circle cx="722" cy="46" r="16" fill="#fff" stroke="#0B5CAD" stroke-width="2"/>
+          <text x="722" y="44" text-anchor="middle" font-family="Consolas,monospace" font-size="7" font-weight="700" fill="#0B5CAD">LIC</text>
+          <text x="722" y="53" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#0B5CAD">2002</text>
+          <text x="700" y="100" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#8a9099">LV-2012/2011</text>
+          <!-- outlet flow (crimson) at FV-2001 -->
+          <line x1="806" y1="62" x2="806" y2="126" stroke="#C8102E" stroke-width="1.2"/>
+          <circle cx="806" cy="46" r="16" fill="#fff" stroke="#C8102E" stroke-width="2"/>
+          <text x="806" y="44" text-anchor="middle" font-family="Consolas,monospace" font-size="7" font-weight="700" fill="#C8102E">FIC</text>
+          <text x="806" y="53" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#C8102E">2001</text>
+          <text x="806" y="140" text-anchor="middle" font-family="Consolas,monospace" font-size="6.5" fill="#8a9099">FV-2001</text>
+        </svg>
+      </div>
+
+      <table class="data" style="font-size:11.5px;margin-top:8px;">
         <tr><th>Loop</th><th>Duty</th><th>Final element</th><th>Range</th><th>SP</th></tr>
         <tr><td class="k" style="color:var(--crimson);">FIC-2001</td><td>Feed gas flow</td><td>FV-2001</td><td class="v">0..25 MMSCFD</td><td class="k">16.0</td></tr>
         <tr><td class="k" style="color:var(--crimson);">PIC-2001</td><td>Feed gas pressure</td><td>PV-2001</td><td class="v">0..50 barg</td><td class="k">45.0</td></tr>
@@ -1656,6 +1771,66 @@
   })();
 </script>
 <script>
+  // Instrumentation detail — LOCAL COPY of plant_instruments (Supabase). Click a family tile.
+  (function(){
+    var INSTR=[
+      ["AE-2001","Feed gas analyzer","Gas analyzer sensor","","","","ABB","A"],
+      ["AT-2001","Feed gas analyzer","Gas analyzer transmitter","","%mol","modbus","ABB","A"],
+      ["FE-2001","Feed gas flow","Flow sensor","","","","EMERSON","F"],
+      ["FE-2011","Water outlet from V-201 flow","Flow sensor","","","","EMERSON","F"],
+      ["FE-2012","Condensate outlet from V-201 flow","Flow sensor","","","","EMERSON","F"],
+      ["FT-2001","Feed gas flow","Flow transmitter","0..25","MMSCFD","AI","EMERSON","F"],
+      ["FT-2011","Water outlet from V-201 flow","Flow transmitter","0..0,1","m³/h","AI","EMERSON","F"],
+      ["FT-2012","Condensate outlet from V-201 flow","Flow transmitter","0..1","m³/h","AI","EMERSON","F"],
+      ["FVY-2001","Feed gas flow control","Positioner command","","","AO","ZHONDUE","F"],
+      ["LSLL-2004","V-201 low-low liquid level switch","Level switch","","","DI","EMERSON","L"],
+      ["LT-2001","V-201 light liquid level","Level TX (DP+diaph)","0..100","%","AI","ABB","L"],
+      ["LT-2002","V-201 heavy liquid level","Level TX (DP+diaph)","","mm","AI","ABB","L"],
+      ["LT-2003","V-201 total liquid level","Level TX (DP+diaph)","","mm","AI","ABB","L"],
+      ["LVY-2011","V-201 heavy liquid level control","Positioner command","0..100","%","AO","OMC","L"],
+      ["LVY-2012","V-201 light liquid level control","Positioner command","0..100","%","AO","OMC","L"],
+      ["PDG-2001","F-201A/B pressure drop","Differential pressure gauge","0..5","bar","","","P"],
+      ["PG-2001A","F-201A vent pressure","Pressure gauge","0..50","barg","","","P"],
+      ["PG-2001B","F-201B vent pressure","Pressure gauge","0..50","barg","","","P"],
+      ["PG-2002","V-201 pressure","Pressure gauge","0..50","barg","","","P"],
+      ["PT-2001","Feed gas pressure","Pressure transmitter","0..50","barg","AI","EMERSON","P"],
+      ["PT-2002","Feed gas pressure","Pressure transmitter","0..50","barg","AI","EMERSON","P"],
+      ["PT-2003","Gas to dehydration pressure","Pressure transmitter","0..50","barg","AI","EMERSON","P"],
+      ["PVY-2001","Feed gas pressure control","Positioner command","0..100","%","AO","EMERSON","P"],
+      ["TT-2001","Feed gas flow temperature","Temperature transmitter","-15..150","°C","AI","ABB","T"],
+      ["TT-2002","E-201 outlet temperature","Temperature transmitter","-15..150","°C","AI","ABB","T"],
+      ["TVY-2002","E-201 outlet temperature control","Positioner command","0..100","%","AO","OMC","T"],
+      ["ZSH-2001","SDV-2001 open position indication","Limit switch","","","DI","PNEUMASTER","Z"],
+      ["ZSH-2002","SDV-2002 open position indication","Limit switch","","","DI","RIBEL","Z"],
+      ["ZSH-2003","SDV-2003 open position indication","Limit switch","","","DI","EMERSON","Z"],
+      ["ZSH-2004","BDV-2004 open position indication","Limit switch","","","DI","RIBEL","Z"],
+      ["ZSH-2005","RD-2005 open position indication","Limit switch","","","DI","RIBEL","Z"],
+      ["ZSL-2001","SDV-2001 closed position indication","Limit switch","","","DI","PNEUMASTER","Z"],
+      ["ZSL-2002","SDV-2002 closed position indication","Limit switch","","","DI","RIBEL","Z"],
+      ["ZSL-2003","SDV-2003 closed position indication","Limit switch","","","DI","RIBEL","Z"],
+      ["ZSL-2004","BDV-2004 closed position indication","Limit switch","","","DI","RIBEL","Z"]
+    ];
+    var FAM={P:"Pressure (P)",F:"Flow (F)",T:"Temperature (T)",L:"Level (L)",A:"Quality (A)",Z:"Position (Z)"};
+    var modal=document.getElementById('imodal'); if(!modal) return;
+    var wrap=document.getElementById('iwrap'), ttl=document.getElementById('ititle');
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    function open(v){
+      var rows=INSTR.filter(function(r){return r[7]===v;});
+      ttl.textContent="Instruments · "+(FAM[v]||v)+" · Unit 200 ("+rows.length+")";
+      var h='<thead><tr><th>Tag</th><th>Service</th><th>Type</th><th>Range</th><th>Units</th><th>Signal</th><th>Maker</th></tr></thead>';
+      var b='<tbody>'+rows.map(function(r){
+        return '<tr><td class="tg">'+esc(r[0])+'</td><td>'+esc(r[1])+'</td><td class="ty">'+esc(r[2])+'</td><td class="ty">'+esc(r[3]||'—')+'</td><td class="ty">'+esc(r[4]||'—')+'</td><td class="ty">'+esc(r[5]||'—')+'</td><td class="ty">'+esc(r[6]||'—')+'</td></tr>';
+      }).join('')+'</tbody>';
+      wrap.innerHTML='<table class="objtbl">'+h+b+'</table>';
+      modal.classList.add('on');
+    }
+    [].slice.call(document.querySelectorAll('#itiles .objtile')).forEach(function(t){ t.onclick=function(){ open(t.dataset.v); }; });
+    document.getElementById('iclose').onclick=function(){ modal.classList.remove('on'); };
+    modal.addEventListener('click',function(e){ if(e.target===modal) modal.classList.remove('on'); });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape') modal.classList.remove('on'); });
+  })();
+</script>
+<script>
   // Relevant documents — LOCAL COPY of plant_documents (Supabase).
   // Auto-detect: each url is probed; if the file exists under /docs/ the link enables itself. No code change needed.
   (function(){
@@ -1868,7 +2043,7 @@
       modal.classList.add('on');
     }
     function close(){ modal.classList.remove('on'); }
-    [].slice.call(document.querySelectorAll('.objtile')).forEach(function(t){ t.onclick=function(){ open(t.dataset.g); }; });
+    [].slice.call(document.querySelectorAll('.objgrid .objtile')).forEach(function(t){ t.onclick=function(){ open(t.dataset.g); }; });
     document.getElementById('objclose').onclick=close;
     modal.addEventListener('click',function(e){ if(e.target===modal) close(); });
     document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
