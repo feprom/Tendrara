@@ -177,8 +177,8 @@
   .hcard.arloc .hh{background:#2b2e33;} .hcard.eqc .hh{background:var(--crimson);}
   .hcard.ioc .hh{background:var(--blue);} .hcard.enc .hh{background:var(--amber);}
   .carea{position:relative;border-radius:10px;overflow:hidden;background:#fff;border:1px solid var(--line-strong);}
-  .carea .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .8s ease;}
-  .carea .cimg.on{opacity:1;}
+  .carea .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .8s ease;pointer-events:none;}
+  .carea .cimg.on{opacity:1;pointer-events:auto;}
   .carea .cimg img{max-width:100%;max-height:100%;object-fit:contain;}
   .carea .cbadge{position:absolute;top:11px;left:12px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(200,16,46,.85);padding:4px 10px;border-radius:20px;}
   .carea .cdots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:3;}
@@ -204,19 +204,16 @@
   .eqthumbs button:hover{border-color:var(--crimson);color:var(--crimson);}
   .eqthumbs button.on{background:var(--crimson);border-color:var(--crimson);color:#fff;}
   /* technological-objects tiles + details modal */
-  .objgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:11px;}
-  .objtile{border:1px solid var(--line-strong);border-radius:10px;background:#fff;padding:11px 13px;text-align:left;cursor:pointer;transition:.14s;font-family:inherit;}
-  .objtile:hover{border-color:var(--crimson);box-shadow:0 4px 16px rgba(200,16,46,.12);transform:translateY(-2px);}
-  .objtile .ic{width:32px;height:32px;border-radius:9px;background:var(--bg-soft);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--crimson);}
-  .objtile .n{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--ink);line-height:1;margin-top:7px;}
-  .objtile .l{font-size:12.5px;font-weight:700;color:var(--ink);margin-top:2px;}
-  .objtile .ex{font-family:var(--mono);font-size:8.5px;color:var(--ink-soft);margin-top:5px;line-height:1.35;height:24px;overflow:hidden;}
-  .objtile .hint{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--crimson);margin-top:5px;font-weight:700;}
-  .objtile.dim{opacity:.55;cursor:default;}
-  .objtile.dim:hover{border-color:var(--line-strong);box-shadow:none;transform:none;}
+  .objgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-top:11px;}
+  .objtile{border:1px solid var(--line-strong);border-top:3px solid var(--acc,#C8102E);border-radius:10px;background:#fff;
+    padding:10px 6px;text-align:center;cursor:pointer;transition:.14s;font-family:inherit;display:flex;flex-direction:column;align-items:center;}
+  .objtile:hover{border-color:var(--acc,#C8102E);box-shadow:0 5px 16px rgba(0,0,0,.10);transform:translateY(-2px);}
+  .objtile .ic{width:32px;height:32px;border-radius:9px;background:var(--bg-soft);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--acc,#C8102E);}
+  .objtile .n{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--acc,#C8102E);line-height:1;margin-top:7px;}
+  .objtile .l{font-size:10px;font-weight:700;color:var(--ink);margin-top:3px;line-height:1.2;}
   .objmodal{position:fixed;inset:0;background:rgba(15,17,20,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:24px;}
   .objmodal.on{display:flex;}
-  .objbox{background:#fff;border-radius:12px;width:min(880px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .objbox{background:#fff;border-radius:12px;width:min(960px,95vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);}
   .objhd{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--crimson);color:#fff;flex:none;}
   .objhd span{font-size:15px;font-weight:700;}
   .objhd button{background:rgba(255,255,255,.16);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;}
@@ -229,6 +226,30 @@
   .objtbl tr:hover td{background:var(--bg-soft);}
   .objempty{padding:26px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
   .objfoot{flex:none;padding:8px 18px;font-family:var(--mono);font-size:9px;color:var(--ink-soft);border-top:1px solid var(--line);}
+  /* cause & effect matrix */
+  .cewrap{padding:14px 16px;}
+  .cematrix{border-collapse:collapse;font-size:11px;margin:0 auto;}
+  .cematrix th,.cematrix td{border:1px solid var(--line-strong);padding:5px 8px;}
+  .cematrix thead th{background:var(--bg-soft);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;}
+  .cematrix th.eff{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;height:104px;text-align:left;font-weight:700;color:var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:.03em;}
+  .cematrix td.tg{font-family:var(--mono);font-weight:700;color:var(--crimson);white-space:nowrap;}
+  .cematrix td.ins{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
+  .cematrix td.ds{font-size:10.5px;color:var(--ink);max-width:230px;}
+  .cematrix td.mk{text-align:center;font-weight:700;color:var(--crimson);font-size:15px;background:#FBE9EC;}
+  .cematrix td.sp{font-family:var(--mono);font-size:10px;color:var(--ink-soft);white-space:nowrap;}
+  .cebadge{font-family:var(--mono);font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;}
+  .cebadge.psd{background:#FBE9EC;color:#C8102E;} .cebadge.lsd{background:#FFF3E0;color:#B26A00;}
+  .celegend{margin-top:13px;font-size:11px;color:var(--ink-soft);line-height:1.55;}
+  .celegend b{color:var(--ink);} .celegend .cetag{font-family:var(--mono);color:var(--crimson);font-weight:700;}
+  .celegend .row{margin:2px 0;}
+  /* global image lightbox */
+  .lightbox{position:fixed;inset:0;background:rgba(8,9,11,.92);display:none;align-items:center;justify-content:center;
+    flex-direction:column;z-index:120;padding:26px;cursor:zoom-out;}
+  .lightbox.on{display:flex;}
+  .lightbox img{max-width:96vw;max-height:88vh;border-radius:6px;box-shadow:0 20px 70px rgba(0,0,0,.6);background:#fff;}
+  .lightbox .lbcap{color:#e6e7e9;font-family:var(--mono);font-size:11px;margin-top:12px;text-align:center;max-width:80vw;}
+  .lightbox .lbclose{position:fixed;top:16px;right:20px;color:#fff;font-size:20px;background:rgba(255,255,255,.14);
+    border:none;width:38px;height:38px;border-radius:8px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -598,28 +619,20 @@
       </div>
 
       <div class="objgrid">
-        <button class="objtile" data-g="equipment">
-          <div class="ic">⚙</div><div class="n">5</div><div class="l">Main Equipment</div>
-          <div class="ex">V-202 · E-201 · F-201A/B · V-201 · V-221</div><div class="hint">ver detalle ▸</div>
-        </button>
-        <button class="objtile" data-g="instruments">
-          <div class="ic">▤</div><div class="n">37</div><div class="l">Instruments</div>
-          <div class="ex">PT · TT · LT · FT · ZSH/ZSL · AE/AT</div><div class="hint">ver detalle ▸</div>
-        </button>
-        <button class="objtile" data-g="valves">
-          <div class="ic">⛛</div><div class="n">20</div><div class="l">Valves</div>
-          <div class="ex">SDV · BDV · PSV · CV · SOV</div><div class="hint">ver detalle ▸</div>
-        </button>
-        <button class="objtile dim" data-g="motors">
-          <div class="ic">⚡</div><div class="n">0</div><div class="l">Motors</div>
-          <div class="ex">none — thermally-driven, passive unit</div><div class="hint">—</div>
-        </button>
+        <button class="objtile" style="--acc:#C8102E" data-g="equipment"><div class="ic">⚙</div><div class="n">5</div><div class="l">Main Equipment</div></button>
+        <button class="objtile" style="--acc:#0B5CAD" data-g="instruments"><div class="ic">◉</div><div class="n">37</div><div class="l">Instruments</div></button>
+        <button class="objtile" style="--acc:#1F8A4C" data-g="valves"><div class="ic">⧓</div><div class="n">20</div><div class="l">Valves</div></button>
+        <button class="objtile" style="--acc:#B26A00" data-g="motors"><div class="ic">⟳</div><div class="n">0</div><div class="l">Motors</div></button>
+        <button class="objtile" style="--acc:#7A3FB3" data-g="jbs"><div class="ic">⊟</div><div class="n">3</div><div class="l">Junction Boxes</div></button>
+        <button class="objtile" style="--acc:#E0651A" data-g="alarms"><div class="ic">⚠</div><div class="n">10</div><div class="l">Critical Alarms</div></button>
+        <button class="objtile" style="--acc:#0E7C86" data-g="mccs"><div class="ic">▥</div><div class="n">0</div><div class="l">Remote MCCs</div></button>
+        <button class="objtile" style="--acc:#15171A" data-g="ce"><div class="ic">▦</div><div class="n">10</div><div class="l">Cause &amp; Effect</div></button>
       </div>
 
       <div class="objmodal" id="objmodal">
         <div class="objbox">
           <div class="objhd"><span id="objtitle">—</span><button id="objclose" aria-label="close">✕</button></div>
-          <div class="objtblwrap"><table class="objtbl" id="objtbl"></table></div>
+          <div class="objtblwrap" id="objwrap"></div>
           <div class="objfoot">Source: Tendrara plant database (local copy) · Unit 200 · sync on demand</div>
         </div>
       </div>
@@ -928,8 +941,8 @@
       <h2>Equipment datasheet — Unit 200</h2>
       <div class="eqdetail">
         <div class="eqfig">
-          <div class="imgbox"><img id="eqimg" src="/images/3D_200_05.png" alt="Unit 200 equipment 3D"></div>
-          <div class="cap" id="eqcap">3D model — V-202 inlet three-phase separator (S-202 skid)</div>
+          <div class="imgbox"><img id="eqimg" src="/images/V-202_01.png" alt="V-202 datasheet"></div>
+          <div class="cap" id="eqcap">Datasheet — V-202 inlet three-phase separator (S-202 skid)</div>
         </div>
         <div class="eqcol">
           <div class="eqcard">
@@ -1477,7 +1490,7 @@
     }
     // equipment datasheet switcher
     var EQ=[
-      {tag:"V-202",ty:"Inlet 3-phase separator · S-202 skid · PRO13-ING-PR50",img:"/images/3D_200_05.png",cap:"3D model — V-202 inlet three-phase separator (S-202 skid)",
+      {tag:"V-202",ty:"Inlet 3-phase separator · S-202 skid · PRO13-ING-PR50",img:"/images/V-202_01.png",cap:"Datasheet — V-202 inlet three-phase separator (S-202 skid)",
        rows:[["Service","1st-stage sep."],["Design P","100 barg"],["Design T","−15 / 100 °C"],["Int. diameter","1420 mm"],["TL–TL","3180 mm"],["Volume","5.6 m³"],["Material","PH 355 NH"],["Corr. allow.","3 mm"],["Insulation","H50"],["Internals","weir + deflectors"],["Levels","LIC-2021/2022"],["Protection","PSV-2028A/B · BDV-2027"]]},
       {tag:"E-201",ty:"Feed gas heater (BEM, hot oil) · S-201 · PRO13-ING-PR01",img:"/images/E-201_01.png",cap:"E-201 — shell-and-tube feed gas heater (hot oil)",
        rows:[["Service","hydrate heating"],["Duty rated","650 kW"],["Duty oper.","84 → 388 kW"],["Design P","shell 70 / tube 90 barg"],["Design T","−28/120 · −28/100 °C"],["Surface","66 m²"],["Shell","16″ NPS"],["Tube length","6096 mm"],["Material","CS / SS304"],["Corr. allow.","1.5 / 0 mm"],["Control","TIC-2002 → TV-2002"],["Protection","RD-2005 → PSD"]]},
@@ -1498,6 +1511,22 @@
         eqbd.innerHTML=e.rows.map(function(r){return '<div class="er"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';}).join('');
       };});
     }
+  })();
+</script>
+<div class="lightbox" id="lightbox"><button class="lbclose" aria-label="close">✕</button><img id="lbimg" src="" alt=""><div class="lbcap" id="lbcap"></div></div>
+<script>
+  // global image lightbox — click any image in the deck to enlarge
+  (function(){
+    var lb=document.getElementById('lightbox'); if(!lb) return;
+    var lbimg=document.getElementById('lbimg'), lbcap=document.getElementById('lbcap');
+    function show(im){ lbimg.src=im.currentSrc||im.src; lbimg.alt=im.alt||''; lbcap.textContent=im.alt||''; lb.classList.add('on'); }
+    function hide(){ lb.classList.remove('on'); lbimg.removeAttribute('src'); }
+    [].slice.call(document.querySelectorAll('.stage img')).forEach(function(im){
+      im.style.cursor='zoom-in';
+      im.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); show(im); });
+    });
+    lb.addEventListener('click',hide);
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape') hide(); });
   })();
 </script>
 <script>
@@ -1573,17 +1602,80 @@
         ["TV-2002","E-201 outlet temperature control","Control valve","—"]
       ]},
       motors: { title:"Motors · Unit 200 (0)", cols:["Tag","Service","Power"], rows:[],
-        empty:"No MCC motors in Unit 200 — a thermally-driven, passive unit (heating by hot oil, no rotating machinery). Electrical load is limited to the truck weigh-bridges and level-valve actuators (~4.2 kW)." }
+        empty:"No motors in Unit 200 — a thermally-driven, passive unit (heating by hot oil, no rotating machinery). Electrical load is limited to the truck weigh-bridges and level-valve actuators (~4.2 kW)." },
+      jbs: { title:"Junction Boxes · Unit 200 (3)", cols:["Tag","Type"], rows:[
+        ["AT-2001","Analyzer junction box"],
+        ["E-PB-0S201.1","Power junction box — S-201 skid"],
+        ["P-PN-0S201.1","PROFINET / remote I/O panel — S-201 skid"]
+      ]},
+      alarms: { title:"Critical Alarms & Trips · Unit 200 (10)", cols:["Tag","Description","Action","Set point"], rows:[
+        ["LAHH-2003","High-high light liquid level on V-201","PSD","600 mm (90%)"],
+        ["LAHH-2021","High-high liquid level on V-202","PSD","DI"],
+        ["LALL-2003","Low-low light liquid level on V-201","LSD","150 mm (10%)"],
+        ["LALL-2004","Low-low heavy liquid level on V-201","LSD","DI"],
+        ["LALL-2021","Low-low light liquid level on V-202","LSD","DI"],
+        ["LALL-2022","Low-low heavy liquid level on V-202","LSD","DI"],
+        ["PAHH-2002","High-high inlet pressure","PSD","—"],
+        ["PAHH-2021","High-high pressure on V-202","PSD","—"],
+        ["TAHH-2002","High-high temperature on V-201","PSD","—"],
+        ["ZSH-2005","Limit switch on rupture disk RD-2005","PSD","—"]
+      ]},
+      mccs: { title:"Remote MCCs · Unit 200 (0)", cols:["Tag","Service","Power"], rows:[],
+        empty:"No remote MCC motor feeders in Unit 200 — a passive unit with no rotating machinery. The S-201 skid is served by one remote I/O panel (P-PN-0S201.1, PROFINET)." }
     };
     var modal=document.getElementById('objmodal');
     if(!modal) return;
-    var tbl=document.getElementById('objtbl'), ttl=document.getElementById('objtitle');
+    var wrap=document.getElementById('objwrap'), ttl=document.getElementById('objtitle');
     function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+    // Cause & Effect matrix (local copy of plant_cause_effect / _effects · SAF12-ING-FR01)
+    var U200CE = {
+      title:"Cause & Effect Matrix · Unit 200 (SAF12-ING-FR01)",
+      effects:[
+        {tag:"SDV-2002",action:"Close",desc:"V-201 hydrocarbon (light) outlet"},
+        {tag:"SDV-2003",action:"Close",desc:"V-201 water outlet"},
+        {tag:"SDV-2025",action:"Close",desc:"V-202 condensate outlet"},
+        {tag:"SDV-2026",action:"Close",desc:"V-202 water outlet"},
+        {tag:"PSD",action:"Trip",desc:"Process Shut Down — isolate SDV-2024/2001, stop feed FV-2001"}
+      ],
+      causes:[
+        {tag:"LAHH-2003",ins:"LT-2003",ty:"PSD",sp:"600 mm (90%)",ds:"High-high light liquid level on V-201",eff:["PSD"]},
+        {tag:"LAHH-2021",ins:"LSHH-2021",ty:"PSD",sp:"DI",ds:"High-high liquid level on V-202",eff:["PSD"]},
+        {tag:"LALL-2003",ins:"LT-2003",ty:"LSD",sp:"150 mm (10%)",ds:"Low-low light liquid level on V-201",eff:["SDV-2002"]},
+        {tag:"LALL-2004",ins:"LS-2004",ty:"LSD",sp:"DI",ds:"Low-low heavy liquid level on V-201",eff:["SDV-2003"]},
+        {tag:"LALL-2021",ins:"LSLL-2021",ty:"LSD",sp:"DI",ds:"Low-low light liquid level on V-202",eff:["SDV-2025"]},
+        {tag:"LALL-2022",ins:"LSLL-2022",ty:"LSD",sp:"DI",ds:"Low-low heavy liquid level on V-202",eff:["SDV-2026"]},
+        {tag:"PAHH-2002",ins:"PT-2002",ty:"PSD",sp:"—",ds:"High-high inlet pressure",eff:["PSD"]},
+        {tag:"PAHH-2021",ins:"PIT-2021",ty:"PSD",sp:"—",ds:"High-high pressure on V-202",eff:["PSD"]},
+        {tag:"TAHH-2002",ins:"TT-2001",ty:"PSD",sp:"—",ds:"High-high temperature on V-201",eff:["PSD"]},
+        {tag:"ZSH-2005",ins:"ZS-2005",ty:"PSD",sp:"—",ds:"Limit switch on rupture disk RD-2005",eff:["PSD"]}
+      ],
+      note:"LSD closes only the affected phase outlet — prevents gas blow-by (loss of liquid seal). PSD isolates the unit at SDV-2024 / SDV-2001 and stops feed FV-2001; ESD (I1) additionally depressurizes to flare via BDV-2004 (rate set by RO-2004). Authoritative signed grid: SAF12-ING-FR01."
+    };
+    function renderCE(){
+      var d=U200CE;
+      var head='<tr><th>Cause</th><th>Instrument</th><th>Type</th><th>Set point</th><th>Description</th>'+
+        d.effects.map(function(e){return '<th class="eff">'+esc(e.tag)+'</th>';}).join('')+'</tr>';
+      var body=d.causes.map(function(c){
+        var cells=d.effects.map(function(e){
+          return '<td class="mk">'+(c.eff.indexOf(e.tag)>=0?'●':'')+'</td>';
+        }).join('');
+        return '<tr><td class="tg">'+esc(c.tag)+'</td><td class="ins">'+esc(c.ins)+'</td>'+
+          '<td><span class="cebadge '+(c.ty==='PSD'?'psd':'lsd')+'">'+esc(c.ty)+'</span></td>'+
+          '<td class="sp">'+esc(c.sp)+'</td><td class="ds">'+esc(c.ds)+'</td>'+cells+'</tr>';
+      }).join('');
+      var legend='<div class="celegend"><b>Effects (columns):</b><br>'+
+        d.effects.map(function(e){return '<span class="cetag">'+esc(e.tag)+'</span> — '+esc(e.action)+' · '+esc(e.desc);}).join('<br>')+
+        '<div class="row" style="margin-top:8px;"><b>PSD</b> = Process Shut Down · <b>LSD</b> = Local Shut Down (phase outlet)</div>'+
+        '<div class="row">'+esc(d.note)+'</div></div>';
+      return '<div class="cewrap"><table class="cematrix"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>'+legend+'</div>';
+    }
     function open(g){
+      if(g==='ce'){ ttl.textContent=U200CE.title; wrap.innerHTML=renderCE(); modal.classList.add('on'); return; }
       var d=U200OBJ[g]; if(!d) return;
       ttl.textContent=d.title;
       if(!d.rows.length){
-        tbl.innerHTML='<tr><td class="objempty">'+esc(d.empty||'No items.')+'</td></tr>';
+        wrap.innerHTML='<div class="objempty">'+esc(d.empty||'No items.')+'</div>';
       } else {
         var h='<thead><tr>'+d.cols.map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead>';
         var b='<tbody>'+d.rows.map(function(r){
@@ -1592,15 +1684,12 @@
             return '<td'+(cls?' class="'+cls+'"':'')+'>'+esc(v)+'</td>';
           }).join('')+'</tr>';
         }).join('')+'</tbody>';
-        tbl.innerHTML=h+b;
+        wrap.innerHTML='<table class="objtbl">'+h+b+'</table>';
       }
       modal.classList.add('on');
     }
     function close(){ modal.classList.remove('on'); }
-    [].slice.call(document.querySelectorAll('.objtile')).forEach(function(t){
-      if(t.classList.contains('dim') && t.dataset.g==='motors'){ t.onclick=function(){ open('motors'); }; }
-      else { t.onclick=function(){ open(t.dataset.g); }; }
-    });
+    [].slice.call(document.querySelectorAll('.objtile')).forEach(function(t){ t.onclick=function(){ open(t.dataset.g); }; });
     document.getElementById('objclose').onclick=close;
     modal.addEventListener('click',function(e){ if(e.target===modal) close(); });
     document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
