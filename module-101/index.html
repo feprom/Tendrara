@@ -187,9 +187,16 @@
   /* equipment datasheet */
   .eqdetail{display:grid;grid-template-columns:1.05fr 1.15fr;gap:14px;height:calc(100% - 58px);}
   .eqfig{border:1px solid var(--line-strong);border-radius:8px;background:#fff;padding:6px;display:flex;flex-direction:column;min-height:0;}
-  .eqfig .imgbox{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;}
+  .eqfig .imgbox{position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;}
   .eqfig img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;}
+  .eqfig .eqc-img{position:absolute;inset:0;margin:auto;opacity:0;transition:opacity .5s;pointer-events:none;}
+  .eqfig .eqc-img.on{opacity:1;pointer-events:auto;}
+  .eqfig .eqc-count{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:9px;color:var(--ink-soft);background:rgba(255,255,255,.85);padding:2px 7px;border-radius:10px;z-index:3;}
+  .eqfig .eqc-dots{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:3;}
+  .eqfig .eqc-dots b{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.22);cursor:pointer;display:block;}
+  .eqfig .eqc-dots b.on{background:var(--crimson);}
   .eqfig .cap{font-family:var(--mono);font-size:9.5px;color:var(--ink-soft);text-align:center;padding:6px 4px 2px;flex:none;}
+  .stage img{cursor:zoom-in;}
   .eqcol{display:flex;flex-direction:column;min-height:0;}
   .eqcard{border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0;flex:1;}
   .eqcard .hd{background:var(--crimson);color:#fff;padding:8px 13px;flex:none;}
@@ -941,7 +948,7 @@
       <h2>Equipment datasheet — Unit 200</h2>
       <div class="eqdetail">
         <div class="eqfig">
-          <div class="imgbox"><img id="eqimg" src="/images/V-202_01.png" alt="V-202 datasheet"></div>
+          <div class="imgbox" id="eqcar"></div>
           <div class="cap" id="eqcap">Datasheet — V-202 inlet three-phase separator (S-202 skid)</div>
         </div>
         <div class="eqcol">
@@ -1490,26 +1497,65 @@
     }
     // equipment datasheet switcher
     var EQ=[
-      {tag:"V-202",ty:"Inlet 3-phase separator · S-202 skid · PRO13-ING-PR50",img:"/images/V-202_01.png",cap:"Datasheet — V-202 inlet three-phase separator (S-202 skid)",
+      {tag:"V-202",base:"V-202",ty:"Inlet 3-phase separator · S-202 skid · PRO13-ING-PR50",img:"/images/V-202_01.png",cap:"Datasheet — V-202 inlet three-phase separator (S-202 skid)",
        rows:[["Service","1st-stage sep."],["Design P","100 barg"],["Design T","−15 / 100 °C"],["Int. diameter","1420 mm"],["TL–TL","3180 mm"],["Volume","5.6 m³"],["Material","PH 355 NH"],["Corr. allow.","3 mm"],["Insulation","H50"],["Internals","weir + deflectors"],["Levels","LIC-2021/2022"],["Protection","PSV-2028A/B · BDV-2027"]]},
-      {tag:"E-201",ty:"Feed gas heater (BEM, hot oil) · S-201 · PRO13-ING-PR01",img:"/images/E-201_01.png",cap:"E-201 — shell-and-tube feed gas heater (hot oil)",
+      {tag:"E-201",base:"E-201",ty:"Feed gas heater (BEM, hot oil) · S-201 · PRO13-ING-PR01",img:"/images/E-201_01.png",cap:"Datasheet — E-201 shell-and-tube feed gas heater (hot oil)",
        rows:[["Service","hydrate heating"],["Duty rated","650 kW"],["Duty oper.","84 → 388 kW"],["Design P","shell 70 / tube 90 barg"],["Design T","−28/120 · −28/100 °C"],["Surface","66 m²"],["Shell","16″ NPS"],["Tube length","6096 mm"],["Material","CS / SS304"],["Corr. allow.","1.5 / 0 mm"],["Control","TIC-2002 → TV-2002"],["Protection","RD-2005 → PSD"]]},
-      {tag:"F-201A/B",ty:"Feed gas particulate filters · duty/standby · PRO13-ING-PR01",img:"/images/F-201_01.png",cap:"F-201A/B — 5 µm particulate filters (duty/standby)",
+      {tag:"F-201A/B",base:"F-201",ty:"Feed gas particulate filters · duty/standby · PRO13-ING-PR01",img:"/images/F-201_01.png",cap:"Datasheet — F-201A/B 5 µm particulate filters (duty/standby)",
        rows:[["Service","5 µm filtration"],["Design P","50 barg"],["Design T","−28 / 100 °C"],["Diameter","18″ NPS"],["SM–SM","1625 mm"],["Volume","0.27 m³"],["Elements","5 × 5 µm cart."],["Material","SS304"],["Insulation","none"],["Config","duty / standby"],["Monitor","PDG-2001 ΔP"],["Protection","PSV-2003A/B"]]},
-      {tag:"V-201",ty:"Inlet raw gas separator · S-201 skid · PRO13-ING-PR01",img:"/images/V-201_01.png",cap:"V-201 — inlet raw gas separator (final separation)",
+      {tag:"V-201",base:"V-201",ty:"Inlet raw gas separator · S-201 skid · PRO13-ING-PR01",img:"/images/V-201_01.png",cap:"Datasheet — V-201 inlet raw gas separator (final separation)",
        rows:[["Service","final 3-ph sep."],["Design P","50 barg"],["Design T","−28 / 100 °C"],["Int. diameter","1625 mm"],["TL–TL","9000 mm"],["Volume","20 m³"],["Material","CS · 304 clad"],["Corr. allow.","0 mm"],["Insulation","boot trace+ins."],["Levels","LIC-2001/2002 · LSLL-2004"],["Outlets","SDV-2002/2003"],["Protection","PSV-2001A/B"]]}
     ];
-    var eqimg=document.getElementById('eqimg');
-    if(eqimg){
+    var eqcar=document.getElementById('eqcar');
+    if(eqcar){
       var eqcap=document.getElementById('eqcap'),eqtag=document.getElementById('eqtag'),
           eqty=document.getElementById('eqty'),eqbd=document.getElementById('eqbd');
       var ebtns=[].slice.call(document.querySelectorAll('#eqthumbs button'));
-      ebtns.forEach(function(b){b.onclick=function(){
-        var e=EQ[+b.dataset.e];
-        ebtns.forEach(function(x){x.classList.toggle('on',x===b);});
-        eqimg.src=e.img;eqimg.alt=e.tag;eqcap.textContent=e.cap;eqtag.textContent=e.tag;eqty.textContent=e.ty;
+      var eqTimer=null, eqToken=0;
+      function pad(n){return n<10?'0'+n:''+n;}
+      // Auto-detect images named <base>_01.png, _02.png, ... (contiguous). Upload more → they appear on reload.
+      function probe(base,i,acc,tok,done){
+        if(tok!==eqToken) return;                 // a newer selection started
+        if(i>20){ done(acc); return; }
+        var im=new Image();
+        im.onload=function(){ acc.push('/images/'+base+'_'+pad(i)+'.png'); probe(base,i+1,acc,tok,done); };
+        im.onerror=function(){ done(acc); };
+        im.src='/images/'+base+'_'+pad(i)+'.png';
+      }
+      function buildCar(list,alt){
+        clearInterval(eqTimer);
+        if(!list.length){ eqcar.innerHTML=''; return; }
+        if(list.length===1){ eqcar.innerHTML='<img class="eqc-solo" src="'+list[0]+'" alt="'+alt+'">'; return; }
+        eqcar.innerHTML=list.map(function(s,k){return '<img class="eqc-img'+(k===0?' on':'')+'" src="'+s+'" alt="'+alt+'">';}).join('')
+          +'<div class="eqc-count" id="eqccount">1/'+list.length+'</div>'
+          +'<div class="eqc-dots">'+list.map(function(s,k){return '<b class="'+(k===0?'on':'')+'" data-i="'+k+'"></b>';}).join('')+'</div>';
+        var imgs=[].slice.call(eqcar.querySelectorAll('.eqc-img'));
+        var dots=[].slice.call(eqcar.querySelectorAll('.eqc-dots b'));
+        var cnt=document.getElementById('eqccount'), ci=0;
+        function go(n){ci=(n+imgs.length)%imgs.length;
+          imgs.forEach(function(im,k){im.classList.toggle('on',k===ci);});
+          dots.forEach(function(d,k){d.classList.toggle('on',k===ci);});
+          cnt.textContent=(ci+1)+'/'+imgs.length;}
+        function restart(){clearInterval(eqTimer);eqTimer=setInterval(function(){go(ci+1);},3800);}
+        dots.forEach(function(d){d.onclick=function(ev){ev.stopPropagation();go(+d.dataset.i);restart();};});
+        restart();
+      }
+      function loadEquip(idx,btn){
+        var e=EQ[idx]; if(!e) return;
+        ebtns.forEach(function(x){x.classList.toggle('on',x===btn);});
+        eqcap.textContent=e.cap;eqtag.textContent=e.tag;eqty.textContent=e.ty;
         eqbd.innerHTML=e.rows.map(function(r){return '<div class="er"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';}).join('');
-      };});
+        eqcar.innerHTML='';
+        var tok=++eqToken, base=e.base||e.tag;
+        function finish(list){ if(tok!==eqToken) return; if(!list.length && e.img) list=[e.img]; buildCar(list,e.tag); }
+        // optional <base>_00 goes first, then the contiguous _01, _02, ... sequence
+        var im0=new Image();
+        im0.onload=function(){ if(tok!==eqToken) return; probe(base,1,['/images/'+base+'_00.png'],tok,finish); };
+        im0.onerror=function(){ if(tok!==eqToken) return; probe(base,1,[],tok,finish); };
+        im0.src='/images/'+base+'_00.png';
+      }
+      ebtns.forEach(function(b){b.onclick=function(){loadEquip(+b.dataset.e,b);};});
+      loadEquip(0,ebtns[0]);
     }
   })();
 </script>
@@ -1521,10 +1567,11 @@
     var lbimg=document.getElementById('lbimg'), lbcap=document.getElementById('lbcap');
     function show(im){ lbimg.src=im.currentSrc||im.src; lbimg.alt=im.alt||''; lbcap.textContent=im.alt||''; lb.classList.add('on'); }
     function hide(){ lb.classList.remove('on'); lbimg.removeAttribute('src'); }
-    [].slice.call(document.querySelectorAll('.stage img')).forEach(function(im){
-      im.style.cursor='zoom-in';
-      im.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); show(im); });
-    });
+    var stage=document.getElementById('stage')||document.querySelector('.stage');
+    if(stage){ stage.addEventListener('click',function(e){
+      var im=e.target;
+      if(im && im.tagName==='IMG'){ e.preventDefault(); e.stopPropagation(); show(im); }
+    }); }
     lb.addEventListener('click',hide);
     document.addEventListener('keydown',function(e){ if(e.key==='Escape') hide(); });
   })();
