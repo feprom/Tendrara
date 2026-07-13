@@ -176,6 +176,14 @@
   .p2cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:11px;}
   .hcard.arloc .hh{background:#2b2e33;} .hcard.eqc .hh{background:var(--crimson);}
   .hcard.ioc .hh{background:var(--blue);} .hcard.enc .hh{background:var(--amber);}
+  .hcard.iso .hh{background:#C8102E;} .hcard.bdw .hh{background:#B26A00;}
+  .hcard.rel .hh{background:#7A3FB3;} .hcard.ctl .hh{background:#0B5CAD;}
+  .vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;}
+  .doclink{color:var(--crimson);font-weight:700;text-decoration:none;}
+  .doclink:hover{text-decoration:underline;}
+  .docstat{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.04em;}
+  .docstat.on{background:#E7F5EC;color:#1F8A4C;} .docstat.off{background:#F0F1F3;color:#8a9099;}
+  .doccat{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
   .carea{position:relative;border-radius:10px;overflow:hidden;background:#fff;border:1px solid var(--line-strong);}
   .carea .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .8s ease;pointer-events:none;}
   .carea .cimg.on{opacity:1;pointer-events:auto;}
@@ -982,34 +990,122 @@
     <!-- 13 VALVES & RELIEF · Mario · 8 -->
     <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
       data-notes='["Table 3.4 grouped by function — do not memorize all 20 rows, memorize the families.","Isolation: SDV-2024 plant inlet, SDV-2001 inlet skid, SDV-2002/2003 V-201 outlets, SDV-2025/2026 V-202 outlets. Each ESD-actuated valve has its SDEV solenoid.","Blowdown: BDV-2004 to flare with restriction orifice RO-2004 (sizes the depressurization rate); BDV-2027 on the V-202 side.","Relief: PSV-2001A/B (V-201), PSV-2002A/B (inlet section), PSV-2003A/B (filters) — set 50 barg.","Control: FV-2001 flow, PV-2001 pressure, TV-2002 temperature, LV-2011/2012 levels.","Every SDV/BDV has ZSH/ZSL position switches — the PCS knows if it is really open or closed."]'>
-      <div class="kicker">Technological objects <span class="sub">— Manual §3.5.2, Table 3.4</span></div>
-      <h2>Valves — isolation, blowdown, relief, control</h2>
-      <table class="data" style="font-size:12px;">
-        <tr><th>Family</th><th>Tags</th><th>Notes</th></tr>
-        <tr><td class="k">Isolation (SDV)</td><td class="v"><b>SDV-2024</b> plant inlet · <b>SDV-2001</b> inlet skid · <b>SDV-2002/2003</b> V-201 HC/water outlets · <b>SDV-2025/2026</b> V-202 outlets</td><td class="v">ESD-actuated via SDEV solenoids · ZSH/ZSL position feedback</td></tr>
-        <tr><td class="k">Blowdown (BDV)</td><td class="v"><b>BDV-2004</b> plant inlet → flare · <b>BDV-2027</b> (V-202)</td><td class="v"><b>RO-2004</b> restriction orifice sizes the rate</td></tr>
-        <tr><td class="k">Relief (PSV)</td><td class="v"><b>PSV-2001A/B</b> V-201 · <b>PSV-2002A/B</b> inlet section · <b>PSV-2003A/B</b> filters · PSV-2028A/B V-202</td><td class="v"><b>50 barg</b> set (PSV-2001A/B · 2003A/B per Table 3.4); PSV-2002A/B per datasheet</td></tr>
-        <tr><td class="k">Control</td><td class="v"><b>FV-2001</b> flow · <b>PV-2001</b> pressure · <b>TV-2002</b> temperature · <b>LV-2011/2012</b> V-201 levels · LV-2021/2022 V-202 levels</td><td class="v">Driven by the loops in Block 2</td></tr>
-      </table>
-      <div class="note">Relief &amp; blowdown philosophy: <b>SAF05-ING-FR01</b> · isolation philosophy: <b>SAF01-ING-FR01</b>.</div>
+      <div class="kicker">Protection · Isolation <span class="sub">— Manual §3.5.2 · SAF01 / SAF05</span></div>
+      <h2>Valves — isolation, blowdown, relief &amp; control</h2>
+
+      <div class="mapwrap">
+        <div class="lbl"><span>Unit 200 — valves by function</span>
+          <span class="you" style="color:var(--ink-soft);font-weight:400;">
+            <b style="color:#C8102E;">◆ isolation (SDV)</b> · <b style="color:#0B5CAD;">● control (CV)</b> · <b style="color:#7A3FB3;">▲ relief (PSV)</b> · <b style="color:#B26A00;">◇ blowdown (BDV)</b></span></div>
+        <svg viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="vah" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#555"/></marker></defs>
+
+          <!-- feed + inlet cluster -->
+          <text x="4" y="178" font-family="Consolas,monospace" font-size="9" fill="#666">FEED</text>
+          <text x="4" y="189" font-family="Consolas,monospace" font-size="8.5" fill="#888">≤55 barg</text>
+          <line x1="56" y1="184" x2="176" y2="184" stroke="#555" stroke-width="2.5" marker-end="url(#vah)"/>
+
+          <!-- equipment boxes -->
+          <rect x="182" y="156" width="116" height="56" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="240" y="181" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#15171A">V-202</text>
+          <text x="240" y="196" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#8a9099">1st separator</text>
+          <line x1="298" y1="184" x2="354" y2="184" stroke="#555" stroke-width="2.5" marker-end="url(#vah)"/>
+          <rect x="356" y="156" width="116" height="56" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="414" y="181" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#15171A">E-201</text>
+          <text x="414" y="196" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#8a9099">heater</text>
+          <line x1="472" y1="184" x2="528" y2="184" stroke="#555" stroke-width="2.5" marker-end="url(#vah)"/>
+          <rect x="530" y="156" width="124" height="56" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="592" y="181" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#15171A">F-201A/B</text>
+          <text x="592" y="196" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#8a9099">filters</text>
+          <line x1="654" y1="184" x2="702" y2="184" stroke="#555" stroke-width="2.5" marker-end="url(#vah)"/>
+          <rect x="704" y="156" width="116" height="56" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="762" y="181" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#15171A">V-201</text>
+          <text x="762" y="196" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#8a9099">final sep</text>
+          <line x1="820" y1="184" x2="872" y2="184" stroke="#555" stroke-width="2.5" marker-end="url(#vah)"/>
+          <rect x="876" y="166" width="80" height="36" rx="5" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.3"/>
+          <text x="916" y="188" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#C8102E">U330</text>
+
+          <!-- ISOLATION (crimson diamonds) -->
+          <rect x="112" y="178" width="12" height="12" transform="rotate(45 118 184)" fill="#C8102E"/>
+          <text x="118" y="208" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#C8102E">SDV-2024</text>
+          <rect x="156" y="178" width="12" height="12" transform="rotate(45 162 184)" fill="#C8102E"/>
+          <text x="162" y="219" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#C8102E">SDV-2001</text>
+          <!-- V-202 outlets -->
+          <line x1="216" y1="212" x2="216" y2="230" stroke="#C8102E" stroke-width="1.4"/>
+          <rect x="210" y="230" width="11" height="11" transform="rotate(45 216 235)" fill="#C8102E"/>
+          <text x="212" y="256" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#C8102E">SDV-2025</text>
+          <line x1="264" y1="212" x2="264" y2="230" stroke="#C8102E" stroke-width="1.4"/>
+          <rect x="258" y="230" width="11" height="11" transform="rotate(45 264 235)" fill="#C8102E"/>
+          <text x="266" y="256" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#C8102E">SDV-2026</text>
+          <!-- V-201 outlets -->
+          <line x1="740" y1="212" x2="740" y2="230" stroke="#C8102E" stroke-width="1.4"/>
+          <rect x="734" y="230" width="11" height="11" transform="rotate(45 740 235)" fill="#C8102E"/>
+          <text x="736" y="256" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#C8102E">SDV-2002</text>
+          <line x1="788" y1="212" x2="788" y2="230" stroke="#C8102E" stroke-width="1.4"/>
+          <rect x="782" y="230" width="11" height="11" transform="rotate(45 788 235)" fill="#C8102E"/>
+          <text x="790" y="256" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#C8102E">SDV-2003</text>
+
+          <!-- CONTROL (blue circles) -->
+          <circle cx="500" cy="184" r="6.5" fill="#fff" stroke="#0B5CAD" stroke-width="1.8"/>
+          <text x="500" y="208" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#0B5CAD">PV-2001</text>
+          <circle cx="846" cy="184" r="6.5" fill="#fff" stroke="#0B5CAD" stroke-width="1.8"/>
+          <text x="846" y="208" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#0B5CAD">FV-2001</text>
+          <circle cx="414" cy="150" r="6.5" fill="#fff" stroke="#0B5CAD" stroke-width="1.8"/>
+          <line x1="414" y1="143" x2="414" y2="130" stroke="#0B5CAD" stroke-width="1.4"/>
+          <text x="414" y="126" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#0B5CAD">TV-2002 · hot oil</text>
+
+          <!-- RELIEF (purple triangles, on tops) -->
+          <path d="M150,132 L144,144 L156,144 Z" fill="#7A3FB3"/>
+          <text x="150" y="126" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#7A3FB3">PSV-2002A/B</text>
+          <path d="M258,138 L252,150 L264,150 Z" fill="#7A3FB3"/>
+          <text x="272" y="136" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#7A3FB3">PSV-2028A/B</text>
+          <path d="M592,138 L586,150 L598,150 Z" fill="#7A3FB3"/>
+          <text x="592" y="132" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#7A3FB3">PSV-2003A/B</text>
+          <path d="M762,138 L756,150 L768,150 Z" fill="#7A3FB3"/>
+          <text x="762" y="132" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#7A3FB3">PSV-2001A/B</text>
+
+          <!-- BLOWDOWN (amber, tap to flare) -->
+          <line x1="192" y1="156" x2="192" y2="112" stroke="#B26A00" stroke-width="1.5" marker-end="url(#vah)"/>
+          <rect x="186" y="150" width="12" height="12" transform="rotate(45 192 156)" fill="#fff" stroke="#B26A00" stroke-width="1.8"/>
+          <text x="198" y="108" font-family="Consolas,monospace" font-size="7.5" fill="#B26A00">BDV-2004 → flare (RO-2004)</text>
+        </svg>
+      </div>
+
+      <div class="vgrid">
+        <div class="hcard iso"><div class="hh"><span>◆ Isolation (SDV)</span><span>ESD</span></div><div class="hb">
+          <div class="hval"><span class="k">SDV-2024</span><span class="v">plant inlet</span></div>
+          <div class="hval"><span class="k">SDV-2001</span><span class="v">inlet skid</span></div>
+          <div class="hval"><span class="k">SDV-2002 / 2003</span><span class="v">V-201 HC / water</span></div>
+          <div class="hval"><span class="k">SDV-2025 / 2026</span><span class="v">V-202 outlets</span></div>
+        </div></div>
+        <div class="hcard bdw"><div class="hh"><span>◇ Blowdown (BDV)</span><span>→ flare</span></div><div class="hb">
+          <div class="hval"><span class="k">BDV-2004</span><span class="v">inlet → flare</span></div>
+          <div class="hval"><span class="k">BDV-2027</span><span class="v">V-202</span></div>
+          <div class="hval"><span class="k">RO-2004</span><span class="v">sets rate</span></div>
+        </div></div>
+        <div class="hcard rel"><div class="hh"><span>▲ Relief (PSV)</span><span>50 barg</span></div><div class="hb">
+          <div class="hval"><span class="k">PSV-2001A/B</span><span class="v">V-201</span></div>
+          <div class="hval"><span class="k">PSV-2002A/B</span><span class="v">inlet section</span></div>
+          <div class="hval"><span class="k">PSV-2003A/B</span><span class="v">filters</span></div>
+          <div class="hval"><span class="k">PSV-2028A/B</span><span class="v">V-202</span></div>
+        </div></div>
+        <div class="hcard ctl"><div class="hh"><span>● Control (CV)</span><span>loops</span></div><div class="hb">
+          <div class="hval"><span class="k">FV-2001</span><span class="v">flow</span></div>
+          <div class="hval"><span class="k">PV-2001</span><span class="v">pressure</span></div>
+          <div class="hval"><span class="k">TV-2002</span><span class="v">temperature</span></div>
+          <div class="hval"><span class="k">LV-2011/12 · 2021/22</span><span class="v">levels</span></div>
+        </div></div>
+      </div>
+      <div class="routing"><b>Isolation &amp; protection layer</b> — every SDV/BDV is ESD-actuated (SDEV solenoids) with <b>ZSH/ZSL</b> position feedback, so the PCS confirms open/closed. Isolation philosophy <b>SAF01-ING-FR01</b> · relief &amp; blowdown <b>SAF05-ING-FR01</b>. This same layer applies to every unit.</div>
     </section>
 
     <!-- 14 RELEVANT DOCUMENTS · Mario · 4 -->
     <section class="slide" data-min="4" data-block="Block 1" data-presenter="Mario"
       data-notes='["Table 3.2 — where to look things up for this unit. Keep this list; it repeats in every unit module.","PRO02 process description and PRO10-PR14 PFD are the process references; PRO13 sheets are the skid drawings.","SAF01, SAF05 and SAF12 are the safety philosophies — isolation, relief/blowdown, cause &amp; effect.","The HMI philosophy document governs everything you see on the screens in Block 2."]'>
-      <div class="kicker">Reference <span class="sub">— Manual §3.3, Table 3.2</span></div>
+      <div class="kicker">Reference · Documents <span class="sub">— Manual §3.3 · consultation links</span></div>
       <h2>Unit 200 — relevant documents</h2>
-      <table class="data" style="font-size:12.5px;">
-        <tr><th>Doc No</th><th>Title</th></tr>
-        <tr><td class="k">PRO02-ING-FR02</td><td>Process Description</td></tr>
-        <tr><td class="k">PRO10-ING-PR14</td><td>Process Flow Diagram (Inlet Separator)</td></tr>
-        <tr><td class="k">PRO13-ING-PR01</td><td>Unit 200 — Skid S-201 / V-201</td></tr>
-        <tr><td class="k">PRO13-ING-PR50</td><td>Unit 200 — V-202</td></tr>
-        <tr><td class="k">SAF01-ING-FR01</td><td>Process Safety &amp; Isolation Philosophy</td></tr>
-        <tr><td class="k">SAF12-ING-FR01</td><td>Cause &amp; Effect Matrix</td></tr>
-        <tr><td class="k">SAF05-ING-FR01</td><td>Relief &amp; Blowdown Philosophy</td></tr>
-        <tr><td class="k">21044-AU-HMI-00002</td><td>HMI Philosophy</td></tr>
-      </table>
+      <table class="data" id="docstbl" style="font-size:12px;"></table>
+      <div class="note">Source: <b>plant_documents</b> (local copy) · <span class="docstat on">LINK</span> opens the PDF · <span class="docstat off">PENDING</span> not published yet.</div>
     </section>
 
     <!-- BREAK 1 -->
@@ -1557,6 +1653,42 @@
       ebtns.forEach(function(b){b.onclick=function(){loadEquip(+b.dataset.e,b);};});
       loadEquip(0,ebtns[0]);
     }
+  })();
+</script>
+<script>
+  // Relevant documents — LOCAL COPY of plant_documents (Supabase).
+  // Auto-detect: each url is probed; if the file exists under /docs/ the link enables itself. No code change needed.
+  (function(){
+    var DOCS=[
+      {no:"PRO02-ING-FR02",title:"Process Description",cat:"Process",rev:"",url:"/docs/PRO02-ING-FR02.pdf"},
+      {no:"PRO10-ING-PR14",title:"Process Flow Diagram (Inlet Separator)",cat:"Process",rev:"",url:"/docs/PRO10-ING-PR14.pdf"},
+      {no:"PRO13-ING-PR01",title:"Unit 200 — Skid S-201 / V-201",cat:"Drawings",rev:"",url:"/docs/PRO13-ING-PR01.pdf"},
+      {no:"PRO13-ING-PR50",title:"Unit 200 — V-202",cat:"Drawings",rev:"",url:"/docs/PRO13-ING-PR50.pdf"},
+      {no:"SAF01-ING-FR01",title:"Process Safety & Isolation Philosophy",cat:"Safety",rev:"Rev.2",url:"/docs/SAF01-ING-FR01.pdf"},
+      {no:"SAF12-ING-FR01",title:"Cause & Effect Matrix",cat:"Safety",rev:"",url:"/docs/SAF12-ING-FR01.pdf"},
+      {no:"SAF05-ING-FR01",title:"Relief & Blowdown Philosophy",cat:"Safety",rev:"",url:"/docs/SAF05-ING-FR01.pdf"},
+      {no:"21044-AU-HMI-00002",title:"HMI Philosophy",cat:"Control",rev:"",url:"/docs/21044-AU-HMI-00002.pdf"},
+      {no:"21044-PR-MAN-00001",title:"Plant Operating Manual",cat:"Manual",rev:"01",url:"/docs/21044-PR-MAN-00001.pdf"}
+    ];
+    var t=document.getElementById('docstbl'); if(!t) return;
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    t.innerHTML='<tr><th>Doc No</th><th>Title</th><th>Category</th><th>Rev</th><th>Link</th></tr>';
+    function probe(url,cb){ try{ fetch(encodeURI(url),{method:'HEAD'}).then(function(r){cb(r.ok);}).catch(function(){cb(false);}); }catch(e){cb(false);} }
+    DOCS.forEach(function(d){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td class="k" data-no></td><td>'+esc(d.title)+'</td><td class="doccat">'+esc(d.cat)+'</td><td class="doccat">'+esc(d.rev||'—')+'</td><td data-link><span class="docstat off">checking…</span></td>';
+      tr.querySelector('[data-no]').textContent=d.no;
+      t.appendChild(tr);
+      probe(d.url,function(ok){
+        var u=encodeURI(d.url);
+        if(ok){
+          tr.querySelector('[data-no]').innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">'+esc(d.no)+'</a>';
+          tr.querySelector('[data-link]').innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">open ↗</a>';
+        } else {
+          tr.querySelector('[data-link]').innerHTML='<span class="docstat off">pending</span>';
+        }
+      });
+    });
   })();
 </script>
 <div class="lightbox" id="lightbox"><button class="lbclose" aria-label="close">✕</button><img id="lbimg" src="" alt=""><div class="lbcap" id="lbcap"></div></div>
