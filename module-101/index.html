@@ -94,6 +94,20 @@
   .fig .cap{font-family:var(--mono);font-size:10px;color:var(--ink-soft);margin-top:6px;letter-spacing:.04em;}
   .figrow{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:center;}
   .figrow ul.points li{font-size:13px;}
+  .team{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap;}
+  .person{flex:1;min-width:220px;border:1px solid var(--line-strong);border-radius:8px;padding:18px 20px;background:var(--bg-soft);}
+  .person .av{width:48px;height:48px;border-radius:50%;background:var(--crimson);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;margin-bottom:12px;font-family:var(--mono);}
+  .person .av.zr{background:var(--blue);}
+  .person .nm{font-size:20px;font-weight:700;}
+  .person .rl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--crimson);margin-top:3px;}
+  .person .rl.zr{color:var(--blue);}
+  .person .org{font-size:13px;color:var(--ink-soft);margin-top:6px;}
+  .zagenda{display:flex;flex-direction:column;gap:11px;margin-top:12px;}
+  .zag{display:flex;align-items:center;gap:16px;}
+  .zag .n{width:44px;height:44px;border-radius:50%;background:#2b2e33;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;font-family:Georgia,'Times New Roman',serif;flex:none;}
+  .zag.red .n{background:var(--crimson);}
+  .zag b{display:block;font-size:15.5px;}
+  .zag span{font-size:12.5px;color:var(--ink-soft);}
   .carousel{position:relative;height:322px;margin-top:8px;}
   .carousel .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .55s;pointer-events:none;}
   .carousel .cimg.active{opacity:1;pointer-events:auto;}
@@ -138,6 +152,57 @@
     .slide{padding:22px 20px;} h1{font-size:22px;} h2{font-size:19px;}
     .grid2{grid-template-columns:1fr;} .brandbar{padding:11px 16px;}
   }
+
+  /* ===== Area-introduction components (map+HMB · physical) ===== */
+  .mapwrap{border:1px solid var(--line);border-radius:8px;background:var(--bg-soft);padding:7px 10px 3px;}
+  .mapwrap .lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);padding:0 2px 2px;display:flex;justify-content:space-between;}
+  .mapwrap .lbl .you{color:var(--crimson);font-weight:700;}
+  .hmb{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:11px;align-items:stretch;}
+  .hcard{border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:#fff;position:relative;}
+  .hcard .hh{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#fff;padding:5px 10px;display:flex;justify-content:space-between;}
+  .hcard.in .hh{background:var(--blue);}
+  .hcard.mid .hh{background:var(--amber);}
+  .hcard.out .hh{background:var(--ok);}
+  .hcard .hb{padding:7px 10px;}
+  .hval{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2.5px 0;border-bottom:1px dashed var(--line);line-height:1.3;}
+  .hval:last-child{border-bottom:none;}
+  .hval .k{color:var(--ink-soft);} .hval .v{font-family:var(--mono);color:var(--ink);font-weight:600;text-align:right;}
+  .hstrip{display:flex;gap:9px;margin-top:9px;flex-wrap:wrap;}
+  .pill{flex:1;min-width:190px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg-soft);padding:7px 12px;font-size:11px;line-height:1.4;}
+  .pill b{color:var(--crimson);font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px;}
+  .pill .big{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);}
+  .routing{margin-top:8px;font-size:10.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:6px;}
+  .routing b{color:var(--ink);}
+  .p2cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:11px;}
+  .hcard.arloc .hh{background:#2b2e33;} .hcard.eqc .hh{background:var(--crimson);}
+  .hcard.ioc .hh{background:var(--blue);} .hcard.enc .hh{background:var(--amber);}
+  .carea{position:relative;border-radius:10px;overflow:hidden;background:#fff;border:1px solid var(--line-strong);}
+  .carea .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .8s ease;}
+  .carea .cimg.on{opacity:1;}
+  .carea .cimg img{max-width:100%;max-height:100%;object-fit:contain;}
+  .carea .cbadge{position:absolute;top:11px;left:12px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(200,16,46,.85);padding:4px 10px;border-radius:20px;}
+  .carea .cdots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:3;}
+  .carea .cdots b{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.22);cursor:pointer;display:block;transition:.12s;}
+  .carea .cdots b.on{background:var(--crimson);transform:scale(1.15);}
+  /* equipment datasheet */
+  .eqdetail{display:grid;grid-template-columns:1.05fr 1.15fr;gap:14px;height:calc(100% - 58px);}
+  .eqfig{border:1px solid var(--line-strong);border-radius:8px;background:#fff;padding:6px;display:flex;flex-direction:column;min-height:0;}
+  .eqfig .imgbox{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;}
+  .eqfig img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;}
+  .eqfig .cap{font-family:var(--mono);font-size:9.5px;color:var(--ink-soft);text-align:center;padding:6px 4px 2px;flex:none;}
+  .eqcol{display:flex;flex-direction:column;min-height:0;}
+  .eqcard{border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0;flex:1;}
+  .eqcard .hd{background:var(--crimson);color:#fff;padding:8px 13px;flex:none;}
+  .eqcard .hd .tag{font-family:var(--mono);font-size:19px;font-weight:700;line-height:1;}
+  .eqcard .hd .ty{font-size:10.5px;opacity:.92;margin-top:2px;}
+  .eqcard .bd{padding:7px 13px;overflow:auto;}
+  .eqspecs{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
+  .eqspecs .er{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px dashed var(--line);line-height:1.3;}
+  .eqspecs .er .k{color:var(--ink-soft);} .eqspecs .er .v{font-family:var(--mono);color:var(--ink);font-weight:600;text-align:right;}
+  .eqthumbs{display:flex;gap:6px;margin-top:9px;flex:none;}
+  .eqthumbs button{flex:1;font-family:var(--mono);font-size:10px;font-weight:700;border:1.5px solid var(--line-strong);background:#fff;color:var(--ink-soft);border-radius:6px;padding:6px 3px;cursor:pointer;transition:.12s;}
+  .eqthumbs button:hover{border-color:var(--crimson);color:var(--crimson);}
+  .eqthumbs button.on{background:var(--crimson);border-color:var(--crimson);color:#fff;}
 </style>
 </head>
 <body>
@@ -173,6 +238,72 @@
       <div class="owner">Client: <b>ManaEnergy</b> · Source: <b>21044-PR-MAN-00001 · Ch. 3</b></div>
     </section>
 
+    <!-- 1b PROGRAM · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
+      data-notes='["18 four-hour modules, live online, 08 Jul – 17 Aug 2026.","2 Fundamentals modules + 16 Operation modules unit by unit — Module 101 is the first unit module.","Every module: objectives → content → Q&A → exam & evaluation. Safety-first, technician-focused.","Remind the group where 101 sits: right after the two fundamentals modules."]'>
+      <div class="kicker">Welcome · The program</div>
+      <h2>About this training program</h2>
+      <p class="lead">A technical program for LNG plant personnel, built around the <b>Tendrara Micro LNG</b>
+        facility — from gas fundamentals to unit-by-unit operation and the control room.</p>
+      <div class="facts" style="margin-top:6px;">
+        <div class="fact"><div class="n">18</div><div class="l">modules total</div></div>
+        <div class="fact"><div class="n">4 h</div><div class="l">per module · live online</div></div>
+        <div class="fact"><div class="n">~72 h</div><div class="l">total training</div></div>
+        <div class="fact"><div class="n">Jul–Aug</div><div class="l">2026 delivery window</div></div>
+      </div>
+      <ul class="points" style="margin-top:12px;">
+        <li><b>2 Fundamentals</b> modules + <b>16 Operation</b> modules (unit-by-unit &amp; control room).</li>
+        <li>Each module: <b>objectives → content → Q&amp;A → exam &amp; evaluation.</b> <b>Safety-first, technician-focused.</b></li>
+      </ul>
+    </section>
+
+    <!-- 1c INSTRUCTORS · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
+      data-notes='["Each instructor introduces himself — about one minute each.","1 · MARIO — plant, process & operations lead: engineering background, career path and years in the industry [complete], and your role in the Tendrara project (engineering, documents, commissioning) — why you know this plant.","2 · MAURO MARINELLI — Projects Director: project delivery and engineering oversight of the Tendrara facility [complete with your background and years].","Common closing (Mario): Technical America is the technology vendor and training provider; questions welcome at any slide — the exam only covers what we present."]'>
+      <div class="kicker">Your instructors</div>
+      <h2>Meet the team</h2>
+      <div class="team">
+        <div class="person"><div class="av">MM</div><div class="nm">Mario Mendizabal</div><div class="rl">Instructor — Plant &amp; Operations</div><div class="org">The Tendrara facility · process, operation &amp; plant systems · Unit 200 walkthrough</div></div>
+        <div class="person"><div class="av zr">MM</div><div class="nm">Mauro Marinelli</div><div class="rl zr">Projects Director</div><div class="org">Project delivery &amp; engineering oversight of the Tendrara Micro LNG facility</div></div>
+      </div>
+      <div class="note">Technical America — technology vendor &amp; training provider.
+        <b style="color:var(--crimson);">Mario</b> — plant, process &amp; operations · <b style="color:var(--blue);">Mauro</b> — projects direction.</div>
+    </section>
+
+    <!-- 1d ROADMAP · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
+      data-notes='["18 modules: 2 Fundamentals + 16 Operation, 08 Jul – 17 Aug 2026.","Today is Module 101 — the first Operation module: U200 inlet & U530 water treatment.","After the inlet the program continues unit by unit, then control room, then plant start-stop.","Each Operation module: principle of operation, main components, control loops, valves, daily checks & maintenance."]'>
+      <div class="kicker">Roadmap · 18 modules · 4 h each</div>
+      <h2>Program roadmap</h2>
+      <div class="grid2" style="gap:10px 22px;">
+        <table class="data" style="font-size:12px;">
+          <tr><th colspan="2" style="color:var(--crimson);">Fundamentals</th></tr>
+          <tr><td class="k">001</td><td>Intro to LNG &amp; Tendrara facility</td></tr>
+          <tr><td class="k">002</td><td>Facility operation, safety &amp; emergency</td></tr>
+          <tr><th colspan="2" style="color:var(--crimson);">Operation — unit by unit</th></tr>
+          <tr style="background:#FBE9EC;"><td class="k" style="color:var(--crimson);">101 ▸</td><td><b>U200 Inlet &amp; 530 Water treatment</b> <span class="muted">(today)</span></td></tr>
+          <tr><td class="k">102</td><td>U330/310 Sweetening &amp; Dehydration</td></tr>
+          <tr><td class="k">103</td><td>U340 Refrigeration</td></tr>
+          <tr><td class="k">104</td><td>U350 Liquefaction I</td></tr>
+          <tr><td class="k">105</td><td>U350 Liquefaction II</td></tr>
+          <tr><td class="k">106</td><td>U360 Flash/BOG &amp; U370 Vaporizer</td></tr>
+          <tr><td class="k">107</td><td>U220 Storage &amp; Dispensing</td></tr>
+        </table>
+        <table class="data" style="font-size:12px;">
+          <tr><th colspan="2" style="color:var(--crimson);">Operation (cont.)</th></tr>
+          <tr><td class="k">108</td><td>U500/600 Air &amp; N₂ + U540 Water</td></tr>
+          <tr><td class="k">109</td><td>U410 Hot oil</td></tr>
+          <tr><td class="k">110</td><td>U430 Analyzers</td></tr>
+          <tr><td class="k">111</td><td>U480/490 Power Gen I</td></tr>
+          <tr><td class="k">112</td><td>U480/490 Power Gen II</td></tr>
+          <tr><td class="k">113</td><td>U230/700/550/730 Flare, F&amp;G, Drain, Fire</td></tr>
+          <tr><td class="k">114</td><td>Control Room / Console I (PCS, HMI)</td></tr>
+          <tr><td class="k">115</td><td>Control Room / Console II</td></tr>
+          <tr><td class="k">116</td><td>Plant start-stop &amp; LNG truck loading</td></tr>
+        </table>
+      </div>
+    </section>
+
     <!-- 2 SCOPE / OBJECTIVES / AGENDA · Mario · 5 -->
     <section class="slide" data-min="5" data-block="Module open" data-presenter="Mario"
       data-notes='["Scope: Unit 200 only — the paired Unit 530 Process Water Treatment is covered separately.","Objectives are the exam blueprint — read them out.","Block 1 = what the unit is and how the gas flows through it; Block 2 = how you control, monitor and protect it.","Same 4-hour skeleton — breaks at 1:45 and 3:00."]'>
@@ -188,6 +319,7 @@
             <li>Name the <b>control loops</b> and their set points (FIC · PIC · TIC · LIC).</li>
             <li>Recognize the <b>critical alarms &amp; trips</b> and what each one shuts down.</li>
             <li>Read the <b>Unit 200 HMI screens</b> and locate the unit documents.</li>
+            <li>Carry out the <b>routine field checks &amp; maintenance</b>: filter ΔP swap-over, hydrate-temperature watch, inhibitor tote &amp; separator-level rounds.</li>
           </ul>
         </div>
         <div>
@@ -205,248 +337,610 @@
       </div>
     </section>
 
-    <!-- 3 WARM-UP RECAP · Mario · 4 -->
-    <section class="slide" data-min="4" data-block="Module open" data-presenter="Mario"
-      data-notes='["Quick-fire recap of the Fundamentals facts that matter at the inlet — ask the group.","Why do we heat wet gas at the inlet? Hydrates: water + gas + cold = ice-like plugs.","Which shutdown level closes process inlet and outlets? PSD (I2). Which one depressurizes the plant? ESD (I1).","Gas detection zone 1 starts here: SDV-2001 to SDV-3560.","Plant gas is not odorized — instruments, never smell."]'>
-      <div class="kicker">Warm-up · From the Fundamentals</div>
-      <h2>Five facts you bring into Unit 200</h2>
-      <ul class="points">
-        <li><b>Hydrates:</b> wet gas + pressure + cold → ice-like plugs — the reason <b>E-201</b> exists.</li>
-        <li>Shutdown hierarchy: <b>PSD (I2)</b> closes process inlet/outlets · <b>ESD (I1)</b> also depressurizes to flare.</li>
-        <li><b>Gas detection zone 1</b> covers the inlet: SDV-2001 → SDV-3560 (U200 · 310 · 330).</li>
-        <li>HH / LL process alarms <b>trip automatically</b> — operators verify, they do not race the logic.</li>
-        <li>Plant gas is <b>not odorized</b> — leak detection is by instruments, never smell.</li>
-      </ul>
-      <div class="note">Today these facts become concrete: the valves, loops and trips of the plant inlet.</div>
-    </section>
-
-    <!-- 4 WHERE UNIT 200 SITS · Mario · 6 -->
+    <!-- 5 AREA MAP + HMB (general) · Mario · 6 -->
     <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Unit 200 is the initial processing stage — primary separation and conditioning of the feed gas.","Main line: wells → SDV-2024 → U200 → U330 amine sweetening → U310 dehydration → U350 liquefaction.","Three side streams leave the unit: process water to U530, condensates to the hot oil buffer tank S-413 as boiler fuel, and a gas bypass to E-371 in U370 for fuel gas.","Point out: nothing downstream works if the inlet delivers wet, dirty or unstable gas."]'>
-      <div class="kicker">Unit 200 · Context</div>
-      <h2>Where Unit 200 sits in the plant</h2>
-      <div class="flow">
-        <div class="step"><span class="u">WELLS</span><span class="t">Raw gas from <b>TMF-6 / TE-7</b> — arrival pressure up to <b>55 barg</b></span></div>
-        <div class="step"><span class="u">U200</span><span class="t"><b>Inlet separation &amp; conditioning</b> — SDV-2024 · V-202 · E-201 · F-201A/B · V-201 · FV-2001</span></div>
-        <div class="step"><span class="u">U330</span><span class="t"><b>Amine sweetening</b> (CO₂ removal) → <b>U310</b> dehydration → <b>U350</b> liquefaction</span></div>
+      data-notes='["The whole plant on one line — all areas — with Unit 200 highlighted: you are here.","Trace the main path 200 → 330 → 310 → 350 → 220, plus the side loops: NH3 (340), BOG &amp; BOG-recycle (360), fuel-gas bypass to 370.","HMB, design Case 1: feed ~16.6 MMSCFD / 16,720 kg/h at ~46 barg, cold in winter (4.6 C) — E-201 heats it to 43 C for hydrate prevention.","E-201 duty swings 84 kW (summer) to 388 kW (winter); rated 650 kW, hot oil from U410.","Gas leaves to U330 at ~41.7 barg, 41.4 C, still carrying CO2 ~9.3% — sweetening is next.","Side streams: water to U530, condensate to S-413 as boiler fuel."]'>
+      <div class="kicker">Unit 200 · Area map &amp; HMB <span class="sub">— where we are · what flows in / out</span></div>
+      <h2>Unit 200 in the plant — process map, inputs &amp; outputs</h2>
+
+      <div class="mapwrap">
+        <div class="lbl"><span>Plant block diagram — all process areas</span><span class="you">■ Unit 200 = you are here</span></div>
+        <svg viewBox="0 0 1000 360" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4A4F57"/></marker>
+            <marker id="ahb" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#0B5CAD"/></marker>
+            <marker id="ahg" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1F8A4C"/></marker>
+          </defs>
+          <text x="4" y="222" font-family="Consolas,monospace" font-size="11" fill="#4A4F57">NATURAL</text>
+          <text x="4" y="235" font-family="Consolas,monospace" font-size="11" fill="#4A4F57">GAS FEED</text>
+          <line x1="66" y1="228" x2="86" y2="228" stroke="#4A4F57" stroke-width="3" marker-end="url(#ah)"/>
+          <rect x="88" y="196" width="128" height="64" rx="5" fill="#C8102E"/>
+          <text x="152" y="223" text-anchor="middle" font-family="Segoe UI,Arial" font-size="16" font-weight="700" fill="#fff">UNIT 200</text>
+          <text x="152" y="241" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9" fill="#ffd9df">LNG PLANT INLET</text>
+          <text x="152" y="186" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="700" fill="#C8102E">▼ YOU ARE HERE</text>
+          <line x1="216" y1="228" x2="244" y2="228" stroke="#4A4F57" stroke-width="3" marker-end="url(#ah)"/>
+          <rect x="246" y="196" width="128" height="64" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>
+          <text x="310" y="223" text-anchor="middle" font-family="Segoe UI,Arial" font-size="16" font-weight="700" fill="#15171A">UNIT 330</text>
+          <text x="310" y="241" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9" fill="#4A4F57">AMINE SWEETENING</text>
+          <line x1="374" y1="228" x2="402" y2="228" stroke="#4A4F57" stroke-width="3" marker-end="url(#ah)"/>
+          <rect x="404" y="196" width="128" height="64" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>
+          <text x="468" y="223" text-anchor="middle" font-family="Segoe UI,Arial" font-size="16" font-weight="700" fill="#15171A">UNIT 310</text>
+          <text x="468" y="241" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9" fill="#4A4F57">DEHYDRATION</text>
+          <line x1="532" y1="228" x2="560" y2="228" stroke="#4A4F57" stroke-width="3" marker-end="url(#ah)"/>
+          <rect x="562" y="196" width="128" height="64" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>
+          <text x="626" y="223" text-anchor="middle" font-family="Segoe UI,Arial" font-size="16" font-weight="700" fill="#15171A">UNIT 350</text>
+          <text x="626" y="241" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9" fill="#4A4F57">LIQUEFACTION</text>
+          <line x1="690" y1="228" x2="718" y2="228" stroke="#4A4F57" stroke-width="3" marker-end="url(#ah)"/>
+          <rect x="720" y="196" width="128" height="64" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>
+          <text x="784" y="223" text-anchor="middle" font-family="Segoe UI,Arial" font-size="16" font-weight="700" fill="#15171A">UNIT 220</text>
+          <text x="784" y="241" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9" fill="#4A4F57">LNG STORAGE</text>
+          <line x1="848" y1="228" x2="882" y2="228" stroke="#4A4F57" stroke-width="3" marker-end="url(#ah)"/>
+          <text x="886" y="225" font-family="Consolas,monospace" font-size="9" fill="#4A4F57">LNG TO</text>
+          <text x="886" y="236" font-family="Consolas,monospace" font-size="9" fill="#4A4F57">TRUCKS</text>
+          <rect x="500" y="70" width="140" height="50" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>
+          <text x="570" y="92" text-anchor="middle" font-family="Segoe UI,Arial" font-size="14" font-weight="700" fill="#15171A">UNIT 340</text>
+          <text x="570" y="107" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#4A4F57">REFRIGERATION</text>
+          <line x1="600" y1="120" x2="600" y2="194" stroke="#0B5CAD" stroke-width="1.5" marker-end="url(#ahb)"/>
+          <line x1="500" y1="104" x2="468" y2="104" stroke="#0B5CAD" stroke-width="1.5"/>
+          <line x1="468" y1="104" x2="468" y2="194" stroke="#0B5CAD" stroke-width="1.5" marker-end="url(#ahb)"/>
+          <text x="612" y="150" font-family="Consolas,monospace" font-size="8" fill="#0B5CAD">NH₃</text>
+          <rect x="770" y="20" width="150" height="50" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>
+          <text x="845" y="42" text-anchor="middle" font-family="Segoe UI,Arial" font-size="14" font-weight="700" fill="#15171A">UNIT 360</text>
+          <text x="845" y="57" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#4A4F57">FLASH GAS UNIT</text>
+          <line x1="806" y1="196" x2="806" y2="72" stroke="#4A4F57" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="812" y="140" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">BOG</text>
+          <line x1="770" y1="45" x2="468" y2="45" stroke="#4A4F57" stroke-width="2"/>
+          <line x1="468" y1="45" x2="468" y2="194" stroke="#4A4F57" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="560" y="39" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">BOG RECYCLE</text>
+          <rect x="500" y="300" width="140" height="48" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>
+          <text x="570" y="321" text-anchor="middle" font-family="Segoe UI,Arial" font-size="14" font-weight="700" fill="#15171A">UNIT 370</text>
+          <text x="570" y="335" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#4A4F57">VAPORIZER UNIT</text>
+          <line x1="500" y1="260" x2="500" y2="300" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#ah)"/>
+          <line x1="120" y1="260" x2="120" y2="324" stroke="#4A4F57" stroke-width="1.5"/>
+          <line x1="120" y1="324" x2="500" y2="324" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#ah)"/>
+          <text x="250" y="319" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">fuel-gas bypass (U200)</text>
+          <line x1="640" y1="324" x2="856" y2="324" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#ah)"/>
+          <text x="860" y="321" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">TO FUEL GAS</text>
+          <text x="860" y="332" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">SYSTEM</text>
+          <line x1="180" y1="260" x2="180" y2="282" stroke="#0B5CAD" stroke-width="1.5" marker-end="url(#ahb)"/>
+          <text x="186" y="276" font-family="Consolas,monospace" font-size="8" fill="#0B5CAD">water → U530</text>
+          <line x1="150" y1="260" x2="150" y2="295" stroke="#1F8A4C" stroke-width="1.5"/>
+          <line x1="150" y1="295" x2="118" y2="295" stroke="#1F8A4C" stroke-width="1.5" marker-end="url(#ahg)"/>
+          <text x="20" y="292" font-family="Consolas,monospace" font-size="8" fill="#1F8A4C">condensate → S-413</text>
+        </svg>
       </div>
-      <ul class="points" style="margin-top:10px;">
-        <li><b>Water</b> from V-202 &amp; V-201 → <b>Unit 530</b> Process Water Package.</li>
-        <li><b>Condensates</b> from V-201 → buffer tank <b>S-413</b> (Hot Oil System) — used as <b>boiler fuel</b>.</li>
-        <li><b>Bypass to E-371</b> (U370 Vaporizer) — fuel gas supply.</li>
-      </ul>
-      <div class="note">Function (§3.4): primary separation &amp; conditioning — remove water and condensates, control pressure, prevent hydrates.</div>
+
+      <div class="hmb">
+        <div class="hcard in">
+          <div class="hh"><span>▶ IN · Feed gas (F0)</span><span>→ V-202</span></div>
+          <div class="hb">
+            <div class="hval"><span class="k">Flow</span><span class="v">16.6 MMSCFD · 16,720 kg/h</span></div>
+            <div class="hval"><span class="k">Pressure</span><span class="v">46.0 barg</span></div>
+            <div class="hval"><span class="k">Temperature</span><span class="v">4.6 °C (W) / 34.7 °C (S)</span></div>
+          </div>
+        </div>
+        <div class="hcard mid">
+          <div class="hh"><span>◈ E-201 · heat</span><span>hydrate prev.</span></div>
+          <div class="hb">
+            <div class="hval"><span class="k">Gas outlet T</span><span class="v">43.0 °C (TIC-2002)</span></div>
+            <div class="hval"><span class="k">Duty (operating)</span><span class="v">84 kW (S) → 388 kW (W)</span></div>
+            <div class="hval"><span class="k">Duty (rated)</span><span class="v">650 kW · hot oil (U410)</span></div>
+          </div>
+        </div>
+        <div class="hcard out">
+          <div class="hh"><span>▶ OUT · to U330 (F1)</span><span>via FV-2001</span></div>
+          <div class="hb">
+            <div class="hval"><span class="k">Flow</span><span class="v">16.6 MMSCFD · 16,400 kg/h</span></div>
+            <div class="hval"><span class="k">Pressure</span><span class="v">41.7 barg</span></div>
+            <div class="hval"><span class="k">Temperature</span><span class="v">41.4 °C</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hstrip">
+        <div class="pill"><b>Feed composition (%mol · HMB Case 1)</b><span class="big">CH₄ 82.6 · CO₂ 9.3 · N₂ 6.1 · C₂₊ ~2</span></div>
+        <div class="pill"><b>Basis</b>HYSYS @ 83.5 kPa (1,434 m) · design cases 1/2 · summer &amp; winter</div>
+      </div>
+      <div class="routing">Side streams: <b>process water → U530</b> · <b>condensates → S-413</b> (Hot Oil buffer, boiler fuel) · <b>fuel-gas bypass → E-371 (U370)</b>. Gas leaves stripped of liquids but still with CO₂ — sweetening is next.</div>
     </section>
 
-
-    <!-- 4.1 3D · S-202 inlet skid — overview · Mario · 2 -->
-    <section class="slide" data-min="2" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Quick 3D tour before the process walk — one slide per equipment, in flow order.","This is the plant inlet corner: the S-202 skid with the V-202 separator and, beside it, the corrosion inhibitor package 120-XX-001.","Note the trench along the fence and the pipe rack heading into the plant."]'>
-      <div class="kicker">3D model · Walkthrough 1/6 <span class="sub">— plant inlet corner</span></div>
-      <h2>S-202 inlet skid — overview</h2>
-      <div class="fig" style="margin-top:4px;">
-        <a href="/images/3D_200_04.png" target="_blank"><img src="/images/3D_200_04.png" alt="S-202 inlet skid — overview" style="max-height:450px;"></a>
-        <div class="cap">3D model — S-202 skid: V-202 inlet separator + corrosion inhibitor package 120-XX-001 — click to enlarge</div>
-      </div>
-    </section>
-
-    <!-- 4.2 3D · V-202 — inlet three-phase separator · Mario · 2 -->
-    <section class="slide" data-min="2" data-block="Block 1" data-presenter="Mario"
-      data-notes='["V-202 — first vessel the gas meets after SDV-2024.","Horizontal 3-phase separator: gas out the top line, condensates and water out the bottom via SDV-2025 / SDV-2026.","Magenta lines are the chemical (inhibitor) injection — the color code from the PFD legend."]'>
-      <div class="kicker">3D model · Walkthrough 2/6 <span class="sub">— first separation stage</span></div>
-      <h2>V-202 — inlet three-phase separator</h2>
-      <div class="fig" style="margin-top:4px;">
-        <a href="/images/3D_200_05.png" target="_blank"><img src="/images/3D_200_05.png" alt="V-202 — inlet three-phase separator" style="max-height:450px;"></a>
-        <div class="cap">3D model — V-202 on the S-202 skid (top view), chemical injection lines in magenta — click to enlarge</div>
-      </div>
-    </section>
-
-    <!-- 4.3 3D · 120-XX-001 — corrosion inhibitor package · Mario · 2 -->
-    <section class="slide" data-min="2" data-block="Block 1" data-presenter="Mario"
-      data-notes='["The corrosion inhibitor package injects upstream of V-202 — protection against acids, moisture and CO2.","Small skid: tote, dosing pumps and instrumentation.","On rounds: confirm injection rate and tote level — an empty tote protects nothing."]'>
-      <div class="kicker">3D model · Walkthrough 3/6 <span class="sub">— chemical injection</span></div>
-      <h2>120-XX-001 — corrosion inhibitor package</h2>
-      <div class="fig" style="margin-top:4px;">
-        <a href="/images/3D_200_06.png" target="_blank"><img src="/images/3D_200_06.png" alt="120-XX-001 — corrosion inhibitor package" style="max-height:450px;"></a>
-        <div class="cap">3D model — corrosion inhibitor injection package upstream of V-202 (S-202 area) — click to enlarge</div>
-      </div>
-    </section>
-
-    <!-- 4.4 3D · E-201 — feed gas heater · Mario · 2 -->
-    <section class="slide" data-min="2" data-block="Block 1" data-presenter="Mario"
-      data-notes='["On the S-201 skid now — the yellow shell-and-tube exchanger in the foreground is E-201.","Hot oil on one side, feed gas on the other: TIC-2002 / TV-2002 hold the outlet temperature — the hydrate defense.","Behind it, the orange V-201; to the right, the U330 amine skids (E-335) — remember how close they are in the GA."]'>
-      <div class="kicker">3D model · Walkthrough 4/6 <span class="sub">— hydrate prevention</span></div>
-      <h2>E-201 — feed gas heater</h2>
-      <div class="fig" style="margin-top:4px;">
-        <a href="/images/3D_200_03.png" target="_blank"><img src="/images/3D_200_03.png" alt="E-201 — feed gas heater" style="max-height:450px;"></a>
-        <div class="cap">3D model — E-201 shell-and-tube heater (foreground, S-201 skid); V-201 behind — click to enlarge</div>
-      </div>
-    </section>
-
-    <!-- 4.5 3D · F-201A/B — feed gas particulate filters · Mario · 2 -->
-    <section class="slide" data-min="2" data-block="Block 1" data-presenter="Mario"
-      data-notes='["The two vertical yellow drums are the particulate filters F-201A/B — 5 micron, duty/standby.","Swap-over is a routine field operation: watch PDG-2001 before the alarm.","Same skid: gas piping in yellow, condensate lines in green, water in blue."]'>
-      <div class="kicker">3D model · Walkthrough 5/6 <span class="sub">— 5 µm · duty/standby</span></div>
-      <h2>F-201A/B — feed gas particulate filters</h2>
-      <div class="fig" style="margin-top:4px;">
-        <a href="/images/3D_200_02.png" target="_blank"><img src="/images/3D_200_02.png" alt="F-201A/B — feed gas particulate filters" style="max-height:450px;"></a>
-        <div class="cap">3D model — F-201A/B vertical filters on the S-201 skid (yellow, center) — click to enlarge</div>
-      </div>
-    </section>
-
-    <!-- 4.6 3D · V-201 — inlet raw gas separator · Mario · 2 -->
-    <section class="slide" data-min="2" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Last equipment of the unit: V-201, the inlet raw gas separator.","Note the access platform for the level instruments and PSVs on top.","From here the dry gas leaves through FV-2001 to U330 — end of the 3D tour, now the numbers."]'>
-      <div class="kicker">3D model · Walkthrough 6/6 <span class="sub">— final separation stage</span></div>
-      <h2>V-201 — inlet raw gas separator</h2>
-      <div class="fig" style="margin-top:4px;">
-        <a href="/images/3D_200_01.png" target="_blank"><img src="/images/3D_200_01.png" alt="V-201 — inlet raw gas separator" style="max-height:450px;"></a>
-        <div class="cap">3D model — V-201 (orange) on the S-201 skid, with access platform and level bridles — click to enlarge</div>
-      </div>
-    </section>
-
-    <!-- 5 OPERATING SUMMARY · Mario · 7 -->
+    <!-- 5b OPERATING SUMMARY (specific) · Mario · 7 -->
     <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
       data-notes='["This is Table 3.1 of the Operating Manual — the one-page identity card of the unit. Exam material.","Inputs: raw gas up to 55 barg through SDV-2024, plus corrosion inhibitor injection upstream of the first separator.","Outputs: conditioned gas to U330 regulated by FV-2001; water to U530; condensates to the hot oil buffer as fuel.","Key specs: hydrate prevention by TIC-2002 on E-201; pressure by PV-2001; flow by FIC-2001; PSVs plus PAHH/TAHH/LALL/LAHH trips with blowdown via BDV-2004.","Walk the table slowly — every row returns later in the module."]'>
-      <div class="kicker">Unit 200 · Operating summary <span class="sub">— Manual §3.1</span></div>
-      <h2>Operating summary</h2>
-      <table class="data" style="font-size:12.5px;">
-        <tr><th>Category</th><th>Description</th></tr>
-        <tr><td class="k">Inputs</td><td class="v">Raw gas from <b>TMF-6/TE-7</b> via Plant Inlet <b>SDV-2024</b>, up to <b>55 barg</b> · <b>corrosion inhibitor</b> injected upstream of inlet separation</td></tr>
-        <tr><td class="k">Outputs</td><td class="v">Conditioned gas → <b>U330</b> (flow via <b>FV-2001</b>) · process water from V-202/V-201 → <b>U530</b> · condensates from V-201 → <b>Hot Oil buffer tank</b> (fuel)</td></tr>
-        <tr><td class="k">Key operating specs</td><td class="v"><b>Hydrate prevention</b>: E-201 outlet temperature via hot oil (<b>TIC-2002</b>) · pressure via <b>PV-2001</b> · flow via <b>FT-2001/FIC-2001</b> · PSVs + <b>PAHH/TAHH/LALL/LAHH</b> → PSD/LSD + blowdown to flare via <b>BDV-2004</b></td></tr>
-        <tr><td class="k">Major equipment</td><td class="v"><b>V-202</b> inlet 3-phase separator · <b>E-201</b> feed gas heater · <b>F-201A/B</b> filters (5 µm) · <b>V-201</b> inlet raw gas separator · FV-2001 · PV-2001 · SDVs, BDVs, PSVs</td></tr>
-      </table>
-    </section>
+      <div class="kicker">Unit 200 · Operating summary <span class="sub">— Manual §3.1 · unit-flow diagram</span></div>
+      <h2>Operating summary — what enters, what leaves, key aspects</h2>
 
+      <div class="mapwrap">
+        <div class="lbl"><span>Unit 200 — internal flow · inputs → major equipment → outputs</span><span class="you">standard unit-summary diagram</span></div>
+        <svg viewBox="0 0 1000 360" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs>
+            <marker id="oah" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#333"/></marker>
+            <marker id="oab" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#0B5CAD"/></marker>
+            <marker id="oag" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1F8A4C"/></marker>
+            <marker id="oaa" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#B26A00"/></marker>
+          </defs>
 
-    <!-- 5b PROCESS DIAGRAM · Mario · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Process Diagram PRO10-ING-PR14 — the PFD of the inlet separator, first sheet of the Unit 200 flow path.","Walk it left to right: feed gas from wellhead → SDV-2024 (ESD, highlighted) with corrosion inhibitor injection → V-202 inlet 3-phase separator.","Top line: gas &amp; condensates to E-201 · BDV-2027 blowdown to flare with restriction orifice.","Bottom: condensates via SDV-2025 / LV-2021 re-commingled with the gas · water via SDV-2026 / LV-2022 to the Process Water Package.","Teach the fluid color code (legend): gas yellow, condensates green, process water blue — same convention on every PFD of the plant."]'>
-      <div class="kicker">Process Diagram <span class="sub">— PRO10-ING-PR14 · Inlet Separator</span></div>
-      <h2>Process diagram — V-202 inlet separator</h2>
-      <div class="fig" style="margin-top:4px;">
-        <a href="/images/pfd-1.png" target="_blank"><img src="/images/pfd-1.png" alt="Process Flow Diagram - Inlet Separator (PRO10-ING-PR14)" style="max-height:440px;"></a>
-        <div class="cap">PRO10-ING-PR14 (21044-PR-PFD-00001) — Process Flow Diagram · Inlet Separator — click to enlarge</div>
+          <!-- unit boundary -->
+          <rect x="96" y="98" width="812" height="182" rx="8" fill="#FAFBFC" stroke="#C8102E" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="106" y="115" font-family="Consolas,monospace" font-size="10" font-weight="700" fill="#C8102E">UNIT 200 · LNG PLANT INLET</text>
+
+          <!-- feed in -->
+          <text x="6" y="176" font-family="Consolas,monospace" font-size="9" fill="#333">RAW GAS</text>
+          <text x="6" y="187" font-family="Consolas,monospace" font-size="9" fill="#333">TMF-6/TE-7</text>
+          <text x="6" y="198" font-family="Consolas,monospace" font-size="8.5" fill="#666">≤55 barg</text>
+          <line x1="66" y1="205" x2="104" y2="205" stroke="#333" stroke-width="3" marker-end="url(#oah)"/>
+          <!-- SDV-2024 -->
+          <rect x="79" y="197" width="16" height="16" transform="rotate(45 87 205)" fill="#fff" stroke="#333" stroke-width="1.5"/>
+          <text x="87" y="230" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#333">SDV-2024</text>
+
+          <!-- equipment boxes y=173 h=64 -->
+          <rect x="120" y="173" width="120" height="64" rx="5" fill="#fff" stroke="#C8102E" stroke-width="1.6"/>
+          <text x="180" y="199" text-anchor="middle" font-family="Segoe UI,Arial" font-size="15" font-weight="700" fill="#15171A">V-202</text>
+          <text x="180" y="214" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8" fill="#4A4F57">inlet 3-ph separator</text>
+          <text x="180" y="256" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#C8102E">1st sep · 100 barg</text>
+
+          <line x1="240" y1="205" x2="300" y2="205" stroke="#333" stroke-width="3" marker-end="url(#oah)"/>
+
+          <rect x="306" y="173" width="120" height="64" rx="5" fill="#fff" stroke="#C8102E" stroke-width="1.6"/>
+          <text x="366" y="199" text-anchor="middle" font-family="Segoe UI,Arial" font-size="15" font-weight="700" fill="#15171A">E-201</text>
+          <text x="366" y="214" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8" fill="#4A4F57">feed gas heater</text>
+          <text x="366" y="256" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#C8102E">heat → 43°C · hydrate prev</text>
+          <!-- TIC + hot oil in -->
+          <circle cx="366" cy="173" r="11" fill="#fff" stroke="#B26A00" stroke-width="1.5"/>
+          <text x="366" y="176" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" font-weight="700" fill="#B26A00">TIC</text>
+          <line x1="366" y1="140" x2="366" y2="162" stroke="#B26A00" stroke-width="1.5" marker-end="url(#oaa)"/>
+          <text x="366" y="134" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#B26A00">hot oil (U410) · 650 kW</text>
+
+          <line x1="426" y1="205" x2="486" y2="205" stroke="#333" stroke-width="3" marker-end="url(#oah)"/>
+          <!-- PV-2001 -->
+          <rect x="448" y="197" width="16" height="16" transform="rotate(45 456 205)" fill="#fff" stroke="#333" stroke-width="1.5"/>
+          <text x="456" y="188" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#333">PV-2001 · 45 barg</text>
+
+          <rect x="492" y="173" width="120" height="64" rx="5" fill="#fff" stroke="#C8102E" stroke-width="1.6"/>
+          <text x="552" y="199" text-anchor="middle" font-family="Segoe UI,Arial" font-size="15" font-weight="700" fill="#15171A">F-201A/B</text>
+          <text x="552" y="214" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8" fill="#4A4F57">particulate filters</text>
+          <text x="552" y="256" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#C8102E">5 µm · duty/standby</text>
+
+          <line x1="612" y1="205" x2="672" y2="205" stroke="#333" stroke-width="3" marker-end="url(#oah)"/>
+
+          <rect x="678" y="173" width="120" height="64" rx="5" fill="#fff" stroke="#C8102E" stroke-width="1.6"/>
+          <text x="738" y="199" text-anchor="middle" font-family="Segoe UI,Arial" font-size="15" font-weight="700" fill="#15171A">V-201</text>
+          <text x="738" y="214" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8" fill="#4A4F57">inlet raw gas separator</text>
+          <text x="738" y="256" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#C8102E">final sep · 20 m³</text>
+
+          <!-- gas out to U330 -->
+          <line x1="798" y1="205" x2="908" y2="205" stroke="#333" stroke-width="3" marker-end="url(#oah)"/>
+          <!-- FV-2001 -->
+          <rect x="836" y="197" width="16" height="16" transform="rotate(45 844 205)" fill="#fff" stroke="#333" stroke-width="1.5"/>
+          <text x="844" y="188" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#333">FV-2001·FIC-2001</text>
+          <rect x="910" y="184" width="82" height="42" rx="5" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.5"/>
+          <text x="951" y="203" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#C8102E">U330</text>
+          <text x="951" y="216" text-anchor="middle" font-family="Segoe UI,Arial" font-size="7.5" fill="#4A4F57">sweetening</text>
+          <text x="905" y="176" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#333">gas · 16.6 MMSCFD · 41.7 barg · 41.4°C</text>
+
+          <!-- inhibitor into feed line -->
+          <line x1="150" y1="140" x2="150" y2="171" stroke="#B26A00" stroke-width="1.5" marker-end="url(#oaa)"/>
+          <text x="150" y="134" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#B26A00">inhibitor 120-XX-001</text>
+
+          <!-- outputs bottom -->
+          <line x1="150" y1="237" x2="150" y2="316" stroke="#0B5CAD" stroke-width="1.6" marker-end="url(#oab)"/>
+          <text x="158" y="300" font-family="Consolas,monospace" font-size="8.5" fill="#0B5CAD">process water → U530</text>
+          <line x1="768" y1="237" x2="768" y2="316" stroke="#1F8A4C" stroke-width="1.6" marker-end="url(#oag)"/>
+          <text x="640" y="300" font-family="Consolas,monospace" font-size="8.5" fill="#1F8A4C">condensates → S-413 (fuel)</text>
+
+          <!-- blowdown to flare -->
+          <line x1="720" y1="173" x2="720" y2="128" stroke="#B26A00" stroke-width="1.5" marker-end="url(#oaa)"/>
+          <text x="726" y="124" font-family="Consolas,monospace" font-size="8" fill="#B26A00">blowdown → flare · BDV-2004</text>
+
+          <!-- legend -->
+          <line x1="120" y1="336" x2="140" y2="336" stroke="#333" stroke-width="3"/><text x="145" y="339" font-family="Consolas,monospace" font-size="8" fill="#666">gas</text>
+          <line x1="185" y1="336" x2="205" y2="336" stroke="#0B5CAD" stroke-width="3"/><text x="210" y="339" font-family="Consolas,monospace" font-size="8" fill="#666">water</text>
+          <line x1="260" y1="336" x2="280" y2="336" stroke="#1F8A4C" stroke-width="3"/><text x="285" y="339" font-family="Consolas,monospace" font-size="8" fill="#666">condensate</text>
+          <line x1="370" y1="336" x2="390" y2="336" stroke="#B26A00" stroke-width="3"/><text x="395" y="339" font-family="Consolas,monospace" font-size="8" fill="#666">utility / relief</text>
+        </svg>
       </div>
+
+      <div class="hstrip">
+        <div class="pill"><b>Key operating specs</b><span class="big">hydrate · pressure · flow</span>TIC-2002 → 43 °C · PV-2001 → 45 barg · FIC-2001 → 16.0 MMSCFD</div>
+        <div class="pill"><b>Safety</b>PAHH / TAHH / LALL / LAHH → <b>PSD / LSD</b> · PSVs @ 50 barg · blowdown BDV-2004 → flare</div>
+      </div>
+      <div class="routing"><b>Standard unit-summary diagram</b> — inputs (left) · major equipment in flow order <b>V-202 → E-201 → F-201A/B → V-201</b> · outputs (right &amp; bottom). Same graphic language as the plant map — one per unit.</div>
     </section>
 
-    <!-- 6 GA & RISK LOCATION · Mario · 5 -->
+
+    <!-- 6 PHYSICAL AREA · Mario · 5 -->
     <section class="slide" data-min="5" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Figure 3.1 — general arrangement with risk locations highlighted.","Two physical areas: skid S-202 with the V-202 inlet separator sits at the plant inlet corner near the vehicle gate; skid S-201 with V-201 sits along the pipe rack next to the U330 skids.","Highlighted zones are the risk locations — hydrocarbon inventory under pressure.","Know these locations for your field rounds and your escape routes — gas zone 1 detectors cover this area."]'>
-      <div class="kicker">Unit 200 · Layout <span class="sub">— Manual §3.2, Fig. 3.1</span></div>
-      <h2>General arrangement &amp; risk location</h2>
-      <div class="figrow" style="grid-template-columns:1fr 1.35fr;">
-        <ul class="points">
-          <li><b>S-202 skid (V-202)</b> — at the plant inlet, near the vehicle gate.</li>
-          <li><b>S-201 skid (V-201)</b> — along the pipe rack, beside the U330 skids.</li>
-          <li>Highlighted zones = <b>risk locations</b>: pressurized hydrocarbon inventory.</li>
-          <li>Covered by <b>gas detection zone 1</b> — know it for rounds &amp; escape routes.</li>
-        </ul>
-        <div class="fig"><a href="/images/unit200-GA-risk.png" target="_blank"><img src="/images/unit200-GA-risk.png" alt="Unit 200 GA - risk location"></a>
-          <div class="cap">Figure 3.1 — Unit 200 GA · risk location (click to enlarge)</div></div>
+      data-notes='["Now the area physically — the images rotate through the 3D model and the plot plan; point out where S-202 and S-201 sit.","Location: S-202 at the inlet gate, S-201 on the pipe rack beside U330; gas-detection zone 1; site at 1,434 m.","Technological objects (datasheet): V-202 100 barg / 5.6 m3; E-201 650 kW / 66 m2; F-201A/B 5 micron; V-201 20 m3.","Size of the system: 5 equipment, 37 instruments, 7 loops, 20 valves, 10 trips, 2 skids, 14 hardwired PLC I/O.","Energy: a thermally-driven passive unit — E-201 84 to 388 kW on hot oil; only ~4.2 kW electrical (weigh bridges + actuators)."]'>
+      <div class="kicker">Unit 200 · The area physically <span class="sub">— location · size · technological objects · energy</span></div>
+      <h2>Where it sits, how big it is, what it consumes</h2>
+
+      <div class="mapwrap" style="padding:7px 10px 3px;">
+        <div class="lbl"><span>Unit 200 — area views (rotating)</span><span class="you" id="c200cap">3D overview — Unit 200 area within the plant</span></div>
+        <div class="carea" id="c200" data-interval="3400" style="height:344px;">
+          <div class="cbadge">Unit 200 · area views</div>
+          <div class="cimg on"><img src="/images/200_3D.png" alt="Unit 200 3D overview"></div>
+          <div class="cimg"><img src="/images/200_00.png" alt="Unit 200 plot plan — highlighted areas"></div>
+          <div class="cimg"><img src="/images/200_3D_01.png" alt="Unit 200 3D — V-201"></div>
+          <div class="cimg"><img src="/images/200_3D_02.png" alt="Unit 200 3D — S-201 skid"></div>
+          <div class="cimg"><img src="/images/200_3D_03.png" alt="Unit 200 3D — S-201 beside E-335"></div>
+          <div class="cdots" id="c200dots">
+            <b class="on" data-i="0"></b><b data-i="1"></b><b data-i="2"></b><b data-i="3"></b><b data-i="4"></b>
+          </div>
+        </div>
+      </div>
+
+      <div class="p2cards">
+        <div class="hcard arloc">
+          <div class="hh"><span>◈ Location</span><span>plant</span></div>
+          <div class="hb">
+            <div class="hval"><span class="k">Skid S-202</span><span class="v">inlet · gate</span></div>
+            <div class="hval"><span class="k">Skid S-201</span><span class="v">by U330</span></div>
+            <div class="hval"><span class="k">Detection</span><span class="v">gas zone 1</span></div>
+            <div class="hval"><span class="k">Elevation</span><span class="v">1,434 m</span></div>
+          </div>
+        </div>
+        <div class="hcard eqc">
+          <div class="hh"><span>⚙ Technological objects</span><span>datasheet</span></div>
+          <div class="hb">
+            <div class="hval"><span class="k">V-202 sep.</span><span class="v">100 barg · 5.6 m³</span></div>
+            <div class="hval"><span class="k">E-201 heater</span><span class="v">650 kW · 66 m²</span></div>
+            <div class="hval"><span class="k">F-201A/B</span><span class="v">50 barg · 5×5 µm</span></div>
+            <div class="hval"><span class="k">V-201 sep.</span><span class="v">50 barg · 20 m³</span></div>
+          </div>
+        </div>
+        <div class="hcard ioc">
+          <div class="hh"><span>▤ Instrumentation</span><span>automation</span></div>
+          <div class="hb">
+            <div class="hval"><span class="k">Instruments</span><span class="v">37</span></div>
+            <div class="hval"><span class="k">Loops · valves</span><span class="v">7 · 20</span></div>
+            <div class="hval"><span class="k">Alarms · I/O</span><span class="v">10 · 14</span></div>
+            <div class="hval"><span class="k">Skids</span><span class="v">2</span></div>
+          </div>
+        </div>
+        <div class="hcard enc">
+          <div class="hh"><span>⚡ Energy &amp; utilities</span><span>consumption</span></div>
+          <div class="hb">
+            <div class="hval"><span class="k">E-201 duty</span><span class="v">84 → 388 kW</span></div>
+            <div class="hval"><span class="k">Rated</span><span class="v">650 kW · hot oil</span></div>
+            <div class="hval"><span class="k">Electrical</span><span class="v">~4.2 kW</span></div>
+            <div class="hval"><span class="k">Utilities</span><span class="v">U410·U500·inhib</span></div>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- 7 PROCESS I — RECEPTION & V-202 · Mario · 8 -->
     <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
       data-notes='["Start walking the gas through the unit — first stage.","SDV-2024 is the PLANT INLET shutdown valve — the primary emergency isolation of the incoming pipeline.","Corrosion inhibitor (package XX-201) is injected into the gas line before V-202 — protects downstream equipment against acidic compounds, moisture and CO2.","V-202 inlet three-phase separator: water out to the Process Water Package; condensates are re-commingled with the gas leaving the vessel and travel together downstream.","V-202 has its own level loops LIC-2021/2022 with LV-2021/2022, outlets SDV-2025 (condensate) and SDV-2026 (water) — you will see them on the HMI later."]'>
-      <div class="kicker">Process · Stage 1 <span class="sub">— Manual §3.4</span></div>
+      <div class="kicker">Process · Stage 1/5 <span class="sub">— reception &amp; first separation</span></div>
       <h2>Gas reception &amp; first separation — V-202</h2>
-      <div class="flow">
-        <div class="step"><span class="u">SDV-2024</span><span class="t"><b>Plant Inlet SDV</b> — primary emergency isolation of the incoming pipeline</span></div>
-        <div class="step"><span class="u">XX-201</span><span class="t"><b>Corrosion inhibitor injection</b> before V-202 — protects against acids, moisture &amp; CO₂</span></div>
-        <div class="step"><span class="u">V-202</span><span class="t"><b>Inlet 3-phase separator</b> — water → Process Water Pkg · condensates <b>re-commingled with the gas</b> downstream</span></div>
+      <div class="mapwrap" style="padding:5px 8px 2px;">
+        <div class="lbl"><span>Unit 200 flow — you are here</span><span class="you">■ V-202</span></div>
+        <svg viewBox="0 0 1000 104" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="lah1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#666"/></marker></defs>
+          <text x="2" y="59" font-family="Consolas,monospace" font-size="9" fill="#666">FEED</text>
+          <line x1="34" y1="56" x2="56" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah1)"/>
+          <rect x="62" y="49" width="13" height="13" transform="rotate(45 68 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="68" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">SDV-2024</text>
+          <text x="150" y="26" text-anchor="middle" font-family="Consolas,monospace" font-size="9" font-weight="700" fill="#C8102E">▼ you are here</text>
+          <rect x="90" y="34" width="120" height="44" rx="4" fill="#C8102E"/>
+          <text x="150" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#fff">V-202</text>
+          <text x="150" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#C8102E">1st sep</text>
+          <line x1="210" y1="56" x2="246" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah1)"/>
+          <rect x="250" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="310" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">E-201</text>
+          <text x="310" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">heat 43°C</text>
+          <line x1="370" y1="56" x2="406" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah1)"/>
+          <rect x="410" y="34" width="130" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="475" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">F-201A/B</text>
+          <text x="475" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">filter 5µm</text>
+          <line x1="540" y1="56" x2="576" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah1)"/>
+          <rect x="580" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="640" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">V-201</text>
+          <text x="640" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">final sep</text>
+          <line x1="700" y1="56" x2="710" y2="56" stroke="#666" stroke-width="2.5"/>
+          <rect x="712" y="49" width="13" height="13" transform="rotate(45 718 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="718" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">FV-2001</text>
+          <line x1="728" y1="56" x2="762" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah1)"/>
+          <rect x="766" y="40" width="76" height="34" rx="4" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.3"/>
+          <text x="804" y="61" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#C8102E">U330</text>
+        </svg>
       </div>
-      <ul class="points" style="margin-top:10px;">
-        <li>V-202 levels: <b>LIC-2021 / LIC-2022</b> on LV-2021 / LV-2022 · outlets <b>SDV-2025</b> (condensate) &amp; <b>SDV-2026</b> (water).</li>
-        <li>Vessel protection: <b>PSV-2028A/B</b> · blowdown <b>BDV-2027</b> to the hot flare header.</li>
-      </ul>
+      <div class="grid2" style="margin-top:10px;">
+        <ul class="points">
+          <li><b>SDV-2024</b> Plant Inlet SDV — primary emergency isolation of the pipeline.</li>
+          <li><b>Inhibitor 120-XX-001</b> injected before V-202 — acids / moisture / CO₂ protection.</li>
+          <li><b>V-202 3-phase separator</b> — water → U530 · condensates re-commingled downstream.</li>
+          <li>Outlets <b>SDV-2025</b> (condensate) · <b>SDV-2026</b> (water).</li>
+        </ul>
+        <div>
+          <div class="hcard ioc"><div class="hh"><span>▤ Control — V-202 levels</span><span>loops</span></div><div class="hb">
+            <div class="hval"><span class="k">LIC-2021 light liquid</span><span class="v">→ LV-2021</span></div>
+            <div class="hval"><span class="k">LIC-2022 heavy liquid</span><span class="v">→ LV-2022</span></div>
+          </div></div>
+          <div class="hcard eqc" style="margin-top:8px;"><div class="hh"><span>⚠ Alarms &amp; trips</span><span>V-202</span></div><div class="hb">
+            <div class="hval"><span class="k">LAHH-2021 · HH level</span><span class="v">→ PSD</span></div>
+            <div class="hval"><span class="k">LALL-2021 / 2022 · LL</span><span class="v">→ LSD</span></div>
+            <div class="hval"><span class="k">PAHH-2021 · HH pressure</span><span class="v">→ PSD</span></div>
+            <div class="hval"><span class="k">Relief / blowdown</span><span class="v">PSV-2028A/B · BDV-2027</span></div>
+          </div></div>
+        </div>
+      </div>
     </section>
 
     <!-- 8 PROCESS II — E-201 HEATING · Mario · 8 -->
     <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
       data-notes='["Second stage: heating. From V-202 the gas passes SDV-2001 — the INLET SKID shutdown valve, isolating the U200 skid for local shutdown or maintenance.","E-201 is a shell-and-tube exchanger heated by HOT OIL — it raises gas temperature to prevent hydrate formation, critical in winter operation.","Control: TIC-2002 regulates the gas outlet temperature by throttling the hot oil flow with TV-2002.","Link back to Module 001 site conditions: Tendrara winters bring frost and occasional snow — this exchanger is the hydrate defense.","Ask: what happens if E-201 loses hot oil on a cold day? Hydrate risk downstream — TAHH/TALL monitoring and trip logic protect it."]'>
-      <div class="kicker">Process · Stage 2 <span class="sub">— Manual §3.4</span></div>
+      <div class="kicker">Process · Stage 2/5 <span class="sub">— heating &amp; hydrate prevention</span></div>
       <h2>Heating &amp; hydrate prevention — E-201</h2>
-      <div class="grid2">
-        <ul class="points">
-          <li><b>SDV-2001 — Inlet Skid SDV:</b> isolates the U200 skid for local shutdown / maintenance.</li>
-          <li><b>E-201</b>: shell-and-tube exchanger, heated by <b>hot oil</b> (from U410).</li>
-          <li>Duty: raise gas temperature → <b>prevent hydrate formation</b>, especially in <b>winter</b>.</li>
-        </ul>
-        <ul class="points">
-          <li>Control: <b>TIC-2002</b> regulates gas outlet temperature via hot-oil valve <b>TV-2002</b>.</li>
-          <li>Monitoring: <b>TT-2002</b> (E-201 outlet) · <b>TT-2001</b> (feed gas).</li>
-          <li><b>RD-2005</b> rupture disk — hot-oil side overpressure protection (position switch ZSH-2005 → PSD).</li>
-        </ul>
+      <div class="mapwrap" style="padding:5px 8px 2px;">
+        <div class="lbl"><span>Unit 200 flow — you are here</span><span class="you">■ E-201</span></div>
+        <svg viewBox="0 0 1000 104" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="lah2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#666"/></marker></defs>
+          <text x="2" y="59" font-family="Consolas,monospace" font-size="9" fill="#666">FEED</text>
+          <line x1="34" y1="56" x2="56" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah2)"/>
+          <rect x="62" y="49" width="13" height="13" transform="rotate(45 68 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="68" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">SDV-2024</text>
+          <rect x="90" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="150" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">V-202</text>
+          <text x="150" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">1st sep</text>
+          <line x1="210" y1="56" x2="246" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah2)"/>
+          <text x="310" y="26" text-anchor="middle" font-family="Consolas,monospace" font-size="9" font-weight="700" fill="#C8102E">▼ you are here</text>
+          <rect x="250" y="34" width="120" height="44" rx="4" fill="#C8102E"/>
+          <text x="310" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#fff">E-201</text>
+          <text x="310" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#C8102E">heat 43°C</text>
+          <line x1="370" y1="56" x2="406" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah2)"/>
+          <rect x="410" y="34" width="130" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="475" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">F-201A/B</text>
+          <text x="475" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">filter 5µm</text>
+          <line x1="540" y1="56" x2="576" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah2)"/>
+          <rect x="580" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="640" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">V-201</text>
+          <text x="640" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">final sep</text>
+          <line x1="700" y1="56" x2="710" y2="56" stroke="#666" stroke-width="2.5"/>
+          <rect x="712" y="49" width="13" height="13" transform="rotate(45 718 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="718" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">FV-2001</text>
+          <line x1="728" y1="56" x2="762" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah2)"/>
+          <rect x="766" y="40" width="76" height="34" rx="4" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.3"/>
+          <text x="804" y="61" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#C8102E">U330</text>
+        </svg>
       </div>
-      <div class="note">Hydrates = ice-like water/gas plugs. Prevention here is <b>temperature control</b>, not chemical injection.</div>
+      <div class="grid2" style="margin-top:10px;">
+        <ul class="points">
+          <li><b>SDV-2001</b> Inlet Skid SDV — isolates the U200 skid for shutdown / maintenance.</li>
+          <li><b>E-201</b> shell-and-tube heater, <b>hot oil</b> (U410) — raises gas T to <b>prevent hydrates</b> (winter-critical).</li>
+          <li>Duty <b>84 → 388 kW</b> (summer→winter) · rated 650 kW · outlet <b>43 °C</b>.</li>
+          <li>Prevention here is <b>temperature control</b>, not chemical injection.</li>
+        </ul>
+        <div>
+          <div class="hcard ioc"><div class="hh"><span>▤ Control — outlet temperature</span><span>loop</span></div><div class="hb">
+            <div class="hval"><span class="k">TIC-2002</span><span class="v">→ TV-2002 (hot oil)</span></div>
+            <div class="hval"><span class="k">Set / range</span><span class="v">43 °C · −15..150 °C</span></div>
+            <div class="hval"><span class="k">Monitor</span><span class="v">TT-2002 out · TT-2001 feed</span></div>
+          </div></div>
+          <div class="hcard eqc" style="margin-top:8px;"><div class="hh"><span>⚠ Alarms &amp; trips</span><span>E-201</span></div><div class="hb">
+            <div class="hval"><span class="k">TAHH-2002 · HH temp</span><span class="v">→ PSD</span></div>
+            <div class="hval"><span class="k">ZSH-2005 · RD-2005 disk</span><span class="v">→ PSD</span></div>
+          </div></div>
+        </div>
+      </div>
     </section>
 
     <!-- 9 PROCESS III — PRESSURE & FILTRATION · Mario · 8 -->
     <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
       data-notes='["Third stage: pressure control and filtration.","PV-2001 — the gas inlet pressure control valve — holds the pressure needed for stable downstream processing; PIC-2001 set point 45.0 barg.","F-201A/B particulate filters in duty/standby: remove solids larger than 5 microns to protect downstream equipment — amine contactors, dryers, cold box.","PDG-2001 measures the pressure drop across the filters — rising DP means the duty filter is loading up: swap to standby and schedule the cartridge change.","Remember Module 001: the chergui desert wind and dust are exactly why these filters matter here."]'>
-      <div class="kicker">Process · Stage 3 <span class="sub">— Manual §3.4</span></div>
+      <div class="kicker">Process · Stage 3/5 <span class="sub">— pressure control &amp; filtration</span></div>
       <h2>Pressure control &amp; filtration — PV-2001 · F-201A/B</h2>
-      <div class="flow">
-        <div class="step"><span class="u">PV-2001</span><span class="t"><b>Inlet pressure control valve</b> — PIC-2001, set point <b>45.0 barg</b> — stable pressure for downstream processing</span></div>
-        <div class="step"><span class="u">F-201A/B</span><span class="t"><b>Particulate filters, duty/standby</b> — remove solids &gt; <b>5 µm</b>, protect downstream equipment</span></div>
+      <div class="mapwrap" style="padding:5px 8px 2px;">
+        <div class="lbl"><span>Unit 200 flow — you are here</span><span class="you">■ PV-2001 · F-201A/B</span></div>
+        <svg viewBox="0 0 1000 104" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="lah3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#666"/></marker></defs>
+          <text x="2" y="59" font-family="Consolas,monospace" font-size="9" fill="#666">FEED</text>
+          <line x1="34" y1="56" x2="56" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah3)"/>
+          <rect x="62" y="49" width="13" height="13" transform="rotate(45 68 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="68" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">SDV-2024</text>
+          <rect x="90" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="150" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">V-202</text>
+          <text x="150" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">1st sep</text>
+          <line x1="210" y1="56" x2="246" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah3)"/>
+          <rect x="250" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="310" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">E-201</text>
+          <text x="310" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">heat 43°C</text>
+          <!-- PV-2001 highlighted valve -->
+          <rect x="382" y="49" width="14" height="14" transform="rotate(45 389 56)" fill="#C8102E" stroke="#C8102E"/>
+          <text x="389" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" font-weight="700" fill="#C8102E">PV-2001</text>
+          <line x1="370" y1="56" x2="406" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah3)"/>
+          <text x="475" y="26" text-anchor="middle" font-family="Consolas,monospace" font-size="9" font-weight="700" fill="#C8102E">▼ you are here</text>
+          <rect x="410" y="34" width="130" height="44" rx="4" fill="#C8102E"/>
+          <text x="475" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#fff">F-201A/B</text>
+          <text x="475" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#C8102E">filter 5µm</text>
+          <line x1="540" y1="56" x2="576" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah3)"/>
+          <rect x="580" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="640" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">V-201</text>
+          <text x="640" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">final sep</text>
+          <line x1="700" y1="56" x2="710" y2="56" stroke="#666" stroke-width="2.5"/>
+          <rect x="712" y="49" width="13" height="13" transform="rotate(45 718 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="718" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">FV-2001</text>
+          <line x1="728" y1="56" x2="762" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah3)"/>
+          <rect x="766" y="40" width="76" height="34" rx="4" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.3"/>
+          <text x="804" y="61" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#C8102E">U330</text>
+        </svg>
       </div>
-      <ul class="points" style="margin-top:10px;">
-        <li><b>PDG-2001</b> — filter differential pressure: rising ΔP = duty filter loading → <b>swap to standby</b>, change cartridge.</li>
-        <li>Each filter protected by its own PSV: <b>PSV-2003A/B, set 50 barg</b>.</li>
-        <li>Site reality: <b>desert dust (chergui wind)</b> makes filter ΔP a daily-watch item.</li>
-      </ul>
+      <div class="grid2" style="margin-top:10px;">
+        <ul class="points">
+          <li><b>PV-2001</b> inlet pressure control — <b>PIC-2001</b> holds stable pressure for downstream.</li>
+          <li><b>F-201A/B</b> particulate filters, duty/standby — remove solids &gt; <b>5 µm</b>.</li>
+          <li><b>PDG-2001</b> filter ΔP: rising ΔP = duty filter loading → <b>swap before the alarm</b>.</li>
+          <li>Site reality: <b>chergui desert dust</b> makes filter ΔP a daily-watch item.</li>
+        </ul>
+        <div>
+          <div class="hcard ioc"><div class="hh"><span>▤ Control — inlet pressure</span><span>loop</span></div><div class="hb">
+            <div class="hval"><span class="k">PIC-2001</span><span class="v">→ PV-2001</span></div>
+            <div class="hval"><span class="k">Set / range</span><span class="v">45.0 barg · 0..50 barg</span></div>
+            <div class="hval"><span class="k">Filter ΔP</span><span class="v">PDG-2001 (swap-over)</span></div>
+          </div></div>
+          <div class="hcard eqc" style="margin-top:8px;"><div class="hh"><span>⚠ Alarms &amp; relief</span><span>inlet · filters</span></div><div class="hb">
+            <div class="hval"><span class="k">PAHH-2002 · HH inlet press</span><span class="v">→ PSD</span></div>
+            <div class="hval"><span class="k">Filter relief</span><span class="v">PSV-2003A/B · 50 barg</span></div>
+          </div></div>
+        </div>
+      </div>
     </section>
 
     <!-- 10 PROCESS IV — V-201 FINAL SEPARATION · Mario · 9 -->
     <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
       data-notes='["Fourth stage: the inlet raw gas separator V-201 — final three-phase separation before the gas leaves the unit.","Free water goes again to the Process Water Package (U530).","ALL the condensates are routed to the condensates buffer tank S-413 inside the Hot Oil System — used as fuel for the boilers. Nothing is wasted.","Levels: LIC-2001 light liquid on LV-2012, LIC-2002 heavy liquid on LV-2011; LSLL-2004 is the independent low-low switch.","Outlets protected by SDV-2002 (HC) and SDV-2003 (water); vessel by PSV-2001A/B set at 50 barg.","Why do low-low levels matter? Gas blow-by: if the liquid seal is lost, high-pressure gas escapes down a liquid line — that is why LALL trips close the outlet SDVs."]'>
-      <div class="kicker">Process · Stage 4 <span class="sub">— Manual §3.4</span></div>
+      <div class="kicker">Process · Stage 4/5 <span class="sub">— final separation</span></div>
       <h2>Final separation — V-201 inlet raw gas separator</h2>
-      <div class="grid2">
+      <div class="mapwrap" style="padding:5px 8px 2px;">
+        <div class="lbl"><span>Unit 200 flow — you are here</span><span class="you">■ V-201</span></div>
+        <svg viewBox="0 0 1000 104" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="lah4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#666"/></marker></defs>
+          <text x="2" y="59" font-family="Consolas,monospace" font-size="9" fill="#666">FEED</text>
+          <line x1="34" y1="56" x2="56" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah4)"/>
+          <rect x="62" y="49" width="13" height="13" transform="rotate(45 68 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="68" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">SDV-2024</text>
+          <rect x="90" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="150" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">V-202</text>
+          <text x="150" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">1st sep</text>
+          <line x1="210" y1="56" x2="246" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah4)"/>
+          <rect x="250" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="310" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">E-201</text>
+          <text x="310" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">heat 43°C</text>
+          <line x1="370" y1="56" x2="406" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah4)"/>
+          <rect x="410" y="34" width="130" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="475" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">F-201A/B</text>
+          <text x="475" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">filter 5µm</text>
+          <line x1="540" y1="56" x2="576" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah4)"/>
+          <text x="640" y="26" text-anchor="middle" font-family="Consolas,monospace" font-size="9" font-weight="700" fill="#C8102E">▼ you are here</text>
+          <rect x="580" y="34" width="120" height="44" rx="4" fill="#C8102E"/>
+          <text x="640" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#fff">V-201</text>
+          <text x="640" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#C8102E">final sep</text>
+          <line x1="700" y1="56" x2="710" y2="56" stroke="#666" stroke-width="2.5"/>
+          <rect x="712" y="49" width="13" height="13" transform="rotate(45 718 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="718" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">FV-2001</text>
+          <line x1="728" y1="56" x2="762" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah4)"/>
+          <rect x="766" y="40" width="76" height="34" rx="4" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.3"/>
+          <text x="804" y="61" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#C8102E">U330</text>
+        </svg>
+      </div>
+      <div class="grid2" style="margin-top:10px;">
         <ul class="points">
           <li><b>Final 3-phase separation</b> of the filtered, conditioned stream.</li>
-          <li><b>Free water → U530</b> Process Water Package.</li>
-          <li><b>All condensates → S-413</b> buffer tank (Hot Oil System) — <b>boiler fuel</b>.</li>
+          <li><b>Free water → U530</b> · <b>all condensates → S-413</b> (Hot Oil buffer, boiler fuel).</li>
+          <li>Outlet isolation <b>SDV-2002</b> (HC) · <b>SDV-2003</b> (water) · relief <b>PSV-2001A/B @ 50 barg</b>.</li>
+          <li><b>Gas blow-by:</b> lost liquid seal → HP gas down a liquid line — LALL trips close outlets.</li>
         </ul>
-        <ul class="points">
-          <li>Levels: <b>LIC-2001</b> (light, LV-2012) · <b>LIC-2002</b> (heavy, LV-2011) · <b>LSLL-2004</b> independent low-low switch.</li>
-          <li>Outlet isolation: <b>SDV-2002</b> (HC) · <b>SDV-2003</b> (water).</li>
-          <li>Overpressure: <b>PSV-2001A/B — set 50 barg</b>.</li>
-        </ul>
+        <div>
+          <div class="hcard ioc"><div class="hh"><span>▤ Control — V-201 levels</span><span>loops</span></div><div class="hb">
+            <div class="hval"><span class="k">LIC-2001 light</span><span class="v">→ LV-2012</span></div>
+            <div class="hval"><span class="k">LIC-2002 heavy</span><span class="v">→ LV-2011</span></div>
+          </div></div>
+          <div class="hcard eqc" style="margin-top:8px;"><div class="hh"><span>⚠ Alarms &amp; trips</span><span>V-201</span></div><div class="hb">
+            <div class="hval"><span class="k">LAHH-2003 · HH (90%)</span><span class="v">→ PSD</span></div>
+            <div class="hval"><span class="k">LALL-2003 · LL (10%)</span><span class="v">→ LSD</span></div>
+            <div class="hval"><span class="k">LALL-2004 · heavy LL</span><span class="v">→ LSD</span></div>
+            <div class="hval"><span class="k">TAHH-2002 · HH temp</span><span class="v">→ PSD</span></div>
+          </div></div>
+        </div>
       </div>
-      <div class="note"><b>Gas blow-by:</b> losing the liquid seal sends high-pressure gas down a liquid line — the reason <b>LALL trips close the outlet SDVs</b>.</div>
     </section>
 
     <!-- 11 GAS OUT & MEASUREMENT · Mario · 7 -->
     <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
       data-notes='["Last step in the flow path: measurement and export.","Dry gas from V-201 is measured by FT-2001 and regulated by FV-2001 — flow controller FIC-2001, set point 16.0 MMSCFD.","Pressure and temperature to dehydration monitored by PT-2003 and TT-2001.","A bypass line sends part of the stream to E-371 in the Vaporizer Unit (U370) for fuel gas supply.","The gas still contains CO2 — next stop is U330 amine absorption, then U310 dehydration, then liquefaction.","AE/AT-2001 feed gas analyzer gives composition at the unit boundary."]'>
-      <div class="kicker">Process · Export <span class="sub">— Manual §3.4</span></div>
+      <div class="kicker">Process · Stage 5/5 <span class="sub">— measurement &amp; export</span></div>
       <h2>Gas out — measurement &amp; routing</h2>
-      <div class="flow">
-        <div class="step"><span class="u">FT-2001</span><span class="t">Feed gas flow measurement (0..25 MMSCFD) → <b>FIC-2001</b>, SP <b>16.0 MMSCFD</b>, acting on <b>FV-2001</b></span></div>
-        <div class="step"><span class="u">MONITOR</span><span class="t"><b>PT-2003</b> pressure &amp; <b>TT-2001</b> temperature to dehydration · <b>AE/AT-2001</b> feed gas analyzer</span></div>
-        <div class="step"><span class="u">ROUTE</span><span class="t">Main stream → <b>U330</b> (CO₂ removal) · bypass → <b>E-371 / U370</b> for fuel gas</span></div>
+      <div class="mapwrap" style="padding:5px 8px 2px;">
+        <div class="lbl"><span>Unit 200 flow — you are here</span><span class="you">■ FV-2001 → U330</span></div>
+        <svg viewBox="0 0 1000 104" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="lah5" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#666"/></marker>
+            <marker id="lah5r" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#C8102E"/></marker></defs>
+          <text x="2" y="59" font-family="Consolas,monospace" font-size="9" fill="#666">FEED</text>
+          <line x1="34" y1="56" x2="56" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah5)"/>
+          <rect x="62" y="49" width="13" height="13" transform="rotate(45 68 56)" fill="#fff" stroke="#666" stroke-width="1.3"/>
+          <text x="68" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#666">SDV-2024</text>
+          <rect x="90" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="150" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">V-202</text>
+          <text x="150" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">1st sep</text>
+          <line x1="210" y1="56" x2="246" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah5)"/>
+          <rect x="250" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="310" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">E-201</text>
+          <text x="310" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">heat 43°C</text>
+          <line x1="370" y1="56" x2="406" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah5)"/>
+          <rect x="410" y="34" width="130" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="475" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">F-201A/B</text>
+          <text x="475" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">filter 5µm</text>
+          <line x1="540" y1="56" x2="576" y2="56" stroke="#666" stroke-width="2.5" marker-end="url(#lah5)"/>
+          <rect x="580" y="34" width="120" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <text x="640" y="60" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" font-weight="700" fill="#9aa0a7">V-201</text>
+          <text x="640" y="92" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#b3b8be">final sep</text>
+          <text x="760" y="26" text-anchor="middle" font-family="Consolas,monospace" font-size="9" font-weight="700" fill="#C8102E">▼ you are here</text>
+          <line x1="700" y1="56" x2="710" y2="56" stroke="#C8102E" stroke-width="3"/>
+          <rect x="711" y="48" width="15" height="15" transform="rotate(45 718 56)" fill="#C8102E" stroke="#C8102E"/>
+          <text x="718" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" font-weight="700" fill="#C8102E">FV-2001</text>
+          <line x1="728" y1="56" x2="762" y2="56" stroke="#C8102E" stroke-width="3" marker-end="url(#lah5r)"/>
+          <rect x="766" y="38" width="76" height="38" rx="4" fill="#C8102E" stroke="#C8102E"/>
+          <text x="804" y="61" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#fff">U330</text>
+        </svg>
       </div>
-      <div class="note">The gas leaves Unit 200 <b>stripped of liquids but still with CO₂</b> — sweetening and dehydration come next in the train.</div>
+      <div class="grid2" style="margin-top:10px;">
+        <ul class="points">
+          <li><b>FT-2001</b> flow measurement (0..25 MMSCFD) → <b>FIC-2001</b> acting on <b>FV-2001</b>.</li>
+          <li>Monitor to dehydration: <b>PT-2003</b> pressure · <b>TT-2001</b> temp · <b>AE/AT-2001</b> analyzer.</li>
+          <li>Route: main → <b>U330</b> (CO₂ removal) · bypass → <b>E-371 / U370</b> fuel gas.</li>
+          <li>Gas leaves <b>stripped of liquids but still with CO₂</b> — sweetening &amp; dehydration next.</li>
+        </ul>
+        <div>
+          <div class="hcard ioc"><div class="hh"><span>▤ Control — export flow</span><span>loop</span></div><div class="hb">
+            <div class="hval"><span class="k">FIC-2001</span><span class="v">→ FV-2001</span></div>
+            <div class="hval"><span class="k">Set / range</span><span class="v">16.0 MMSCFD · 0..25</span></div>
+            <div class="hval"><span class="k">Boundary analyzer</span><span class="v">AE/AT-2001</span></div>
+          </div></div>
+          <div class="hcard enc" style="margin-top:8px;"><div class="hh"><span>◈ Highlight — hand-off</span><span>to U330</span></div><div class="hb">
+            <div class="hval"><span class="k">Out to U330</span><span class="v">16.6 MMSCFD · 41.7 barg</span></div>
+            <div class="hval"><span class="k">Still carrying</span><span class="v">CO₂ ~9.3 %mol</span></div>
+          </div></div>
+        </div>
+      </div>
     </section>
 
-    <!-- 12 MAIN EQUIPMENT · Mario · 6 -->
+    <!-- 12 EQUIPMENT DATASHEET · Mario · 6 -->
     <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Table 3.3 — the five tagged equipment items of Unit 200. Exam material: tag → function.","V-202 first, V-201 last — a common trap in exams is swapping them: V-202 is the INLET separator, V-201 is the final RAW GAS separator.","E-201 is the only heat exchanger; hot oil comes from Unit 410.","Two filters, one duty one standby — never both offline with gas flowing."]'>
-      <div class="kicker">Technological objects <span class="sub">— Manual §3.5.1, Table 3.3</span></div>
-      <h2>Main equipment list</h2>
-      <table class="data">
-        <tr><th>#</th><th>Tag</th><th>Equipment</th><th>Role in the flow</th></tr>
-        <tr><td class="k">1</td><td class="k" style="color:var(--crimson);">V-202</td><td>Inlet three-phase separator</td><td class="v">1st-stage separation at reception</td></tr>
-        <tr><td class="k">2</td><td class="k" style="color:var(--crimson);">E-201</td><td>Feed gas heater (hot oil)</td><td class="v">Hydrate prevention — TIC-2002</td></tr>
-        <tr><td class="k">3</td><td class="k" style="color:var(--crimson);">F-201A</td><td>Feed gas particulate filter A</td><td class="v">5 µm filtration — duty/standby</td></tr>
-        <tr><td class="k">4</td><td class="k" style="color:var(--crimson);">F-201B</td><td>Feed gas particulate filter B</td><td class="v">5 µm filtration — duty/standby</td></tr>
-        <tr><td class="k">5</td><td class="k" style="color:var(--crimson);">V-201</td><td>Inlet raw gas separator</td><td class="v">Final 3-phase separation before export</td></tr>
-      </table>
-      <div class="note">Memory aid: the gas meets them in order <b>V-202 → E-201 → F-201A/B → V-201</b> — separate, heat, filter, separate again.</div>
+      data-notes='["Table 3.3 datasheet, equipment by equipment — click each tag to switch the render and its data.","Order the gas meets them: V-202 → E-201 → F-201A/B → V-201 — separate, heat, filter, separate again.","Exam trap: V-202 is the INLET 3-phase separator (design 100 barg); V-201 is the final RAW GAS separator (50 barg, 20 m3 — the biggest vessel).","E-201 is the only heat exchanger — BEM type, 650 kW rated, hot oil from U410, SS304 tubes, 66 m2.","Filters F-201A/B: five 5-micron cartridges each, duty/standby — never both offline with gas flowing.","These are the datasheet values; more fields (weights, nozzles, materials) live in the equipment database."]'>
+      <div class="kicker">Technological objects <span class="sub">— datasheet · Manual §3.5, doc PRO13</span></div>
+      <h2>Equipment datasheet — Unit 200</h2>
+      <div class="eqdetail">
+        <div class="eqfig">
+          <div class="imgbox"><img id="eqimg" src="/images/3D_200_05.png" alt="Unit 200 equipment 3D"></div>
+          <div class="cap" id="eqcap">3D model — V-202 inlet three-phase separator (S-202 skid)</div>
+        </div>
+        <div class="eqcol">
+          <div class="eqcard">
+            <div class="hd"><div class="tag" id="eqtag">V-202</div><div class="ty" id="eqty">Inlet 3-phase separator · S-202 skid · PRO13-ING-PR50</div></div>
+            <div class="bd"><div class="eqspecs" id="eqbd">
+              <div class="er"><span class="k">Service</span><span class="v">1st-stage sep.</span></div>
+              <div class="er"><span class="k">Design P</span><span class="v">100 barg</span></div>
+              <div class="er"><span class="k">Design T</span><span class="v">−15 / 100 °C</span></div>
+              <div class="er"><span class="k">Int. diameter</span><span class="v">1420 mm</span></div>
+              <div class="er"><span class="k">TL–TL</span><span class="v">3180 mm</span></div>
+              <div class="er"><span class="k">Volume</span><span class="v">5.6 m³</span></div>
+              <div class="er"><span class="k">Material</span><span class="v">PH 355 NH</span></div>
+              <div class="er"><span class="k">Corr. allow.</span><span class="v">3 mm</span></div>
+              <div class="er"><span class="k">Insulation</span><span class="v">H50</span></div>
+              <div class="er"><span class="k">Internals</span><span class="v">weir + deflectors</span></div>
+              <div class="er"><span class="k">Levels</span><span class="v">LIC-2021/2022</span></div>
+              <div class="er"><span class="k">Protection</span><span class="v">PSV-2028A/B · BDV-2027</span></div>
+            </div></div>
+          </div>
+          <div class="eqthumbs" id="eqthumbs">
+            <button class="on" data-e="0">V-202</button>
+            <button data-e="1">E-201</button>
+            <button data-e="2">F-201A/B</button>
+            <button data-e="3">V-201</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- 13 VALVES & RELIEF · Mario · 8 -->
@@ -937,6 +1431,55 @@
     function restart(){clearInterval(timer);if(imgs.length>1){timer=setInterval(function(){go(ci+1);},interval);}}
     restart();
   });
+</script>
+<script>
+  (function(){
+    // rotating area views (physical slide)
+    var CCAPS=[
+      "3D overview — Unit 200 area within the plant",
+      "Plot plan — S-202 inlet skid & S-201 (V-201) highlighted",
+      "3D — V-201 inlet raw gas separator (S-201 skid)",
+      "3D — S-201 skid: V-201 & associated equipment",
+      "3D — S-201 skid beside the U330 amine exchangers (E-335)"
+    ];
+    var carea=document.getElementById('c200');
+    if(carea){
+      var cimgs=[].slice.call(carea.querySelectorAll('.cimg'));
+      var cdots=[].slice.call(document.querySelectorAll('#c200dots b'));
+      var cap=document.getElementById('c200cap');
+      var ci=0, cint=parseInt(carea.dataset.interval||'3400',10), ctimer=null;
+      var cgo=function(n){ci=(n+cimgs.length)%cimgs.length;
+        cimgs.forEach(function(im,k){im.classList.toggle('on',k===ci);});
+        cdots.forEach(function(d,k){d.classList.toggle('on',k===ci);});
+        if(cap) cap.textContent=CCAPS[ci];};
+      var crestart=function(){clearInterval(ctimer);ctimer=setInterval(function(){cgo(ci+1);},cint);};
+      cdots.forEach(function(d){d.onclick=function(){cgo(+d.dataset.i);crestart();};});
+      crestart();
+    }
+    // equipment datasheet switcher
+    var EQ=[
+      {tag:"V-202",ty:"Inlet 3-phase separator · S-202 skid · PRO13-ING-PR50",img:"/images/3D_200_05.png",cap:"3D model — V-202 inlet three-phase separator (S-202 skid)",
+       rows:[["Service","1st-stage sep."],["Design P","100 barg"],["Design T","−15 / 100 °C"],["Int. diameter","1420 mm"],["TL–TL","3180 mm"],["Volume","5.6 m³"],["Material","PH 355 NH"],["Corr. allow.","3 mm"],["Insulation","H50"],["Internals","weir + deflectors"],["Levels","LIC-2021/2022"],["Protection","PSV-2028A/B · BDV-2027"]]},
+      {tag:"E-201",ty:"Feed gas heater (BEM, hot oil) · S-201 · PRO13-ING-PR01",img:"/images/E-201_01.png",cap:"E-201 — shell-and-tube feed gas heater (hot oil)",
+       rows:[["Service","hydrate heating"],["Duty rated","650 kW"],["Duty oper.","84 → 388 kW"],["Design P","shell 70 / tube 90 barg"],["Design T","−28/120 · −28/100 °C"],["Surface","66 m²"],["Shell","16″ NPS"],["Tube length","6096 mm"],["Material","CS / SS304"],["Corr. allow.","1.5 / 0 mm"],["Control","TIC-2002 → TV-2002"],["Protection","RD-2005 → PSD"]]},
+      {tag:"F-201A/B",ty:"Feed gas particulate filters · duty/standby · PRO13-ING-PR01",img:"/images/F-201_01.png",cap:"F-201A/B — 5 µm particulate filters (duty/standby)",
+       rows:[["Service","5 µm filtration"],["Design P","50 barg"],["Design T","−28 / 100 °C"],["Diameter","18″ NPS"],["SM–SM","1625 mm"],["Volume","0.27 m³"],["Elements","5 × 5 µm cart."],["Material","SS304"],["Insulation","none"],["Config","duty / standby"],["Monitor","PDG-2001 ΔP"],["Protection","PSV-2003A/B"]]},
+      {tag:"V-201",ty:"Inlet raw gas separator · S-201 skid · PRO13-ING-PR01",img:"/images/V-201_01.png",cap:"V-201 — inlet raw gas separator (final separation)",
+       rows:[["Service","final 3-ph sep."],["Design P","50 barg"],["Design T","−28 / 100 °C"],["Int. diameter","1625 mm"],["TL–TL","9000 mm"],["Volume","20 m³"],["Material","CS · 304 clad"],["Corr. allow.","0 mm"],["Insulation","boot trace+ins."],["Levels","LIC-2001/2002 · LSLL-2004"],["Outlets","SDV-2002/2003"],["Protection","PSV-2001A/B"]]}
+    ];
+    var eqimg=document.getElementById('eqimg');
+    if(eqimg){
+      var eqcap=document.getElementById('eqcap'),eqtag=document.getElementById('eqtag'),
+          eqty=document.getElementById('eqty'),eqbd=document.getElementById('eqbd');
+      var ebtns=[].slice.call(document.querySelectorAll('#eqthumbs button'));
+      ebtns.forEach(function(b){b.onclick=function(){
+        var e=EQ[+b.dataset.e];
+        ebtns.forEach(function(x){x.classList.toggle('on',x===b);});
+        eqimg.src=e.img;eqimg.alt=e.tag;eqcap.textContent=e.cap;eqtag.textContent=e.tag;eqty.textContent=e.ty;
+        eqbd.innerHTML=e.rows.map(function(r){return '<div class="er"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';}).join('');
+      };});
+    }
+  })();
 </script>
 </body>
 </html>
