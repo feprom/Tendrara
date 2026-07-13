@@ -258,6 +258,14 @@
   .celegend{margin-top:13px;font-size:11px;color:var(--ink-soft);line-height:1.55;}
   .celegend b{color:var(--ink);} .celegend .cetag{font-family:var(--mono);color:var(--crimson);font-weight:700;}
   .celegend .row{margin:2px 0;}
+  /* interactive cause & effect (on-slide) */
+  .cematrix tbody tr.hi td{background:#FBE9EC;}
+  .cematrix thead th.effhi{background:#C8102E;color:#fff;}
+  .cematrix td.mkhi{background:#C8102E;color:#fff;}
+  .cematrix tbody tr,.cematrix thead th.eff{cursor:pointer;}
+  .cematrix tbody tr.dim{opacity:.35;}
+  .cehint{font-size:11px;color:var(--ink-soft);margin-top:8px;}
+  .cehint b{color:var(--crimson);}
   /* global image lightbox */
   .lightbox{position:fixed;inset:0;background:rgba(8,9,11,.92);display:none;align-items:center;justify-content:center;
     flex-direction:column;z-index:120;padding:26px;cursor:zoom-out;}
@@ -1297,43 +1305,68 @@
     <!-- 18 CRITICAL ALARMS & TRIPS · Mario · 10 -->
     <section class="slide" data-min="10" data-block="Block 2" data-presenter="Mario"
       data-notes='["Table 3.8 — the ten critical alarms of Unit 200 and the shutdown level each one calls. Exam material.","Pattern to teach: HIGH-HIGH alarms (pressure, temperature, high level) call PSD — the process must stop.","LOW-LOW level alarms call LSD — local isolation is enough, because the risk is gas blow-by through a liquid line.","ZSH-2005 is special: it is a position switch on rupture disk RD-2005 — if the disk bursts, PSD.","Quiz the group row by row: alarm → level → why."]'>
-      <div class="kicker">Protection <span class="sub">— Manual §3.6.2, Table 3.8</span></div>
+      <div class="kicker">Protection · Alarms <span class="sub">— Manual §3.6.2 · Table 3.8 (10 trips)</span></div>
       <h2>Critical alarms &amp; trips</h2>
-      <div class="grid2">
-        <table class="data" style="font-size:12px;">
-          <tr><th>Alarm</th><th>Level</th><th>Meaning</th></tr>
-          <tr><td class="k">PAHH-2002</td><td class="k" style="color:var(--crimson);">PSD</td><td class="v">HH inlet pressure</td></tr>
-          <tr><td class="k">PAHH-2021</td><td class="k" style="color:var(--crimson);">PSD</td><td class="v">HH pressure V-202</td></tr>
-          <tr><td class="k">TAHH-2002</td><td class="k" style="color:var(--crimson);">PSD</td><td class="v">HH temperature (V-201 side)</td></tr>
-          <tr><td class="k">LAHH-2003</td><td class="k" style="color:var(--crimson);">PSD</td><td class="v">HH light level V-201</td></tr>
-          <tr><td class="k">LAHH-2021</td><td class="k" style="color:var(--crimson);">PSD</td><td class="v">HH level V-202</td></tr>
-        </table>
-        <table class="data" style="font-size:12px;">
-          <tr><th>Alarm</th><th>Level</th><th>Meaning</th></tr>
-          <tr><td class="k">LALL-2003</td><td class="k">LSD</td><td class="v">LL light level V-201</td></tr>
-          <tr><td class="k">LALL-2004</td><td class="k">LSD</td><td class="v">LL heavy level V-201</td></tr>
-          <tr><td class="k">LALL-2021</td><td class="k">LSD</td><td class="v">LL light level V-202</td></tr>
-          <tr><td class="k">LALL-2022</td><td class="k">LSD</td><td class="v">LL heavy level V-202</td></tr>
-          <tr><td class="k">ZSH-2005</td><td class="k" style="color:var(--crimson);">PSD</td><td class="v">Rupture disk RD-2005 burst</td></tr>
-        </table>
+
+      <div class="mapwrap">
+        <div class="lbl"><span>Unit 200 — trip initiators on the flow</span>
+          <span class="you" style="font-weight:400;"><b style="color:#C8102E;">■ PSD (process shutdown)</b> · <b style="color:#B26A00;">■ LSD (local shutdown)</b></span></div>
+        <svg viewBox="0 0 1000 180" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs><marker id="aah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#666"/></marker></defs>
+          <text x="8" y="124" font-family="Consolas,monospace" font-size="8" fill="#666">FEED</text>
+          <line x1="46" y1="120" x2="150" y2="120" stroke="#666" stroke-width="2.5" marker-end="url(#aah)"/>
+          <rect x="152" y="98" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/><text x="210" y="124" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">V-202</text>
+          <line x1="268" y1="120" x2="308" y2="120" stroke="#666" stroke-width="2.5" marker-end="url(#aah)"/>
+          <rect x="310" y="98" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/><text x="368" y="124" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">E-201</text>
+          <line x1="426" y1="120" x2="466" y2="120" stroke="#666" stroke-width="2.5" marker-end="url(#aah)"/>
+          <rect x="468" y="98" width="126" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/><text x="531" y="124" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">F-201A/B</text>
+          <line x1="594" y1="120" x2="634" y2="120" stroke="#666" stroke-width="2.5" marker-end="url(#aah)"/>
+          <rect x="636" y="98" width="116" height="44" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/><text x="694" y="124" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="700" fill="#15171A">V-201</text>
+          <line x1="752" y1="120" x2="792" y2="120" stroke="#666" stroke-width="2.5" marker-end="url(#aah)"/>
+          <rect x="796" y="104" width="66" height="32" rx="4" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.3"/><text x="829" y="124" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#C8102E">U330</text>
+
+          <!-- PSD chips (crimson) -->
+          <g font-family="Consolas,monospace" font-size="6.5" text-anchor="middle">
+          <rect x="36" y="52" width="58" height="15" rx="3" fill="#FBE9EC" stroke="#C8102E"/><text x="65" y="62" fill="#C8102E">PAHH-2002</text>
+          <rect x="153" y="30" width="58" height="15" rx="3" fill="#FBE9EC" stroke="#C8102E"/><text x="182" y="40" fill="#C8102E">PAHH-2021</text>
+          <rect x="213" y="30" width="58" height="15" rx="3" fill="#FBE9EC" stroke="#C8102E"/><text x="242" y="40" fill="#C8102E">LAHH-2021</text>
+          <rect x="339" y="44" width="58" height="15" rx="3" fill="#FBE9EC" stroke="#C8102E"/><text x="368" y="54" fill="#C8102E">ZSH-2005</text>
+          <rect x="608" y="30" width="58" height="15" rx="3" fill="#FBE9EC" stroke="#C8102E"/><text x="637" y="40" fill="#C8102E">LAHH-2003</text>
+          <rect x="695" y="30" width="58" height="15" rx="3" fill="#FBE9EC" stroke="#C8102E"/><text x="724" y="40" fill="#C8102E">TAHH-2002</text>
+          <!-- LSD chips (amber) -->
+          <rect x="153" y="152" width="58" height="15" rx="3" fill="#FFF3E0" stroke="#B26A00"/><text x="182" y="162" fill="#B26A00">LALL-2021</text>
+          <rect x="213" y="152" width="58" height="15" rx="3" fill="#FFF3E0" stroke="#B26A00"/><text x="242" y="162" fill="#B26A00">LALL-2022</text>
+          <rect x="608" y="152" width="58" height="15" rx="3" fill="#FFF3E0" stroke="#B26A00"/><text x="637" y="162" fill="#B26A00">LALL-2003</text>
+          <rect x="695" y="152" width="58" height="15" rx="3" fill="#FFF3E0" stroke="#B26A00"/><text x="724" y="162" fill="#B26A00">LALL-2004</text>
+          </g>
+        </svg>
       </div>
-      <div class="note">Pattern: <b>HH → PSD</b> (stop the process) · <b>LL level → LSD</b> (close the outlet — gas blow-by risk).</div>
+
+      <div class="grid2" style="margin-top:10px;">
+        <div class="hcard eqc"><div class="hh"><span>⚠ PSD — Process Shut Down</span><span>6</span></div><div class="hb">
+          <div class="hval"><span class="k">PAHH-2002</span><span class="v">HH inlet pressure</span></div>
+          <div class="hval"><span class="k">PAHH-2021</span><span class="v">HH pressure V-202</span></div>
+          <div class="hval"><span class="k">TAHH-2002</span><span class="v">HH temperature (V-201)</span></div>
+          <div class="hval"><span class="k">LAHH-2003</span><span class="v">HH light level V-201 · 90%</span></div>
+          <div class="hval"><span class="k">LAHH-2021</span><span class="v">HH level V-202</span></div>
+          <div class="hval"><span class="k">ZSH-2005</span><span class="v">rupture disk RD-2005 burst</span></div>
+        </div></div>
+        <div class="hcard bdw"><div class="hh"><span>⚠ LSD — Local Shut Down</span><span>4</span></div><div class="hb">
+          <div class="hval"><span class="k">LALL-2003</span><span class="v">LL light level V-201 · 10%</span></div>
+          <div class="hval"><span class="k">LALL-2004</span><span class="v">LL heavy level V-201</span></div>
+          <div class="hval"><span class="k">LALL-2021</span><span class="v">LL light level V-202</span></div>
+          <div class="hval"><span class="k">LALL-2022</span><span class="v">LL heavy level V-202</span></div>
+        </div></div>
+      </div>
+      <div class="routing">Pattern: <b>HH → PSD</b> (stop the process) · <b>LL level → LSD</b> (close the affected outlet — gas blow-by). The full logic is the Cause &amp; Effect matrix (next slide).</div>
     </section>
 
     <!-- 19 CAUSE & EFFECT · Mario · 8 -->
     <section class="slide" data-min="8" data-block="Block 2" data-presenter="Mario"
       data-notes='["Table 3.9 — the unit cause &amp; effect logic. The principle matters more than the grid.","Each LOW-LOW level trip closes the outlet SDV of THAT liquid phase: lose the light-liquid seal → close the HC outlet; lose the water seal → close the water outlet. V-201 uses SDV-2002/2003, V-202 uses SDV-2025/2026.","Why: with no liquid seal, high-pressure gas would blow through the liquid line into low-pressure systems — the classic gas blow-by scenario.","On ESD (I1), the unit is isolated at SDV-2024/2001 and depressurized to flare via BDV-2004.","The authoritative signed grid is SAF12-ING-FR01 — always check it before overriding anything."]'>
-      <div class="kicker">Protection <span class="sub">— Manual §3.6.3, Table 3.9 · SAF12</span></div>
-      <h2>Cause &amp; effect — what closes what</h2>
-      <div class="flow">
-        <div class="step"><span class="u">LALL V-201</span><span class="t">LALL-2003 (light) → close <b>SDV-2002</b> (HC outlet) · LALL-2004 (heavy) → close <b>SDV-2003</b> (water outlet)</span></div>
-        <div class="step"><span class="u">LALL V-202</span><span class="t">LALL-2021 (light) → close <b>SDV-2025</b> (condensate) · LALL-2022 (heavy) → close <b>SDV-2026</b> (water)</span></div>
-        <div class="step"><span class="u">ESD (I1)</span><span class="t">Isolate at <b>SDV-2024 / SDV-2001</b> · depressurize to flare via <b>BDV-2004</b> (rate set by RO-2004)</span></div>
-      </div>
-      <ul class="points" style="margin-top:10px;">
-        <li>Purpose: prevent <b>gas blow-by</b> — high-pressure gas escaping down a liquid line when the seal is lost.</li>
-        <li>Authoritative matrix: <b>SAF12-ING-FR01</b> — verify there before any override or bypass.</li>
-      </ul>
+      <div class="kicker">Protection · Cause &amp; Effect <span class="sub">— Manual §3.6.3 · Table 3.9 · SAF12 · interactive</span></div>
+      <h2>Cause &amp; effect matrix — hover a cause or an effect</h2>
+      <div id="ce22"></div>
     </section>
 
     <!-- 20 DAILY CHECKS · Mario · 6 -->
@@ -1768,6 +1801,82 @@
       ebtns.forEach(function(b){b.onclick=function(){loadEquip(+b.dataset.e,b);};});
       loadEquip(0,ebtns[0]);
     }
+  })();
+</script>
+<script>
+  // Interactive Cause & Effect matrix (slide 22) — LOCAL COPY of plant_cause_effect / _effects · SAF12-ING-FR01
+  (function(){
+    var host=document.getElementById('ce22'); if(!host) return;
+    var CE={
+      effects:[
+        {tag:"SDV-2002",action:"Close",desc:"V-201 hydrocarbon (light) outlet"},
+        {tag:"SDV-2003",action:"Close",desc:"V-201 water outlet"},
+        {tag:"SDV-2025",action:"Close",desc:"V-202 condensate outlet"},
+        {tag:"SDV-2026",action:"Close",desc:"V-202 water outlet"},
+        {tag:"PSD",action:"Trip",desc:"Process Shut Down — isolate SDV-2024/2001, stop feed FV-2001"}
+      ],
+      causes:[
+        {tag:"LAHH-2003",ins:"LT-2003",ty:"PSD",sp:"600 mm (90%)",ds:"High-high light liquid level on V-201",eff:["PSD"]},
+        {tag:"LAHH-2021",ins:"LSHH-2021",ty:"PSD",sp:"DI",ds:"High-high liquid level on V-202",eff:["PSD"]},
+        {tag:"LALL-2003",ins:"LT-2003",ty:"LSD",sp:"150 mm (10%)",ds:"Low-low light liquid level on V-201",eff:["SDV-2002"]},
+        {tag:"LALL-2004",ins:"LS-2004",ty:"LSD",sp:"DI",ds:"Low-low heavy liquid level on V-201",eff:["SDV-2003"]},
+        {tag:"LALL-2021",ins:"LSLL-2021",ty:"LSD",sp:"DI",ds:"Low-low light liquid level on V-202",eff:["SDV-2025"]},
+        {tag:"LALL-2022",ins:"LSLL-2022",ty:"LSD",sp:"DI",ds:"Low-low heavy liquid level on V-202",eff:["SDV-2026"]},
+        {tag:"PAHH-2002",ins:"PT-2002",ty:"PSD",sp:"—",ds:"High-high inlet pressure",eff:["PSD"]},
+        {tag:"PAHH-2021",ins:"PIT-2021",ty:"PSD",sp:"—",ds:"High-high pressure on V-202",eff:["PSD"]},
+        {tag:"TAHH-2002",ins:"TT-2001",ty:"PSD",sp:"—",ds:"High-high temperature on V-201",eff:["PSD"]},
+        {tag:"ZSH-2005",ins:"ZS-2005",ty:"PSD",sp:"—",ds:"Limit switch on rupture disk RD-2005",eff:["PSD"]}
+      ],
+      note:"LSD closes only the affected phase outlet — prevents gas blow-by. PSD isolates the unit (SDV-2024/2001 + FV-2001); ESD adds blowdown BDV-2004 (RO-2004). Authoritative signed grid: SAF12-ING-FR01."
+    };
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    var head='<tr><th>Cause</th><th>Instrument</th><th>Type</th><th>Set point</th><th>Description</th>'+
+      CE.effects.map(function(e){return '<th class="eff" data-eff="'+esc(e.tag)+'">'+esc(e.tag)+'</th>';}).join('')+'</tr>';
+    var body=CE.causes.map(function(c,ci){
+      var cells=CE.effects.map(function(e){
+        var on=c.eff.indexOf(e.tag)>=0;
+        return '<td class="mk'+(on?' hit':'')+'" data-eff="'+esc(e.tag)+'">'+(on?'●':'')+'</td>';
+      }).join('');
+      return '<tr data-ci="'+ci+'"><td class="tg">'+esc(c.tag)+'</td><td class="ins">'+esc(c.ins)+'</td>'+
+        '<td><span class="cebadge '+(c.ty==='PSD'?'psd':'lsd')+'">'+esc(c.ty)+'</span></td>'+
+        '<td class="sp">'+esc(c.sp)+'</td><td class="ds">'+esc(c.ds)+'</td>'+cells+'</tr>';
+    }).join('');
+    var legend='<div class="celegend"><b>Effects (columns):</b><br>'+
+      CE.effects.map(function(e){return '<span class="cetag">'+esc(e.tag)+'</span> — '+esc(e.action)+' · '+esc(e.desc);}).join('<br>')+
+      '<div class="row" style="margin-top:6px;">'+esc(CE.note)+'</div></div>'+
+      '<div class="cehint">▸ <b>Hover a cause row</b> to light its effect(s) · <b>hover an effect header</b> to light the causes that trigger it.</div>';
+    host.innerHTML='<div class="cewrap"><table class="cematrix"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>'+legend+'</div>';
+
+    var table=host.querySelector('.cematrix');
+    var rows=[].slice.call(table.querySelectorAll('tbody tr'));
+    var ths=[].slice.call(table.querySelectorAll('th.eff'));
+    function clear(){
+      rows.forEach(function(r){r.classList.remove('hi','dim');});
+      ths.forEach(function(t){t.classList.remove('effhi');});
+      [].slice.call(table.querySelectorAll('td.mk')).forEach(function(td){td.classList.remove('mkhi');});
+    }
+    rows.forEach(function(r){
+      r.addEventListener('mouseenter',function(){
+        clear(); r.classList.add('hi');
+        [].slice.call(r.querySelectorAll('td.mk.hit')).forEach(function(td){
+          td.classList.add('mkhi');
+          var e=td.getAttribute('data-eff');
+          ths.forEach(function(t){ if(t.getAttribute('data-eff')===e) t.classList.add('effhi'); });
+        });
+      });
+      r.addEventListener('mouseleave',clear);
+    });
+    ths.forEach(function(t){
+      t.addEventListener('mouseenter',function(){
+        clear(); t.classList.add('effhi');
+        var e=t.getAttribute('data-eff');
+        rows.forEach(function(r){
+          var td=r.querySelector('td.mk.hit[data-eff="'+e+'"]');
+          if(td){ r.classList.add('hi'); td.classList.add('mkhi'); } else { r.classList.add('dim'); }
+        });
+      });
+      t.addEventListener('mouseleave',clear);
+    });
   })();
 </script>
 <script>
