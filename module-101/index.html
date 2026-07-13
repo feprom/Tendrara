@@ -203,6 +203,32 @@
   .eqthumbs button{flex:1;font-family:var(--mono);font-size:10px;font-weight:700;border:1.5px solid var(--line-strong);background:#fff;color:var(--ink-soft);border-radius:6px;padding:6px 3px;cursor:pointer;transition:.12s;}
   .eqthumbs button:hover{border-color:var(--crimson);color:var(--crimson);}
   .eqthumbs button.on{background:var(--crimson);border-color:var(--crimson);color:#fff;}
+  /* technological-objects tiles + details modal */
+  .objgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:11px;}
+  .objtile{border:1px solid var(--line-strong);border-radius:10px;background:#fff;padding:11px 13px;text-align:left;cursor:pointer;transition:.14s;font-family:inherit;}
+  .objtile:hover{border-color:var(--crimson);box-shadow:0 4px 16px rgba(200,16,46,.12);transform:translateY(-2px);}
+  .objtile .ic{width:32px;height:32px;border-radius:9px;background:var(--bg-soft);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--crimson);}
+  .objtile .n{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--ink);line-height:1;margin-top:7px;}
+  .objtile .l{font-size:12.5px;font-weight:700;color:var(--ink);margin-top:2px;}
+  .objtile .ex{font-family:var(--mono);font-size:8.5px;color:var(--ink-soft);margin-top:5px;line-height:1.35;height:24px;overflow:hidden;}
+  .objtile .hint{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--crimson);margin-top:5px;font-weight:700;}
+  .objtile.dim{opacity:.55;cursor:default;}
+  .objtile.dim:hover{border-color:var(--line-strong);box-shadow:none;transform:none;}
+  .objmodal{position:fixed;inset:0;background:rgba(15,17,20,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:24px;}
+  .objmodal.on{display:flex;}
+  .objbox{background:#fff;border-radius:12px;width:min(880px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .objhd{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--crimson);color:#fff;flex:none;}
+  .objhd span{font-size:15px;font-weight:700;}
+  .objhd button{background:rgba(255,255,255,.16);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;}
+  .objtblwrap{overflow:auto;}
+  .objtbl{width:100%;border-collapse:collapse;font-size:12px;}
+  .objtbl th{position:sticky;top:0;background:#fff;font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:9px 14px;border-bottom:2px solid var(--line-strong);}
+  .objtbl td{padding:7px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .objtbl td.tg{font-family:var(--mono);font-weight:700;color:var(--crimson);white-space:nowrap;}
+  .objtbl td.ty{font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
+  .objtbl tr:hover td{background:var(--bg-soft);}
+  .objempty{padding:26px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
+  .objfoot{flex:none;padding:8px 18px;font-family:var(--mono);font-size:9px;color:var(--ink-soft);border-top:1px solid var(--line);}
 </style>
 </head>
 <body>
@@ -557,54 +583,44 @@
       <div class="mapwrap" style="padding:7px 10px 3px;">
         <div class="lbl"><span>Unit 200 — area views (rotating)</span><span class="you" id="c200cap">3D overview — Unit 200 area within the plant</span></div>
         <div class="carea" id="c200" data-interval="3400" style="height:344px;">
-          <div class="cbadge">Unit 200 · area views</div>
           <div class="cimg on"><img src="/images/200_3D.png" alt="Unit 200 3D overview"></div>
           <div class="cimg"><img src="/images/200_00.png" alt="Unit 200 plot plan — highlighted areas"></div>
           <div class="cimg"><img src="/images/200_3D_01.png" alt="Unit 200 3D — V-201"></div>
           <div class="cimg"><img src="/images/200_3D_02.png" alt="Unit 200 3D — S-201 skid"></div>
           <div class="cimg"><img src="/images/200_3D_03.png" alt="Unit 200 3D — S-201 beside E-335"></div>
+          <div class="cimg"><img src="/images/200_3D_04.png" alt="Unit 200 3D — S-202 skid & inhibitor package"></div>
+          <div class="cimg"><img src="/images/200_3D_05.png" alt="Unit 200 3D — 120-XX-001 inhibitor package"></div>
+          <div class="cimg"><img src="/images/200_3D_06.png" alt="Unit 200 3D — S-202 inlet skid overview"></div>
           <div class="cdots" id="c200dots">
-            <b class="on" data-i="0"></b><b data-i="1"></b><b data-i="2"></b><b data-i="3"></b><b data-i="4"></b>
+            <b class="on" data-i="0"></b><b data-i="1"></b><b data-i="2"></b><b data-i="3"></b><b data-i="4"></b><b data-i="5"></b><b data-i="6"></b><b data-i="7"></b>
           </div>
         </div>
       </div>
 
-      <div class="p2cards">
-        <div class="hcard arloc">
-          <div class="hh"><span>◈ Location</span><span>plant</span></div>
-          <div class="hb">
-            <div class="hval"><span class="k">Skid S-202</span><span class="v">inlet · gate</span></div>
-            <div class="hval"><span class="k">Skid S-201</span><span class="v">by U330</span></div>
-            <div class="hval"><span class="k">Detection</span><span class="v">gas zone 1</span></div>
-            <div class="hval"><span class="k">Elevation</span><span class="v">1,434 m</span></div>
-          </div>
-        </div>
-        <div class="hcard eqc">
-          <div class="hh"><span>⚙ Technological objects</span><span>datasheet</span></div>
-          <div class="hb">
-            <div class="hval"><span class="k">V-202 sep.</span><span class="v">100 barg · 5.6 m³</span></div>
-            <div class="hval"><span class="k">E-201 heater</span><span class="v">650 kW · 66 m²</span></div>
-            <div class="hval"><span class="k">F-201A/B</span><span class="v">50 barg · 5×5 µm</span></div>
-            <div class="hval"><span class="k">V-201 sep.</span><span class="v">50 barg · 20 m³</span></div>
-          </div>
-        </div>
-        <div class="hcard ioc">
-          <div class="hh"><span>▤ Instrumentation</span><span>automation</span></div>
-          <div class="hb">
-            <div class="hval"><span class="k">Instruments</span><span class="v">37</span></div>
-            <div class="hval"><span class="k">Loops · valves</span><span class="v">7 · 20</span></div>
-            <div class="hval"><span class="k">Alarms · I/O</span><span class="v">10 · 14</span></div>
-            <div class="hval"><span class="k">Skids</span><span class="v">2</span></div>
-          </div>
-        </div>
-        <div class="hcard enc">
-          <div class="hh"><span>⚡ Energy &amp; utilities</span><span>consumption</span></div>
-          <div class="hb">
-            <div class="hval"><span class="k">E-201 duty</span><span class="v">84 → 388 kW</span></div>
-            <div class="hval"><span class="k">Rated</span><span class="v">650 kW · hot oil</span></div>
-            <div class="hval"><span class="k">Electrical</span><span class="v">~4.2 kW</span></div>
-            <div class="hval"><span class="k">Utilities</span><span class="v">U410·U500·inhib</span></div>
-          </div>
+      <div class="objgrid">
+        <button class="objtile" data-g="equipment">
+          <div class="ic">⚙</div><div class="n">5</div><div class="l">Main Equipment</div>
+          <div class="ex">V-202 · E-201 · F-201A/B · V-201 · V-221</div><div class="hint">ver detalle ▸</div>
+        </button>
+        <button class="objtile" data-g="instruments">
+          <div class="ic">▤</div><div class="n">37</div><div class="l">Instruments</div>
+          <div class="ex">PT · TT · LT · FT · ZSH/ZSL · AE/AT</div><div class="hint">ver detalle ▸</div>
+        </button>
+        <button class="objtile" data-g="valves">
+          <div class="ic">⛛</div><div class="n">20</div><div class="l">Valves</div>
+          <div class="ex">SDV · BDV · PSV · CV · SOV</div><div class="hint">ver detalle ▸</div>
+        </button>
+        <button class="objtile dim" data-g="motors">
+          <div class="ic">⚡</div><div class="n">0</div><div class="l">Motors</div>
+          <div class="ex">none — thermally-driven, passive unit</div><div class="hint">—</div>
+        </button>
+      </div>
+
+      <div class="objmodal" id="objmodal">
+        <div class="objbox">
+          <div class="objhd"><span id="objtitle">—</span><button id="objclose" aria-label="close">✕</button></div>
+          <div class="objtblwrap"><table class="objtbl" id="objtbl"></table></div>
+          <div class="objfoot">Source: Tendrara plant database (local copy) · Unit 200 · sync on demand</div>
         </div>
       </div>
     </section>
@@ -1440,7 +1456,10 @@
       "Plot plan — S-202 inlet skid & S-201 (V-201) highlighted",
       "3D — V-201 inlet raw gas separator (S-201 skid)",
       "3D — S-201 skid: V-201 & associated equipment",
-      "3D — S-201 skid beside the U330 amine exchangers (E-335)"
+      "3D — S-201 skid beside the U330 amine exchangers (E-335)",
+      "3D — S-202 inlet skid: V-202 & inhibitor package 120-XX-001",
+      "3D — 120-XX-001 corrosion inhibitor package (upstream of V-202)",
+      "3D — S-202 inlet skid overview (V-202)"
     ];
     var carea=document.getElementById('c200');
     if(carea){
@@ -1479,6 +1498,112 @@
         eqbd.innerHTML=e.rows.map(function(r){return '<div class="er"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';}).join('');
       };});
     }
+  })();
+</script>
+<script>
+  // Unit 200 technological objects — LOCAL COPY of the plant database (offline; sync on demand)
+  (function(){
+    var U200OBJ = {
+      equipment: { title:"Main Equipment · Unit 200 (5)", cols:["Tag","Service","Skid"], rows:[
+        ["V-202","Inlet 3-phase separator","V-202"],
+        ["E-201","Feed gas heater – BEM type","S-201"],
+        ["F-201A/B","Feed gas particulate filter","S-201"],
+        ["V-201","Inlet raw gas separator","V-201"],
+        ["V-221","LNG separator","V-221"]
+      ]},
+      instruments: { title:"Instruments · Unit 200 (37)", cols:["Tag","Service","Type","Range"], rows:[
+        ["AE-2001","Feed gas analyzer","Gas analyzer sensor","—"],
+        ["AT-2001","Feed gas analyzer","Gas analyzer transmitter","%mol"],
+        ["FE-2001","Feed gas flow","Flow sensor","—"],
+        ["FE-2011","Water outlet from V-201 flow","Flow sensor","—"],
+        ["FE-2012","Condensate outlet from V-201 flow","Flow sensor","—"],
+        ["FT-2001","Feed gas flow","Flow transmitter","0..25 MMSCFD"],
+        ["FT-2011","Water outlet from V-201 flow","Flow transmitter","0..0,1 m³/h"],
+        ["FT-2012","Condensate outlet from V-201 flow","Flow transmitter","0..1 m³/h"],
+        ["FVY-2001","Feed gas flow control","Positioner command","—"],
+        ["LSLL-2004","V-201 low-low liquid level switch","Level switch","—"],
+        ["LT-2001","V-201 light liquid level","Level transmitter (DP+diaph)","0..100 %"],
+        ["LT-2002","V-201 heavy liquid level","Level transmitter (DP+diaph)","mm"],
+        ["LT-2003","V-201 total liquid level","Level transmitter (DP+diaph)","mm"],
+        ["LVY-2011","V-201 heavy liquid level control","Positioner command","0..100 %"],
+        ["LVY-2012","V-201 light liquid level control","Positioner command","0..100 %"],
+        ["PDG-2001","F-201A/B pressure drop","Differential pressure gauge","0..5 bar"],
+        ["PG-2001A","F-201A vent pressure","Pressure gauge","0..50 barg"],
+        ["PG-2001B","F-201B vent pressure","Pressure gauge","0..50 barg"],
+        ["PG-2002","V-201 pressure","Pressure gauge","0..50 barg"],
+        ["PT-2001","Feed gas pressure","Pressure transmitter","0..50 barg"],
+        ["PT-2002","Feed gas pressure","Pressure transmitter","0..50 barg"],
+        ["PT-2003","Gas to dehydration pressure","Pressure transmitter","0..50 barg"],
+        ["PVY-2001","Feed gas pressure control","Positioner command","0..100 %"],
+        ["RD-2005","Hot oil system overpressure protection","Rupture disc","—"],
+        ["RO-2004","BDV-2004 blowdown restriction","Restriction orifice","—"],
+        ["TT-2001","Feed gas flow temperature","Temperature transmitter","-15..150 °C"],
+        ["TT-2002","E-201 outlet temperature","Temperature transmitter","-15..150 °C"],
+        ["TVY-2002","E-201 outlet temperature control","Positioner command","0..100 %"],
+        ["ZSH-2001","SDV-2001 open position indication","Limit switch","—"],
+        ["ZSH-2002","SDV-2002 open position indication","Limit switch","—"],
+        ["ZSH-2003","SDV-2003 open position indication","Limit switch","—"],
+        ["ZSH-2004","BDV-2004 open position indication","Limit switch","—"],
+        ["ZSH-2005","RD-2005 open position indication","Limit switch","—"],
+        ["ZSL-2001","SDV-2001 closed position indication","Limit switch","—"],
+        ["ZSL-2002","SDV-2002 closed position indication","Limit switch","—"],
+        ["ZSL-2003","SDV-2003 closed position indication","Limit switch","—"],
+        ["ZSL-2004","BDV-2004 closed position indication","Limit switch","—"]
+      ]},
+      valves: { title:"Valves · Unit 200 (20)", cols:["Tag","Service","Type","Actuates"], rows:[
+        ["BDEV-2004","Plant inlet blowdown","Solenoid valve","BDV-2004"],
+        ["BDV-2004","Plant inlet blowdown","Blowdown valve","—"],
+        ["FEV-2001","Feed gas flow control","Solenoid valve","FV-2001"],
+        ["FV-2001","Feed gas flow control","Control valve","—"],
+        ["LV-2011","V-201 heavy liquid level control","Control valve","V-201"],
+        ["LV-2012","V-201 light liquid level control","Control valve","V-201"],
+        ["PSV-2001A","V-201 pressure relief","Pressure safety valve","V-201"],
+        ["PSV-2001B","V-201 pressure relief","Pressure safety valve","V-201"],
+        ["PSV-2002A","Inlet section overpressure protection","Pressure safety valve","—"],
+        ["PSV-2002B","Inlet section overpressure protection","Pressure safety valve","—"],
+        ["PSV-2003A","F-201A pressure relief","Pressure safety valve","F-201A"],
+        ["PSV-2003B","F-201B pressure relief","Pressure safety valve","F-201B"],
+        ["PV-2001","Feed gas pressure control","Control valve","—"],
+        ["SDEV-2001","Plant inlet emergency shutdown","Solenoid valve","SDV-2001"],
+        ["SDEV-2002","V-201 HC outlet shutdown","Solenoid valve","SDV-2002"],
+        ["SDEV-2003","V-201 water outlet shutdown","Solenoid valve","SDV-2003"],
+        ["SDV-2001","Plant inlet emergency shutdown","Shutdown valve","—"],
+        ["SDV-2002","V-201 HC outlet shutdown","Shutdown valve","—"],
+        ["SDV-2003","V-201 water outlet shutdown","Shutdown valve","—"],
+        ["TV-2002","E-201 outlet temperature control","Control valve","—"]
+      ]},
+      motors: { title:"Motors · Unit 200 (0)", cols:["Tag","Service","Power"], rows:[],
+        empty:"No MCC motors in Unit 200 — a thermally-driven, passive unit (heating by hot oil, no rotating machinery). Electrical load is limited to the truck weigh-bridges and level-valve actuators (~4.2 kW)." }
+    };
+    var modal=document.getElementById('objmodal');
+    if(!modal) return;
+    var tbl=document.getElementById('objtbl'), ttl=document.getElementById('objtitle');
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    function open(g){
+      var d=U200OBJ[g]; if(!d) return;
+      ttl.textContent=d.title;
+      if(!d.rows.length){
+        tbl.innerHTML='<tr><td class="objempty">'+esc(d.empty||'No items.')+'</td></tr>';
+      } else {
+        var h='<thead><tr>'+d.cols.map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead>';
+        var b='<tbody>'+d.rows.map(function(r){
+          return '<tr>'+r.map(function(v,i){
+            var cls = i===0?'tg':(i===d.cols.length-1?'ty':'');
+            return '<td'+(cls?' class="'+cls+'"':'')+'>'+esc(v)+'</td>';
+          }).join('')+'</tr>';
+        }).join('')+'</tbody>';
+        tbl.innerHTML=h+b;
+      }
+      modal.classList.add('on');
+    }
+    function close(){ modal.classList.remove('on'); }
+    [].slice.call(document.querySelectorAll('.objtile')).forEach(function(t){
+      if(t.classList.contains('dim') && t.dataset.g==='motors'){ t.onclick=function(){ open('motors'); }; }
+      else { t.onclick=function(){ open(t.dataset.g); }; }
+    });
+    document.getElementById('objclose').onclick=close;
+    modal.addEventListener('click',function(e){ if(e.target===modal) close(); });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
   })();
 </script>
 </body>
