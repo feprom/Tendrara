@@ -97,6 +97,13 @@
   table.data th.dtsort:hover{color:var(--crimson);}
   table.data th.dtsort .ar{color:var(--crimson);font-size:9px;margin-left:2px;}
   .dtempty{padding:16px;text-align:center;color:var(--ink-soft);font-size:12px;}
+  .dtsummary{display:flex;flex-wrap:wrap;gap:7px 10px;padding:8px 12px;border-bottom:1px solid var(--line);background:#fff;}
+  .dtsummary .kv{display:flex;align-items:baseline;gap:6px;font-family:var(--mono);font-size:11px;
+    border:1px solid var(--line);border-radius:5px;padding:3px 9px;background:var(--bg-soft);}
+  .dtsummary .kv .k{color:var(--ink-soft);font-size:9.5px;letter-spacing:.05em;}
+  .dtsummary .kv .v{font-weight:700;color:var(--ink);}
+  .dtsummary .kv.tot{border-color:var(--crimson);background:#FBE9EC;}
+  .dtsummary .kv.tot .v{color:var(--crimson);}
 
   /* ── cause & effect matrix (module-101 style) ─────────────────── */
   .cewrap{overflow:auto;margin-top:6px;}
@@ -830,7 +837,7 @@ function ovBlock(cnt,x,y,w,h,code,big){
     s+=`<text x="${pad}" y="${vy(17)}" font-family="Consolas,monospace" font-size="12" font-weight="700" fill="#C8102E">${code}</text>
     <text x="${pad}" y="${vy(26.5)}" font-family="Segoe UI,Arial" font-size="6.6" font-weight="700" letter-spacing=".01em" fill="#15171A">${esc(clip(name,24))}</text>`;
     s+=svgStatRow(pad,vy(35),[["EQ",k.eq],["INST",k.inst],["IO",k.io]]);
-    if(t!=null && h>=78){
+    if(t!=null && h>=70){
       const bw=Math.max(3,Math.round((w-2*pad-34)*Math.min(1,t/33)));
       s+=`<rect x="${pad}" y="${h-10}" width="${bw}" height="3.5" rx="1.8" fill="${tciColor(t)}"/>
       <text x="${pad+bw+4}" y="${h-6}" font-family="Consolas,monospace" font-size="6.2" fill="#4A4F57">TCI ${t.toFixed(1)}%${TCI_EST.has(code)?"*":""}</text>`;
@@ -948,7 +955,7 @@ function dataTable(id, icon, title, cols, rows, opts){
   opts=opts||{};
   TBL.set(id,{id,icon,title,cols,rows,sort:opts.sort==null?null:opts.sort,dir:opts.dir||1,
     filter:"",collapsed:!!opts.collapsed,rowClick:opts.rowClick||null,sheet:opts.sheet||title});
-  return `<div class="dt" id="dt-${id}">${dtHead(id)}<div class="dtbody" id="dtbody-${id}">${dtTableHTML(id)}</div></div>`;
+  return `<div class="dt" id="dt-${id}">${dtHead(id)}${opts.summary?`<div class="dtsummary">${opts.summary}</div>`:""}<div class="dtbody" id="dtbody-${id}">${dtTableHTML(id)}</div></div>`;
 }
 function dtHead(id){
   const t=TBL.get(id);
@@ -1075,6 +1082,7 @@ window.ceCol=ceCol;
 function renderArea(c, code){
   const a=IDX.areaByCode.get(String(code));
   if(!a){ c.innerHTML=`<div class="empty">Area ${esc(code)} not found.</div>`; return; }
+  TBL.clear();
   const st=(IDX.areaStations.get(String(code))||[]).sort((x,y)=>x.panel.localeCompare(y.panel));
   const inst=DB.inst.filter(r=>String(r.unit)===String(code));
   const vlvs=DB.valves.filter(r=>String(r.unit)===String(code));
@@ -1098,69 +1106,79 @@ function renderArea(c, code){
       ch:s.rows.length, pct:Math.round(100*ver/Math.max(1,s.rows.length)), orphan:false, nav:s.panel};
   }).concat(orphanRios.map(r=>({panel:r.tag, rio:r.tag, service:r.service||"", ex:"", ch:0, pct:0, orphan:true, nav:null})));
 
-  const ids=[];
-  const stTbl = stationRows.length?(ids.push("stations"),dataTable("stations","ST","Stations — RIO panels / JB",[
-      {label:"PANEL / JB", get:r=>r.panel, cls:"mono", html:(r,v)=>r.orphan?`<span class="dim">${esc(v)}</span> <span class="chip dim">REGISTRY</span>`:`<b style="color:var(--blue)">${esc(v)}</b>`},
-      {label:"RIO NODE", get:r=>r.rio, cls:"mono", html:(r,v)=>v?esc(v):'<span class="dim">—</span>'},
+  // equipment first, then field devices, control, electrical, safety (operating-manual order)
+  const eqTbl = eq.length?dataTable("eq","EQ","Equipment",[
+      {label:"TAG", get:r=>r.tag, cls:"tag"},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
-      {label:"EX RATING", get:r=>r.ex, cls:"mono"},
-      {label:"CH", get:r=>r.ch, num:true, r:true, cls:"mono"},
-      {label:"FIELD-VERIFIED", get:r=>r.pct, num:true, html:(r,v)=>r.orphan?'<span class="dim">no IO channels</span>':`<div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1;min-width:60px"><i style="width:${v}%"></i></div><span class="mono">${v}%</span></div>`}
-    ], stationRows, {rowClick:r=>r.nav?`nav('station/${encodeURIComponent(r.nav)}')`:null, sheet:"Stations"})):"";
+      {label:"SKID", get:r=>r.skid_tag, cls:"mono"}
+    ], eq, {rowClick:r=>`openEquip('${esc((r.tag||"").trim())}')`, sheet:"Equipment"}):"";
 
-  const instTbl = inst.length?(ids.push("inst"),dataTable("inst","INST","Instruments",[
+  const instTbl = inst.length?dataTable("inst","INST","Instruments",[
       {label:"TAG", get:r=>r.tag, cls:"tag"},
       {label:"TYPE", get:r=>r.instrument_type, cls:"dim"},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
       {label:"JB", get:r=>r.junction_box, cls:"mono dim"},
       {label:"RANGE", get:r=>((r.range||"")+(r.units?" "+r.units:"")).trim(), cls:"mono dim"}
-    ], inst, {rowClick:r=>`openInst('${esc((r.tag||"").trim())}')`, sheet:"Instruments"})):"";
+    ], inst, {rowClick:r=>`openInst('${esc((r.tag||"").trim())}')`, sheet:"Instruments"}):"";
 
-  const vlvTbl = vlvs.length?(ids.push("vlv"),dataTable("vlv","VLV","Actuated valves",[
+  const vlvTbl = vlvs.length?dataTable("vlv","VLV","Actuated valves",[
       {label:"TAG", get:r=>r.tag, cls:"tag"},
       {label:"TYPE", get:r=>r.instrument_type, cls:"dim"},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
       {label:"JB", get:r=>r.junction_box, cls:"mono dim"}
-    ], vlvs, {rowClick:r=>`openInst('${esc((r.tag||"").trim())}')`, sheet:"Valves"})):"";
+    ], vlvs, {rowClick:r=>`openInst('${esc((r.tag||"").trim())}')`, sheet:"Valves"}):"";
 
-  const eqTbl = eq.length?(ids.push("eq"),dataTable("eq","EQ","Equipment",[
-      {label:"TAG", get:r=>r.tag, cls:"tag"},
+  const stTbl = stationRows.length?dataTable("stations","ST","Stations — RIO panels / JB",[
+      {label:"PANEL / JB", get:r=>r.panel, cls:"mono", html:(r,v)=>r.orphan?`<span class="dim">${esc(v)}</span> <span class="chip dim">REGISTRY</span>`:`<b style="color:var(--blue)">${esc(v)}</b>`},
+      {label:"RIO NODE", get:r=>r.rio, cls:"mono", html:(r,v)=>v?esc(v):'<span class="dim">—</span>'},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
-      {label:"SKID", get:r=>r.skid_tag, cls:"mono"}
-    ], eq, {rowClick:r=>`openEquip('${esc((r.tag||"").trim())}')`, sheet:"Equipment"})):"";
+      {label:"EX RATING", get:r=>r.ex, cls:"mono"},
+      {label:"CH", get:r=>r.ch, num:true, r:true, cls:"mono"},
+      {label:"FIELD-VERIFIED", get:r=>r.pct, num:true, html:(r,v)=>r.orphan?'<span class="dim">no IO channels</span>':`<div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1;min-width:60px"><i style="width:${v}%"></i></div><span class="mono">${v}%</span></div>`}
+    ], stationRows, {rowClick:r=>r.nav?`nav('station/${encodeURIComponent(r.nav)}')`:null, sheet:"Stations"}):"";
 
-  const mccTbl = mcc.length?(ids.push("mcc"),dataTable("mcc","MCC","Remote MCC / motors",[
+  const mccTbl = mcc.length?dataTable("mcc","MCC","Remote MCC / motors",[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v)}</b>`},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       {label:"FAIL POSITION", get:r=>r.fail_position, html:(r,v)=>`<span class="chip ${/close/i.test(v||"")?"crimson":"dim"}">${nz(v,"—")}</span>`},
       {label:"RIO PANEL", get:r=>r.rio_panel, cls:"mono"},
       {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
       {label:"POWER", get:r=>r.power_rating, cls:"mono", r:true}
-    ], mcc, {sheet:"MCC motors"})):"";
+    ], mcc, {sheet:"MCC motors"}):"";
 
-  const eloadTbl = eloads.length?(ids.push("eload"),dataTable("eload","LOAD","Electrical loads",[
+  // electrical loads — per-voltage kW columns (right-aligned) + area totals per voltage
+  const fmtKw=v=>{ const n=parseFloat(v); return (!n||isNaN(n))?"":n.toFixed(1); };
+  const kwSum=f=>eloads.reduce((s,l)=>s+(parseFloat(l[f])||0),0);
+  const kw690=kwSum("v690_kw"), kw400=kwSum("v400_kw"), kw230=kwSum("v230_kw"), kwInst=kwSum("power_rating_kw");
+  const kwChip=(k,val,tot)=>`<span class="kv${tot?" tot":""}"><span class="k">${k}</span><span class="v">${val.toFixed(1)} kW</span></span>`;
+  const eloadSummary=eloads.length?`${kwChip("690 V",kw690)}${kwChip("400 V",kw400)}${kwChip("230 V",kw230)}${kwChip("INSTALLED Σ",kwInst,true)}`:"";
+  const eloadTbl = eloads.length?dataTable("eload","LOAD","Electrical loads",[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v)}</b>`},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
-      {label:"VOLTAGE", get:r=>r.voltage, cls:"mono"},
-      {label:"kW", get:r=>r.power_rating_kw, cls:"mono", r:true, num:true},
-      {label:"STARTING", get:r=>r.starting_type, cls:"dim"}
-    ], eloads, {sheet:"Electrical loads"})):"";
+      {label:"STARTING", get:r=>r.starting_type, cls:"dim"},
+      {label:"690 V kW", get:r=>r.v690_kw, num:true, r:true, cls:"mono", html:(r,v)=>fmtKw(v)},
+      {label:"400 V kW", get:r=>r.v400_kw, num:true, r:true, cls:"mono", html:(r,v)=>fmtKw(v)},
+      {label:"230 V kW", get:r=>r.v230_kw, num:true, r:true, cls:"mono", html:(r,v)=>fmtKw(v)},
+      {label:"INSTALLED kW", get:r=>r.power_rating_kw, num:true, r:true, cls:"mono", html:(r,v)=>`<b>${fmtKw(v)}</b>`}
+    ], eloads, {sheet:"Electrical loads", summary:eloadSummary}):"";
 
-  const almTbl = alm.length?(ids.push("alm"),dataTable("alm","ALM","Alarms",[
+  const almTbl = alm.length?dataTable("alm","ALM","Alarms",[
       {label:"ALARM TAG", get:r=>r.alarm_tag, cls:"tag"},
       {label:"INSTRUMENT", get:r=>r.instrument_tag, html:(r,v)=>v?`<span class="tag" onclick="event.stopPropagation();openInst('${esc((v||"").trim())}')">${esc(v)}</span>`:""},
       {label:"TYPE", get:r=>r.type, html:(r,v)=>`<span class="chip ${v==="PSD"||v==="ESD"?"crimson":"info"}">${nz(v,"—")}</span>`},
       {label:"SET POINT", get:r=>r.set_point, cls:"mono", html:(r,v)=>v?esc(v):'<span class="chip warn">NOT SET</span>'},
       {label:"DESCRIPTION", get:r=>r.description, cls:"dim"}
-    ], alm, {rowClick:r=>`openAlarm('${esc((r.alarm_tag||"").trim())}')`, sheet:"Alarms"})):"";
+    ], alm, {rowClick:r=>`openAlarm('${esc((r.alarm_tag||"").trim())}')`, sheet:"Alarms"}):"";
 
   const ceObj = ceR.length?ceBuild(ceR, ceEff):null;
-  AREA_EXPORT={code, tables:ids.slice(), ce:ceObj};
+  // export order follows the operating-manual section order
+  const ids=["eq","inst","vlv","stations","mcc","eload","alm"].filter(id=>TBL.has(id));
+  AREA_EXPORT={code, tables:ids, ce:ceObj};
 
-  let facts=fact("ST",st.length,"IO STATIONS")+fact("IO",ioCh,"IO CHANNELS")+fact("INST",inst.length,"INSTRUMENTS")
-    +fact("VLV",vlvs.length,"ACTUATED VALVES")+fact("ALM",alm.length,"ALARMS")+fact("EQ",eq.length,"EQUIPMENT");
+  let facts=fact("EQ",eq.length,"EQUIPMENT")+fact("INST",inst.length,"INSTRUMENTS")+fact("VLV",vlvs.length,"ACTUATED VALVES")
+    +fact("ST",st.length,"IO STATIONS")+fact("IO",ioCh,"IO CHANNELS")+fact("ALM",alm.length,"ALARMS");
   if(mcc.length) facts+=fact("MCC",mcc.length,"MCC MOTORS");
   if(eloads.length) facts+=fact("LOAD",eloads.length,"ELECTRICAL LOADS");
   if(ceR.length) facts+=fact("CE",ceObj.causes.length,"CAUSE & EFFECT");
@@ -1174,10 +1192,12 @@ function renderArea(c, code){
     <span class="spacer"></span>
     <button class="btn primary" onclick="exportAreaXlsx()">⭳ Export all to Excel</button>
   </div>
+  ${eqTbl}${instTbl}${vlvTbl}
   ${stTbl||`<div class="empty" style="margin-top:16px">No IO stations or RIO nodes mapped to this area yet.</div>`}
-  ${instTbl}${vlvTbl}${eqTbl}${mccTbl}${eloadTbl}${almTbl}
-  ${ceObj?`<h2 style="margin-top:22px">Cause &amp; effect matrix <span class="mono" style="font-size:12px;color:var(--ink-soft);font-weight:400">· ${ceObj.causes.length} causes × ${ceObj.effects.length} effects</span>
-    <button class="btn mini" style="float:right" onclick="dtCeExport()" title="Export matrix to Excel">⭳ Excel</button></h2>${ceMatrixHTML(ceObj)}`:""}`;
+  ${mccTbl}${eloadTbl}${almTbl}
+  <h2 style="margin-top:22px">Cause &amp; effect matrix${ceObj?` <span class="mono" style="font-size:12px;color:var(--ink-soft);font-weight:400">· ${ceObj.causes.length} causes × ${ceObj.effects.length} effects</span>
+    <button class="btn mini" style="float:right" onclick="dtCeExport()" title="Export matrix to Excel">⭳ Excel</button>`:""}</h2>
+  ${ceObj?ceMatrixHTML(ceObj):`<div class="empty">No cause &amp; effect matrix digitized for this unit yet. Currently only <b>Unit 200 — LNG Plant Inlet</b> has a signed C&amp;E matrix (SAF12) loaded in the database.</div>`}`;
 }
 function dtCeExport(){
   if(!AREA_EXPORT||!AREA_EXPORT.ce) return;
