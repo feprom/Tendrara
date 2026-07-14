@@ -204,6 +204,38 @@
   </div>
 </div>
 
+<!-- Attach document modal -->
+<div class="ovl" id="docOvl">
+  <div class="modal">
+    <div class="mhead"><h3 id="docTitle">Attach document</h3><button class="x" onclick="closeDoc()">✕</button></div>
+    <div class="mbody">
+      <div class="formgrid">
+        <label>Kind</label>
+        <select id="docKind"><option>DATASHEET</option><option>MANUAL</option><option>CALIBRATION</option>
+          <option>CERTIFICATE</option><option>DRAWING</option><option>PHOTO</option><option>OTHER</option></select>
+        <label>Title</label><input id="docName" placeholder="e.g. Danfoss AKS 33 pressure transmitter datasheet">
+        <label>File / URL</label><input id="docUrl" placeholder="/docs/datasheets/file.pdf  or  https://vendor.com/datasheet.pdf">
+        <label>Scope</label>
+        <select id="docScope">
+          <option value="tag">This tag only</option>
+          <option value="model">All assets of this model</option>
+        </select>
+        <label>Manufacturer</label><input id="docMfr">
+        <label>Model</label><input id="docModel">
+        <label>Notes</label><textarea id="docNotes"></textarea>
+      </div>
+      <div class="toolrow" style="margin-top:16px">
+        <span class="spacer"></span>
+        <button class="btn" onclick="closeDoc()">Cancel</button>
+        <button class="btn primary" onclick="submitDoc()">Attach</button>
+      </div>
+      <div class="note">Local PDFs: drop the file in <span class="mono">/docs/datasheets/</span> and reference it as
+      <span class="mono">/docs/datasheets/&lt;file&gt;.pdf</span>. Web links are stored with source WEB.
+      Model-scoped documents automatically appear on every asset with the same model.</div>
+    </div>
+  </div>
+</div>
+
 <!-- Instrument detail modal -->
 <div class="ovl" id="instOvl">
   <div class="modal">
@@ -214,6 +246,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/supabase-config.js"></script>
+<script src="doc-manifest.js"></script>
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
@@ -224,7 +257,7 @@
    ════════════════════════════════════════════════════════════════ */
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[]};
+const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[]};
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
              dwgByPid:new Map(), dwgByDoc:new Map()};
@@ -238,6 +271,86 @@ function dwgLink(pid_no){
   if(!d) return null;
   return {d, url:dwgUrl(d.doc_no)};
 }
+/* JB electrical drawings: drawing_file "IE24090_SE05_P-PN-....pdf" → SE code →
+   page renders listed in doc-manifest.js (auto-generated from /elec). */
+function jbPages(drawing_file){
+  const m=(drawing_file||"").match(/SE\d+/);
+  if(!m) return null;
+  const pages=(window.ENI_JB_DRAWINGS||{})[m[0]];
+  return pages&&pages.length ? {se:m[0], pages} : null;
+}
+function pageLinks(pages){
+  return pages.map(u=>{
+    const pm=u.match(/p(\d+)[^/]*\.png$/);
+    return `<a href="${u}" target="_blank" style="font-family:var(--mono);font-size:10.5px;color:var(--crimson);
+      text-decoration:none;border:1px solid var(--crimson);border-radius:3px;padding:1px 7px;margin:2px 3px 0 0;display:inline-block">P${pm?pm[1]:"?"} ⧉</a>`;
+  }).join("");
+}
+
+/* ── asset documents / datasheets (plant_asset_docs) ─────────── */
+// Docs match by exact tag, or by model when the doc is model-scoped
+// (one web datasheet serves every instrument of the same model).
+function docsFor(tag, model){
+  const t=(tag||"").trim(), m=(model||"").trim().toUpperCase();
+  return DB.adocs.filter(d=>
+    (d.object_tag && d.object_tag.trim()===t) ||
+    (!d.object_tag && d.model && m && d.model.trim().toUpperCase()===m));
+}
+function docsSection(table, tag, mfr, model){
+  const docs=docsFor(tag, model);
+  const rows=docs.map(d=>`<tr>
+    <td><span class="chip ${d.doc_kind==="DATASHEET"?"info":"dim"}">${esc(d.doc_kind)}</span></td>
+    <td><a href="${esc(d.file_url)}" target="_blank" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(d.title)} ⧉</a>
+      ${!d.object_tag?'<span class="chip dim" title="Applies to every asset of this model">MODEL</span>':""}</td>
+    <td><span class="chip ${d.source==="WEB"?"warn":"ok"}">${esc(d.source)}</span></td>
+    <td class="mono dim" style="font-size:10px">${nz(d.uploaded_by,"")} ${esc((d.created_at||"").slice(0,10))}</td></tr>`).join("");
+  return `<h2 style="margin-top:16px">Documents &amp; datasheets ${docs.length?`(${docs.length})`:""}
+    <button class="btn mini" style="float:right" onclick="openDoc('${esc(table)}','${esc(tag)}','${esc(mfr||"")}','${esc(model||"")}')">+ Attach document</button></h2>
+  ${docs.length?`<table class="data"><thead><tr><th>KIND</th><th>DOCUMENT</th><th>SOURCE</th><th>BY</th></tr></thead><tbody>${rows}</tbody></table>`
+    :`<div class="empty" style="padding:14px">No datasheet or document attached yet.
+      Local PDFs go in <span class="mono">/docs/datasheets/</span>; web datasheets can be linked directly.</div>`}`;
+}
+let docCtx=null;
+function openDoc(table, tag, mfr, model){
+  docCtx={table, tag};
+  $("#docTitle").textContent="Attach document — "+tag;
+  $("#docKind").value="DATASHEET";
+  $("#docName").value=""; $("#docUrl").value=""; $("#docNotes").value="";
+  $("#docMfr").value=mfr||""; $("#docModel").value=model||"";
+  $("#docScope").value= model ? "model" : "tag";
+  $("#docOvl").classList.add("open");
+}
+function closeDoc(){ $("#docOvl").classList.remove("open"); }
+async function submitDoc(){
+  if(!docCtx) return;
+  const scope=$("#docScope").value;
+  const url=$("#docUrl").value.trim();
+  const row={
+    object_table: docCtx.table,
+    object_tag: scope==="tag" ? docCtx.tag : null,
+    manufacturer: $("#docMfr").value.trim()||null,
+    model: $("#docModel").value.trim()||null,
+    doc_kind: $("#docKind").value,
+    title: $("#docName").value.trim(),
+    file_url: url,
+    source: /^https?:\/\//i.test(url) ? "WEB" : "LOCAL",
+    uploaded_by: getUser(),
+    notes: $("#docNotes").value.trim()||null
+  };
+  if(!row.title || !row.file_url) return status("✗ Title and file/URL are required","err");
+  if(scope==="model" && !row.model) return status("✗ Model-scoped document needs a model","err");
+  status("Attaching document…");
+  const {data,error}=await sb.from("plant_asset_docs").insert(row).select();
+  if(error){ status("✗ "+error.message,"err"); return; }
+  DB.adocs.push(data[0]); closeDoc();
+  status(`✓ ${row.doc_kind} attached to ${scope==="model"?row.model+" (all units)":docCtx.tag}`,"ok");
+  // refresh whichever card is open
+  if(docCtx.table==="plant_jb") render();
+  else if(docCtx.table==="plant_alarms") openAlarm(docCtx.tag);
+  else if(docCtx.table==="plant_equipment") openEquip(docCtx.tag);
+  else openInst(docCtx.tag);
+}
+window.openDoc=openDoc; window.closeDoc=closeDoc; window.submitDoc=submitDoc;
 let ROUTE = {view:"home"};
 
 /* ── helpers ─────────────────────────────────────────────────── */
@@ -275,14 +388,14 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
       fetchAll("plant_safety_critical"), fetchAll("plant_change_requests"), fetchAll("plant_verifications"),
-      fetchAll("plant_pid_drawings","doc_no")
+      fetchAll("plant_pid_drawings","doc_no"), fetchAll("plant_asset_docs")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -527,7 +640,7 @@ function renderArea(c, code){
       <td class="r mono">${s.rows.length}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1"><i style="width:${pct}%"></i></div><span class="mono">${pct}%</span></div></td></tr>`;
   }).join("");
-  const eqRows=eq.slice(0,80).map(e=>`<tr><td class="mono" style="font-weight:700">${nz(e.tag)}</td><td class="dim">${nz(e.service||e.description)}</td><td class="mono">${nz(e.skid_tag,"")}</td></tr>`).join("");
+  const eqRows=eq.slice(0,80).map(e=>`<tr><td class="tag" onclick="openEquip('${esc((e.tag||"").trim())}')" title="Open equipment card">${nz(e.tag)}</td><td class="dim">${nz(e.service)}</td><td class="mono">${nz(e.skid_tag,"")}</td></tr>`).join("");
   c.innerHTML=`
   <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
   <h1>Area ${esc(code)} — ${esc(a.description)}</h1>
@@ -551,7 +664,7 @@ function renderArea(c, code){
 function alarmTable(list){
   return `<table class="data"><thead><tr><th>ALARM TAG</th><th>INSTRUMENT</th><th>TYPE</th><th>SET POINT</th><th>DESCRIPTION</th><th>AREA</th></tr></thead>
   <tbody>${list.map(a=>`<tr>
-    <td class="mono" style="font-weight:700">${nz(a.alarm_tag)}</td>
+    <td class="tag" onclick="openAlarm('${esc(a.alarm_tag||"")}')" title="Open alarm card">${nz(a.alarm_tag)}</td>
     <td class="tag" onclick="openInst('${esc(a.instrument_tag||"")}')">${nz(a.instrument_tag)}</td>
     <td><span class="chip ${a.type==="PSD"||a.type==="ESD"?"crimson":"info"}">${nz(a.type,"—")}</span></td>
     <td class="mono">${nz(a.set_point,'<span class="chip warn">NOT SET</span>')}</td>
@@ -599,9 +712,14 @@ function renderStation(c, panel){
     <div class="jbcell"><div class="k">RIO system</div><div class="v mono">${nz(jb.rio_system)}</div></div>
     <div class="jbcell"><div class="k">Network</div><div class="v mono">${nz(jb.net_port1)}${jb.net_port2?" · "+esc(jb.net_port2):""}</div></div>
     <div class="jbcell"><div class="k">Power / fuse</div><div class="v mono">${nz(jb.power_source)} · ${nz(jb.fuse)}</div></div>
-    <div class="jbcell"><div class="k">Drawing reference</div><div class="v mono">${nz(jb.drawing_file)}</div></div>
+    ${(()=>{ const jp=jbPages(jb.drawing_file);
+      let v=nz(jb.drawing_file);
+      if(jp) v+=`<div style="margin-top:5px">${pageLinks(jp.pages)}</div>`;
+      else v+=` <span class="chip warn">RENDER PENDING</span>`;
+      return `<div class="jbcell" style="grid-column:1/-1"><div class="k">Drawing — ${jp?jp.pages.length+" pages, click to open":"no render digitized yet"}</div><div class="v mono">${v}</div></div>`; })()}
     <div class="jbcell" style="grid-column:1/-1"><div class="k">Module layout</div><div class="v mono">${nz(jb.module_layout)}</div></div>
-  </div>`:""}
+  </div>
+  ${docsSection("plant_jb", (jb.jb_tag||"").trim(), "", "")}`:""}
   <div class="facts">
     <div class="fact"><div class="n">${rows.length}</div><div class="l">CHANNELS</div></div>
     <div class="fact"><div class="n" style="color:var(--ok)">${okN}</div><div class="l">VERIFIED OK</div></div>
@@ -728,9 +846,9 @@ function searchAll(q){
         t?`openInst('${esc(t)}')`:`nav('station/${encodeURIComponent(r.rio_panel||"")}')`);} });
   DB.alarms.forEach(r=>{ const hay=((r.alarm_tag||"")+" "+(r.instrument_tag||"")+" "+(r.description||"")).toLowerCase();
     if(hay.includes(s)) push("ALARM","warn",r.alarm_tag,r.description,r.area_code,r.instrument_tag,
-      r.instrument_tag?`openInst('${esc((r.instrument_tag||"").trim())}')`:"");});
+      `openAlarm('${esc((r.alarm_tag||"").trim())}')`);});
   DB.equip.forEach(r=>{ const hay=((r.tag||"")+" "+(r.service||"")).toLowerCase();
-    if(hay.includes(s)) push("EQUIPMENT","ok",r.tag,r.service,r.area_code,r.skid_tag,`nav('area/${esc(String(r.area_code||""))}')`);});
+    if(hay.includes(s)) push("EQUIPMENT","ok",r.tag,r.service,r.area_code,r.skid_tag,`openEquip('${esc((r.tag||"").trim())}')`);});
   IDX.stations.forEach(st=>{ if(st.panel.toLowerCase().includes(s))
     push("STATION","info",st.panel,(st.jb&&st.jb.service)||"IO station",st.unit,st.rows.length+" ch",`nav('station/${encodeURIComponent(st.panel)}')`);});
   DB.drawings.forEach(d=>{ const hay=((d.doc_no||"")+" "+(d.pid_no||"")+" "+(d.title||"")).toLowerCase();
@@ -899,8 +1017,22 @@ function renderDrawings(c){
     <td>${esc(r.title)}</td>
     <td class="mono dim" style="font-size:10.5px">${esc(r.file)}</td>
     <td><a class="btn mini" style="text-decoration:none;display:inline-block;border:1px solid var(--crimson);color:var(--crimson);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:10.5px" href="/docs/${encodeURIComponent(r.file)}" target="_blank">OPEN ⧉</a></td></tr>`).join("")}</tbody></table>
-  <div class="note">JB / electrical drawings (IE24090-SExx) are referenced on each station card; their digitized data
-  is what populates the JB datasheet and IO list — original PDFs are on the project drive.</div>`;
+  <h2>JB / electrical drawings (IE24090)</h2>
+  <table class="data"><thead><tr><th>JB / PANEL</th><th>DRAWING</th><th>PAGES — CLICK TO OPEN</th></tr></thead>
+  <tbody>${[...DB.jb].sort((a,b)=>(a.drawing_file||"").localeCompare(b.drawing_file||"")).map(j=>{
+    const jp=jbPages(j.drawing_file);
+    return `<tr>
+      <td class="tag" onclick="${IDX.stations.has((j.jb_tag||"").trim())?`nav('station/${encodeURIComponent(j.jb_tag.trim())}')`:""}">${esc(j.jb_tag)}</td>
+      <td class="mono dim" style="font-size:10.5px">${nz(j.drawing_file)}</td>
+      <td>${jp?pageLinks(jp.pages):'<span class="chip warn">RENDER PENDING</span>'}</td></tr>`;}).join("")}
+  ${(window.ENI_PROFINET||[]).length?`<tr><td class="mono" style="font-weight:700">PROFINET NETWORK</td>
+    <td class="mono dim" style="font-size:10.5px">system overview</td><td>${pageLinks(window.ENI_PROFINET)}</td></tr>`:""}
+  ${(window.ENI_JB_DRAWINGS||{}).SE00?`<tr><td class="mono" style="font-weight:700">SYSTEM ARCHITECTURE</td>
+    <td class="mono dim" style="font-size:10.5px">IE24090-SE00 — PCS/ESD architecture</td><td>${pageLinks(window.ENI_JB_DRAWINGS.SE00)}</td></tr>`:""}
+  </tbody></table>
+  <div class="note">General rule of this register: if a digitized render exists on disk it is a direct link;
+  otherwise the reference is shown with RENDER PENDING. Page renders are auto-listed in
+  <span class="mono">eni/doc-manifest.js</span> — regenerate it when new drawings are digitized.</div>`;
   const df=$("#dwgFilter"); if(df){ df.focus(); df.setSelectionRange(df.value.length,df.value.length); }
 }
 
@@ -927,7 +1059,7 @@ function openInst(tag){
       ${kv("Signal in / out", nz(ref.signal_type)+(ref.signal_output?" → "+esc(ref.signal_output):""))}
       ${kv("Junction box (JB) — field enclosure the cable lands in", nz(ref.junction_box))}
       ${kv("Process line", nz(ref.line_number,"—"))}
-      ${kv("On equipment", nz(ref.equipment,"—"))}
+      ${kv("On equipment", ref.equipment?`<a style="color:var(--blue);cursor:pointer;font-weight:700" onclick="openEquip('${esc((ref.equipment||"").trim())}')">${esc(ref.equipment)} →</a>`:"—")}
       ${(()=>{ const l=dwgLink(ref.tam_pid);
         let v=nz(ref.tam_pid)+(ref.itf_pid?" · ITF "+esc(ref.itf_pid):"");
         if(l&&l.url) v+=` <a href="${l.url}" target="_blank" style="color:var(--crimson);font-weight:700;text-decoration:none">OPEN ⧉</a>`;
@@ -965,6 +1097,7 @@ function openInst(tag){
   } else if(ref){
     h+=`<div class="note">No IO channel found for this tag (may be local-only, pneumatic, or pending IO digitization).</div>`;
   }
+  h+=docsSection(table, tag, ref&&ref.manufacturer, ref&&ref.model);
   if(alarms.length) h+=`<h2 style="margin-top:16px">Alarms on this instrument</h2>${alarmTable(alarms)}`;
   const crs=DB.crs.filter(r=>r.object_tag===tag);
   if(crs.length) h+=`<h2 style="margin-top:16px">Change history</h2><table class="data"><thead><tr><th>CR</th><th>FIELD</th><th>OLD → NEW</th><th>STATUS</th></tr></thead>
@@ -982,17 +1115,89 @@ function openInst(tag){
 function closeInst(){ $("#instOvl").classList.remove("open"); }
 window.openInst=openInst; window.closeInst=closeInst;
 
+/* ── alarm card (configure / document) ───────────────────────── */
+function openAlarm(atag){
+  atag=(atag||"").trim(); if(!atag) return;
+  const a=DB.alarms.find(x=>(x.alarm_tag||"").trim()===atag);
+  if(!a) return status("✗ Alarm "+atag+" not found","err");
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(atag)}</span> — alarm ${a.type?esc(a.type):""}`;
+  const area=IDX.areaByCode.get(String(a.area_code));
+  let h=`<div class="kicker">ALARM CONFIGURATION <span class="sub">· plant_alarms</span></div>
+  <div class="jbcard">
+    ${kv("Description", nz(a.description))}
+    ${kv("Type / action", `<span class="chip ${a.type==="PSD"||a.type==="ESD"?"crimson":"info"}">${nz(a.type,"—")}</span>`)}
+    ${kv("Set point", a.set_point?esc(a.set_point):'<span class="chip warn">NOT SET — confirm & raise CR</span>')}
+    ${kv("Trigger instrument", a.instrument_tag?`<a style="color:var(--blue);cursor:pointer;font-weight:700" onclick="openInst('${esc(a.instrument_tag)}')">${esc(a.instrument_tag)} →</a>`:"—")}
+    ${kv("Source document", nz(a.document,"—"))}
+    ${kv("Area / unit", esc(String(a.area_code||"—"))+(area?" — "+esc(area.description||""):""))}
+  </div>`;
+  h+=docsSection("plant_alarms", atag, "", "");
+  const crs=DB.crs.filter(r=>r.object_tag===atag);
+  if(crs.length) h+=`<h2 style="margin-top:16px">Change history</h2><table class="data"><thead><tr><th>CR</th><th>FIELD</th><th>OLD → NEW</th><th>STATUS</th></tr></thead>
+    <tbody>${crs.map(r=>`<tr><td class="mono">${esc(r.cr_no)}</td><td class="mono">${nz(r.field_name)}</td>
+    <td class="mono">${nz(r.old_value,"∅")} → ${nz(r.new_value,"∅")}</td><td><span class="chip warn">${esc(r.status)}</span></td></tr>`).join("")}</tbody></table>`;
+  h+=`<div class="toolrow" style="margin-top:18px">
+    <button class="btn ok" onclick="setVerify('plant_alarms','${esc(atag)}','OK',null,'SETTINGS_CHECK')">Set point verified ✓</button>
+    <span>${verChip("plant_alarms",atag,"SETTINGS_CHECK")}</span>
+    <span class="spacer"></span>
+    <button class="btn primary" onclick="openCR('plant_alarms','${esc(atag)}')">Raise change request</button>
+  </div>
+  <div class="note">Master alarm data is read-only — to configure (set point, type, description) raise a change
+  request; once approved it is implemented at the next data revision. Field confirmation is logged with the
+  “Set point verified” button.</div>`;
+  $("#instBody").innerHTML=h;
+  $("#instOvl").classList.add("open");
+}
+window.openAlarm=openAlarm;
+
+/* ── equipment card (datasheets / technical documentation) ───── */
+function openEquip(etag){
+  etag=(etag||"").trim(); if(!etag) return;
+  const e=DB.equip.find(x=>(x.tag||"").trim()===etag);
+  if(!e) return status("✗ Equipment "+etag+" not found","err");
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(etag)}</span> — equipment`;
+  const area=IDX.areaByCode.get(String(e.area_code));
+  const onIt=DB.inst.filter(r=>(r.equipment||"").trim()===etag);
+  let h=`<div class="kicker">EQUIPMENT <span class="sub">· plant_equipment</span></div>
+  <div class="jbcard">
+    ${kv("Service", nz(e.service))}
+    ${kv("Area / unit", esc(String(e.area_code||"—"))+(area?" — "+esc(area.description||""):""))}
+    ${kv("Skid package", nz(e.skid_tag,"—"))}
+    ${kv("Source document", nz(e.document,"—"))}
+    ${kv("Notes", nz(e.notes,"—"))}
+  </div>`;
+  h+=docsSection("plant_equipment", etag, "", "");
+  if(onIt.length) h+=`<h2 style="margin-top:16px">Instruments on this equipment (${onIt.length})</h2>
+    <table class="data"><thead><tr><th>TAG</th><th>TYPE</th><th>SERVICE</th></tr></thead>
+    <tbody>${onIt.map(r=>`<tr><td class="tag" onclick="openInst('${esc((r.tag||"").trim())}')">${esc(r.tag)}</td>
+      <td class="dim">${nz(r.instrument_type)}</td><td class="dim">${nz(r.service)}</td></tr>`).join("")}</tbody></table>`;
+  h+=`<div class="toolrow" style="margin-top:18px">
+    <span class="spacer"></span>
+    <button class="btn primary" onclick="openCR('plant_equipment','${esc(etag)}')">Raise change request</button>
+  </div>`;
+  $("#instBody").innerHTML=h;
+  $("#instOvl").classList.add("open");
+}
+window.openEquip=openEquip;
+
 /* ── change request modal ────────────────────────────────────── */
 const CR_FIELDS={
   plant_instruments:["range","units","signal_type","junction_box","manufacturer","model","service","instrument_atex","line_number","tag (rename)","other"],
   plant_valves:["inst_range","range_unit","signal_type","junction_box","manufacturer","model","service","tag (rename)","other"],
   plant_io_list:["tag","description","signal_type","slot/channel","rio_panel","add missing tag to index","other"],
-  plant_alarms:["set_point","type","description","other"]
+  plant_alarms:["set_point","type","description","other"],
+  plant_equipment:["service","skid_tag","notes","tag (rename)","other"],
+  plant_jb:["service","ex_rating","module_layout","power_source","other"]
 };
 let crCtx=null;
 function openCR(table, tag){
   crCtx={table,tag};
-  const ref=IDX.instByTag.get(tag)||IDX.valveByTag.get(tag)||{};
+  const ref = table==="plant_alarms" ? (DB.alarms.find(x=>(x.alarm_tag||"").trim()===tag)||{})
+            : table==="plant_equipment" ? (DB.equip.find(x=>(x.tag||"").trim()===tag)||{})
+            : table==="plant_jb" ? (IDX.jbByTag.get(tag)||{})
+            : (IDX.instByTag.get(tag)||IDX.valveByTag.get(tag)||{});
   $("#crTitle").textContent="Change request — "+tag;
   $("#crTable").value=table; $("#crTag").value=tag;
   const sel=$("#crField");
