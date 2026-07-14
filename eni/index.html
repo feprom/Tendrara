@@ -154,11 +154,7 @@
 <header class="brandbar">
   <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'"></div>
   <div class="apptitle"><b>E&amp;I NAVIGATOR</b> · TENDRARA MICRO-LNG · ASSET / IO / INSTRUMENT MASTER</div>
-  <div class="client-logos">
-    <img class="client-logo itf" src="/images/logoITF.png" alt="ITALFLUID" onerror="this.style.display='none'">
-    <span class="divider"></span>
-    <img class="client-logo" src="/images/logoME.png" alt="ManaEnergy" onerror="this.style.display='none'">
-  </div>
+  <div class="apptitle" style="text-align:right">INTERNAL TOOL<br><span style="color:var(--crimson)">TECHNICAL AMERICA</span></div>
 </header>
 <div class="accent"></div>
 
@@ -228,9 +224,20 @@
    ════════════════════════════════════════════════════════════════ */
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[]};
+const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[]};
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), ioByTag:new Map(),
-             stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map()};
+             stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
+             dwgByPid:new Map(), dwgByDoc:new Map()};
+
+/* P&ID renders that exist on disk under /pid/<doc_no>/_full.png (40 of 47).
+   Missing renders (legend sheet + 6 pending): open disabled, shown as PENDING. */
+const NO_RENDER = new Set(["PRO13-ING-PR00","PRO13-ING-PR32","PRO13-ING-PR34","PRO13-ING-PR35","PRO13-ING-PR36","PRO13-ING-PR37","PRO13-ING-PR39"]);
+function dwgUrl(doc_no){ return NO_RENDER.has(doc_no) ? null : "/pid/"+encodeURIComponent(doc_no)+"/_full.png"; }
+function dwgLink(pid_no){
+  const d=IDX.dwgByPid.get((pid_no||"").trim());
+  if(!d) return null;
+  return {d, url:dwgUrl(d.doc_no)};
+}
 let ROUTE = {view:"home"};
 
 /* ── helpers ─────────────────────────────────────────────────── */
@@ -238,9 +245,17 @@ const $ = s => document.querySelector(s);
 const esc = v => v==null ? "" : String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const nz = (v,d="—") => (v==null||v==="") ? d : esc(v);
 function status(msg, cls){ const el=$("#statusmsg"); el.textContent=msg; el.className="msg "+(cls||""); }
-function getUser(){ let u=localStorage.getItem("eni_user"); if(!u){ u=prompt("Your name / initials (for verifications & change requests):","")||"UNKNOWN"; localStorage.setItem("eni_user",u);} return u; }
-function setUserChip(){ $("#userchip").innerHTML = "USER <b>"+esc(getUser())+"</b>"; }
-$("#userchip").onclick = ()=>{ localStorage.removeItem("eni_user"); setUserChip(); };
+
+/* ── session (accounts live in eni_users; page: account.html) ── */
+const SESSION=(()=>{ try{ return JSON.parse(localStorage.getItem("eni_session")||"null"); }catch(e){ return null; } })();
+if(!SESSION){ location.replace("account.html"); }
+function getUser(){ return SESSION ? SESSION.name : "UNKNOWN"; }
+function setUserChip(){
+  $("#userchip").innerHTML = SESSION
+    ? `<b>${esc(SESSION.name)}</b> · ${esc(SESSION.group||"")} <span style="opacity:.6">⏻</span>` : "SIGN IN";
+  $("#userchip").title = SESSION ? (SESSION.email+" · "+(SESSION.group_name||"")+" — click to sign out") : "Sign in";
+}
+$("#userchip").onclick = ()=>{ localStorage.removeItem("eni_session"); location.href="account.html"; };
 
 async function fetchAll(table, order){
   const rows=[]; const page=1000;
@@ -260,13 +275,14 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
-      fetchAll("plant_safety_critical"), fetchAll("plant_change_requests"), fetchAll("plant_verifications")
+      fetchAll("plant_safety_critical"), fetchAll("plant_change_requests"), fetchAll("plant_verifications"),
+      fetchAll("plant_pid_drawings","doc_no")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -304,6 +320,7 @@ function buildIndexes(){
   });
   IDX.verByKey.clear();
   DB.vers.forEach(v=>IDX.verByKey.set(v.object_table+"|"+v.object_tag+"|"+v.check_kind, v));
+  DB.drawings.forEach(d=>{ IDX.dwgByPid.set((d.pid_no||"").trim(), d); IDX.dwgByDoc.set((d.doc_no||"").trim(), d); });
 }
 
 function buildDatalist(){
@@ -323,6 +340,7 @@ function route(){
   else if(v==="xcheck") ROUTE={view:"xcheck"};
   else if(v==="cr") ROUTE={view:"cr"};
   else if(v==="comm") ROUTE={view:"comm"};
+  else if(v==="drawings") ROUTE={view:"drawings"};
   else if(v==="search") ROUTE={view:"search", q:rest.join("/")||""};
   else ROUTE={view:"home"};
   render();
@@ -354,7 +372,8 @@ function buildTree(){
   <div class="tnode ${ROUTE.view==='alarms'?'sel':''}" onclick="nav('alarms')"><span class="tw">▤</span><span class="code">EI30</span><span class="lbl">Alarm register</span><span class="cnt">${DB.alarms.length}</span></div>
   <div class="tnode ${ROUTE.view==='xcheck'?'sel':''}" onclick="nav('xcheck')"><span class="tw">▤</span><span class="code">EI40</span><span class="lbl">Cross-check IO ↔ index</span></div>
   <div class="tnode ${ROUTE.view==='cr'?'sel':''}" onclick="nav('cr')"><span class="tw">▤</span><span class="code">EI50</span><span class="lbl">Change requests</span><span class="cnt">${DB.crs.length}</span></div>
-  <div class="tnode ${ROUTE.view==='comm'?'sel':''}" onclick="nav('comm')"><span class="tw">▤</span><span class="code">EI60</span><span class="lbl">Commissioning progress</span><span class="cnt">${DB.vers.filter(v=>v.result==="FAIL").length}✗</span></div>`;
+  <div class="tnode ${ROUTE.view==='comm'?'sel':''}" onclick="nav('comm')"><span class="tw">▤</span><span class="code">EI60</span><span class="lbl">Commissioning progress</span><span class="cnt">${DB.vers.filter(v=>v.result==="FAIL").length}✗</span></div>
+  <div class="tnode ${ROUTE.view==='drawings'?'sel':''}" onclick="nav('drawings')"><span class="tw">▤</span><span class="code">EI70</span><span class="lbl">Drawings &amp; documents</span><span class="cnt">${DB.drawings.length}</span></div>`;
   t.innerHTML=html;
 }
 function toggleArea(code){
@@ -375,6 +394,7 @@ function render(){
   else if(ROUTE.view==="xcheck") renderXcheck(c);
   else if(ROUTE.view==="cr") renderCRs(c);
   else if(ROUTE.view==="comm") renderComm(c);
+  else if(ROUTE.view==="drawings") renderDrawings(c);
   else if(ROUTE.view==="search") renderSearch(c, ROUTE.q);
   crumbs();
 }
@@ -387,6 +407,7 @@ function crumbs(){
   if(ROUTE.view==="xcheck") h+=` › <b>CROSS-CHECK</b>`;
   if(ROUTE.view==="cr") h+=` › <b>CHANGE REQUESTS</b>`;
   if(ROUTE.view==="comm") h+=` › <b>COMMISSIONING</b>`;
+  if(ROUTE.view==="drawings") h+=` › <b>DRAWINGS &amp; DOCUMENTS</b>`;
   if(ROUTE.view==="search") h+=` › <b>SEARCH “${esc(ROUTE.q||"")}”</b>`;
   $("#crumbs").innerHTML=h;
 }
@@ -474,6 +495,7 @@ function renderHome(c){
     <div class="fact"><div class="n">${DB.inst.length}</div><div class="l">INSTRUMENTS</div></div>
     <div class="fact"><div class="n">${DB.valves.length}</div><div class="l">ACTUATED VALVES</div></div>
     <div class="fact link" onclick="nav('alarms')"><div class="n">${DB.alarms.length}</div><div class="l">ALARMS</div></div>
+    <div class="fact link" onclick="nav('drawings')"><div class="n">${DB.drawings.length}</div><div class="l">P&amp;ID DRAWINGS</div></div>
     <div class="fact link" onclick="nav('cr')"><div class="n">${DB.crs.length}</div><div class="l">CHANGE REQUESTS</div></div>
     <div class="fact"><div class="n">${Math.round(100*verified/Math.max(1,DB.io.length))}%</div><div class="l">IO FIELD-VERIFIED (${verified}/${DB.io.length})</div></div>
   </div>
@@ -577,6 +599,7 @@ function renderStation(c, panel){
     <div class="jbcell"><div class="k">RIO system</div><div class="v mono">${nz(jb.rio_system)}</div></div>
     <div class="jbcell"><div class="k">Network</div><div class="v mono">${nz(jb.net_port1)}${jb.net_port2?" · "+esc(jb.net_port2):""}</div></div>
     <div class="jbcell"><div class="k">Power / fuse</div><div class="v mono">${nz(jb.power_source)} · ${nz(jb.fuse)}</div></div>
+    <div class="jbcell"><div class="k">Drawing reference</div><div class="v mono">${nz(jb.drawing_file)}</div></div>
     <div class="jbcell" style="grid-column:1/-1"><div class="k">Module layout</div><div class="v mono">${nz(jb.module_layout)}</div></div>
   </div>`:""}
   <div class="facts">
@@ -710,6 +733,9 @@ function searchAll(q){
     if(hay.includes(s)) push("EQUIPMENT","ok",r.tag,r.service,r.area_code,r.skid_tag,`nav('area/${esc(String(r.area_code||""))}')`);});
   IDX.stations.forEach(st=>{ if(st.panel.toLowerCase().includes(s))
     push("STATION","info",st.panel,(st.jb&&st.jb.service)||"IO station",st.unit,st.rows.length+" ch",`nav('station/${encodeURIComponent(st.panel)}')`);});
+  DB.drawings.forEach(d=>{ const hay=((d.doc_no||"")+" "+(d.pid_no||"")+" "+(d.title||"")).toLowerCase();
+    if(hay.includes(s)) push("DRAWING","crimson",d.doc_no,d.title,d.area_code,d.pid_no,
+      dwgUrl(d.doc_no)?`window.open('${dwgUrl(d.doc_no)}','_blank')`:`nav('drawings')`);});
   return out;
 }
 function renderSearch(c,q){
@@ -821,6 +847,63 @@ function renderCRs(c){
   :`<div class="empty">No change requests yet. Open any instrument (click a tag) and press “Raise change request”.</div>`}`;
 }
 
+/* ── drawings & documents register (EI70) ────────────────────── */
+const REF_DOCS=[
+  {file:"21044-PR-MAN-00001_01.pdf", title:"Operating Manual — Tendrara Micro-LNG", kind:"MANUAL"},
+  {file:"ELD11-ING-PR01.pdf", title:"Electrical drawing ELD11-ING-PR01", kind:"ELECTRICAL"},
+  {file:"SAF01-ING-FR01 - Rev.2 - safety & isolation philosophy.pdf", title:"Safety & Isolation Philosophy (Rev.2)", kind:"SAFETY"},
+  {file:"SAF05-ING-FR01 - (21044-PR-RBP-00001)_1.pdf", title:"Risk-Based Philosophy 21044-PR-RBP-00001", kind:"SAFETY"},
+  {file:"PRO02-ING-FR01 - (21044-PR-HMB-00001)_7.xlsx", title:"Heat & Material Balance 21044-PR-HMB-00001 (Rev.7)", kind:"PROCESS"},
+  {file:"PRO02-ING-FR02 - Rev.1B - Process Description.doc", title:"Process Description (Rev.1B)", kind:"PROCESS"},
+  {file:"TAM158 MR Refrigerant Loop Alarm List.xlsx", title:"MR Refrigerant Loop Alarm List", kind:"ALARMS"},
+  {file:"LNGSafetyData.pdf", title:"LNG Safety Data", kind:"SAFETY"}
+];
+function renderDrawings(c){
+  const f=(window._dwgFilter||"").toLowerCase();
+  let list=[...DB.drawings].sort((a,b)=>(a.doc_no||"").localeCompare(b.doc_no||""));
+  if(f) list=list.filter(d=>((d.doc_no||"")+" "+(d.pid_no||"")+" "+(d.title||"")+" "+(d.area_code||"")).toLowerCase().includes(f));
+  const withR=DB.drawings.filter(d=>dwgUrl(d.doc_no)).length;
+  c.innerHTML=`
+  <div class="kicker">TX EI70 <span class="sub">· P&amp;ID REGISTER · REFERENCE DOCUMENTS</span></div>
+  <h1>Drawings &amp; documents</h1>
+  <p class="lead">Live register from <span class="mono">plant_pid_drawings</span>. OPEN launches the digitized render
+  (<span class="mono">/pid/&lt;doc&gt;/_full.png</span>) in a new tab; every instrument card links back here through its P&amp;ID.</p>
+  <div class="facts">
+    <div class="fact"><div class="n">${DB.drawings.length}</div><div class="l">P&amp;IDs REGISTERED</div></div>
+    <div class="fact"><div class="n" style="color:var(--ok)">${withR}</div><div class="l">RENDERS AVAILABLE</div></div>
+    <div class="fact"><div class="n" style="color:var(--amber)">${DB.drawings.length-withR}</div><div class="l">RENDER PENDING</div></div>
+    <div class="fact"><div class="n">${REF_DOCS.length}</div><div class="l">REFERENCE DOCS</div></div>
+  </div>
+  <div class="toolrow">
+    <input id="dwgFilter" placeholder="⌕ filter — doc no, title, area" style="width:300px"
+      value="${esc(window._dwgFilter||"")}" oninput="window._dwgFilter=this.value;render()">
+    <span class="spacer"></span>
+    <span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} shown</span>
+  </div>
+  <table class="data"><thead><tr><th>DOC NO</th><th>P&amp;ID NO</th><th>TITLE</th><th>REV</th><th>STATUS</th><th>AREA</th><th></th></tr></thead>
+  <tbody>${list.map(d=>{
+    const url=dwgUrl(d.doc_no);
+    return `<tr>
+    <td class="mono" style="font-weight:700;color:var(--crimson)">${esc(d.doc_no)}</td>
+    <td class="mono">${nz(d.pid_no)}</td>
+    <td class="dim">${nz(d.title)}</td>
+    <td class="mono">${nz(d.revision)}</td>
+    <td class="mono dim" style="font-size:10px">${nz(d.status,"")}</td>
+    <td class="mono" ${d.area_code&&IDX.areaByCode.has(String(d.area_code))?`style="color:var(--blue);cursor:pointer" onclick="nav('area/${esc(String(d.area_code))}')"`:""}>${nz(d.area_code)}</td>
+    <td>${url?`<a class="btn mini" style="text-decoration:none;display:inline-block;border:1px solid var(--crimson);color:var(--crimson);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:10.5px" href="${url}" target="_blank">OPEN ⧉</a>`
+             :`<span class="chip warn">PENDING</span>`}</td></tr>`;}).join("")}</tbody></table>
+  <h2>Reference documents (<span class="mono">/docs</span>)</h2>
+  <table class="data"><thead><tr><th>KIND</th><th>TITLE</th><th>FILE</th><th></th></tr></thead>
+  <tbody>${REF_DOCS.map(r=>`<tr>
+    <td><span class="chip info">${r.kind}</span></td>
+    <td>${esc(r.title)}</td>
+    <td class="mono dim" style="font-size:10.5px">${esc(r.file)}</td>
+    <td><a class="btn mini" style="text-decoration:none;display:inline-block;border:1px solid var(--crimson);color:var(--crimson);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:10.5px" href="/docs/${encodeURIComponent(r.file)}" target="_blank">OPEN ⧉</a></td></tr>`).join("")}</tbody></table>
+  <div class="note">JB / electrical drawings (IE24090-SExx) are referenced on each station card; their digitized data
+  is what populates the JB datasheet and IO list — original PDFs are on the project drive.</div>`;
+  const df=$("#dwgFilter"); if(df){ df.focus(); df.setSelectionRange(df.value.length,df.value.length); }
+}
+
 /* ── instrument detail ───────────────────────────────────────── */
 function openInst(tag){
   tag=(tag||"").trim(); if(!tag) return;
@@ -845,7 +928,12 @@ function openInst(tag){
       ${kv("Junction box (JB) — field enclosure the cable lands in", nz(ref.junction_box))}
       ${kv("Process line", nz(ref.line_number,"—"))}
       ${kv("On equipment", nz(ref.equipment,"—"))}
-      ${kv("P&ID drawing", nz(ref.tam_pid)+(ref.itf_pid?" · ITF "+esc(ref.itf_pid):""))}
+      ${(()=>{ const l=dwgLink(ref.tam_pid);
+        let v=nz(ref.tam_pid)+(ref.itf_pid?" · ITF "+esc(ref.itf_pid):"");
+        if(l&&l.url) v+=` <a href="${l.url}" target="_blank" style="color:var(--crimson);font-weight:700;text-decoration:none">OPEN ⧉</a>`;
+        else if(l) v+=` <span class="chip warn">RENDER PENDING</span>`;
+        if(l) v+=`<div style="font-size:10px;color:var(--ink-soft);margin-top:2px">${esc(l.d.doc_no)} · ${esc(l.d.title||"")}</div>`;
+        return kv("P&ID drawing", v); })()}
       ${kv("Manufacturer / model", nz(ref.manufacturer,"—")+" "+nz(ref.model,""))}
       ${kv("Datasheet", nz(ref.datasheet,"—"))}
       ${kv("ATEX — instrument / JB", nz(ref.instrument_atex,"—")+" / "+nz(ref.jb_atex,"—"))}
@@ -942,10 +1030,11 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="EI40") nav("xcheck");
   else if(cmd==="EI50") nav("cr");
   else if(cmd==="EI60") nav("comm");
+  else if(cmd==="EI70") nav("drawings");
   else if(cmd==="TAG"&&a) openInst(a);
   else if((cmd==="SEARCH"||cmd==="FIND")&&a) nav("search/"+encodeURIComponent(a));
   else if(IDX.areaByCode.has(cmd)) nav("area/"+cmd);
-  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI30, EI40, EI50, EI60, TAG <tag>, SEARCH <text>","err");
+  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI30, EI40, EI50, EI60, EI70, TAG <tag>, SEARCH <text>","err");
 });
 $("#gsearch").addEventListener("keydown", e=>{
   if(e.key!=="Enter") return;

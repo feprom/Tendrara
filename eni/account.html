@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TAM E&amp;I Navigator — Account</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg-soft:#F7F8FA; --ok:#1F8A4C; --fail:#B3261E; --blue:#0B5CAD;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;}
+  body{font-family:var(--sans);color:var(--ink);background:#ECEEF1;display:flex;align-items:center;
+    justify-content:center;min-height:100vh;padding:16px;-webkit-font-smoothing:antialiased;}
+  .card{width:100%;max-width:480px;background:#fff;border:1px solid var(--line);border-radius:6px;
+    box-shadow:0 10px 40px rgba(0,0,0,.10);overflow:hidden;}
+  .brandbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);}
+  .brandbar img{height:40px;display:block;}
+  .brandbar .internal{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--ink-soft);text-transform:uppercase;text-align:right;line-height:1.5;}
+  .accent{height:3px;background:var(--crimson);}
+  .body{padding:24px 28px 28px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--crimson);font-weight:700;margin-bottom:8px;}
+  h1{font-size:22px;margin:0 0 6px;letter-spacing:-.01em;}
+  p.lead{color:var(--ink-soft);font-size:13px;line-height:1.55;margin:0 0 16px;}
+  .tabs{display:flex;gap:0;border-bottom:2px solid var(--line-strong);margin-bottom:18px;}
+  .tab{flex:1;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    padding:9px 4px;cursor:pointer;color:var(--ink-soft);border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:700;}
+  .tab.on{color:var(--crimson);border-bottom-color:var(--crimson);}
+  label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:12px 0 4px;}
+  input,select{width:100%;font-family:var(--sans);font-size:14px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:4px;background:#fff;}
+  input:focus,select:focus{outline:2px solid #f4c3cc;border-color:var(--crimson);}
+  .hint{font-size:11px;color:var(--ink-soft);margin-top:4px;line-height:1.45;}
+  button.go{width:100%;margin-top:20px;background:var(--crimson);color:#fff;border:none;border-radius:4px;
+    padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--sans);}
+  button.go:hover{background:var(--crimson-dark);}
+  button.go:disabled{opacity:.5;cursor:not-allowed;}
+  .msg{margin-top:14px;font-size:12.5px;line-height:1.5;font-family:var(--mono);display:none;padding:9px 12px;border-radius:4px;}
+  .msg.err{display:block;color:var(--fail);background:#FBECEB;border:1px solid var(--fail);}
+  .msg.ok{display:block;color:var(--ok);background:#EAF6EF;border:1px solid var(--ok);}
+  .grouptbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px;}
+  .grouptbl td{padding:4px 6px;border-bottom:1px solid var(--line);color:var(--ink-soft);}
+  .grouptbl td.mono{font-family:var(--mono);font-weight:700;color:var(--ink);white-space:nowrap;}
+  .foot{padding:12px 28px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--ink-soft);
+    letter-spacing:.06em;display:flex;justify-content:space-between;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brandbar">
+    <img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'">
+    <div class="internal">E&amp;I NAVIGATOR<br>INTERNAL TOOL · TENDRARA</div>
+  </div>
+  <div class="accent"></div>
+  <div class="body">
+    <div class="kicker">ACCOUNT ACCESS</div>
+    <h1>Sign in to the E&amp;I Navigator</h1>
+    <p class="lead">Verifications and change requests are recorded under your name — one account per person.</p>
+    <div class="tabs">
+      <div class="tab on" id="tabIn" onclick="mode('in')">SIGN IN</div>
+      <div class="tab" id="tabUp" onclick="mode('up')">OPEN ACCOUNT</div>
+    </div>
+
+    <div id="paneIn">
+      <label>Email</label><input id="inEmail" type="email" autocomplete="username" placeholder="name@company.com">
+      <label>PIN</label><input id="inPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="4–8 digits">
+      <div class="hint">First sign-in on a pre-created account? Enter the PIN you want to use — it will be registered.</div>
+      <button class="go" id="btnIn" onclick="signIn()">Sign in →</button>
+    </div>
+
+    <div id="paneUp" style="display:none">
+      <label>Full name</label><input id="upName" placeholder="Name Surname">
+      <label>Email</label><input id="upEmail" type="email" placeholder="name@company.com">
+      <label>Company</label><input id="upCompany" placeholder="Technical America / ITALFLUID / …">
+      <label>Group</label><select id="upGroup"></select>
+      <div class="hint" id="groupHint"></div>
+      <label>PIN (4–8 digits)</label><input id="upPin" type="password" inputmode="numeric" placeholder="••••">
+      <label>Confirm PIN</label><input id="upPin2" type="password" inputmode="numeric" placeholder="••••">
+      <button class="go" id="btnUp" onclick="signUp()">Open account →</button>
+      <div class="hint" style="margin-top:10px">Phase 1: all groups currently have full functionality.
+      Group levels (ADMIN 90 → VIEWER 10) define the future permission structure.</div>
+    </div>
+
+    <div class="msg" id="msg"></div>
+  </div>
+  <div class="foot"><span>TAM-E&amp;I · SUPABASE LIVE</span><span id="footR">—</span></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<script>
+"use strict";
+const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+let GROUPS=[];
+
+function mode(m){
+  document.getElementById("tabIn").classList.toggle("on",m==="in");
+  document.getElementById("tabUp").classList.toggle("on",m==="up");
+  document.getElementById("paneIn").style.display=m==="in"?"":"none";
+  document.getElementById("paneUp").style.display=m==="up"?"":"none";
+  say("");
+}
+function say(t,cls){ const el=document.getElementById("msg"); el.textContent=t; el.className="msg "+(cls||""); }
+async function sha(email,pin){
+  const buf=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email.toLowerCase()+":"+pin));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function setSession(u,g){
+  localStorage.setItem("eni_session", JSON.stringify({
+    id:u.id, name:u.full_name, email:u.email, company:u.company,
+    group:u.group_code, group_name:g?g.name:u.group_code, level:g?g.level:0,
+    permissions:g?g.permissions:{}, ts:Date.now()
+  }));
+  localStorage.setItem("eni_user", u.full_name); // legacy key used by verifications/CRs
+  location.href="index.html";
+}
+async function loadGroups(){
+  const {data,error}=await sb.from("eni_groups").select("*").order("level",{ascending:false});
+  if(error){ say("Cannot reach the database: "+error.message,"err"); return; }
+  GROUPS=data;
+  const sel=document.getElementById("upGroup");
+  sel.innerHTML=data.map(g=>`<option value="${g.code}" ${g.code==="FIELD"?"selected":""}>${g.name} (level ${g.level})</option>`).join("");
+  sel.onchange=()=>{ const g=GROUPS.find(x=>x.code===sel.value);
+    document.getElementById("groupHint").textContent=g?g.description:""; };
+  sel.onchange();
+  document.getElementById("footR").textContent=GROUPS.length+" GROUPS";
+}
+async function signUp(){
+  const name=document.getElementById("upName").value.trim();
+  const email=document.getElementById("upEmail").value.trim().toLowerCase();
+  const company=document.getElementById("upCompany").value.trim();
+  const group=document.getElementById("upGroup").value;
+  const pin=document.getElementById("upPin").value, pin2=document.getElementById("upPin2").value;
+  if(!name||!email.includes("@")) return say("Name and a valid email are required.","err");
+  if(!/^\d{4,8}$/.test(pin)) return say("PIN must be 4–8 digits.","err");
+  if(pin!==pin2) return say("PINs do not match.","err");
+  document.getElementById("btnUp").disabled=true;
+  const pin_hash=await sha(email,pin);
+  const {data,error}=await sb.from("eni_users")
+    .insert({full_name:name,email,company:company||null,group_code:group,pin_hash,last_login:new Date().toISOString()})
+    .select().single();
+  document.getElementById("btnUp").disabled=false;
+  if(error){
+    if((error.message||"").includes("duplicate")) return say("An account with this email already exists — use SIGN IN.","err");
+    return say(error.message,"err");
+  }
+  say("Account created — entering…","ok");
+  setSession(data, GROUPS.find(g=>g.code===data.group_code));
+}
+async function signIn(){
+  const email=document.getElementById("inEmail").value.trim().toLowerCase();
+  const pin=document.getElementById("inPin").value;
+  if(!email.includes("@")) return say("Enter your email.","err");
+  if(!/^\d{4,8}$/.test(pin)) return say("PIN must be 4–8 digits.","err");
+  document.getElementById("btnIn").disabled=true;
+  const {data:u,error}=await sb.from("eni_users").select("*").eq("email",email).maybeSingle();
+  if(error){ document.getElementById("btnIn").disabled=false; return say(error.message,"err"); }
+  if(!u){ document.getElementById("btnIn").disabled=false; return say("No account for "+email+" — use OPEN ACCOUNT.","err"); }
+  if(u.active===false){ document.getElementById("btnIn").disabled=false; return say("This account is deactivated — contact an administrator.","err"); }
+  const h=await sha(email,pin);
+  if(!u.pin_hash){
+    // pre-created account (e.g. seeded admin): first PIN entry registers it
+    const {error:e2}=await sb.from("eni_users").update({pin_hash:h,last_login:new Date().toISOString()}).eq("id",u.id);
+    if(e2){ document.getElementById("btnIn").disabled=false; return say(e2.message,"err"); }
+  } else if(u.pin_hash!==h){
+    document.getElementById("btnIn").disabled=false; return say("Wrong PIN.","err");
+  } else {
+    sb.from("eni_users").update({last_login:new Date().toISOString()}).eq("id",u.id).then(()=>{});
+  }
+  say("Welcome back, "+u.full_name+" — entering…","ok");
+  setSession(u, GROUPS.find(g=>g.code===u.group_code));
+}
+document.addEventListener("keydown",e=>{ if(e.key==="Enter"){
+  if(document.getElementById("paneIn").style.display!=="none") signIn(); else signUp(); }});
+window.mode=mode; window.signIn=signIn; window.signUp=signUp;
+loadGroups();
+</script>
+</body>
+</html>
