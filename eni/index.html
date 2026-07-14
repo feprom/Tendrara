@@ -147,6 +147,12 @@
   .loading{padding:60px;text-align:center;color:var(--ink-soft);font-family:var(--mono);font-size:12px;}
   .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;min-width:70px;}
   .bar i{display:block;height:100%;background:var(--ok);}
+  /* ── BFD home diagram ─────────────────────────────────────── */
+  .bfd{border:1px solid var(--line-strong);border-radius:6px;background:#fff;margin-top:6px;padding:8px 10px 2px;}
+  .bfd svg{width:100%;height:auto;display:block;}
+  .ovblk{cursor:pointer;}
+  .ovblk rect.card{transition:stroke .12s,filter .12s;}
+  .ovblk:hover rect.card{stroke:var(--crimson);stroke-width:2;filter:drop-shadow(0 2px 6px rgba(200,16,46,.25));}
 </style>
 </head>
 <body>
@@ -611,6 +617,101 @@ function xcheckRow(io){
 }
 
 /* ── views ───────────────────────────────────────────────────── */
+/* ── BFD block-flow diagram (module-101 language) — home view ── */
+const TCI={"350":32.89,"340":14.02,"330":8.29,"360":7.23,"220":6.38,"310":3.68,"480":2.96,"200":2.53,
+           "410":2.20,"370":1.50,"230":1.33,"530":1.10,"500":0.90,"540":0.45,"550":0.40,"120":0.20,"430":0.15,"600":0.30};
+const TCI_EST=new Set(["410","530","500","540","550","120","430","600"]);
+function tciColor(v){
+  const t=Math.min(1,Math.pow((v||0)/33,0.42));
+  const stops=[[22,80,200],[24,160,90],[229,196,28],[232,66,92]];
+  const seg=Math.min(2,Math.floor(t*3)), f=t*3-seg;
+  const a=stops[seg], b=stops[seg+1];
+  return `rgb(${Math.round(a[0]+(b[0]-a[0])*f)},${Math.round(a[1]+(b[1]-a[1])*f)},${Math.round(a[2]+(b[2]-a[2])*f)})`;
+}
+const OV_NAMES={"200":"LNG PLANT INLET","220":"LNG STORAGE","230":"FLARE SYSTEM","310":"DEHYDRATION",
+  "330":"AMINE SWEETENING","340":"REFRIGERATION","350":"LIQUEFACTION","360":"FLASH GAS / BOG",
+  "370":"VAPORIZER","410":"HOT OIL PACKAGE","480":"FUEL DISTRIBUTION","500":"INSTRUMENT AIR",
+  "530":"OILY WATER","540":"RAW WATER","550":"CLOSED DRAIN","120":"CORROSION INHIBITOR","600":"NITROGEN"};
+function ovBlock(cnt,x,y,w,h,code,big){
+  const name=OV_NAMES[code]||(IDX.areaByCode.get(code)||{}).description||"";
+  const k=cnt(code), t=TCI[code];
+  let s=`<g class="ovblk" onclick="nav('area/${code}')" transform="translate(${x},${y})">
+    <rect class="card" width="${w}" height="${h}" rx="6" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>`;
+  if(big){
+    s+=`<text x="11" y="23" font-family="Segoe UI,Arial" font-size="16" font-weight="700" fill="#15171A">${code}</text>
+    <text x="11" y="36" font-family="Segoe UI,Arial" font-size="7.6" fill="#4A4F57" letter-spacing=".04em">${esc(name)}</text>
+    <text x="11" y="53" font-family="Consolas,monospace" font-size="8.6" fill="#15171A">EQ <tspan font-weight="700">${k.eq}</tspan> · INST <tspan font-weight="700">${k.inst}</tspan> · VLV <tspan font-weight="700">${k.vlv}</tspan></text>
+    <text x="11" y="65" font-family="Consolas,monospace" font-size="8.6" fill="#4A4F57">IO ${k.io} · ST ${k.st} · ALM ${k.alm}</text>`;
+    if(t!=null){
+      const bw=Math.max(3,Math.round((w-70)*Math.min(1,t/33)));
+      s+=`<rect x="11" y="${h-13}" width="${bw}" height="5" rx="2.5" fill="${tciColor(t)}"/>
+      <text x="${11+bw+5}" y="${h-8}" font-family="Consolas,monospace" font-size="7.2" fill="#4A4F57">TCI ${t.toFixed(2)}%${TCI_EST.has(code)?"*":""}</text>`;
+    }
+  }else{
+    s+=`<text x="10" y="19" font-family="Segoe UI,Arial" font-size="12.5" font-weight="700" fill="#15171A">${code}</text>
+    <text x="10" y="30" font-family="Segoe UI,Arial" font-size="7" fill="#4A4F57" letter-spacing=".04em">${esc(name)}</text>
+    <text x="10" y="45" font-family="Consolas,monospace" font-size="8" fill="#15171A">EQ ${k.eq} · INST ${k.inst} · IO ${k.io}</text>`;
+  }
+  return s+"</g>";
+}
+function bfdSvg(cnt){
+  let s=`<svg viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg"><defs>
+    <marker id="bfm" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#4A4F57"/></marker>
+    <marker id="bfr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#C8102E"/></marker>
+    <marker id="bfb" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#0B5CAD"/></marker>
+    <marker id="bfg" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1F8A4C"/></marker>
+    <marker id="bfa" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#B26A00"/></marker>
+  </defs>`;
+  s+=ovBlock(cnt,55,30,140,56,"230");
+  s+=ovBlock(cnt,480,30,140,56,"340");
+  s+=ovBlock(cnt,760,30,140,56,"360");
+  const MB=[["200",55],["330",235],["310",415],["350",595],["220",775]];
+  MB.forEach(function(b){ s+=ovBlock(cnt,b[1],150,140,84,b[0],true); });
+  s+=`<text x="6" y="186" font-family="Consolas,monospace" font-size="9" fill="#4A4F57">FEED</text>
+      <text x="6" y="197" font-family="Consolas,monospace" font-size="9" fill="#4A4F57">GAS</text>
+      <line x1="30" y1="192" x2="53" y2="192" stroke="#C8102E" stroke-width="3" marker-end="url(#bfr)"/>`;
+  for(let i=0;i<MB.length-1;i++){
+    s+=`<line x1="${MB[i][1]+140}" y1="192" x2="${MB[i+1][1]-2}" y2="192" stroke="#C8102E" stroke-width="3" marker-end="url(#bfr)"/>`;
+  }
+  s+=`<line x1="915" y1="192" x2="952" y2="192" stroke="#C8102E" stroke-width="3" marker-end="url(#bfr)"/>
+      <text x="955" y="189" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">LNG</text>
+      <text x="955" y="200" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">TRUCKS</text>
+      <line x1="125" y1="148" x2="125" y2="88" stroke="#4A4F57" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#bfm)"/>
+      <text x="131" y="120" font-family="Consolas,monospace" font-size="7.5" fill="#4A4F57">HP/LP RELIEFS · ALL UNITS</text>
+      <polyline points="560,86 560,120 660,120 660,148" fill="none" stroke="#0B5CAD" stroke-width="1.6" marker-end="url(#bfb)"/>
+      <line x1="520" y1="86" x2="520" y2="148" stroke="#0B5CAD" stroke-width="1.6" marker-end="url(#bfb)"/>
+      <text x="566" y="112" font-family="Consolas,monospace" font-size="7.5" fill="#0B5CAD">NH3</text>
+      <line x1="820" y1="148" x2="820" y2="88" stroke="#1F8A4C" stroke-width="1.6" marker-end="url(#bfg)"/>
+      <text x="826" y="120" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">BOG</text>
+      <polyline points="760,58 700,58 700,148" fill="none" stroke="#1F8A4C" stroke-width="1.6" marker-end="url(#bfg)"/>
+      <text x="704" y="100" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">RECYCLE</text>`;
+  s+=ovBlock(cnt,55,300,140,64,"410");
+  s+=ovBlock(cnt,415,300,140,64,"370");
+  s+=ovBlock(cnt,625,300,140,64,"480");
+  s+=`<line x1="110" y1="298" x2="110" y2="238" stroke="#B26A00" stroke-width="1.6" marker-end="url(#bfa)"/>
+      <polyline points="195,332 300,332 300,238" fill="none" stroke="#B26A00" stroke-width="1.6" marker-end="url(#bfa)"/>
+      <text x="118" y="268" font-family="Consolas,monospace" font-size="7.5" fill="#B26A00">HOT OIL</text>
+      <polyline points="150,238 150,268 380,268 380,332 413,332" fill="none" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#bfm)"/>
+      <text x="180" y="263" font-family="Consolas,monospace" font-size="7.5" fill="#4A4F57">FUEL-GAS BYPASS (U200)</text>
+      <line x1="555" y1="332" x2="622" y2="332" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#bfm)"/>
+      <polyline points="900,58 985,58 985,290 765,290 765,298" fill="none" stroke="#1F8A4C" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bfg)"/>
+      <text x="800" y="285" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">FLASH GAS → FUEL</text>
+      <line x1="765" y1="332" x2="822" y2="332" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#bfm)"/>
+      <text x="826" y="329" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">POWER GEN /</text>
+      <text x="826" y="340" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">FUEL USERS</text>
+      <line x1="55" y1="410" x2="945" y2="410" stroke="#C9CED4" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="55" y="402" font-family="Consolas,monospace" font-size="8" letter-spacing=".14em" fill="#4A4F57">UTILITIES &amp; OFFSITES</text>`;
+  ["500","600","120","540","550","530"].forEach(function(u,i){ s+=ovBlock(cnt,55+i*150,428,140,56,u); });
+  s+=`<g font-family="Consolas,monospace" font-size="7.5">
+      <line x1="55" y1="530" x2="80" y2="530" stroke="#C8102E" stroke-width="3"/><text x="85" y="533" fill="#4A4F57">MAIN GAS / LNG</text>
+      <line x1="185" y1="530" x2="210" y2="530" stroke="#0B5CAD" stroke-width="1.6"/><text x="215" y="533" fill="#4A4F57">NH3 REFRIGERANT</text>
+      <line x1="330" y1="530" x2="355" y2="530" stroke="#1F8A4C" stroke-width="1.6"/><text x="360" y="533" fill="#4A4F57">BOG / FLASH GAS</text>
+      <line x1="470" y1="530" x2="495" y2="530" stroke="#B26A00" stroke-width="1.6"/><text x="500" y="533" fill="#4A4F57">HOT OIL</text>
+      <line x1="560" y1="530" x2="585" y2="530" stroke="#4A4F57" stroke-width="1.5" stroke-dasharray="5 4"/><text x="590" y="533" fill="#4A4F57">RELIEF / INTERMITTENT</text>
+      <text x="740" y="533" fill="#4A4F57">TCI BAR = % OF PLANT COMPLEXITY (* ESTIMATED)</text></g></svg>`;
+  return s;
+}
+
 function renderHome(c){
   const verified=DB.vers.filter(v=>v.check_kind==="FIELD_VERIFY"&&v.result==="OK").length;
   const areas=[...DB.areas].filter(a=>a.description).sort((a,b)=>String(a.area_code).localeCompare(String(b.area_code)));
@@ -623,14 +724,6 @@ function renderHome(c){
     const eq=DB.equip.filter(r=>String(r.area_code)===String(code)).length;
     return {st:st.length, io, inst, vlv, alm, eq};
   };
-  let rows=areas.map(a=>{
-    const k=cnt(a.area_code);
-    return `<tr class="rowlink" onclick="nav('area/${a.area_code}')">
-      <td class="mono" style="font-weight:700;color:var(--crimson)">${a.area_code}</td>
-      <td>${esc(a.description)}</td>
-      <td class="r mono">${k.eq||""}</td><td class="r mono">${k.inst||""}</td><td class="r mono">${k.vlv||""}</td>
-      <td class="r mono">${k.st||""}</td><td class="r mono">${k.io||""}</td><td class="r mono">${k.alm||""}</td></tr>`;
-  }).join("");
   c.innerHTML=`
   <div class="kicker">TX EI00 <span class="sub">· PLANT ARCHITECTURE · E&amp;I MASTER DATA</span></div>
   <h1>Tendrara Micro-LNG — E&amp;I Navigator</h1>
@@ -649,11 +742,9 @@ function renderHome(c){
     <div class="fact link" onclick="nav('cr')"><div class="n">${DB.crs.length}</div><div class="l">CHANGE REQUESTS</div></div>
     <div class="fact"><div class="n">${Math.round(100*verified/Math.max(1,DB.io.length))}%</div><div class="l">IO FIELD-VERIFIED (${verified}/${DB.io.length})</div></div>
   </div>
-  <h2>Areas — asset &amp; IO inventory</h2>
-  <table class="data"><thead><tr><th>AREA</th><th>DESCRIPTION</th><th class="r">EQUIP</th><th class="r">INSTR</th>
-  <th class="r">VALVES</th><th class="r">STATIONS</th><th class="r">IO CH</th><th class="r">ALARMS</th></tr></thead>
-  <tbody>${rows}</tbody></table>
-  <div class="note">Navigation: click an area row, or use the transaction field —
+  <h2>Process areas — interconnection &amp; asset inventory</h2>
+  <div class="bfd">${bfdSvg(cnt)}</div>
+  <div class="note">Navigation: click an area block (430 · pendiente confirmar via <span class="mono">EI10 430</span>), or use the transaction field —
   <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
   <span class="mono">TAG PT-3411.1</span> instrument · <span class="mono">EI30/EI40/EI50</span> reports.</div>`;
 }
