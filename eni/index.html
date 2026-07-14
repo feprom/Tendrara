@@ -573,9 +573,10 @@ function sigFamily(raw){
   // RTD lives in the ANALOG family too: every RTD-sensed tag in this plant is a
   // head-mounted transmitter that puts 4-20 mA on the wire to the IO card — the
   // index records the sensor element (RTD/PT-100), the IO list records the loop.
-  if(/^(AI|AO|420MA|RTD|PT100)$/.test(s)) return "ANALOG";
-  if(/^(DI|DO|DINAMUR|NAMUR|24VDC|230VAC|DRYCONTACT|SOLENOIDVALVE|SOLENOIDVALVECOIL|DISCRETESWITCH|PILOTLIGHT)$/.test(s)) return "DIGITAL";
   if(/MODBUS|PROFIBUS|PROFINET|HART/.test(s)) return "BUS";
+  if(/^(AI|AO)$/.test(s) || /^(4\-?20MA|420MA|RTD|PT100)/.test(s)) return "ANALOG";
+  // digital: DI/DO in any form (incl. "DO 24VDC" -> "DO24VDC"), or a digital keyword
+  if(/^(DI|DO)/.test(s) || /(24VDC|230VAC|110VAC|DRYCONTACT|NAMUR|SOLENOID|DISCRETESWITCH|PILOTLIGHT)/.test(s)) return "DIGITAL";
   return s; // unrecognized vocabulary — fall back to literal compare, still catches real typos
 }
 // Bus/serial-connected devices (analyzers on Modbus, etc.) have no discrete IO

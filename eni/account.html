@@ -72,6 +72,7 @@
     <div id="paneUp" style="display:none">
       <label>Full name</label><input id="upName" placeholder="Name Surname">
       <label>Email</label><input id="upEmail" type="email" placeholder="name@company.com">
+      <div class="hint" id="domHint"></div>
       <label>Company</label><input id="upCompany" placeholder="Technical America / ITALFLUID / …">
       <label>Group</label><select id="upGroup"></select>
       <div class="hint" id="groupHint"></div>
@@ -92,7 +93,8 @@
 <script>
 "use strict";
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-let GROUPS=[];
+let GROUPS=[], DOMAINS=[];
+function domainOk(email){ return DOMAINS.length===0 || DOMAINS.some(d=>email.toLowerCase().endsWith("@"+d)); }
 
 function mode(m){
   document.getElementById("tabIn").classList.toggle("on",m==="in");
@@ -116,9 +118,16 @@ function setSession(u,g){
   location.href="index.html";
 }
 async function loadGroups(){
-  const {data,error}=await sb.from("eni_groups").select("*").order("level",{ascending:false});
+  const [{data,error},{data:doms}]=await Promise.all([
+    sb.from("eni_groups").select("*").order("level",{ascending:false}),
+    sb.from("eni_allowed_domains").select("domain").eq("active",true)
+  ]);
   if(error){ say("Cannot reach the database: "+error.message,"err"); return; }
-  GROUPS=data;
+  GROUPS=data; DOMAINS=(doms||[]).map(d=>d.domain);
+  if(DOMAINS.length){
+    document.getElementById("upEmail").placeholder="name@"+DOMAINS[0];
+    document.getElementById("domHint").textContent="Accounts are restricted to: "+DOMAINS.map(d=>"@"+d).join(", ");
+  }
   const sel=document.getElementById("upGroup");
   sel.innerHTML=data.map(g=>`<option value="${g.code}" ${g.code==="FIELD"?"selected":""}>${g.name} (level ${g.level})</option>`).join("");
   sel.onchange=()=>{ const g=GROUPS.find(x=>x.code===sel.value);
@@ -133,6 +142,7 @@ async function signUp(){
   const group=document.getElementById("upGroup").value;
   const pin=document.getElementById("upPin").value, pin2=document.getElementById("upPin2").value;
   if(!name||!email.includes("@")) return say("Name and a valid email are required.","err");
+  if(!domainOk(email)) return say("Only these company emails can register: "+DOMAINS.map(d=>"@"+d).join(", "),"err");
   if(!/^\d{4,8}$/.test(pin)) return say("PIN must be 4–8 digits.","err");
   if(pin!==pin2) return say("PINs do not match.","err");
   document.getElementById("btnUp").disabled=true;
@@ -143,6 +153,7 @@ async function signUp(){
   document.getElementById("btnUp").disabled=false;
   if(error){
     if((error.message||"").includes("duplicate")) return say("An account with this email already exists — use SIGN IN.","err");
+    if((error.message||"").includes("EMAIL_DOMAIN_NOT_ALLOWED")) return say("This email domain is not authorized. Allowed: "+DOMAINS.map(d=>"@"+d).join(", "),"err");
     return say(error.message,"err");
   }
   say("Account created — entering…","ok");
