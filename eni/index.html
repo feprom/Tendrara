@@ -153,6 +153,37 @@
   .ovblk{cursor:pointer;}
   .ovblk rect.card{transition:stroke .12s,filter .12s;}
   .ovblk:hover rect.card{stroke:var(--crimson);stroke-width:2;filter:drop-shadow(0 2px 6px rgba(200,16,46,.25));}
+
+  /* ── Process View — compact area cards ────────────────────── */
+  .pv-toolbar{display:flex;align-items:center;gap:10px;margin:14px 0 4px;flex-wrap:wrap;}
+  .pv-seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:5px;overflow:hidden;}
+  .pv-seg button{border:none;background:#fff;font-family:var(--mono);font-size:10.5px;font-weight:700;
+    letter-spacing:.06em;padding:6px 13px;cursor:pointer;color:var(--ink-soft);transition:.12s;}
+  .pv-seg button+button{border-left:1px solid var(--line-strong);}
+  .pv-seg button:hover{color:var(--crimson);}
+  .pv-seg button.on{background:var(--crimson);color:#fff;}
+  .pv-grouphd{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);margin:20px 0 9px;}
+  .pv-grouphd::after{content:"";flex:1;height:1px;background:var(--line);}
+  .pv-grouphd .gc{font-weight:700;color:var(--crimson);}
+  .pv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:10px;}
+  .pv-card{border:1px solid var(--line-strong);border-radius:7px;background:#fff;padding:10px 12px 9px;
+    cursor:pointer;transition:.12s;}
+  .pv-card:hover{border-color:var(--crimson);box-shadow:0 3px 11px rgba(200,16,46,.13);transform:translateY(-1px);}
+  .pv-card .cd{display:flex;align-items:baseline;gap:7px;min-height:26px;}
+  .pv-card .code{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--crimson);line-height:1;flex:none;}
+  .pv-card .nm{font-size:9.5px;font-weight:700;color:var(--ink);letter-spacing:.02em;line-height:1.22;text-transform:uppercase;}
+  .pv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 5px;margin-top:9px;}
+  .pv-stat{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11.5px;color:var(--ink);}
+  .pv-stat svg{width:13px;height:13px;flex:none;color:var(--blue);}
+  .pv-stat b{font-weight:700;}
+  .pv-stat.z{opacity:.32;}
+  .pv-tci{height:4px;border-radius:2px;background:var(--line);margin-top:10px;overflow:hidden;}
+  .pv-tci i{display:block;height:100%;}
+  .pv-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;font-family:var(--mono);font-size:10px;
+    letter-spacing:.04em;color:var(--ink-soft);}
+  .pv-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .pv-legend svg{width:13px;height:13px;color:var(--blue);}
 </style>
 </head>
 <body>
@@ -171,7 +202,6 @@
   </div>
   <div class="crumbs" id="crumbs">…</div>
   <div class="gsearch"><input id="gsearch" placeholder="⌕ search all — e.g. 3333, suction, S221" list="taglist"><datalist id="taglist"></datalist></div>
-  <a href="plant.html" title="Spatial navigator — plant GA, zoom navigation, TCI cube (2026)" style="font-family:var(--mono);font-size:10.5px;font-weight:700;color:#fff;text-decoration:none;background:var(--crimson);border:1px solid var(--crimson);border-radius:3px;padding:4px 10px;white-space:nowrap;letter-spacing:.06em">◳ PLANT VIEW</a>
   <button class="userchip" id="userchip" title="Click to change user">USER <b>—</b></button>
 </div>
 
@@ -470,24 +500,26 @@ function route(){
 const openAreas = new Set();
 function buildTree(){
   const t=$("#tree");
-  let html=`<div class="thead">PLANT STRUCTURE · TX EI00</div>
+  let html=`<div class="thead">PROCESS VIEW · TX EI00</div>
   <div class="tnode root ${ROUTE.view==='home'?'sel':''}" onclick="nav('')"><span class="tw">■</span><span class="lbl">TENDRARA MICRO-LNG</span><span class="cnt">${DB.io.length} IO</span></div>`;
-  const areas=[...DB.areas].filter(a=>a.description).sort((a,b)=>String(a.area_code).localeCompare(String(b.area_code)));
-  areas.forEach(a=>{
-    const code=String(a.area_code);
+  const areaNode=(code)=>{
+    if(!areaExists(code)) return "";
     const st=IDX.areaStations.get(code)||[];
     const open=openAreas.has(code);
     const sel=ROUTE.view==="area"&&ROUTE.area===code;
-    html+=`<div class="tnode ${sel?'sel':''}" onclick="toggleArea('${code}')">
+    let h=`<div class="tnode ${sel?'sel':''}" onclick="toggleArea('${code}')">
       <span class="tw">${st.length?(open?"▾":"▸"):"·"}</span>
-      <span class="code">${code}</span><span class="lbl" title="${esc(a.description)}">${esc(a.description)}</span>
+      <span class="code">${code}</span><span class="lbl" title="${esc(areaName(code))}">${esc(areaName(code))}</span>
       <span class="cnt">${st.length||""}</span></div>`;
     if(open) st.sort((x,y)=>x.panel.localeCompare(y.panel)).forEach(s=>{
       const ssel=ROUTE.view==="station"&&ROUTE.panel===s.panel;
-      html+=`<div class="tnode station ${ssel?'sel':''}" onclick="event.stopPropagation();nav('station/${encodeURIComponent(s.panel)}')">
+      h+=`<div class="tnode station ${ssel?'sel':''}" onclick="event.stopPropagation();nav('station/${encodeURIComponent(s.panel)}')">
         <span class="code">${esc(s.panel)}</span><span class="cnt">${s.rows.length} ch</span></div>`;
     });
-  });
+    return h;
+  };
+  html+=`<div class="thead" style="margin-top:6px">PROCESS UNITS</div>`+PROC_ORDER.map(areaNode).join("");
+  html+=`<div class="thead" style="margin-top:6px">UTILITIES &amp; OFFSITES</div>`+UTIL_ORDER.map(areaNode).join("");
   html+=`<div class="thead" style="margin-top:12px">REPORTS</div>
   <div class="tnode ${ROUTE.view==='alarms'?'sel':''}" onclick="nav('alarms')"><span class="tw">▤</span><span class="code">EI30</span><span class="lbl">Alarm register</span><span class="cnt">${DB.alarms.length}</span></div>
   <div class="tnode ${ROUTE.view==='xcheck'?'sel':''}" onclick="nav('xcheck')"><span class="tw">▤</span><span class="code">EI40</span><span class="lbl">Cross-check IO ↔ index</span></div>
@@ -616,6 +648,49 @@ function xcheckRow(io){
   return {code:"OK", cls:"ok", txt:"MATCH", src:inst?"INST":"VALVE"};
 }
 
+/* ── canonical area metadata (per PRO02 process description) ──── */
+// Manual names + Process / Utility grouping. Drives the Process View
+// cards, the left tree grouping, and display names everywhere. Codes not
+// listed fall back to the DB description.
+const AREA_META={
+  "200":{n:"LNG PLANT INLET",g:"P"},
+  "120":{n:"CORROSION INHIBITOR",g:"P"},
+  "330":{n:"AMINE SWEETENING",g:"P"},
+  "310":{n:"DEHYDRATION",g:"P"},
+  "340":{n:"REFRIGERATION",g:"P"},
+  "350":{n:"LIQUEFACTION",g:"P"},
+  "360":{n:"FLASH GAS",g:"P"},
+  "370":{n:"VAPORIZER",g:"P"},
+  "220":{n:"LNG STORAGE & LOADING",g:"P"},
+  "430":{n:"PUMP INSTRUMENTS · P-411A/B",g:"P"},
+  "410":{n:"HOT OIL PACKAGE",g:"U"},
+  "480":{n:"FUEL GAS SYSTEM",g:"U"},
+  "500":{n:"INSTRUMENT AIR PACKAGE",g:"U"},
+  "600":{n:"NITROGEN GENERATOR",g:"U"},
+  "230":{n:"FLARE SYSTEM",g:"U"},
+  "530":{n:"PROCESS WATER TREATMENT",g:"U"},
+  "540":{n:"RAW WATER TREATMENT",g:"U"},
+  "550":{n:"CLOSED DRAIN SYSTEM",g:"U"}
+};
+// process chain order (feed → LNG), then storage/loading & pump-instr tail
+const PROC_ORDER=["200","120","330","310","340","350","360","370","220","430"];
+const UTIL_ORDER=["410","480","500","600","230","530","540","550"];
+function areaName(code){const m=AREA_META[String(code)];return m?m.n:((IDX.areaByCode.get(String(code))||{}).description||("AREA "+code));}
+function areaGroup(code){const m=AREA_META[String(code)];return m?m.g:"U";}
+function areaExists(code){return IDX.areaByCode.has(String(code));}
+
+/* ── stat icons (EQ · INST · IO · VLV · ST · ALM) ─────────────── */
+const PV_LABELS={EQ:"Equipment",INST:"Instruments",IO:"IO channels",VLV:"Actuated valves",ST:"IO stations (RIO/JB)",ALM:"Alarms"};
+const PV_ICONS={
+  EQ:'<rect x="4.3" y="2.6" width="7.4" height="10.8" rx="3.6"/><line x1="4.3" y1="6" x2="11.7" y2="6"/><line x1="4.3" y1="10" x2="11.7" y2="10"/>',
+  INST:'<circle cx="8" cy="8" r="5.4"/><line x1="2.6" y1="8" x2="13.4" y2="8"/>',
+  IO:'<rect x="4.2" y="4.2" width="7.6" height="7.6" rx="1"/><line x1="6" y1="2.5" x2="6" y2="4.2"/><line x1="10" y1="2.5" x2="10" y2="4.2"/><line x1="6" y1="11.8" x2="6" y2="13.5"/><line x1="10" y1="11.8" x2="10" y2="13.5"/><line x1="2.5" y1="6" x2="4.2" y2="6"/><line x1="2.5" y1="10" x2="4.2" y2="10"/><line x1="11.8" y1="6" x2="13.5" y2="6"/><line x1="11.8" y1="10" x2="13.5" y2="10"/>',
+  VLV:'<path d="M3 4.5 L8 8 L3 11.5 Z"/><path d="M13 4.5 L8 8 L13 11.5 Z"/><line x1="8" y1="8" x2="8" y2="3.2"/><circle cx="8" cy="2.8" r="1.1"/>',
+  ST:'<rect x="3" y="2.6" width="10" height="10.8" rx="1.2"/><line x1="3" y1="5.6" x2="13" y2="5.6"/><circle cx="5" cy="4.1" r=".7"/><line x1="5.4" y1="8.4" x2="10.6" y2="8.4"/><line x1="5.4" y1="10.8" x2="10.6" y2="10.8"/>',
+  ALM:'<path d="M8 2.4c2.1 0 3.4 1.5 3.4 3.9v2.1l1.1 1.6H3.5l1.1-1.6V6.3C4.6 3.9 5.9 2.4 8 2.4Z"/><path d="M6.7 12a1.35 1.35 0 0 0 2.6 0"/>'
+};
+function ICON(kind){return `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${PV_ICONS[kind]||""}</svg>`;}
+
 /* ── views ───────────────────────────────────────────────────── */
 /* ── BFD block-flow diagram (module-101 language) — home view ── */
 const TCI={"350":32.89,"340":14.02,"330":8.29,"360":7.23,"220":6.38,"310":3.68,"480":2.96,"200":2.53,
@@ -633,7 +708,7 @@ const OV_NAMES={"200":"LNG PLANT INLET","220":"LNG STORAGE","230":"FLARE SYSTEM"
   "370":"VAPORIZER","410":"HOT OIL PACKAGE","480":"FUEL DISTRIBUTION","500":"INSTRUMENT AIR",
   "530":"OILY WATER","540":"RAW WATER","550":"CLOSED DRAIN","120":"CORROSION INHIBITOR","600":"NITROGEN"};
 function ovBlock(cnt,x,y,w,h,code,big){
-  const name=OV_NAMES[code]||(IDX.areaByCode.get(code)||{}).description||"";
+  const name=areaName(code);
   const k=cnt(code), t=TCI[code];
   let s=`<g class="ovblk" onclick="nav('area/${code}')" transform="translate(${x},${y})">
     <rect class="card" width="${w}" height="${h}" rx="6" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>`;
@@ -712,41 +787,71 @@ function bfdSvg(cnt){
   return s;
 }
 
+function areaCounts(code){
+  const st=IDX.areaStations.get(String(code))||[];
+  const io=st.reduce((n,s)=>n+s.rows.length,0);
+  const inst=DB.inst.filter(r=>String(r.unit)===String(code)).length;
+  const vlv=DB.valves.filter(r=>String(r.unit)===String(code)).length;
+  const alm=DB.alarms.filter(r=>String(r.area_code)===String(code)).length;
+  const eq=DB.equip.filter(r=>String(r.area_code)===String(code)).length;
+  return {st:st.length, io, inst, vlv, alm, eq};
+}
+function pvStat(kind,val){
+  return `<span class="pv-stat ${val?"":"z"}" title="${PV_LABELS[kind]}">${ICON(kind)}<b>${val}</b></span>`;
+}
+function pvCard(code){
+  const k=areaCounts(code), t=TCI[String(code)];
+  return `<div class="pv-card" onclick="nav('area/${code}')" title="${esc(areaName(code))} — open area ${code}">
+    <div class="cd"><span class="code">${code}</span><span class="nm">${esc(areaName(code))}</span></div>
+    <div class="pv-stats">
+      ${pvStat("EQ",k.eq)}${pvStat("INST",k.inst)}${pvStat("IO",k.io)}
+      ${pvStat("VLV",k.vlv)}${pvStat("ST",k.st)}${pvStat("ALM",k.alm)}
+    </div>
+    ${t!=null?`<div class="pv-tci" title="Technical Complexity Index ${t.toFixed(2)}%${TCI_EST.has(String(code))?" (estimated)":""}"><i style="width:${Math.min(100,Math.round(t/33*100))}%;background:${tciColor(t)}"></i></div>`:""}
+  </div>`;
+}
 function renderHome(c){
+  const mode=window._homeMode||"cards";
   const verified=DB.vers.filter(v=>v.check_kind==="FIELD_VERIFY"&&v.result==="OK").length;
-  const areas=[...DB.areas].filter(a=>a.description).sort((a,b)=>String(a.area_code).localeCompare(String(b.area_code)));
-  const cnt=code=>{
-    const st=IDX.areaStations.get(String(code))||[];
-    const io=st.reduce((n,s)=>n+s.rows.length,0);
-    const inst=DB.inst.filter(r=>String(r.unit)===String(code)).length;
-    const vlv=DB.valves.filter(r=>String(r.unit)===String(code)).length;
-    const alm=DB.alarms.filter(r=>String(r.area_code)===String(code)).length;
-    const eq=DB.equip.filter(r=>String(r.area_code)===String(code)).length;
-    return {st:st.length, io, inst, vlv, alm, eq};
-  };
+  const proc=PROC_ORDER.filter(areaExists), util=UTIL_ORDER.filter(areaExists);
+  const cnt=code=>areaCounts(code);
+  const legend=["EQ","INST","IO","VLV","ST","ALM"].map(k=>`<span>${ICON(k)}${PV_LABELS[k]}</span>`).join("");
+  const cardsBody=`
+    <div class="pv-grouphd"><span class="gc">Process units</span> · feed → LNG</div>
+    <div class="pv-grid">${proc.map(pvCard).join("")}</div>
+    <div class="pv-grouphd"><span class="gc">Utilities &amp; offsites</span></div>
+    <div class="pv-grid">${util.map(pvCard).join("")}</div>
+    <div class="pv-legend">${legend}</div>`;
+  const diagramBody=`<div class="bfd">${bfdSvg(cnt)}</div>`;
   c.innerHTML=`
-  <div class="kicker">TX EI00 <span class="sub">· PLANT ARCHITECTURE · E&amp;I MASTER DATA</span></div>
-  <h1>Tendrara Micro-LNG — E&amp;I Navigator</h1>
-  <p class="lead">Drill from plant architecture down to each RIO/JB station, its IO list and every instrument.
-  Verify channels in the field, cross-check the IO list against the instrument &amp; valve index,
-  review alarms and raise MOC-style change requests. Live data from the plant knowledge base
+  <div class="kicker">TX EI00 <span class="sub">· PROCESS VIEW · AREAS &amp; UTILITIES</span></div>
+  <h1>Tendrara Micro-LNG — Process View</h1>
+  <p class="lead">Areas and utilities as per the process description (<span class="mono">PRO02-ING-FR02</span>).
+  Each card shows the digitized inventory for that unit — click to drill into stations, IO lists,
+  instruments, valves and alarms. Live data from the plant knowledge base
   (docs <span class="mono">21044-PR-…</span>, EPC ITALFLUID · Sound Energy / ManaEnergy).</p>
   <div class="facts">
-    <div class="fact"><div class="n">${areas.length}</div><div class="l">PROCESS AREAS</div></div>
+    <div class="fact"><div class="n">${proc.length+util.length}</div><div class="l">AREAS &amp; UTILITIES</div></div>
     <div class="fact"><div class="n">${IDX.stations.size}</div><div class="l">IO STATIONS (RIO / JB)</div></div>
     <div class="fact"><div class="n">${DB.io.length}</div><div class="l">IO CHANNELS</div></div>
     <div class="fact"><div class="n">${DB.inst.length}</div><div class="l">INSTRUMENTS</div></div>
     <div class="fact"><div class="n">${DB.valves.length}</div><div class="l">ACTUATED VALVES</div></div>
     <div class="fact link" onclick="nav('alarms')"><div class="n">${DB.alarms.length}</div><div class="l">ALARMS</div></div>
     <div class="fact link" onclick="nav('drawings')"><div class="n">${DB.drawings.length}</div><div class="l">P&amp;ID DRAWINGS</div></div>
-    <div class="fact link" onclick="nav('cr')"><div class="n">${DB.crs.length}</div><div class="l">CHANGE REQUESTS</div></div>
     <div class="fact"><div class="n">${Math.round(100*verified/Math.max(1,DB.io.length))}%</div><div class="l">IO FIELD-VERIFIED (${verified}/${DB.io.length})</div></div>
   </div>
-  <h2>Process areas — interconnection &amp; asset inventory</h2>
-  <div class="bfd">${bfdSvg(cnt)}</div>
-  <div class="note">Navigation: click an area block (430 · pendiente confirmar via <span class="mono">EI10 430</span>), or use the transaction field —
-  <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
-  <span class="mono">TAG PT-3411.1</span> instrument · <span class="mono">EI30/EI40/EI50</span> reports.</div>`;
+  <div class="pv-toolbar">
+    <div class="pv-seg">
+      <button class="${mode==="cards"?"on":""}" onclick="window._homeMode='cards';render()">▦ CARDS</button>
+      <button class="${mode==="diagram"?"on":""}" onclick="window._homeMode='diagram';render()">⇄ FLOW DIAGRAM</button>
+    </div>
+    <span style="flex:1"></span>
+    <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${mode==="cards"?"click a card to open the area":"click a block to open the area"}</span>
+  </div>
+  ${mode==="cards"?cardsBody:diagramBody}
+  <div class="note">Transactions: <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
+  <span class="mono">TAG PT-3411.1</span> instrument · <span class="mono">EI30/EI40/EI50</span> reports.
+  TCI bar = share of plant complexity (* estimated).</div>`;
 }
 
 function renderArea(c, code){
@@ -771,7 +876,7 @@ function renderArea(c, code){
   const eqRows=eq.slice(0,80).map(e=>`<tr><td class="tag" onclick="openEquip('${esc((e.tag||"").trim())}')" title="Open equipment card">${nz(e.tag)}</td><td class="dim">${nz(e.service)}</td><td class="mono">${nz(e.skid_tag,"")}</td></tr>`).join("");
   c.innerHTML=`
   <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
-  <h1>Area ${esc(code)} — ${esc(a.description)}</h1>
+  <h1>Area ${esc(code)} — ${esc(areaName(code))}</h1>
   <div class="facts">
     <div class="fact"><div class="n">${st.length}</div><div class="l">IO STATIONS</div></div>
     <div class="fact"><div class="n">${st.reduce((n,s)=>n+s.rows.length,0)}</div><div class="l">IO CHANNELS</div></div>
