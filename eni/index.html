@@ -81,6 +81,46 @@
   .fact .n{font-size:20px;font-weight:700;color:var(--crimson);font-family:var(--mono);line-height:1.05;}
   .fact .l{font-size:10px;color:var(--ink-soft);margin-top:3px;line-height:1.25;}
 
+  /* ── interactive data table (collapse / filter / sort / export) ── */
+  .dt{border:1px solid var(--line);border-radius:7px;margin-top:16px;background:#fff;overflow:hidden;}
+  .dthead{display:flex;align-items:center;gap:9px;padding:8px 11px;background:var(--bg-soft);border-bottom:1px solid var(--line);}
+  .dthead .dttoggle{border:none;background:none;cursor:pointer;font-size:12px;color:var(--ink-soft);width:16px;padding:0;line-height:1;}
+  .dthead .dticon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:var(--crimson);}
+  .dthead .dticon svg{width:15px;height:15px;}
+  .dthead .dttitle{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.01em;}
+  .dthead .dtn{font-family:var(--mono);font-size:11px;color:var(--ink-soft);font-weight:400;}
+  .dthead .dtfilter{margin-left:auto;font-family:var(--mono);font-size:11px;padding:4px 8px;border:1px solid var(--line-strong);border-radius:3px;width:150px;}
+  .dthead .dtfilter:focus{outline:2px solid #f4c3cc;border-color:var(--crimson);}
+  .dtbody{overflow:auto;max-height:460px;}
+  .dtbody table.data{margin-top:0;}
+  table.data th.dtsort{cursor:pointer;user-select:none;white-space:nowrap;}
+  table.data th.dtsort:hover{color:var(--crimson);}
+  table.data th.dtsort .ar{color:var(--crimson);font-size:9px;margin-left:2px;}
+  .dtempty{padding:16px;text-align:center;color:var(--ink-soft);font-size:12px;}
+
+  /* ── cause & effect matrix (module-101 style) ─────────────────── */
+  .cewrap{overflow:auto;margin-top:6px;}
+  .cematrix{border-collapse:collapse;font-size:11px;}
+  .cematrix th,.cematrix td{border:1px solid var(--line-strong);padding:5px 8px;}
+  .cematrix thead th{background:var(--bg-soft);font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;}
+  .cematrix th.eff{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;height:118px;text-align:left;font-weight:700;color:var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:.03em;cursor:pointer;}
+  .cematrix th.eff.effhi{background:var(--crimson);color:#fff;}
+  .cematrix td.tg{font-family:var(--mono);font-weight:700;color:var(--crimson);white-space:nowrap;}
+  .cematrix td.ins{font-family:var(--mono);font-size:10px;color:var(--blue);white-space:nowrap;cursor:pointer;}
+  .cematrix td.ins:hover{text-decoration:underline;}
+  .cematrix td.ds{font-size:10.5px;color:var(--ink);max-width:260px;}
+  .cematrix td.sp{font-family:var(--mono);font-size:10px;color:var(--ink-soft);white-space:nowrap;}
+  .cematrix td.mk{text-align:center;font-weight:700;color:var(--crimson);font-size:14px;}
+  .cematrix td.mk.hit{background:#FBE9EC;}
+  .cematrix td.mk.colhi{background:var(--crimson)!important;color:#fff;}
+  .cematrix tbody tr:hover td{background:#FBF2F4;}
+  .cematrix tbody tr:hover td.mk.hit{background:#f6cdd5;}
+  .cebadge{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700;padding:1px 6px;border-radius:9px;border:1px solid;}
+  .cebadge.psd{color:var(--crimson);border-color:var(--crimson);background:#FBE9EC;}
+  .cebadge.lsd{color:var(--blue);border-color:var(--blue);background:#EAF3FB;}
+  .celegend{margin-top:9px;font-size:11px;color:var(--ink-soft);line-height:1.6;border-top:1px dashed var(--line-strong);padding-top:8px;}
+  .celegend .cetag{font-family:var(--mono);font-weight:700;color:var(--crimson);}
+
   table.data{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px;background:#fff;}
   table.data th{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;
     color:var(--ink-soft);text-align:left;padding:7px 8px;border-bottom:2px solid var(--line-strong);position:sticky;top:0;background:#fff;z-index:1;}
@@ -287,6 +327,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/supabase-config.js"></script>
 <script src="doc-manifest.js"></script>
 <script>
@@ -897,9 +938,140 @@ function renderHome(c){
   Left rail = red spine (process units) / blue spine (utilities). TCI bar = share of plant complexity (* estimated).</div>`;
 }
 
-function moreNote(shown,total,label){
-  return shown<total?`<div class="note">Showing first ${shown} of ${total} ${label} — open a station or use global search for the full list.</div>`:"";
+/* ══ interactive data table — collapse · filter · sort · export ═══
+   dataTable(id, icon, title, cols, rows, opts) renders a card table.
+   cols: [{label, get(row), html(row,val)?, cls?, r?, num?, blank?}]
+   State lives in TBL keyed by id; only the tbody re-renders on interaction
+   (filter input stays focused because it lives in the header).            */
+const TBL=new Map();
+function dataTable(id, icon, title, cols, rows, opts){
+  opts=opts||{};
+  TBL.set(id,{id,icon,title,cols,rows,sort:opts.sort==null?null:opts.sort,dir:opts.dir||1,
+    filter:"",collapsed:!!opts.collapsed,rowClick:opts.rowClick||null,sheet:opts.sheet||title});
+  return `<div class="dt" id="dt-${id}">${dtHead(id)}<div class="dtbody" id="dtbody-${id}">${dtTableHTML(id)}</div></div>`;
 }
+function dtHead(id){
+  const t=TBL.get(id);
+  return `<div class="dthead">
+    <button class="dttoggle" onclick="dtToggle('${id}')" title="Collapse / expand">${t.collapsed?"▸":"▾"}</button>
+    <span class="dticon">${t.icon?ICON(t.icon):""}</span>
+    <span class="dttitle">${esc(t.title)} <span class="dtn">(${t.rows.length})</span></span>
+    <input class="dtfilter" placeholder="⌕ filter" value="${esc(t.filter)}" oninput="dtFilter('${id}',this.value)">
+    <button class="btn mini" onclick="dtExport('${id}')" title="Export this list to Excel">⭳ Excel</button>
+  </div>`;
+}
+function dtView(t){
+  let rows=t.rows;
+  const f=(t.filter||"").toLowerCase().trim();
+  if(f) rows=rows.filter(r=>t.cols.some(c=>String(c.get(r)==null?"":c.get(r)).toLowerCase().includes(f)));
+  if(t.sort!=null){
+    const c=t.cols[t.sort];
+    rows=rows.slice().sort((a,b)=>{
+      const va=c.get(a), vb=c.get(b);
+      const sa=String(va==null?"":va).trim(), sb=String(vb==null?"":vb).trim();
+      const na=parseFloat(sa.replace(/[^0-9.\-]/g,"")), nb=parseFloat(sb.replace(/[^0-9.\-]/g,""));
+      let cmp;
+      if(c.num || (sa!==""&&sb!==""&&!isNaN(na)&&!isNaN(nb)&&/^[\s\d.\-%]+$/.test(sa)&&/^[\s\d.\-%]+$/.test(sb))) cmp=(na||0)-(nb||0);
+      else cmp=sa.localeCompare(sb);
+      return cmp*t.dir;
+    });
+  }
+  return rows;
+}
+function dtTableHTML(id){
+  const t=TBL.get(id);
+  if(t.collapsed) return "";
+  const rows=dtView(t);
+  const th=t.cols.map((c,i)=>{
+    const ar=t.sort===i?`<span class="ar">${t.dir>0?"▲":"▼"}</span>`:"";
+    return `<th class="dtsort ${c.cls||""} ${c.r?"r":""}" onclick="dtSort('${id}',${i})">${esc(c.label)}${ar}</th>`;
+  }).join("");
+  const body=rows.map(r=>{
+    const click=t.rowClick&&t.rowClick(r);
+    const attr=click?` class="rowlink" onclick="${click}"`:"";
+    return `<tr${attr}>${t.cols.map(c=>`<td class="${c.cls||""}${c.r?" r":""}">${c.html?c.html(r,c.get(r)):nz(c.get(r),c.blank!=null?c.blank:"")}</td>`).join("")}</tr>`;
+  }).join("");
+  return rows.length?`<table class="data"><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>`
+    :`<div class="dtempty">No rows${t.filter?` match “${esc(t.filter)}”`:""}.</div>`;
+}
+function dtToggle(id){ const t=TBL.get(id); if(!t) return; t.collapsed=!t.collapsed;
+  const b=document.querySelector('#dt-'+id+' .dttoggle'); if(b) b.textContent=t.collapsed?"▸":"▾";
+  document.getElementById('dtbody-'+id).innerHTML=dtTableHTML(id); }
+function dtSort(id,i){ const t=TBL.get(id); if(!t) return; if(t.sort===i) t.dir=-t.dir; else { t.sort=i; t.dir=1; }
+  document.getElementById('dtbody-'+id).innerHTML=dtTableHTML(id); }
+function dtFilter(id,v){ const t=TBL.get(id); if(!t) return; t.filter=v;
+  document.getElementById('dtbody-'+id).innerHTML=dtTableHTML(id); }
+window.dtToggle=dtToggle; window.dtSort=dtSort; window.dtFilter=dtFilter;
+
+function sheetName(s){ return (String(s).replace(/[\\\/\?\*\[\]:]/g,"").slice(0,31))||"Sheet"; }
+function dtAOA(t){ return [t.cols.map(c=>c.label)].concat(t.rows.map(r=>t.cols.map(c=>{ const v=c.get(r); return v==null?"":String(v); }))); }
+function dtExport(id){
+  const t=TBL.get(id); if(!t) return;
+  if(typeof XLSX==="undefined"){ status("✗ Excel library not loaded — check your connection","err"); return; }
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dtAOA(t)), sheetName(t.sheet));
+  XLSX.writeFile(wb, ("TAM_"+t.sheet).replace(/[^\w-]+/g,"_")+".xlsx");
+  status("✓ Exported "+t.title+" to Excel","ok");
+}
+window.dtExport=dtExport;
+
+let AREA_EXPORT=null; // {code, tables:[ids], ce:{causes,effects}}
+function exportAreaXlsx(){
+  if(!AREA_EXPORT){ status("✗ Open an area first","err"); return; }
+  if(typeof XLSX==="undefined"){ status("✗ Excel library not loaded","err"); return; }
+  const wb=XLSX.utils.book_new(); let n=0;
+  AREA_EXPORT.tables.forEach(id=>{ const t=TBL.get(id); if(!t||!t.rows.length) return;
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dtAOA(t)), sheetName(t.sheet)); n++; });
+  if(AREA_EXPORT.ce && AREA_EXPORT.ce.causes.length){
+    const eff=AREA_EXPORT.ce.effects, cs=AREA_EXPORT.ce.causes;
+    const head=["Cause","Instrument","Type","Set point","Description"].concat(eff.map(e=>e.tag));
+    const aoa=[head].concat(cs.map(c=>[c.tag,c.ins,c.ty,c.sp,c.ds].concat(eff.map(e=>c.eff.indexOf(e.tag)>=0?"X":""))));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), "Cause & Effect"); n++;
+  }
+  if(!n){ status("✗ No data to export in this area","err"); return; }
+  XLSX.writeFile(wb, ("TAM_Area_"+AREA_EXPORT.code).replace(/[^\w-]+/g,"_")+".xlsx");
+  status(`✓ Exported area ${AREA_EXPORT.code} — ${n} sheet(s) to Excel`,"ok");
+}
+window.exportAreaXlsx=exportAreaXlsx;
+
+/* ══ cause & effect matrix (module-101 style) ════════════════════ */
+function ceBuild(ceRows, ceEff){
+  const map=new Map();
+  ceRows.forEach(r=>{ const tag=(r.cause_tag||"").trim(); if(!tag) return;
+    if(!map.has(tag)) map.set(tag,{tag, ins:r.cause_instrument||"", ty:r.cause_type||"", sp:r.cause_setpoint||"", ds:r.cause_description||"", eff:[]});
+    const c=map.get(tag); if(r.effect_tag && c.eff.indexOf(r.effect_tag)<0) c.eff.push(r.effect_tag); });
+  const causes=[...map.values()];
+  let effects=ceEff.map(e=>({tag:e.tag, action:e.action||"", desc:e.description||""}));
+  const known=new Set(effects.map(e=>e.tag));
+  causes.forEach(c=>c.eff.forEach(t=>{ if(!known.has(t)){ known.add(t); effects.push({tag:t,action:"",desc:""}); } }));
+  return {causes, effects};
+}
+function ceMatrixHTML(ce){
+  const {causes, effects}=ce;
+  const head=`<tr><th>Cause</th><th>Instrument</th><th>Type</th><th>Set point</th><th>Description</th>${
+    effects.map(e=>`<th class="eff" data-eff="${esc(e.tag)}" onmouseenter="ceCol('${esc(e.tag)}',1)" onmouseleave="ceCol('${esc(e.tag)}',0)">${esc(e.tag)}</th>`).join("")}</tr>`;
+  const body=causes.map(c=>{
+    const cells=effects.map(e=>{ const on=c.eff.indexOf(e.tag)>=0; return `<td class="mk ${on?"hit":""}" data-eff="${esc(e.tag)}">${on?"●":""}</td>`; }).join("");
+    const badge=(c.ty==="PSD"||c.ty==="ESD")?"psd":"lsd";
+    return `<tr>
+      <td class="tg">${esc(c.tag)}</td>
+      <td class="ins" onclick="openInst('${esc((c.ins||"").trim())}')">${esc(c.ins)}</td>
+      <td><span class="cebadge ${badge}">${esc(c.ty||"—")}</span></td>
+      <td class="sp">${esc(c.sp||"—")}</td>
+      <td class="ds">${esc(c.ds)}</td>${cells}</tr>`;
+  }).join("");
+  const legend=`<div class="celegend"><b>Effects (columns) — final actions:</b><br>${
+    effects.map(e=>`<span class="cetag">${esc(e.tag)}</span>${e.action?" — "+esc(e.action):""}${e.desc?" · "+esc(e.desc):""}`).join("<br>")}
+    <div style="margin-top:6px">▸ Hover an effect header to light the causes that trigger it · ● = cause triggers that effect. Source: <span class="mono">plant_cause_effect</span> (SAF12).</div></div>`;
+  return `<div class="cewrap"><table class="cematrix" id="cemat"><thead>${head}</thead><tbody>${body}</tbody></table></div>${legend}`;
+}
+function ceCol(eff, on){
+  const q=(window.CSS&&CSS.escape)?CSS.escape(eff):eff.replace(/"/g,'\\"');
+  document.querySelectorAll('#cemat td.mk[data-eff="'+q+'"]').forEach(td=>{ if(td.classList.contains("hit")) td.classList.toggle("colhi",!!on); });
+  document.querySelectorAll('#cemat th.eff[data-eff="'+q+'"]').forEach(th=>th.classList.toggle("effhi",!!on));
+}
+window.ceCol=ceCol;
+
 function renderArea(c, code){
   const a=IDX.areaByCode.get(String(code));
   if(!a){ c.innerHTML=`<div class="empty">Area ${esc(code)} not found.</div>`; return; }
@@ -911,7 +1083,7 @@ function renderArea(c, code){
   const rios=DB.rios.filter(r=>String(r.unit)===String(code));
   const mcc=DB.mcc.filter(r=>String(r.area_code)===String(code));
   const eloads=DB.eloads.filter(r=>String(r.unit_tag)===String(code));
-  const ce=DB.ce.filter(r=>String(r.area_code)===String(code));
+  const ceR=DB.ce.filter(r=>String(r.area_code)===String(code));
   const ceEff=DB.ceEffects.filter(r=>String(r.area_code)===String(code)).sort((x,y)=>(x.sort_order||0)-(y.sort_order||0));
   const ioCh=st.reduce((n,s)=>n+s.rows.length,0);
 
@@ -919,78 +1091,105 @@ function renderArea(c, code){
   const rioByCanon=new Map(); rios.forEach(r=>rioByCanon.set(canonJB(r.tag),r));
   const stationCanon=new Set(st.map(s=>canonJB(s.panel)));
   const orphanRios=rios.filter(r=>!stationCanon.has(canonJB(r.tag)));
-  const stRows=st.map(s=>{
+  const stationRows=st.map(s=>{
     const ver=s.rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id),"FIELD_VERIFY");return v&&v.result==="OK";}).length;
-    const pct=Math.round(100*ver/Math.max(1,s.rows.length));
     const jb=s.jb, rio=rioByCanon.get(canonJB(s.panel));
-    const svc=(jb&&jb.service)||(rio&&rio.service)||"";
-    return `<tr class="rowlink" onclick="nav('station/${encodeURIComponent(s.panel)}')">
-      <td class="mono" style="font-weight:700;color:var(--blue)">${esc(s.panel)}</td>
-      <td class="mono">${rio?esc(rio.tag):'<span class="dim">—</span>'}</td>
-      <td class="dim">${nz(svc)}</td>
-      <td class="mono">${nz(jb&&jb.ex_rating,"")}</td>
-      <td class="r mono">${s.rows.length}</td>
-      <td><div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1"><i style="width:${pct}%"></i></div><span class="mono">${pct}%</span></div></td></tr>`;
-  }).join("");
-  const orphanRows=orphanRios.map(r=>`<tr>
-      <td class="mono dim">${esc(r.tag)} <span class="chip dim" title="Registered RIO with no IO channels mapped here">REGISTRY</span></td>
-      <td class="mono">${esc(r.tag)}</td>
-      <td class="dim">${nz(r.service)}</td>
-      <td></td><td class="r mono dim">0</td><td class="dim">no IO channels</td></tr>`).join("");
+    return {panel:s.panel, rio:rio?rio.tag:"", service:(jb&&jb.service)||(rio&&rio.service)||"", ex:(jb&&jb.ex_rating)||"",
+      ch:s.rows.length, pct:Math.round(100*ver/Math.max(1,s.rows.length)), orphan:false, nav:s.panel};
+  }).concat(orphanRios.map(r=>({panel:r.tag, rio:r.tag, service:r.service||"", ex:"", ch:0, pct:0, orphan:true, nav:null})));
 
-  const instRows=inst.slice(0,120).map(r=>`<tr class="rowlink" onclick="openInst('${esc((r.tag||"").trim())}')">
-      <td class="tag">${nz(r.tag)}</td><td class="dim">${nz(r.instrument_type)}</td><td class="dim">${nz(r.service)}</td>
-      <td class="mono">${nz(r.signal_type)}</td><td class="mono dim">${nz(r.junction_box,"")}</td><td class="mono dim">${nz(r.range,"")}${r.units?" "+esc(r.units):""}</td></tr>`).join("");
-  const vlvRows=vlvs.slice(0,120).map(r=>`<tr class="rowlink" onclick="openInst('${esc((r.tag||"").trim())}')">
-      <td class="tag">${nz(r.tag)}</td><td class="dim">${nz(r.instrument_type)}</td><td class="dim">${nz(r.service)}</td>
-      <td class="mono">${nz(r.signal_type)}</td><td class="mono dim">${nz(r.junction_box,"")}</td></tr>`).join("");
-  const eqRows=eq.slice(0,80).map(e=>`<tr><td class="tag" onclick="openEquip('${esc((e.tag||"").trim())}')" title="Open equipment card">${nz(e.tag)}</td><td class="dim">${nz(e.service)}</td><td class="mono">${nz(e.skid_tag,"")}</td></tr>`).join("");
-  const mccRows=mcc.slice(0,80).map(m=>`<tr><td class="mono" style="font-weight:700">${nz(m.tag)}</td><td class="dim">${nz(m.service)}</td>
-      <td><span class="chip ${/close/i.test(m.fail_position||"")?"crimson":"dim"}">${nz(m.fail_position,"—")}</span></td>
-      <td class="mono">${nz(m.rio_panel,"")}</td><td class="mono dim">${nz(m.slot,"")}</td><td class="mono r">${nz(m.power_rating,"")}</td></tr>`).join("");
-  const eloadRows=eloads.slice(0,80).map(l=>`<tr><td class="mono" style="font-weight:700">${nz(l.tag)}</td><td class="dim">${nz(l.service)}</td>
-      <td class="mono">${nz(l.voltage,"")}</td><td class="mono r">${nz(l.power_rating_kw,"")}</td><td class="dim">${nz(l.starting_type,"")}</td></tr>`).join("");
-  const ceRows=ce.map(x=>`<tr>
-      <td class="mono" style="font-weight:700;color:var(--crimson)">${nz(x.cause_tag)}</td>
-      <td class="tag" onclick="openInst('${esc((x.cause_instrument||"").trim())}')">${nz(x.cause_instrument)}</td>
-      <td><span class="chip ${x.cause_type==="PSD"||x.cause_type==="ESD"?"crimson":"info"}">${nz(x.cause_type,"—")}</span></td>
-      <td class="mono">${nz(x.cause_setpoint,"")}</td>
-      <td class="mono" style="font-weight:700">${nz(x.effect_tag)}</td>
-      <td class="dim">${nz(x.cause_description)}</td></tr>`).join("");
-  const ceEffRows=ceEff.map(e=>`<tr><td class="mono" style="font-weight:700">${nz(e.tag)}</td><td class="dim">${nz(e.action)}</td><td class="dim">${nz(e.description)}</td></tr>`).join("");
+  const ids=[];
+  const stTbl = stationRows.length?(ids.push("stations"),dataTable("stations","ST","Stations — RIO panels / JB",[
+      {label:"PANEL / JB", get:r=>r.panel, cls:"mono", html:(r,v)=>r.orphan?`<span class="dim">${esc(v)}</span> <span class="chip dim">REGISTRY</span>`:`<b style="color:var(--blue)">${esc(v)}</b>`},
+      {label:"RIO NODE", get:r=>r.rio, cls:"mono", html:(r,v)=>v?esc(v):'<span class="dim">—</span>'},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"EX RATING", get:r=>r.ex, cls:"mono"},
+      {label:"CH", get:r=>r.ch, num:true, r:true, cls:"mono"},
+      {label:"FIELD-VERIFIED", get:r=>r.pct, num:true, html:(r,v)=>r.orphan?'<span class="dim">no IO channels</span>':`<div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1;min-width:60px"><i style="width:${v}%"></i></div><span class="mono">${v}%</span></div>`}
+    ], stationRows, {rowClick:r=>r.nav?`nav('station/${encodeURIComponent(r.nav)}')`:null, sheet:"Stations"})):"";
+
+  const instTbl = inst.length?(ids.push("inst"),dataTable("inst","INST","Instruments",[
+      {label:"TAG", get:r=>r.tag, cls:"tag"},
+      {label:"TYPE", get:r=>r.instrument_type, cls:"dim"},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
+      {label:"JB", get:r=>r.junction_box, cls:"mono dim"},
+      {label:"RANGE", get:r=>((r.range||"")+(r.units?" "+r.units:"")).trim(), cls:"mono dim"}
+    ], inst, {rowClick:r=>`openInst('${esc((r.tag||"").trim())}')`, sheet:"Instruments"})):"";
+
+  const vlvTbl = vlvs.length?(ids.push("vlv"),dataTable("vlv","VLV","Actuated valves",[
+      {label:"TAG", get:r=>r.tag, cls:"tag"},
+      {label:"TYPE", get:r=>r.instrument_type, cls:"dim"},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
+      {label:"JB", get:r=>r.junction_box, cls:"mono dim"}
+    ], vlvs, {rowClick:r=>`openInst('${esc((r.tag||"").trim())}')`, sheet:"Valves"})):"";
+
+  const eqTbl = eq.length?(ids.push("eq"),dataTable("eq","EQ","Equipment",[
+      {label:"TAG", get:r=>r.tag, cls:"tag"},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"SKID", get:r=>r.skid_tag, cls:"mono"}
+    ], eq, {rowClick:r=>`openEquip('${esc((r.tag||"").trim())}')`, sheet:"Equipment"})):"";
+
+  const mccTbl = mcc.length?(ids.push("mcc"),dataTable("mcc","MCC","Remote MCC / motors",[
+      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v)}</b>`},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"FAIL POSITION", get:r=>r.fail_position, html:(r,v)=>`<span class="chip ${/close/i.test(v||"")?"crimson":"dim"}">${nz(v,"—")}</span>`},
+      {label:"RIO PANEL", get:r=>r.rio_panel, cls:"mono"},
+      {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
+      {label:"POWER", get:r=>r.power_rating, cls:"mono", r:true}
+    ], mcc, {sheet:"MCC motors"})):"";
+
+  const eloadTbl = eloads.length?(ids.push("eload"),dataTable("eload","LOAD","Electrical loads",[
+      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v)}</b>`},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"VOLTAGE", get:r=>r.voltage, cls:"mono"},
+      {label:"kW", get:r=>r.power_rating_kw, cls:"mono", r:true, num:true},
+      {label:"STARTING", get:r=>r.starting_type, cls:"dim"}
+    ], eloads, {sheet:"Electrical loads"})):"";
+
+  const almTbl = alm.length?(ids.push("alm"),dataTable("alm","ALM","Alarms",[
+      {label:"ALARM TAG", get:r=>r.alarm_tag, cls:"tag"},
+      {label:"INSTRUMENT", get:r=>r.instrument_tag, html:(r,v)=>v?`<span class="tag" onclick="event.stopPropagation();openInst('${esc((v||"").trim())}')">${esc(v)}</span>`:""},
+      {label:"TYPE", get:r=>r.type, html:(r,v)=>`<span class="chip ${v==="PSD"||v==="ESD"?"crimson":"info"}">${nz(v,"—")}</span>`},
+      {label:"SET POINT", get:r=>r.set_point, cls:"mono", html:(r,v)=>v?esc(v):'<span class="chip warn">NOT SET</span>'},
+      {label:"DESCRIPTION", get:r=>r.description, cls:"dim"}
+    ], alm, {rowClick:r=>`openAlarm('${esc((r.alarm_tag||"").trim())}')`, sheet:"Alarms"})):"";
+
+  const ceObj = ceR.length?ceBuild(ceR, ceEff):null;
+  AREA_EXPORT={code, tables:ids.slice(), ce:ceObj};
 
   let facts=fact("ST",st.length,"IO STATIONS")+fact("IO",ioCh,"IO CHANNELS")+fact("INST",inst.length,"INSTRUMENTS")
     +fact("VLV",vlvs.length,"ACTUATED VALVES")+fact("ALM",alm.length,"ALARMS")+fact("EQ",eq.length,"EQUIPMENT");
   if(mcc.length) facts+=fact("MCC",mcc.length,"MCC MOTORS");
   if(eloads.length) facts+=fact("LOAD",eloads.length,"ELECTRICAL LOADS");
-  if(ce.length) facts+=fact("CE",ce.length,"CAUSE & EFFECT");
+  if(ceR.length) facts+=fact("CE",ceObj.causes.length,"CAUSE & EFFECT");
 
   c.innerHTML=`
   <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
   <h1>Area ${esc(code)} — ${esc(areaName(code))}</h1>
   <div class="facts">${facts}</div>
-
-  <h2>Stations — RIO panels / junction boxes${rios.length?` <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· reconciled with ${rios.length} registered RIO node${rios.length>1?"s":""}</span>`:""}</h2>
-  ${(st.length||orphanRows)?`<table class="data"><thead><tr><th>PANEL / JB</th><th>RIO NODE</th><th>SERVICE</th><th>EX RATING</th><th class="r">CH</th><th style="width:170px">FIELD-VERIFIED</th></tr></thead><tbody>${stRows}${orphanRows}</tbody></table>`
-    :`<div class="empty">No IO stations or RIO nodes mapped to this area yet.</div>`}
-
-  ${inst.length?`<h2>Instruments (${inst.length})</h2><table class="data"><thead><tr><th>TAG</th><th>TYPE</th><th>SERVICE</th><th>SIGNAL</th><th>JB</th><th>RANGE</th></tr></thead><tbody>${instRows}</tbody></table>${moreNote(Math.min(120,inst.length),inst.length,"instruments")}`:""}
-
-  ${vlvs.length?`<h2>Actuated valves (${vlvs.length})</h2><table class="data"><thead><tr><th>TAG</th><th>TYPE</th><th>SERVICE</th><th>SIGNAL</th><th>JB</th></tr></thead><tbody>${vlvRows}</tbody></table>${moreNote(Math.min(120,vlvs.length),vlvs.length,"valves")}`:""}
-
-  ${eq.length?`<h2>Equipment (${eq.length})</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>SKID</th></tr></thead><tbody>${eqRows}</tbody></table>${moreNote(Math.min(80,eq.length),eq.length,"equipment")}`:""}
-
-  ${mcc.length?`<h2>Remote MCC / motors (${mcc.length})</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>FAIL POSITION</th><th>RIO PANEL</th><th>SLOT</th><th class="r">POWER</th></tr></thead><tbody>${mccRows}</tbody></table>${moreNote(Math.min(80,mcc.length),mcc.length,"motors")}`:""}
-
-  ${eloads.length?`<h2>Electrical loads (${eloads.length})</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>VOLTAGE</th><th class="r">kW</th><th>STARTING</th></tr></thead><tbody>${eloadRows}</tbody></table>${moreNote(Math.min(80,eloads.length),eloads.length,"loads")}`:""}
-
-  ${alm.length?`<h2>Alarms in area ${esc(code)} (${alm.length})</h2>${alarmTable(alm)}`:""}
-
-  ${ce.length?`<h2>Cause &amp; effect matrix (${ce.length})</h2>
-    <table class="data"><thead><tr><th>CAUSE TAG</th><th>INSTRUMENT</th><th>TYPE</th><th>SET POINT</th><th>→ EFFECT</th><th>DESCRIPTION</th></tr></thead><tbody>${ceRows}</tbody></table>
-    ${ceEff.length?`<h2 style="font-size:15px">Effects / final actions (${ceEff.length})</h2><table class="data"><thead><tr><th>EFFECT TAG</th><th>ACTION</th><th>DESCRIPTION</th></tr></thead><tbody>${ceEffRows}</tbody></table>`:""}
-    <div class="note">ESD/PSD cause → effect logic from the safety matrix (<span class="mono">plant_cause_effect</span>). Click an instrument tag to open its card.</div>`:""}`;
+  <div class="toolrow" style="margin-top:14px">
+    <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">Each list — click a column to sort · type to filter · ▾ to collapse · ⭳ per-list Excel.</span>
+    <span class="spacer"></span>
+    <button class="btn primary" onclick="exportAreaXlsx()">⭳ Export all to Excel</button>
+  </div>
+  ${stTbl||`<div class="empty" style="margin-top:16px">No IO stations or RIO nodes mapped to this area yet.</div>`}
+  ${instTbl}${vlvTbl}${eqTbl}${mccTbl}${eloadTbl}${almTbl}
+  ${ceObj?`<h2 style="margin-top:22px">Cause &amp; effect matrix <span class="mono" style="font-size:12px;color:var(--ink-soft);font-weight:400">· ${ceObj.causes.length} causes × ${ceObj.effects.length} effects</span>
+    <button class="btn mini" style="float:right" onclick="dtCeExport()" title="Export matrix to Excel">⭳ Excel</button></h2>${ceMatrixHTML(ceObj)}`:""}`;
 }
+function dtCeExport(){
+  if(!AREA_EXPORT||!AREA_EXPORT.ce) return;
+  if(typeof XLSX==="undefined"){ status("✗ Excel library not loaded","err"); return; }
+  const eff=AREA_EXPORT.ce.effects, cs=AREA_EXPORT.ce.causes;
+  const head=["Cause","Instrument","Type","Set point","Description"].concat(eff.map(e=>e.tag));
+  const aoa=[head].concat(cs.map(c=>[c.tag,c.ins,c.ty,c.sp,c.ds].concat(eff.map(e=>c.eff.indexOf(e.tag)>=0?"X":""))));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), "Cause & Effect");
+  XLSX.writeFile(wb, ("TAM_Area_"+AREA_EXPORT.code+"_CauseEffect").replace(/[^\w-]+/g,"_")+".xlsx");
+  status("✓ Exported cause & effect matrix","ok");
+}
+window.dtCeExport=dtCeExport;
 
 function alarmTable(list){
   return `<table class="data"><thead><tr><th>ALARM TAG</th><th>INSTRUMENT</th><th>TYPE</th><th>SET POINT</th><th>DESCRIPTION</th><th>AREA</th></tr></thead>
