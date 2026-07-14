@@ -578,6 +578,12 @@ function sigFamily(raw){
   if(/MODBUS|PROFIBUS|PROFINET|HART/.test(s)) return "BUS";
   return s; // unrecognized vocabulary — fall back to literal compare, still catches real typos
 }
+// Bus/serial-connected devices (analyzers on Modbus, etc.) have no discrete IO
+// card channel by design — they talk directly to the control system over a
+// serial link, so they will never have a plant_io_list row. Not a finding.
+function isBusDevice(r){
+  return sigFamily(r.signal_type)==="BUS" || /ANALYZ|CHROMATOGRAPH/i.test(r.instrument_type||"");
+}
 function xcheckRow(io){
   const t=(io.tag||"").trim(); if(!t) return {code:"NOTAG", cls:"dim", txt:"NO TAG"};
   const inst=IDX.instByTag.get(t), vlv=IDX.valveByTag.get(t);
@@ -800,10 +806,11 @@ function renderAlarms(c){
 function renderXcheck(c){
   let findings=[];
   DB.io.forEach(r=>{ const x=xcheckRow(r); if(["MISSING","JBDIFF","SIGDIFF"].includes(x.code)) findings.push({io:r,x}); });
-  // reverse: instruments with a JB assignment but no IO channel
-  let reverse=[];
-  IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)) reverse.push(r); });
-  IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)) reverse.push(r); });
+  // reverse: instruments with a JB assignment but no IO channel (excluding
+  // bus/serial devices, which never get a discrete IO channel by design)
+  let reverse=[], busExcluded=0;
+  IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
+  IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
   const totF=findings.length, totR=reverse.length;
   const f=(window._xcFilter||"").toLowerCase();
   if(f){
@@ -844,7 +851,8 @@ function renderXcheck(c){
     :`<div class="empty">${f?"No findings match “"+esc(window._xcFilter)+"”.":"No discrepancies — every IO tag reconciles with the index. ✓"}</div>`}
   <h2>Findings — index side: instruments/valves with a JB but no IO channel (${reverse.length}${f?" of "+totR:""})</h2>
   ${reverse.length?`<table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>JB (INDEX)</th><th>SIGNAL</th><th>AREA</th></tr></thead><tbody>${revRows}</tbody></table>`
-    :`<div class="empty">None. ✓</div>`}`;
+    :`<div class="empty">None. ✓</div>`}
+  ${busExcluded?`<div class="note">${busExcluded} analyzer/bus device(s) (Modbus, etc.) excluded above — they talk to the control system over a serial link and never get a discrete IO card channel, so they aren't reconciliation candidates.</div>`:""}`;
   const xf=$("#xcFilter"); if(xf){ xf.focus(); xf.setSelectionRange(xf.value.length,xf.value.length); }
 }
 
