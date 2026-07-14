@@ -299,7 +299,7 @@
    ════════════════════════════════════════════════════════════════ */
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[]};
+const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[]};
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
              dwgByPid:new Map(), dwgByDoc:new Map()};
@@ -430,14 +430,16 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
       fetchAll("plant_safety_critical"), fetchAll("plant_change_requests"), fetchAll("plant_verifications"),
-      fetchAll("plant_pid_drawings","doc_no"), fetchAll("plant_asset_docs")
+      fetchAll("plant_pid_drawings","doc_no"), fetchAll("plant_asset_docs"),
+      fetchAll("plant_mcc_motors"), fetchAll("plant_electrical_loads"),
+      fetchAll("plant_cause_effect"), fetchAll("plant_cause_effect_effects")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -692,7 +694,8 @@ function areaExists(code){return IDX.areaByCode.has(String(code));}
 const PV_LABELS={
   AREA:"Areas & utilities", EQ:"Equipment", INST:"Instruments", IO:"IO channels",
   VLV:"Actuated valves", ST:"IO stations (RIO/JB)", ALM:"Alarms",
-  DWG:"P&ID drawings", VERIFY:"Field-verified"
+  DWG:"P&ID drawings", VERIFY:"Field-verified",
+  MCC:"MCC motors", LOAD:"Electrical loads", CE:"Cause & effect", RIO:"RIO nodes"
 };
 const PV_ICONS={
   // process areas / units — 2×2 block grid
@@ -712,7 +715,15 @@ const PV_ICONS={
   // drawing — P&ID sheet with folded corner
   DWG:'<path d="M4 2.6h4.8l3.2 3.2V12.9a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V3.1a.5.5 0 0 1 .5-.5Z"/><path d="M8.6 2.7v3.2h3.2"/><line x1="5.6" y1="9" x2="10.4" y2="9"/><line x1="5.6" y1="11" x2="9" y2="11"/>',
   // field-verified — check in a circle
-  VERIFY:'<circle cx="8" cy="8" r="5.5"/><path d="M5.6 8.2 L7.2 9.9 L10.6 6.2"/>'
+  VERIFY:'<circle cx="8" cy="8" r="5.5"/><path d="M5.6 8.2 L7.2 9.9 L10.6 6.2"/>',
+  // MCC motor — motor body + terminal box
+  MCC:'<rect x="2.4" y="4.6" width="8" height="6.8" rx="1"/><path d="M10.4 6.4h2.2a.6.6 0 0 1 .6.6v2a.6.6 0 0 1-.6.6h-2.2"/><path d="M4.5 8h3.8"/><path d="M6.4 6.1v3.8"/>',
+  // electrical load — lightning bolt
+  LOAD:'<path d="M8.8 2 L4.3 8.8 H7.4 L6.4 14 L11.6 6.6 H8.2 Z"/>',
+  // cause & effect — 3×3 matrix grid
+  CE:'<rect x="2.5" y="2.5" width="11" height="11" rx="1"/><line x1="6.2" y1="2.5" x2="6.2" y2="13.5"/><line x1="9.8" y1="2.5" x2="9.8" y2="13.5"/><line x1="2.5" y1="6.2" x2="13.5" y2="6.2"/><line x1="2.5" y1="9.8" x2="13.5" y2="9.8"/>',
+  // RIO node — network node with links
+  RIO:'<rect x="5.4" y="5.4" width="5.2" height="5.2" rx="1"/><line x1="8" y1="2.4" x2="8" y2="5.4"/><line x1="8" y1="10.6" x2="8" y2="13.6"/><line x1="2.4" y1="8" x2="5.4" y2="8"/><line x1="10.6" y1="8" x2="13.6" y2="8"/>'
 };
 function ICON(kind){return `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${PV_ICONS[kind]||""}</svg>`;}
 // same glyphs, drawn inline inside the flow-diagram SVG at any position/scale
@@ -886,44 +897,99 @@ function renderHome(c){
   Left rail = red spine (process units) / blue spine (utilities). TCI bar = share of plant complexity (* estimated).</div>`;
 }
 
+function moreNote(shown,total,label){
+  return shown<total?`<div class="note">Showing first ${shown} of ${total} ${label} — open a station or use global search for the full list.</div>`:"";
+}
 function renderArea(c, code){
   const a=IDX.areaByCode.get(String(code));
+  if(!a){ c.innerHTML=`<div class="empty">Area ${esc(code)} not found.</div>`; return; }
   const st=(IDX.areaStations.get(String(code))||[]).sort((x,y)=>x.panel.localeCompare(y.panel));
   const inst=DB.inst.filter(r=>String(r.unit)===String(code));
+  const vlvs=DB.valves.filter(r=>String(r.unit)===String(code));
   const alm=DB.alarms.filter(r=>String(r.area_code)===String(code));
   const eq=DB.equip.filter(r=>String(r.area_code)===String(code));
   const rios=DB.rios.filter(r=>String(r.unit)===String(code));
-  if(!a){ c.innerHTML=`<div class="empty">Area ${esc(code)} not found.</div>`; return; }
+  const mcc=DB.mcc.filter(r=>String(r.area_code)===String(code));
+  const eloads=DB.eloads.filter(r=>String(r.unit_tag)===String(code));
+  const ce=DB.ce.filter(r=>String(r.area_code)===String(code));
+  const ceEff=DB.ceEffects.filter(r=>String(r.area_code)===String(code)).sort((x,y)=>(x.sort_order||0)-(y.sort_order||0));
+  const ioCh=st.reduce((n,s)=>n+s.rows.length,0);
+
+  // ── stations ⟷ RIO registry reconciliation (canonical panel name) ──
+  const rioByCanon=new Map(); rios.forEach(r=>rioByCanon.set(canonJB(r.tag),r));
+  const stationCanon=new Set(st.map(s=>canonJB(s.panel)));
+  const orphanRios=rios.filter(r=>!stationCanon.has(canonJB(r.tag)));
   const stRows=st.map(s=>{
     const ver=s.rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id),"FIELD_VERIFY");return v&&v.result==="OK";}).length;
     const pct=Math.round(100*ver/Math.max(1,s.rows.length));
-    const jb=s.jb;
+    const jb=s.jb, rio=rioByCanon.get(canonJB(s.panel));
+    const svc=(jb&&jb.service)||(rio&&rio.service)||"";
     return `<tr class="rowlink" onclick="nav('station/${encodeURIComponent(s.panel)}')">
       <td class="mono" style="font-weight:700;color:var(--blue)">${esc(s.panel)}</td>
-      <td class="dim">${nz(jb&&jb.service)}</td>
+      <td class="mono">${rio?esc(rio.tag):'<span class="dim">—</span>'}</td>
+      <td class="dim">${nz(svc)}</td>
       <td class="mono">${nz(jb&&jb.ex_rating,"")}</td>
       <td class="r mono">${s.rows.length}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1"><i style="width:${pct}%"></i></div><span class="mono">${pct}%</span></div></td></tr>`;
   }).join("");
+  const orphanRows=orphanRios.map(r=>`<tr>
+      <td class="mono dim">${esc(r.tag)} <span class="chip dim" title="Registered RIO with no IO channels mapped here">REGISTRY</span></td>
+      <td class="mono">${esc(r.tag)}</td>
+      <td class="dim">${nz(r.service)}</td>
+      <td></td><td class="r mono dim">0</td><td class="dim">no IO channels</td></tr>`).join("");
+
+  const instRows=inst.slice(0,120).map(r=>`<tr class="rowlink" onclick="openInst('${esc((r.tag||"").trim())}')">
+      <td class="tag">${nz(r.tag)}</td><td class="dim">${nz(r.instrument_type)}</td><td class="dim">${nz(r.service)}</td>
+      <td class="mono">${nz(r.signal_type)}</td><td class="mono dim">${nz(r.junction_box,"")}</td><td class="mono dim">${nz(r.range,"")}${r.units?" "+esc(r.units):""}</td></tr>`).join("");
+  const vlvRows=vlvs.slice(0,120).map(r=>`<tr class="rowlink" onclick="openInst('${esc((r.tag||"").trim())}')">
+      <td class="tag">${nz(r.tag)}</td><td class="dim">${nz(r.instrument_type)}</td><td class="dim">${nz(r.service)}</td>
+      <td class="mono">${nz(r.signal_type)}</td><td class="mono dim">${nz(r.junction_box,"")}</td></tr>`).join("");
   const eqRows=eq.slice(0,80).map(e=>`<tr><td class="tag" onclick="openEquip('${esc((e.tag||"").trim())}')" title="Open equipment card">${nz(e.tag)}</td><td class="dim">${nz(e.service)}</td><td class="mono">${nz(e.skid_tag,"")}</td></tr>`).join("");
+  const mccRows=mcc.slice(0,80).map(m=>`<tr><td class="mono" style="font-weight:700">${nz(m.tag)}</td><td class="dim">${nz(m.service)}</td>
+      <td><span class="chip ${/close/i.test(m.fail_position||"")?"crimson":"dim"}">${nz(m.fail_position,"—")}</span></td>
+      <td class="mono">${nz(m.rio_panel,"")}</td><td class="mono dim">${nz(m.slot,"")}</td><td class="mono r">${nz(m.power_rating,"")}</td></tr>`).join("");
+  const eloadRows=eloads.slice(0,80).map(l=>`<tr><td class="mono" style="font-weight:700">${nz(l.tag)}</td><td class="dim">${nz(l.service)}</td>
+      <td class="mono">${nz(l.voltage,"")}</td><td class="mono r">${nz(l.power_rating_kw,"")}</td><td class="dim">${nz(l.starting_type,"")}</td></tr>`).join("");
+  const ceRows=ce.map(x=>`<tr>
+      <td class="mono" style="font-weight:700;color:var(--crimson)">${nz(x.cause_tag)}</td>
+      <td class="tag" onclick="openInst('${esc((x.cause_instrument||"").trim())}')">${nz(x.cause_instrument)}</td>
+      <td><span class="chip ${x.cause_type==="PSD"||x.cause_type==="ESD"?"crimson":"info"}">${nz(x.cause_type,"—")}</span></td>
+      <td class="mono">${nz(x.cause_setpoint,"")}</td>
+      <td class="mono" style="font-weight:700">${nz(x.effect_tag)}</td>
+      <td class="dim">${nz(x.cause_description)}</td></tr>`).join("");
+  const ceEffRows=ceEff.map(e=>`<tr><td class="mono" style="font-weight:700">${nz(e.tag)}</td><td class="dim">${nz(e.action)}</td><td class="dim">${nz(e.description)}</td></tr>`).join("");
+
+  let facts=fact("ST",st.length,"IO STATIONS")+fact("IO",ioCh,"IO CHANNELS")+fact("INST",inst.length,"INSTRUMENTS")
+    +fact("VLV",vlvs.length,"ACTUATED VALVES")+fact("ALM",alm.length,"ALARMS")+fact("EQ",eq.length,"EQUIPMENT");
+  if(mcc.length) facts+=fact("MCC",mcc.length,"MCC MOTORS");
+  if(eloads.length) facts+=fact("LOAD",eloads.length,"ELECTRICAL LOADS");
+  if(ce.length) facts+=fact("CE",ce.length,"CAUSE & EFFECT");
+
   c.innerHTML=`
   <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
   <h1>Area ${esc(code)} — ${esc(areaName(code))}</h1>
-  <div class="facts">
-    ${fact("ST",st.length,"IO STATIONS")}
-    ${fact("IO",st.reduce((n,s)=>n+s.rows.length,0),"IO CHANNELS")}
-    ${fact("INST",inst.length,"INSTRUMENTS")}
-    ${fact("VLV",DB.valves.filter(r=>String(r.unit)===String(code)).length,"ACTUATED VALVES")}
-    ${fact("ALM",alm.length,"ALARMS")}
-    ${fact("EQ",eq.length,"EQUIPMENT")}
-  </div>
-  <h2>Stations — RIO panels / junction boxes</h2>
-  ${st.length?`<table class="data"><thead><tr><th>PANEL / JB</th><th>SERVICE</th><th>EX RATING</th><th class="r">CH</th><th style="width:180px">FIELD-VERIFIED</th></tr></thead><tbody>${stRows}</tbody></table>`
-    :`<div class="empty">No IO stations mapped to this area yet.</div>`}
-  ${rios.length?`<h2>RIO nodes registered in this area</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th></tr></thead>
-    <tbody>${rios.map(r=>`<tr><td class="mono" style="font-weight:700">${esc(r.tag)}</td><td class="dim">${nz(r.service)}</td></tr>`).join("")}</tbody></table>`:""}
-  ${eq.length?`<h2>Equipment (${eq.length})</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>SKID</th></tr></thead><tbody>${eqRows}</tbody></table>`:""}
-  ${alm.length?`<h2>Alarms in area ${esc(code)} (${alm.length})</h2>${alarmTable(alm)}`:""}`;
+  <div class="facts">${facts}</div>
+
+  <h2>Stations — RIO panels / junction boxes${rios.length?` <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· reconciled with ${rios.length} registered RIO node${rios.length>1?"s":""}</span>`:""}</h2>
+  ${(st.length||orphanRows)?`<table class="data"><thead><tr><th>PANEL / JB</th><th>RIO NODE</th><th>SERVICE</th><th>EX RATING</th><th class="r">CH</th><th style="width:170px">FIELD-VERIFIED</th></tr></thead><tbody>${stRows}${orphanRows}</tbody></table>`
+    :`<div class="empty">No IO stations or RIO nodes mapped to this area yet.</div>`}
+
+  ${inst.length?`<h2>Instruments (${inst.length})</h2><table class="data"><thead><tr><th>TAG</th><th>TYPE</th><th>SERVICE</th><th>SIGNAL</th><th>JB</th><th>RANGE</th></tr></thead><tbody>${instRows}</tbody></table>${moreNote(Math.min(120,inst.length),inst.length,"instruments")}`:""}
+
+  ${vlvs.length?`<h2>Actuated valves (${vlvs.length})</h2><table class="data"><thead><tr><th>TAG</th><th>TYPE</th><th>SERVICE</th><th>SIGNAL</th><th>JB</th></tr></thead><tbody>${vlvRows}</tbody></table>${moreNote(Math.min(120,vlvs.length),vlvs.length,"valves")}`:""}
+
+  ${eq.length?`<h2>Equipment (${eq.length})</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>SKID</th></tr></thead><tbody>${eqRows}</tbody></table>${moreNote(Math.min(80,eq.length),eq.length,"equipment")}`:""}
+
+  ${mcc.length?`<h2>Remote MCC / motors (${mcc.length})</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>FAIL POSITION</th><th>RIO PANEL</th><th>SLOT</th><th class="r">POWER</th></tr></thead><tbody>${mccRows}</tbody></table>${moreNote(Math.min(80,mcc.length),mcc.length,"motors")}`:""}
+
+  ${eloads.length?`<h2>Electrical loads (${eloads.length})</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>VOLTAGE</th><th class="r">kW</th><th>STARTING</th></tr></thead><tbody>${eloadRows}</tbody></table>${moreNote(Math.min(80,eloads.length),eloads.length,"loads")}`:""}
+
+  ${alm.length?`<h2>Alarms in area ${esc(code)} (${alm.length})</h2>${alarmTable(alm)}`:""}
+
+  ${ce.length?`<h2>Cause &amp; effect matrix (${ce.length})</h2>
+    <table class="data"><thead><tr><th>CAUSE TAG</th><th>INSTRUMENT</th><th>TYPE</th><th>SET POINT</th><th>→ EFFECT</th><th>DESCRIPTION</th></tr></thead><tbody>${ceRows}</tbody></table>
+    ${ceEff.length?`<h2 style="font-size:15px">Effects / final actions (${ceEff.length})</h2><table class="data"><thead><tr><th>EFFECT TAG</th><th>ACTION</th><th>DESCRIPTION</th></tr></thead><tbody>${ceEffRows}</tbody></table>`:""}
+    <div class="note">ESD/PSD cause → effect logic from the safety matrix (<span class="mono">plant_cause_effect</span>). Click an instrument tag to open its card.</div>`:""}`;
 }
 
 function alarmTable(list){
