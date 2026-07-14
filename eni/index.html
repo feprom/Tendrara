@@ -584,7 +584,18 @@ function sigFamily(raw){
 function isBusDevice(r){
   return sigFamily(r.signal_type)==="BUS" || /ANALYZ|CHROMATOGRAPH/i.test(r.instrument_type||"");
 }
+// A SPARE channel carries no instrument: tag literally "SPARE", or a blank tag
+// whose description is SPARE. These are reserved/unused capacity, NOT a data
+// error — they are counted per JB (see v_jb_spare_capacity), never a finding.
+// (A real tag whose description merely mentions "spare" — e.g. HS-S334-LSD
+// "SPARE SHUTDOWN PUSHBUTTON" — is a live channel and is cross-checked normally.)
+function isSpare(io){
+  const t=(io.tag||"").trim().toUpperCase();
+  const d=(io.description||"").trim().toUpperCase();
+  return t==="SPARE" || (t==="" && d.indexOf("SPARE")===0);
+}
 function xcheckRow(io){
+  if(isSpare(io)) return {code:"SPARE", cls:"dim", txt:"SPARE"};
   const t=(io.tag||"").trim(); if(!t) return {code:"NOTAG", cls:"dim", txt:"NO TAG"};
   const inst=IDX.instByTag.get(t), vlv=IDX.valveByTag.get(t);
   const ref=inst||vlv;
@@ -723,6 +734,7 @@ function renderStation(c, panel){
   const okN=rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id));return v&&v.result==="OK";}).length;
   const failN=rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id));return v&&v.result==="FAIL";}).length;
   const mism=rows.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(xcheckRow(r).code)).length;
+  const spareN=rows.filter(isSpare).length;
   c.innerHTML=`
   <div class="kicker">TX EI20 <span class="sub">· STATION / IO LIST · AREA ${esc(s.unit)}</span></div>
   <h1>${esc(panel)}</h1>
@@ -749,6 +761,7 @@ function renderStation(c, panel){
     <div class="fact"><div class="n" style="color:var(--ok)">${okN}</div><div class="l">VERIFIED OK</div></div>
     <div class="fact"><div class="n" style="color:var(--fail)">${failN}</div><div class="l">VERIFIED FAIL</div></div>
     <div class="fact"><div class="n" style="color:var(--amber)">${mism}</div><div class="l">CROSS-CHECK FINDINGS</div></div>
+    <div class="fact"><div class="n" style="color:var(--blue)">${spareN}</div><div class="l">SPARE CHANNELS</div></div>
   </div>
   <h2>IO list</h2>
   <div class="toolrow">
@@ -812,6 +825,16 @@ function renderXcheck(c){
   IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
   IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
   const totF=findings.length, totR=reverse.length;
+  // SPARE capacity per JB — reserved/unused channels are counted, not flagged.
+  const spareByPanel=new Map();
+  DB.io.forEach(r=>{ if(!isSpare(r)) return;
+    const p=(r.rio_panel||"—").trim();
+    const isA=/^A[IO]/i.test((r.channel||""));
+    const e=spareByPanel.get(p)||{panel:p,unit:r.unit,total:0,analog:0,digital:0};
+    e.total++; if(isA) e.analog++; else e.digital++; if(!e.unit&&r.unit) e.unit=r.unit;
+    spareByPanel.set(p,e); });
+  const spares=[...spareByPanel.values()].sort((a,b)=>b.total-a.total||a.panel.localeCompare(b.panel));
+  const spareTot=spares.reduce((n,s)=>n+s.total,0);
   const f=(window._xcFilter||"").toLowerCase();
   if(f){
     findings=findings.filter(({io,x})=>((io.tag||"")+" "+(io.rio_panel||"")+" "+(io.channel||"")+" "+(io.description||"")+" "+(io.unit||"")+" "+x.txt+" "+(x.detail||"")).toLowerCase().includes(f));
@@ -839,7 +862,14 @@ function renderXcheck(c){
     <div class="fact"><div class="n" style="color:var(--amber)">${findings.filter(f=>f.x.code==="JBDIFF").length}</div><div class="l">JB ≠ PANEL</div></div>
     <div class="fact"><div class="n" style="color:var(--amber)">${findings.filter(f=>f.x.code==="SIGDIFF").length}</div><div class="l">SIGNAL MISMATCH</div></div>
     <div class="fact"><div class="n" style="color:var(--blue)">${totR}</div><div class="l">INDEXED W/ JB, NO IO CH</div></div>
+    <div class="fact"><div class="n" style="color:var(--blue)">${spareTot}</div><div class="l">SPARE CHANNELS (RESERVE)</div></div>
   </div>
+  <h2>Spare capacity — per JB / panel</h2>
+  <p class="lead" style="margin-top:-4px">Reserved / unused IO channels. Not a finding — this is free capacity for future tie-ins, sized per panel.</p>
+  ${spares.length?`<table class="data"><thead><tr><th>PANEL / JB</th><th>AREA</th><th class="r">SPARE CH</th><th class="r">ANALOG</th><th class="r">DIGITAL</th></tr></thead><tbody>${
+    spares.map(s=>`<tr><td class="mono" style="font-weight:600">${esc(s.panel)}</td><td class="mono dim">${nz(s.unit)}</td><td class="r mono">${s.total}</td><td class="r mono dim">${s.analog||""}</td><td class="r mono dim">${s.digital||""}</td></tr>`).join("")
+  }<tr style="border-top:2px solid var(--rule)"><td style="font-weight:700">TOTAL</td><td></td><td class="r mono" style="font-weight:700">${spareTot}</td><td class="r mono dim">${spares.reduce((n,s)=>n+s.analog,0)}</td><td class="r mono dim">${spares.reduce((n,s)=>n+s.digital,0)}</td></tr></tbody></table>`
+    :`<div class="empty">No spare channels recorded.</div>`}
   <div class="toolrow">
     <input id="xcFilter" placeholder="⌕ filter findings — tag, panel, area, text (e.g. 3333)" style="width:320px"
       value="${esc(window._xcFilter||"")}" oninput="window._xcFilter=this.value;render()">
