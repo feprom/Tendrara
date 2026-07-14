@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TAM E&amp;I Navigator — Tendrara Micro-LNG</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA; --ok:#1F8A4C;
+    --amber:#B26A00; --blue:#0B5CAD; --fail:#B3261E;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:var(--sans);color:var(--ink);background:#ECEEF1;-webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+  /* ── brandbar (module-101 style) ─────────────────────────── */
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:9px 24px;border-bottom:1px solid var(--line);background:#fff;flex:none;}
+  .brandbar .vendor img{height:38px;display:block;}
+  .brandbar .apptitle{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);}
+  .brandbar .apptitle b{color:var(--crimson);}
+  .client-logos{display:flex;align-items:center;gap:13px;}
+  .client-logo{height:28px;width:auto;display:block;}
+  .client-logo.itf{height:31px;}
+  .client-logos .divider{width:1px;height:26px;background:var(--line-strong);}
+  .accent{height:3px;background:var(--crimson);flex:none;}
+
+  /* ── SAP-like command / breadcrumb bar ───────────────────── */
+  .cmdbar{display:flex;align-items:center;gap:14px;padding:7px 18px;background:var(--bg-soft);
+    border-bottom:1px solid var(--line);flex:none;}
+  .tcode{display:flex;align-items:center;gap:6px;}
+  .tcode label{font-family:var(--mono);font-size:10px;color:var(--ink-soft);letter-spacing:.08em;}
+  .tcode input{font-family:var(--mono);font-size:12px;width:170px;padding:5px 8px;border:1px solid var(--line-strong);
+    border-radius:3px;background:#fff;text-transform:uppercase;}
+  .tcode input:focus{outline:2px solid #f4c3cc;border-color:var(--crimson);}
+  .crumbs{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .crumbs a{color:var(--blue);text-decoration:none;cursor:pointer;}
+  .crumbs a:hover{text-decoration:underline;}
+  .crumbs b{color:var(--ink);}
+  .userchip{font-family:var(--mono);font-size:11px;color:var(--ink-soft);cursor:pointer;border:1px solid var(--line-strong);
+    background:#fff;border-radius:20px;padding:4px 12px;}
+  .userchip b{color:var(--crimson);}
+  .gsearch input{font-family:var(--mono);font-size:12px;width:210px;padding:5px 9px;border:1px solid var(--line-strong);border-radius:3px;}
+
+  /* ── main layout ──────────────────────────────────────────── */
+  .main{display:flex;flex:1;min-height:0;}
+  .tree{width:262px;flex:none;background:#fff;border-right:1px solid var(--line);overflow:auto;padding:10px 0 30px;}
+  .tree .thead{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-soft);padding:8px 16px 4px;}
+  .tnode{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 16px;font-size:12.5px;cursor:pointer;border-left:3px solid transparent;}
+  .tnode:hover{background:var(--bg-soft);}
+  .tnode.sel{background:#FBE9EC;border-left-color:var(--crimson);}
+  .tnode .tw{font-family:var(--mono);font-size:9px;color:var(--ink-soft);width:10px;flex:none;}
+  .tnode .code{font-family:var(--mono);font-weight:700;font-size:11.5px;color:var(--crimson);min-width:30px;}
+  .tnode .lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tnode .cnt{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
+  .tnode.station{padding-left:38px;}
+  .tnode.station .code{color:var(--blue);min-width:0;font-size:10.5px;}
+  .tnode.root .lbl{font-weight:700;}
+
+  .content{flex:1;overflow:auto;padding:22px 30px 60px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--crimson);font-weight:700;margin-bottom:8px;}
+  .kicker .sub{color:var(--ink-soft);font-weight:400;}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:-.01em;line-height:1.12;}
+  h2{font-size:18px;margin:22px 0 9px;letter-spacing:-.01em;}
+  p.lead{color:var(--ink-soft);font-size:13.5px;line-height:1.55;max-width:78ch;margin:0 0 12px;}
+
+  .facts{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;}
+  .fact{flex:1;min-width:118px;border:1px solid var(--line-strong);border-radius:6px;padding:11px 13px;background:var(--bg-soft);cursor:default;}
+  .fact.link{cursor:pointer;}
+  .fact.link:hover{border-color:var(--crimson);}
+  .fact .n{font-size:21px;font-weight:700;color:var(--crimson);font-family:var(--mono);line-height:1;}
+  .fact .l{font-size:10.5px;color:var(--ink-soft);margin-top:5px;line-height:1.3;}
+
+  table.data{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px;background:#fff;}
+  table.data th{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ink-soft);text-align:left;padding:7px 8px;border-bottom:2px solid var(--line-strong);position:sticky;top:0;background:#fff;z-index:1;}
+  table.data td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.data tr.rowlink{cursor:pointer;}
+  table.data tr.rowlink:hover td{background:var(--bg-soft);}
+  td.mono, .mono{font-family:var(--mono);font-size:11.5px;}
+  td.tag{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--blue);white-space:nowrap;cursor:pointer;}
+  td.tag:hover{text-decoration:underline;}
+  td.dim{color:var(--ink-soft);}
+  .r{text-align:right;}
+
+  .chip{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;
+    padding:2px 8px;border-radius:10px;border:1px solid;white-space:nowrap;}
+  .chip.ok{color:var(--ok);border-color:var(--ok);background:#EAF6EF;}
+  .chip.warn{color:var(--amber);border-color:var(--amber);background:#FFF7EC;}
+  .chip.fail{color:var(--fail);border-color:var(--fail);background:#FBECEB;}
+  .chip.info{color:var(--blue);border-color:var(--blue);background:#EAF3FB;}
+  .chip.dim{color:var(--ink-soft);border-color:var(--line-strong);background:var(--bg-soft);}
+  .chip.crimson{color:var(--crimson);border-color:var(--crimson);background:#FBE9EC;}
+
+  .toolrow{display:flex;gap:8px;align-items:center;margin:10px 0 4px;flex-wrap:wrap;}
+  .toolrow input,.toolrow select{font-family:var(--mono);font-size:11.5px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:3px;background:#fff;}
+  .toolrow .spacer{flex:1;}
+  button.btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);font-size:12px;font-weight:600;
+    padding:5px 12px;border-radius:4px;cursor:pointer;transition:.12s;font-family:var(--sans);}
+  button.btn:hover{border-color:var(--crimson);color:var(--crimson);}
+  button.btn.primary{background:var(--crimson);color:#fff;border-color:var(--crimson);}
+  button.btn.primary:hover{background:var(--crimson-dark);color:#fff;}
+  button.btn.mini{font-size:10.5px;padding:2px 8px;font-family:var(--mono);}
+  button.btn.ok{color:var(--ok);border-color:var(--ok);}
+  button.btn.ok:hover{background:#EAF6EF;}
+  button.btn.fail{color:var(--fail);border-color:var(--fail);}
+  button.btn.fail:hover{background:#FBECEB;}
+
+  /* JB header card */
+  .jbcard{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0;border:1px solid var(--line-strong);
+    border-radius:6px;overflow:hidden;margin-top:10px;background:#fff;}
+  .jbcell{padding:9px 13px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);}
+  .jbcell .k{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);}
+  .jbcell .v{font-size:12.5px;margin-top:3px;line-height:1.4;}
+  .jbcell .v.mono{font-size:11px;}
+
+  /* modal */
+  .ovl{position:fixed;inset:0;background:rgba(21,23,26,.5);display:none;align-items:center;justify-content:center;z-index:40;padding:20px;}
+  .ovl.open{display:flex;}
+  .modal{width:min(880px,96vw);max-height:90vh;background:#fff;border-radius:6px;box-shadow:0 18px 60px rgba(0,0,0,.3);
+    display:flex;flex-direction:column;overflow:hidden;}
+  .modal .mhead{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:2px solid var(--crimson);}
+  .modal .mhead h3{margin:0;font-size:16px;}
+  .modal .mhead .x{border:none;background:none;font-size:19px;cursor:pointer;color:var(--ink-soft);line-height:1;}
+  .modal .mbody{padding:16px 20px 22px;overflow:auto;}
+  .formgrid{display:grid;grid-template-columns:150px 1fr;gap:9px 12px;align-items:center;margin-top:8px;}
+  .formgrid label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);}
+  .formgrid input,.formgrid select,.formgrid textarea{font-family:var(--sans);font-size:13px;padding:6px 9px;
+    border:1px solid var(--line-strong);border-radius:3px;width:100%;}
+  .formgrid textarea{min-height:56px;resize:vertical;}
+
+  .note{margin-top:14px;font-size:11px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:8px;line-height:1.5;}
+  .empty{padding:26px;text-align:center;color:var(--ink-soft);font-size:13px;border:1px dashed var(--line-strong);border-radius:6px;margin-top:10px;}
+
+  /* status bar */
+  .statusbar{flex:none;display:flex;align-items:center;gap:16px;padding:6px 18px;background:#fff;
+    border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
+  .statusbar .msg{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .statusbar .msg.ok{color:var(--ok);}
+  .statusbar .msg.err{color:var(--fail);}
+  .statusbar .sys{letter-spacing:.06em;}
+  .loading{padding:60px;text-align:center;color:var(--ink-soft);font-family:var(--mono);font-size:12px;}
+  .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;min-width:70px;}
+  .bar i{display:block;height:100%;background:var(--ok);}
+</style>
+</head>
+<body>
+
+<header class="brandbar">
+  <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'"></div>
+  <div class="apptitle"><b>E&amp;I NAVIGATOR</b> · TENDRARA MICRO-LNG · ASSET / IO / INSTRUMENT MASTER</div>
+  <div class="client-logos">
+    <img class="client-logo itf" src="/images/logoITF.png" alt="ITALFLUID" onerror="this.style.display='none'">
+    <span class="divider"></span>
+    <img class="client-logo" src="/images/logoME.png" alt="ManaEnergy" onerror="this.style.display='none'">
+  </div>
+</header>
+<div class="accent"></div>
+
+<div class="cmdbar">
+  <div class="tcode">
+    <label>TX</label>
+    <input id="tcode" placeholder="EI00 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI30 alarms · EI40 cross-check · EI50 change requests · TAG <tag>">
+  </div>
+  <div class="crumbs" id="crumbs">…</div>
+  <div class="gsearch"><input id="gsearch" placeholder="⌕ tag / service search" list="taglist"><datalist id="taglist"></datalist></div>
+  <button class="userchip" id="userchip" title="Click to change user">USER <b>—</b></button>
+</div>
+
+<div class="main">
+  <nav class="tree" id="tree"><div class="loading">LOADING…</div></nav>
+  <section class="content" id="content"><div class="loading">CONNECTING TO PLANT DATABASE…</div></section>
+</div>
+
+<footer class="statusbar">
+  <span class="sys">TAM-E&amp;I</span>
+  <span class="msg" id="statusmsg">Initializing…</span>
+  <span id="statuscnt"></span>
+</footer>
+
+<!-- Change-request modal -->
+<div class="ovl" id="crOvl">
+  <div class="modal">
+    <div class="mhead"><h3 id="crTitle">Change Request</h3><button class="x" onclick="closeCR()">✕</button></div>
+    <div class="mbody">
+      <div class="formgrid">
+        <label>Object table</label><input id="crTable" readonly>
+        <label>Object tag</label><input id="crTag" readonly>
+        <label>Field</label><select id="crField"></select>
+        <label>Current value</label><input id="crOld" readonly>
+        <label>New value</label><input id="crNew" placeholder="Proposed value">
+        <label>Reason</label><textarea id="crReason" placeholder="Justification / field evidence"></textarea>
+        <label>Requested by</label><input id="crBy">
+      </div>
+      <div class="toolrow" style="margin-top:16px">
+        <span class="spacer"></span>
+        <button class="btn" onclick="closeCR()">Cancel</button>
+        <button class="btn primary" onclick="submitCR()">Submit change request</button>
+      </div>
+      <div class="note">SAP-MOC style: the request is logged in <span class="mono">plant_change_requests</span> with status PENDING.
+      Master data is never modified directly — an approver implements the change during the next data revision.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Instrument detail modal -->
+<div class="ovl" id="instOvl">
+  <div class="modal">
+    <div class="mhead"><h3 id="instTitle">—</h3><button class="x" onclick="closeInst()">✕</button></div>
+    <div class="mbody" id="instBody"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<script>
+"use strict";
+/* ════════════════════════════════════════════════════════════════
+   TAM E&I NAVIGATOR — Tendrara Micro-LNG
+   Architecture → Area → Station (RIO/JB) → IO channel → Instrument
+   Live reads from the plant_* star schema (Supabase, RLS read).
+   Writes: plant_verifications (upsert) + plant_change_requests (insert).
+   ════════════════════════════════════════════════════════════════ */
+const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[]};
+const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), ioByTag:new Map(),
+             stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map()};
+let ROUTE = {view:"home"};
+
+/* ── helpers ─────────────────────────────────────────────────── */
+const $ = s => document.querySelector(s);
+const esc = v => v==null ? "" : String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const nz = (v,d="—") => (v==null||v==="") ? d : esc(v);
+function status(msg, cls){ const el=$("#statusmsg"); el.textContent=msg; el.className="msg "+(cls||""); }
+function getUser(){ let u=localStorage.getItem("eni_user"); if(!u){ u=prompt("Your name / initials (for verifications & change requests):","")||"UNKNOWN"; localStorage.setItem("eni_user",u);} return u; }
+function setUserChip(){ $("#userchip").innerHTML = "USER <b>"+esc(getUser())+"</b>"; }
+$("#userchip").onclick = ()=>{ localStorage.removeItem("eni_user"); setUserChip(); };
+
+async function fetchAll(table, order){
+  const rows=[]; const page=1000;
+  for(let from=0;;from+=page){
+    let q = sb.from(table).select("*").range(from, from+page-1);
+    if(order) q=q.order(order);
+    const {data,error} = await q;
+    if(error) throw new Error(table+": "+error.message);
+    rows.push(...data);
+    if(data.length<page) break;
+  }
+  return rows;
+}
+
+/* ── boot ────────────────────────────────────────────────────── */
+async function boot(){
+  setUserChip();
+  status("Loading plant master data…");
+  try{
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers] = await Promise.all([
+      fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
+      fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
+      fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
+      fetchAll("plant_safety_critical"), fetchAll("plant_change_requests"), fetchAll("plant_verifications")
+    ]);
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers});
+    buildIndexes();
+    buildTree();
+    buildDatalist();
+    window.addEventListener("hashchange", route);
+    route();
+    const total = io.length+inst.length+valves.length+alarms.length;
+    status(`✓ Connected · ${areas.length} areas · ${IDX.stations.size} stations · ${io.length} IO channels · ${inst.length} instruments · ${valves.length} valves · ${alarms.length} alarms`, "ok");
+    $("#statuscnt").textContent = total+" rows";
+  }catch(e){
+    status("✗ "+e.message,"err");
+    $("#content").innerHTML = `<div class="empty">Could not load the plant database.<br><span class="mono">${esc(e.message)}</span></div>`;
+  }
+}
+
+function buildIndexes(){
+  DB.areas.forEach(a=>IDX.areaByCode.set(String(a.area_code),a));
+  DB.inst=DB.inst.filter(r=>r.removed!==true);
+  DB.valves=DB.valves.filter(r=>r.removed!==true);
+  DB.inst.forEach(r=>{ if(r.tag) IDX.instByTag.set(r.tag.trim(),r); });
+  DB.valves.forEach(r=>{ if(r.tag) IDX.valveByTag.set(r.tag.trim(),r); });
+  DB.io.forEach(r=>{ if(r.tag){ const t=r.tag.trim(); if(!IDX.ioByTag.has(t)) IDX.ioByTag.set(t,[]); IDX.ioByTag.get(t).push(r);} });
+  DB.alarms.forEach(a=>{ const k=(a.instrument_tag||"").trim(); if(!k) return;
+    if(!IDX.alarmsByInst.has(k)) IDX.alarmsByInst.set(k,[]); IDX.alarmsByInst.get(k).push(a); });
+  DB.jb.forEach(j=>IDX.jbByTag.set((j.jb_tag||"").trim(), j));
+  // stations = distinct rio_panel in IO list
+  DB.io.forEach(r=>{
+    const p=(r.rio_panel||"UNASSIGNED").trim();
+    if(!IDX.stations.has(p)) IDX.stations.set(p,{panel:p, unit:r.unit||"—", rows:[], jb:IDX.jbByTag.get(p)||null});
+    const s=IDX.stations.get(p); s.rows.push(r);
+    if(r.unit) s.unit=s.unit==="—"?r.unit:s.unit;
+  });
+  IDX.stations.forEach(s=>{
+    const u=String(s.unit); if(!IDX.areaStations.has(u)) IDX.areaStations.set(u,[]);
+    IDX.areaStations.get(u).push(s);
+  });
+  IDX.verByKey.clear();
+  DB.vers.forEach(v=>IDX.verByKey.set(v.object_table+"|"+v.object_tag+"|"+v.check_kind, v));
+}
+
+function buildDatalist(){
+  const dl=$("#taglist"); const tags=new Set();
+  IDX.instByTag.forEach((_,t)=>tags.add(t)); IDX.valveByTag.forEach((_,t)=>tags.add(t));
+  dl.innerHTML=[...tags].sort().map(t=>`<option value="${esc(t)}">`).join("");
+}
+
+/* ── routing (hash) ──────────────────────────────────────────── */
+function nav(h){ location.hash=h; }
+function route(){
+  const h=location.hash.replace(/^#\/?/,"");
+  const [v,...rest]=h.split("/").map(decodeURIComponent);
+  if(v==="area" && rest[0]) ROUTE={view:"area", area:rest[0]};
+  else if(v==="station" && rest[0]) ROUTE={view:"station", panel:rest[0]};
+  else if(v==="alarms") ROUTE={view:"alarms"};
+  else if(v==="xcheck") ROUTE={view:"xcheck"};
+  else if(v==="cr") ROUTE={view:"cr"};
+  else ROUTE={view:"home"};
+  render();
+}
+
+/* ── tree ────────────────────────────────────────────────────── */
+const openAreas = new Set();
+function buildTree(){
+  const t=$("#tree");
+  let html=`<div class="thead">PLANT STRUCTURE · TX EI00</div>
+  <div class="tnode root ${ROUTE.view==='home'?'sel':''}" onclick="nav('')"><span class="tw">■</span><span class="lbl">TENDRARA MICRO-LNG</span><span class="cnt">${DB.io.length} IO</span></div>`;
+  const areas=[...DB.areas].filter(a=>a.description).sort((a,b)=>String(a.area_code).localeCompare(String(b.area_code)));
+  areas.forEach(a=>{
+    const code=String(a.area_code);
+    const st=IDX.areaStations.get(code)||[];
+    const open=openAreas.has(code);
+    const sel=ROUTE.view==="area"&&ROUTE.area===code;
+    html+=`<div class="tnode ${sel?'sel':''}" onclick="toggleArea('${code}')">
+      <span class="tw">${st.length?(open?"▾":"▸"):"·"}</span>
+      <span class="code">${code}</span><span class="lbl" title="${esc(a.description)}">${esc(a.description)}</span>
+      <span class="cnt">${st.length||""}</span></div>`;
+    if(open) st.sort((x,y)=>x.panel.localeCompare(y.panel)).forEach(s=>{
+      const ssel=ROUTE.view==="station"&&ROUTE.panel===s.panel;
+      html+=`<div class="tnode station ${ssel?'sel':''}" onclick="event.stopPropagation();nav('station/${encodeURIComponent(s.panel)}')">
+        <span class="code">${esc(s.panel)}</span><span class="cnt">${s.rows.length} ch</span></div>`;
+    });
+  });
+  html+=`<div class="thead" style="margin-top:12px">REPORTS</div>
+  <div class="tnode ${ROUTE.view==='alarms'?'sel':''}" onclick="nav('alarms')"><span class="tw">▤</span><span class="code">EI30</span><span class="lbl">Alarm register</span><span class="cnt">${DB.alarms.length}</span></div>
+  <div class="tnode ${ROUTE.view==='xcheck'?'sel':''}" onclick="nav('xcheck')"><span class="tw">▤</span><span class="code">EI40</span><span class="lbl">Cross-check IO ↔ index</span></div>
+  <div class="tnode ${ROUTE.view==='cr'?'sel':''}" onclick="nav('cr')"><span class="tw">▤</span><span class="code">EI50</span><span class="lbl">Change requests</span><span class="cnt">${DB.crs.length}</span></div>`;
+  t.innerHTML=html;
+}
+function toggleArea(code){
+  if(openAreas.has(code)) openAreas.delete(code); else openAreas.add(code);
+  nav("area/"+code);
+  buildTree();
+}
+window.toggleArea=toggleArea; window.nav=nav;
+
+/* ── render dispatcher ───────────────────────────────────────── */
+function render(){
+  buildTree();
+  const c=$("#content"); c.scrollTop=0;
+  if(ROUTE.view==="home") renderHome(c);
+  else if(ROUTE.view==="area") renderArea(c, ROUTE.area);
+  else if(ROUTE.view==="station") renderStation(c, ROUTE.panel);
+  else if(ROUTE.view==="alarms") renderAlarms(c);
+  else if(ROUTE.view==="xcheck") renderXcheck(c);
+  else if(ROUTE.view==="cr") renderCRs(c);
+  crumbs();
+}
+function crumbs(){
+  let h=`<a onclick="nav('')">TENDRARA</a>`;
+  if(ROUTE.view==="area") h+=` › <b>AREA ${esc(ROUTE.area)}</b>`;
+  if(ROUTE.view==="station"){ const s=IDX.stations.get(ROUTE.panel);
+    h+=` › <a onclick="nav('area/${esc(s?s.unit:'')}')">AREA ${esc(s?s.unit:"?")}</a> › <b>${esc(ROUTE.panel)}</b>`; }
+  if(ROUTE.view==="alarms") h+=` › <b>ALARM REGISTER</b>`;
+  if(ROUTE.view==="xcheck") h+=` › <b>CROSS-CHECK</b>`;
+  if(ROUTE.view==="cr") h+=` › <b>CHANGE REQUESTS</b>`;
+  $("#crumbs").innerHTML=h;
+}
+
+/* ── verification helpers ────────────────────────────────────── */
+function verOf(table,tag,kind){ return IDX.verByKey.get(table+"|"+tag+"|"+(kind||"FIELD_VERIFY")); }
+function verChip(table,tag,kind){
+  const v=verOf(table,tag,kind);
+  if(!v) return `<span class="chip dim">UNVERIFIED</span>`;
+  const cls=v.result==="OK"?"ok":v.result==="FAIL"?"fail":"dim";
+  return `<span class="chip ${cls}" title="${esc(v.verified_by)} · ${esc((v.created_at||"").slice(0,16).replace("T"," "))}${v.notes?" · "+esc(v.notes):""}">${v.result}</span>`;
+}
+async function setVerify(table, tag, result, panel, kind){
+  kind=kind||"FIELD_VERIFY";
+  let notes=null;
+  if(result==="FAIL"){ notes=prompt("FAIL — describe the discrepancy found:",""); if(notes===null) return; }
+  const row={object_table:table, object_tag:tag, rio_panel:panel||null, check_kind:kind, result, notes, verified_by:getUser()};
+  status("Saving verification "+tag+" …");
+  const {data,error}=await sb.from("plant_verifications").upsert(row,{onConflict:"object_table,object_tag,check_kind"}).select();
+  if(error){ status("✗ "+error.message,"err"); return; }
+  const v=data[0]; IDX.verByKey.set(table+"|"+tag+"|"+kind, v);
+  const i=DB.vers.findIndex(x=>x.id===v.id); if(i>=0) DB.vers[i]=v; else DB.vers.push(v);
+  status(`✓ ${tag} marked ${result} by ${v.verified_by}`,"ok");
+  render();
+}
+window.setVerify=setVerify;
+
+/* ── cross-check engine ──────────────────────────────────────── */
+function xcheckRow(io){
+  const t=(io.tag||"").trim(); if(!t) return {code:"NOTAG", cls:"dim", txt:"NO TAG"};
+  const inst=IDX.instByTag.get(t), vlv=IDX.valveByTag.get(t);
+  const ref=inst||vlv;
+  if(!ref) return {code:"MISSING", cls:"fail", txt:"NOT IN INDEX"};
+  const jb=(ref.junction_box||"").trim(), panel=(io.rio_panel||"").trim();
+  if(jb && panel && jb!==panel) return {code:"JBDIFF", cls:"warn", txt:"JB≠PANEL", detail:`index JB ${jb}`};
+  const s1=(io.signal_type||"").toUpperCase().replace(/\s/g,""), s2=((ref.signal_type||"")+"").toUpperCase().replace(/\s/g,"");
+  if(s1&&s2&&s1!==s2&&!s1.includes(s2)&&!s2.includes(s1)) return {code:"SIGDIFF", cls:"warn", txt:"SIGNAL≠", detail:`index ${ref.signal_type}`};
+  return {code:"OK", cls:"ok", txt:"MATCH", src:inst?"INST":"VALVE"};
+}
+
+/* ── views ───────────────────────────────────────────────────── */
+function renderHome(c){
+  const verified=DB.vers.filter(v=>v.check_kind==="FIELD_VERIFY"&&v.result==="OK").length;
+  const areas=[...DB.areas].filter(a=>a.description).sort((a,b)=>String(a.area_code).localeCompare(String(b.area_code)));
+  const cnt=code=>{
+    const st=IDX.areaStations.get(String(code))||[];
+    const io=st.reduce((n,s)=>n+s.rows.length,0);
+    const inst=DB.inst.filter(r=>String(r.unit)===String(code)).length;
+    const vlv=DB.valves.filter(r=>String(r.unit)===String(code)).length;
+    const alm=DB.alarms.filter(r=>String(r.area_code)===String(code)).length;
+    const eq=DB.equip.filter(r=>String(r.area_code)===String(code)).length;
+    return {st:st.length, io, inst, vlv, alm, eq};
+  };
+  let rows=areas.map(a=>{
+    const k=cnt(a.area_code);
+    return `<tr class="rowlink" onclick="nav('area/${a.area_code}')">
+      <td class="mono" style="font-weight:700;color:var(--crimson)">${a.area_code}</td>
+      <td>${esc(a.description)}</td>
+      <td class="r mono">${k.eq||""}</td><td class="r mono">${k.inst||""}</td><td class="r mono">${k.vlv||""}</td>
+      <td class="r mono">${k.st||""}</td><td class="r mono">${k.io||""}</td><td class="r mono">${k.alm||""}</td></tr>`;
+  }).join("");
+  c.innerHTML=`
+  <div class="kicker">TX EI00 <span class="sub">· PLANT ARCHITECTURE · E&amp;I MASTER DATA</span></div>
+  <h1>Tendrara Micro-LNG — E&amp;I Navigator</h1>
+  <p class="lead">Drill from plant architecture down to each RIO/JB station, its IO list and every instrument.
+  Verify channels in the field, cross-check the IO list against the instrument &amp; valve index,
+  review alarms and raise MOC-style change requests. Live data from the plant knowledge base
+  (docs <span class="mono">21044-PR-…</span>, EPC ITALFLUID · Sound Energy / ManaEnergy).</p>
+  <div class="facts">
+    <div class="fact"><div class="n">${areas.length}</div><div class="l">PROCESS AREAS</div></div>
+    <div class="fact"><div class="n">${IDX.stations.size}</div><div class="l">IO STATIONS (RIO / JB)</div></div>
+    <div class="fact"><div class="n">${DB.io.length}</div><div class="l">IO CHANNELS</div></div>
+    <div class="fact"><div class="n">${DB.inst.length}</div><div class="l">INSTRUMENTS</div></div>
+    <div class="fact"><div class="n">${DB.valves.length}</div><div class="l">ACTUATED VALVES</div></div>
+    <div class="fact link" onclick="nav('alarms')"><div class="n">${DB.alarms.length}</div><div class="l">ALARMS</div></div>
+    <div class="fact link" onclick="nav('cr')"><div class="n">${DB.crs.length}</div><div class="l">CHANGE REQUESTS</div></div>
+    <div class="fact"><div class="n">${Math.round(100*verified/Math.max(1,DB.io.length))}%</div><div class="l">IO FIELD-VERIFIED (${verified}/${DB.io.length})</div></div>
+  </div>
+  <h2>Areas — asset &amp; IO inventory</h2>
+  <table class="data"><thead><tr><th>AREA</th><th>DESCRIPTION</th><th class="r">EQUIP</th><th class="r">INSTR</th>
+  <th class="r">VALVES</th><th class="r">STATIONS</th><th class="r">IO CH</th><th class="r">ALARMS</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div class="note">Navigation: click an area row, or use the transaction field —
+  <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
+  <span class="mono">TAG PT-3411.1</span> instrument · <span class="mono">EI30/EI40/EI50</span> reports.</div>`;
+}
+
+function renderArea(c, code){
+  const a=IDX.areaByCode.get(String(code));
+  const st=(IDX.areaStations.get(String(code))||[]).sort((x,y)=>x.panel.localeCompare(y.panel));
+  const inst=DB.inst.filter(r=>String(r.unit)===String(code));
+  const alm=DB.alarms.filter(r=>String(r.area_code)===String(code));
+  const eq=DB.equip.filter(r=>String(r.area_code)===String(code));
+  const rios=DB.rios.filter(r=>String(r.unit)===String(code));
+  if(!a){ c.innerHTML=`<div class="empty">Area ${esc(code)} not found.</div>`; return; }
+  const stRows=st.map(s=>{
+    const ver=s.rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id),"FIELD_VERIFY");return v&&v.result==="OK";}).length;
+    const pct=Math.round(100*ver/Math.max(1,s.rows.length));
+    const jb=s.jb;
+    return `<tr class="rowlink" onclick="nav('station/${encodeURIComponent(s.panel)}')">
+      <td class="mono" style="font-weight:700;color:var(--blue)">${esc(s.panel)}</td>
+      <td class="dim">${nz(jb&&jb.service)}</td>
+      <td class="mono">${nz(jb&&jb.ex_rating,"")}</td>
+      <td class="r mono">${s.rows.length}</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1"><i style="width:${pct}%"></i></div><span class="mono">${pct}%</span></div></td></tr>`;
+  }).join("");
+  const eqRows=eq.slice(0,80).map(e=>`<tr><td class="mono" style="font-weight:700">${nz(e.tag)}</td><td class="dim">${nz(e.service||e.description)}</td><td class="mono">${nz(e.skid_tag,"")}</td></tr>`).join("");
+  c.innerHTML=`
+  <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
+  <h1>Area ${esc(code)} — ${esc(a.description)}</h1>
+  <div class="facts">
+    <div class="fact"><div class="n">${st.length}</div><div class="l">IO STATIONS</div></div>
+    <div class="fact"><div class="n">${st.reduce((n,s)=>n+s.rows.length,0)}</div><div class="l">IO CHANNELS</div></div>
+    <div class="fact"><div class="n">${inst.length}</div><div class="l">INSTRUMENTS</div></div>
+    <div class="fact"><div class="n">${DB.valves.filter(r=>String(r.unit)===String(code)).length}</div><div class="l">ACTUATED VALVES</div></div>
+    <div class="fact"><div class="n">${alm.length}</div><div class="l">ALARMS</div></div>
+    <div class="fact"><div class="n">${eq.length}</div><div class="l">EQUIPMENT</div></div>
+  </div>
+  <h2>Stations — RIO panels / junction boxes</h2>
+  ${st.length?`<table class="data"><thead><tr><th>PANEL / JB</th><th>SERVICE</th><th>EX RATING</th><th class="r">CH</th><th style="width:180px">FIELD-VERIFIED</th></tr></thead><tbody>${stRows}</tbody></table>`
+    :`<div class="empty">No IO stations mapped to this area yet.</div>`}
+  ${rios.length?`<h2>RIO nodes registered in this area</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th></tr></thead>
+    <tbody>${rios.map(r=>`<tr><td class="mono" style="font-weight:700">${esc(r.tag)}</td><td class="dim">${nz(r.service)}</td></tr>`).join("")}</tbody></table>`:""}
+  ${eq.length?`<h2>Equipment (${eq.length})</h2><table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>SKID</th></tr></thead><tbody>${eqRows}</tbody></table>`:""}
+  ${alm.length?`<h2>Alarms in area ${esc(code)} (${alm.length})</h2>${alarmTable(alm)}`:""}`;
+}
+
+function alarmTable(list){
+  return `<table class="data"><thead><tr><th>ALARM TAG</th><th>INSTRUMENT</th><th>TYPE</th><th>SET POINT</th><th>DESCRIPTION</th><th>AREA</th></tr></thead>
+  <tbody>${list.map(a=>`<tr>
+    <td class="mono" style="font-weight:700">${nz(a.alarm_tag)}</td>
+    <td class="tag" onclick="openInst('${esc(a.instrument_tag||"")}')">${nz(a.instrument_tag)}</td>
+    <td><span class="chip ${a.type==="PSD"||a.type==="ESD"?"crimson":"info"}">${nz(a.type,"—")}</span></td>
+    <td class="mono">${nz(a.set_point,'<span class="chip warn">NOT SET</span>')}</td>
+    <td class="dim">${nz(a.description)}</td>
+    <td class="mono">${nz(a.area_code)}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function renderStation(c, panel){
+  const s=IDX.stations.get(panel);
+  if(!s){ c.innerHTML=`<div class="empty">Station ${esc(panel)} not found.</div>`; return; }
+  const jb=s.jb;
+  const rows=[...s.rows].sort((a,b)=>String(a.slot).localeCompare(String(b.slot),undefined,{numeric:true})||(a.ch_num||0)-(b.ch_num||0));
+  const filter=(window._ioFilter||"").toLowerCase();
+  const shown=rows.filter(r=>!filter || JSON.stringify(r).toLowerCase().includes(filter));
+  const body=shown.map(r=>{
+    const t=(r.tag||"").trim()||("ch"+r.id);
+    const x=xcheckRow(r);
+    return `<tr>
+      <td class="mono dim">${nz(r.slot)}</td>
+      <td class="mono">${nz(r.channel)}</td>
+      <td class="tag" onclick="openInst('${esc(t)}')">${nz(r.tag,'<span class="dim">spare</span>')}</td>
+      <td class="dim">${nz(r.description)}</td>
+      <td class="mono">${nz(r.signal_type)}</td>
+      <td class="mono dim">${nz(r.brand,"")}</td>
+      <td><span class="chip ${x.cls}" title="${esc(x.detail||"")}">${x.txt}</span></td>
+      <td>${verChip("plant_io_list",t)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn mini ok" onclick="setVerify('plant_io_list','${esc(t)}','OK','${esc(panel)}')">OK</button>
+        <button class="btn mini fail" onclick="setVerify('plant_io_list','${esc(t)}','FAIL','${esc(panel)}')">FAIL</button>
+      </td></tr>`;
+  }).join("");
+  const okN=rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id));return v&&v.result==="OK";}).length;
+  const failN=rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id));return v&&v.result==="FAIL";}).length;
+  const mism=rows.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(xcheckRow(r).code)).length;
+  c.innerHTML=`
+  <div class="kicker">TX EI20 <span class="sub">· STATION / IO LIST · AREA ${esc(s.unit)}</span></div>
+  <h1>${esc(panel)}</h1>
+  <p class="lead">${jb?esc(jb.service||""):"IO station (no JB datasheet digitized yet)."}</p>
+  ${jb?`<div class="jbcard">
+    <div class="jbcell"><div class="k">Enclosure</div><div class="v">${nz(jb.enclosure_type)}</div></div>
+    <div class="jbcell"><div class="k">Ex rating</div><div class="v mono">${nz(jb.ex_rating)}</div></div>
+    <div class="jbcell"><div class="k">Ingress / ambient</div><div class="v">${nz(jb.ingress)} · ${nz(jb.ambient)}</div></div>
+    <div class="jbcell"><div class="k">Install zone</div><div class="v">${nz(jb.install_zone)}</div></div>
+    <div class="jbcell"><div class="k">Dimensions / weight</div><div class="v mono">${nz(jb.dims_mm)} · ${nz(jb.weight_kg)} kg</div></div>
+    <div class="jbcell"><div class="k">RIO system</div><div class="v mono">${nz(jb.rio_system)}</div></div>
+    <div class="jbcell"><div class="k">Network</div><div class="v mono">${nz(jb.net_port1)}${jb.net_port2?" · "+esc(jb.net_port2):""}</div></div>
+    <div class="jbcell"><div class="k">Power / fuse</div><div class="v mono">${nz(jb.power_source)} · ${nz(jb.fuse)}</div></div>
+    <div class="jbcell" style="grid-column:1/-1"><div class="k">Module layout</div><div class="v mono">${nz(jb.module_layout)}</div></div>
+  </div>`:""}
+  <div class="facts">
+    <div class="fact"><div class="n">${rows.length}</div><div class="l">CHANNELS</div></div>
+    <div class="fact"><div class="n" style="color:var(--ok)">${okN}</div><div class="l">VERIFIED OK</div></div>
+    <div class="fact"><div class="n" style="color:var(--fail)">${failN}</div><div class="l">VERIFIED FAIL</div></div>
+    <div class="fact"><div class="n" style="color:var(--amber)">${mism}</div><div class="l">CROSS-CHECK FINDINGS</div></div>
+  </div>
+  <h2>IO list</h2>
+  <div class="toolrow">
+    <input id="ioFilter" placeholder="⌕ filter rows" value="${esc(window._ioFilter||"")}" oninput="window._ioFilter=this.value;render()">
+    <span class="spacer"></span>
+    <button class="btn" onclick="exportCSV('${esc(panel)}')">Export CSV</button>
+  </div>
+  <table class="data"><thead><tr><th>SLOT</th><th>CH</th><th>TAG</th><th>DESCRIPTION</th><th>SIGNAL</th><th>BRAND</th>
+  <th>X-CHECK</th><th>STATUS</th><th>VERIFY</th></tr></thead><tbody>${body}</tbody></table>
+  <div class="note">X-CHECK compares each channel tag against <span class="mono">plant_instruments</span> /
+  <span class="mono">plant_valves</span> (tag existence, JB assignment, signal type). Verifications are stored
+  live in <span class="mono">plant_verifications</span> — one status per tag, shared by the whole team.</div>`;
+  const f=$("#ioFilter"); if(f){ f.focus(); f.setSelectionRange(f.value.length,f.value.length); }
+}
+
+function exportCSV(panel){
+  const s=IDX.stations.get(panel); if(!s) return;
+  const cols=["rio_panel","slot","channel","tag","description","signal_type","brand","unit"];
+  const lines=[cols.join(",")].concat(s.rows.map(r=>cols.map(c=>`"${String(r[c]??"").replace(/"/g,'""')}"`).join(",")));
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([lines.join("\n")],{type:"text/csv"}));
+  a.download=panel.replace(/[^\w-]+/g,"_")+"_iolist.csv"; a.click();
+  status("✓ CSV exported for "+panel,"ok");
+}
+window.exportCSV=exportCSV;
+
+function renderAlarms(c){
+  const f=(window._almFilter||"").toLowerCase();
+  const type=window._almType||"";
+  let list=DB.alarms;
+  if(type) list=list.filter(a=>(a.type||"")===type);
+  if(f) list=list.filter(a=>JSON.stringify(a).toLowerCase().includes(f));
+  const types=[...new Set(DB.alarms.map(a=>a.type).filter(Boolean))].sort();
+  const noSP=DB.alarms.filter(a=>!a.set_point).length;
+  c.innerHTML=`
+  <div class="kicker">TX EI30 <span class="sub">· PLANT ALARM REGISTER</span></div>
+  <h1>Alarm register</h1>
+  <div class="facts">
+    <div class="fact"><div class="n">${DB.alarms.length}</div><div class="l">TOTAL ALARMS</div></div>
+    ${types.map(t=>`<div class="fact"><div class="n">${DB.alarms.filter(a=>a.type===t).length}</div><div class="l">${esc(t)}</div></div>`).join("")}
+    <div class="fact"><div class="n" style="color:var(--amber)">${noSP}</div><div class="l">MISSING SET POINT</div></div>
+  </div>
+  <div class="toolrow">
+    <input placeholder="⌕ filter" value="${esc(window._almFilter||"")}" oninput="window._almFilter=this.value;render()">
+    <select onchange="window._almType=this.value;render()">
+      <option value="">ALL TYPES</option>${types.map(t=>`<option ${type===t?"selected":""}>${esc(t)}</option>`).join("")}
+    </select>
+    <span class="spacer"></span><span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} shown</span>
+  </div>
+  ${alarmTable(list)}
+  <div class="note">Set points marked <span class="chip warn">NOT SET</span> are pending from the cause &amp; effect /
+  vendor documentation — raise a change request from the instrument card once confirmed in the field.</div>`;
+}
+
+function renderXcheck(c){
+  const findings=[];
+  DB.io.forEach(r=>{ const x=xcheckRow(r); if(["MISSING","JBDIFF","SIGDIFF"].includes(x.code)) findings.push({io:r,x}); });
+  // reverse: instruments with a JB assignment but no IO channel
+  const reverse=[];
+  IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)) reverse.push(r); });
+  IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)) reverse.push(r); });
+  const rows=findings.map(({io,x})=>`<tr>
+    <td class="tag" onclick="openInst('${esc((io.tag||"").trim())}')">${nz(io.tag)}</td>
+    <td class="mono">${nz(io.rio_panel)}</td><td class="mono dim">${nz(io.channel)}</td>
+    <td><span class="chip ${x.cls}">${x.txt}</span></td>
+    <td class="dim">${esc(x.detail||(x.code==="MISSING"?"tag absent from instrument & valve index":""))}</td>
+    <td class="mono">${nz(io.unit)}</td></tr>`).join("");
+  const revRows=reverse.slice(0,300).map(r=>`<tr>
+    <td class="tag" onclick="openInst('${esc(r.tag.trim())}')">${esc(r.tag)}</td>
+    <td class="dim">${nz(r.service)}</td><td class="mono">${nz(r.junction_box)}</td>
+    <td class="mono">${nz(r.signal_type)}</td><td class="mono">${nz(r.unit)}</td></tr>`).join("");
+  c.innerHTML=`
+  <div class="kicker">TX EI40 <span class="sub">· RECONCILIATION · IO LIST ↔ INSTRUMENT/VALVE INDEX</span></div>
+  <h1>Cross-check report</h1>
+  <p class="lead">Automatic reconciliation by tag string between <span class="mono">plant_io_list</span> and the
+  P&amp;ID instrument / actuated-valve index. Findings are candidates for field verification or a change request.</p>
+  <div class="facts">
+    <div class="fact"><div class="n">${DB.io.length}</div><div class="l">IO CHANNELS CHECKED</div></div>
+    <div class="fact"><div class="n" style="color:var(--ok)">${DB.io.length-findings.length}</div><div class="l">CONSISTENT</div></div>
+    <div class="fact"><div class="n" style="color:var(--fail)">${findings.filter(f=>f.x.code==="MISSING").length}</div><div class="l">IO TAG NOT IN INDEX</div></div>
+    <div class="fact"><div class="n" style="color:var(--amber)">${findings.filter(f=>f.x.code==="JBDIFF").length}</div><div class="l">JB ≠ PANEL</div></div>
+    <div class="fact"><div class="n" style="color:var(--amber)">${findings.filter(f=>f.x.code==="SIGDIFF").length}</div><div class="l">SIGNAL MISMATCH</div></div>
+    <div class="fact"><div class="n" style="color:var(--blue)">${reverse.length}</div><div class="l">INDEXED W/ JB, NO IO CH</div></div>
+  </div>
+  <h2>Findings — IO list side (${findings.length})</h2>
+  ${findings.length?`<table class="data"><thead><tr><th>TAG</th><th>PANEL</th><th>CH</th><th>FINDING</th><th>DETAIL</th><th>AREA</th></tr></thead><tbody>${rows}</tbody></table>`
+    :`<div class="empty">No discrepancies — every IO tag reconciles with the index. ✓</div>`}
+  <h2>Findings — index side: instruments/valves with a JB but no IO channel (${reverse.length})</h2>
+  ${reverse.length?`<table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>JB (INDEX)</th><th>SIGNAL</th><th>AREA</th></tr></thead><tbody>${revRows}</tbody></table>`
+    :`<div class="empty">None. ✓</div>`}`;
+}
+
+function renderCRs(c){
+  const list=[...DB.crs].sort((a,b)=>b.id-a.id);
+  const chip=s=>({PENDING:"warn",APPROVED:"info",IMPLEMENTED:"ok",REJECTED:"fail"}[s]||"dim");
+  c.innerHTML=`
+  <div class="kicker">TX EI50 <span class="sub">· MANAGEMENT OF CHANGE · DATA REVISION LOG</span></div>
+  <h1>Change requests</h1>
+  <p class="lead">MOC-style register (<span class="mono">plant_change_requests</span>). Requests are raised from any
+  instrument card and never modify master data directly — an approver implements them at the next data revision.</p>
+  ${list.length?`<table class="data"><thead><tr><th>CR NO</th><th>DATE</th><th>OBJECT</th><th>TAG</th><th>FIELD</th>
+  <th>OLD → NEW</th><th>REASON</th><th>BY</th><th>STATUS</th></tr></thead>
+  <tbody>${list.map(r=>`<tr>
+    <td class="mono" style="font-weight:700;color:var(--crimson)">${esc(r.cr_no)}</td>
+    <td class="mono dim">${esc((r.created_at||"").slice(0,10))}</td>
+    <td class="mono dim">${esc((r.object_table||"").replace("plant_",""))}</td>
+    <td class="tag" onclick="openInst('${esc(r.object_tag)}')">${esc(r.object_tag)}</td>
+    <td class="mono">${nz(r.field_name)}</td>
+    <td class="mono"><span class="dim">${nz(r.old_value,"∅")}</span> → <b>${nz(r.new_value,"∅")}</b></td>
+    <td class="dim">${nz(r.reason)}</td>
+    <td class="mono">${esc(r.requested_by)}</td>
+    <td><span class="chip ${chip(r.status)}">${esc(r.status)}</span></td></tr>`).join("")}</tbody></table>`
+  :`<div class="empty">No change requests yet. Open any instrument (click a tag) and press “Raise change request”.</div>`}`;
+}
+
+/* ── instrument detail ───────────────────────────────────────── */
+function openInst(tag){
+  tag=(tag||"").trim(); if(!tag) return;
+  const inst=IDX.instByTag.get(tag), vlv=IDX.valveByTag.get(tag);
+  const ref=inst||vlv;
+  const io=IDX.ioByTag.get(tag)||[];
+  const alarms=IDX.alarmsByInst.get(tag)||[];
+  const table=inst?"plant_instruments":vlv?"plant_valves":"plant_io_list";
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(tag)}</span> — ${ref?esc(ref.instrument_type||""):"(IO channel only)"}`;
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  let h="";
+  if(ref){
+    const rng=inst?(nz(ref.range,"")+" "+nz(ref.units,"")):(nz(ref.inst_range,"")+" "+nz(ref.range_unit,""));
+    h+=`<div class="kicker">${inst?"INSTRUMENT INDEX":"ACTUATED VALVE INDEX"} <span class="sub">· ${esc(table)}</span></div>
+    <div class="jbcard">
+      ${kv("Service", nz(ref.service))}
+      ${kv("Type", nz(ref.instrument_type))}
+      ${kv("Range / settings", esc(rng.trim())||"—")}
+      ${kv("Signal", nz(ref.signal_type)+(ref.signal_output?" / "+esc(ref.signal_output):""))}
+      ${kv("Junction box", nz(ref.junction_box))}
+      ${kv("Line / equipment", nz(ref.line_number,"")+" "+nz(ref.equipment,""))}
+      ${kv("P&ID", nz(ref.tam_pid)+(ref.itf_pid?" · ITF "+esc(ref.itf_pid):""))}
+      ${kv("Manufacturer / model", nz(ref.manufacturer,"")+" "+nz(ref.model,""))}
+      ${kv("ATEX (inst / JB)", nz(ref.instrument_atex,"—")+" / "+nz(ref.jb_atex,"—"))}
+      ${kv("Supplied by", nz(ref.instrument_supplied_by,"—"))}
+      ${kv("Area", nz(ref.unit))}
+      ${kv("System", nz(ref.system,"—"))}
+    </div>`;
+    if(ref.notes) h+=`<div class="note">NOTES: ${esc(ref.notes)}</div>`;
+  } else {
+    h+=`<div class="empty">Tag not present in the instrument / valve index — IO channel data only.
+    Raise a change request if this tag should be added.</div>`;
+  }
+  if(io.length){
+    h+=`<h2 style="margin-top:16px">IO channel assignment</h2>
+    <table class="data"><thead><tr><th>PANEL</th><th>SLOT</th><th>CH</th><th>SIGNAL</th><th>DESCRIPTION</th><th>STATUS</th></tr></thead>
+    <tbody>${io.map(r=>`<tr>
+      <td class="tag" onclick="closeInst();nav('station/${encodeURIComponent(r.rio_panel||"")}')">${nz(r.rio_panel)}</td>
+      <td class="mono">${nz(r.slot)}</td><td class="mono">${nz(r.channel)}</td>
+      <td class="mono">${nz(r.signal_type)}</td><td class="dim">${nz(r.description)}</td>
+      <td>${verChip("plant_io_list",tag)}</td></tr>`).join("")}</tbody></table>`;
+    const x=xcheckRow(io[0]);
+    h+=`<div style="margin-top:8px">CROSS-CHECK: <span class="chip ${x.cls}">${x.txt}</span> <span class="mono dim" style="font-size:11px">${esc(x.detail||"")}</span></div>`;
+  } else if(ref){
+    h+=`<div class="note">No IO channel found for this tag (may be local-only, pneumatic, or pending IO digitization).</div>`;
+  }
+  if(alarms.length) h+=`<h2 style="margin-top:16px">Alarms on this instrument</h2>${alarmTable(alarms)}`;
+  const crs=DB.crs.filter(r=>r.object_tag===tag);
+  if(crs.length) h+=`<h2 style="margin-top:16px">Change history</h2><table class="data"><thead><tr><th>CR</th><th>FIELD</th><th>OLD → NEW</th><th>STATUS</th></tr></thead>
+    <tbody>${crs.map(r=>`<tr><td class="mono">${esc(r.cr_no)}</td><td class="mono">${nz(r.field_name)}</td>
+    <td class="mono">${nz(r.old_value,"∅")} → ${nz(r.new_value,"∅")}</td><td><span class="chip warn">${esc(r.status)}</span></td></tr>`).join("")}</tbody></table>`;
+  h+=`<div class="toolrow" style="margin-top:18px">
+    <button class="btn ok" onclick="setVerify('${table}','${esc(tag)}','OK',null,'SETTINGS_CHECK')">Settings verified ✓</button>
+    <span>${verChip(table,tag,"SETTINGS_CHECK")}</span>
+    <span class="spacer"></span>
+    <button class="btn primary" onclick="openCR('${table}','${esc(tag)}')">Raise change request</button>
+  </div>`;
+  $("#instBody").innerHTML=h;
+  $("#instOvl").classList.add("open");
+}
+function closeInst(){ $("#instOvl").classList.remove("open"); }
+window.openInst=openInst; window.closeInst=closeInst;
+
+/* ── change request modal ────────────────────────────────────── */
+const CR_FIELDS={
+  plant_instruments:["range","units","signal_type","junction_box","manufacturer","model","service","instrument_atex","line_number","tag (rename)","other"],
+  plant_valves:["inst_range","range_unit","signal_type","junction_box","manufacturer","model","service","tag (rename)","other"],
+  plant_io_list:["tag","description","signal_type","slot/channel","rio_panel","add missing tag to index","other"],
+  plant_alarms:["set_point","type","description","other"]
+};
+let crCtx=null;
+function openCR(table, tag){
+  crCtx={table,tag};
+  const ref=IDX.instByTag.get(tag)||IDX.valveByTag.get(tag)||{};
+  $("#crTitle").textContent="Change request — "+tag;
+  $("#crTable").value=table; $("#crTag").value=tag;
+  const sel=$("#crField");
+  sel.innerHTML=(CR_FIELDS[table]||CR_FIELDS.plant_io_list).map(f=>`<option>${f}</option>`).join("");
+  sel.onchange=()=>{ $("#crOld").value = ref[sel.value] ?? ""; };
+  sel.onchange();
+  $("#crNew").value=""; $("#crReason").value=""; $("#crBy").value=getUser();
+  $("#crOvl").classList.add("open");
+}
+function closeCR(){ $("#crOvl").classList.remove("open"); }
+async function submitCR(){
+  if(!crCtx) return;
+  const row={object_table:crCtx.table, object_tag:crCtx.tag, field_name:$("#crField").value,
+    old_value:$("#crOld").value||null, new_value:$("#crNew").value||null,
+    reason:$("#crReason").value||null, requested_by:$("#crBy").value||getUser()};
+  if(!row.new_value && !row.reason){ status("✗ Provide a new value or a reason","err"); return; }
+  status("Submitting change request…");
+  const {data,error}=await sb.from("plant_change_requests").insert(row).select();
+  if(error){ status("✗ "+error.message,"err"); return; }
+  DB.crs.push(data[0]); closeCR();
+  status(`✓ ${data[0].cr_no} raised for ${crCtx.tag} (PENDING)`,"ok");
+  render();
+}
+window.openCR=openCR; window.closeCR=closeCR; window.submitCR=submitCR;
+
+/* ── transaction field + global search ───────────────────────── */
+$("#tcode").addEventListener("keydown", e=>{
+  if(e.key!=="Enter") return;
+  const v=e.target.value.trim().toUpperCase(); e.target.value="";
+  const [cmd,...arg]=v.split(/\s+/); const a=arg.join(" ");
+  if(cmd==="EI00"||cmd==="/N"||cmd==="HOME") nav("");
+  else if(cmd==="EI10"&&a) nav("area/"+a);
+  else if(cmd==="EI20"&&a){ const p=[...IDX.stations.keys()].find(k=>k.toUpperCase()===a)||a; nav("station/"+encodeURIComponent(p)); }
+  else if(cmd==="EI30") nav("alarms");
+  else if(cmd==="EI40") nav("xcheck");
+  else if(cmd==="EI50") nav("cr");
+  else if(cmd==="TAG"&&a) openInst(a);
+  else if(IDX.areaByCode.has(cmd)) nav("area/"+cmd);
+  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI30, EI40, EI50, TAG <tag>","err");
+});
+$("#gsearch").addEventListener("keydown", e=>{
+  if(e.key!=="Enter") return;
+  const q=e.target.value.trim(); if(!q) return;
+  const exact=[...IDX.instByTag.keys(),...IDX.valveByTag.keys()].find(t=>t.toUpperCase()===q.toUpperCase());
+  if(exact){ openInst(exact); return; }
+  // fuzzy: first tag or service containing the text
+  const hit=DB.inst.find(r=>(r.tag||"").toUpperCase().includes(q.toUpperCase())||(r.service||"").toUpperCase().includes(q.toUpperCase()))
+        || DB.valves.find(r=>(r.tag||"").toUpperCase().includes(q.toUpperCase()));
+  if(hit) openInst(hit.tag); else status("✗ No tag or service matches “"+q+"”","err");
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeInst(); closeCR(); } });
+
+boot();
+</script>
+</body>
+</html>
