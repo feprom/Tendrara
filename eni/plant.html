@@ -99,7 +99,6 @@
     background:rgba(10,14,20,.88);color:#B9C7D6;padding:6px 12px;cursor:pointer;transition:.15s;}
   .hbtn:hover{border-color:var(--glow);color:#fff;}
   .hbtn.on{border-color:#E8425C;color:#fff;background:rgba(200,16,46,.35);}
-  .hbtn.cube3d{border-color:#5C4FB8;}
   .kpis{position:absolute;right:14px;top:12px;z-index:20;display:flex;gap:7px;}
   .kpi{background:rgba(10,14,20,.88);border:1px solid #33404F;border-radius:5px;padding:5px 11px;text-align:right;}
   .kpi .n{font-family:var(--mono);font-size:15px;font-weight:700;color:#fff;line-height:1.1;}
@@ -161,34 +160,35 @@
   a.abtn:hover{border-color:var(--blue);}
   .note{margin-top:12px;font-size:10.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:7px;line-height:1.5;}
 
-  /* ── TCI cube ───────────────────────────────────────────────── */
-  .cubewrap{position:fixed;inset:0;background:rgba(5,7,10,.94);z-index:60;display:none;flex-direction:column;
-    align-items:center;justify-content:center;gap:10px;}
-  .cubewrap.open{display:flex;}
-  .cubetitle{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:#9FB4C8;text-transform:uppercase;}
-  .cubetitle b{color:#fff;}
-  .cubestage{width:560px;height:460px;perspective:1300px;cursor:grab;}
-  .cubestage.dragging{cursor:grabbing;}
-  #cube{position:relative;width:300px;height:300px;margin:80px auto;transform-style:preserve-3d;}
-  .face{position:absolute;width:300px;height:300px;border:1px solid rgba(127,212,255,.35);background:rgba(10,16,24,.93);
-    display:flex;flex-direction:column;padding:10px;backface-visibility:visible;}
-  .face .fh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
-  .face .ft{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;color:#fff;}
-  .face .fv{font-family:var(--mono);font-size:10px;color:#FFD166;}
-  .face .tiles{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;gap:3px;overflow:hidden;}
-  .tile{border-radius:3px;display:flex;flex-direction:column;justify-content:space-between;padding:4px 5px;cursor:pointer;
-    min-width:44px;transition:.12s;border:1px solid rgba(255,255,255,.12);}
-  .tile:hover{filter:brightness(1.25);border-color:#fff;}
-  .tile .ta{font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;}
-  .tile .tp{font-family:var(--mono);font-size:8.5px;color:rgba(255,255,255,.75);}
-  .face.brandface{align-items:center;justify-content:center;gap:8px;}
-  .brandface .b1{font-family:var(--mono);font-size:13px;letter-spacing:.2em;color:#fff;font-weight:700;}
-  .brandface .b2{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:#9FB4C8;text-align:center;line-height:2;}
-  .brandface .b2 b{color:#FFD166;}
-  .cubehint{font-family:var(--mono);font-size:10px;color:#7E8FA1;letter-spacing:.08em;}
-  .cubeclose{position:absolute;top:22px;right:30px;font-family:var(--mono);font-size:13px;color:#B9C7D6;background:none;
-    border:1px solid #33404F;border-radius:4px;padding:7px 16px;cursor:pointer;}
-  .cubeclose:hover{border-color:#fff;color:#fff;}
+  /* ── AREA OVERVIEW — executive block-flow sheet ─────────────── */
+  .ovwrap{position:fixed;inset:0;background:rgba(5,7,10,.9);z-index:60;display:none;
+    align-items:flex-start;justify-content:center;overflow:auto;padding:26px 20px 40px;}
+  .ovwrap.open{display:flex;}
+  .ovsheet{width:min(1080px,96vw);background:#fff;border-radius:4px;box-shadow:0 24px 80px rgba(0,0,0,.6);
+    border-top:4px solid var(--crimson);display:flex;flex-direction:column;}
+  .ovhead{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;
+    padding:16px 22px 10px;border-bottom:1px solid var(--line);}
+  .ovhead .k{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--crimson);font-weight:700;}
+  .ovhead h2{margin:2px 0 0;font-size:20px;letter-spacing:-.01em;}
+  .ovhead .s{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .ovtotals{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;}
+  .ovtot{border:1px solid var(--line-strong);border-radius:5px;padding:4px 10px;background:var(--bg-soft);text-align:right;}
+  .ovtot .n{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--crimson);line-height:1.1;}
+  .ovtot .l{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;color:var(--ink-soft);text-transform:uppercase;}
+  .ovsvgwrap{padding:8px 14px 4px;}
+  .ovsvgwrap svg{width:100%;height:auto;display:block;}
+  .ovblk{cursor:pointer;}
+  .ovblk rect.card{transition:stroke .12s, filter .12s;}
+  .ovblk:hover rect.card{stroke:var(--crimson);stroke-width:2;filter:drop-shadow(0 2px 6px rgba(200,16,46,.25));}
+  .ovfoot{display:flex;border-top:1.5px solid var(--ink);margin:6px 22px 0;padding:7px 0 14px;
+    font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:var(--ink-soft);gap:0;}
+  .ovfoot span{padding:0 14px;border-right:1px solid var(--line-strong);}
+  .ovfoot span:first-child{padding-left:0;}
+  .ovfoot span:last-child{border-right:none;}
+  .ovfoot b{color:var(--crimson);}
+  .ovclose{position:fixed;top:22px;right:30px;font-family:var(--mono);font-size:13px;color:#B9C7D6;background:rgba(10,14,20,.8);
+    border:1px solid #33404F;border-radius:4px;padding:7px 16px;cursor:pointer;z-index:61;}
+  .ovclose:hover{border-color:#fff;color:#fff;}
 
   /* statusbar */
   .statusbar{flex:none;display:flex;align-items:center;gap:16px;padding:6px 18px;background:#fff;
@@ -214,8 +214,8 @@
 <div class="cmdbar">
   <div class="tcode">
     <label>TX</label>
-    <input id="tcode" placeholder="PL00 · EI10 350 · TAG E-353-1 · CUBE"
-      title="Transactions: PL00 plant · EI10 <area> · TAG <tag> · CUBE · CLASSIC">
+    <input id="tcode" placeholder="PL00 · EI10 350 · TAG E-353-1 · AREAS"
+      title="Transactions: PL00 plant · EI10 <area> · TAG <tag> · AREAS (PL10 block diagram) · CLASSIC">
   </div>
   <div class="crumbs" id="crumbs">…</div>
   <div class="gsearch"><input id="gsearch" placeholder="⌕ area / equipment tag" list="taglist"><datalist id="taglist"></datalist></div>
@@ -236,7 +236,7 @@
         <button class="hbtn" id="btnHome" title="Zoom out to full plant [Esc]">⌂ PLANT</button>
         <button class="hbtn" id="btnFlows" title="Process flow links">⇢ FLOWS</button>
         <button class="hbtn" id="btnTci" title="TCI complexity heat layer">◉ TCI HEAT</button>
-        <button class="hbtn cube3d" id="btnCube" title="TCI multidimensional cube">◳ TCI CUBE</button>
+        <button class="hbtn" id="btnOv" title="Area overview — interconnection block diagram + asset inventory">▦ AREAS</button>
         <button class="hbtn" id="btnEdit" title="Placement mode: drag zones and assets, positions save to the plant DB">✥ PLACE</button>
       </div>
     </div>
@@ -261,12 +261,26 @@
   </aside>
 </div>
 
-<!-- TCI CUBE -->
-<div class="cubewrap" id="cubewrap">
-  <button class="cubeclose" onclick="closeCube()">✕ CLOSE [ESC]</button>
-  <div class="cubetitle">TENDRARA <b>COMPLEXITY CUBE</b> — physical size vs complexity size</div>
-  <div class="cubestage" id="cubestage"><div id="cube"></div></div>
-  <div class="cubehint">DRAG TO ROTATE · CLICK A TILE TO FLY TO THAT AREA · FACES = TCI / M / E / I / C / ID</div>
+<!-- AREA OVERVIEW — block flow sheet -->
+<div class="ovwrap" id="ovwrap">
+  <button class="ovclose" onclick="closeOv()">✕ CLOSE [ESC]</button>
+  <div class="ovsheet">
+    <div class="ovhead">
+      <div>
+        <div class="k">TENDRARA MICRO-LNG · TX PL10</div>
+        <h2>Process areas — interconnection &amp; asset inventory</h2>
+        <div class="s">Block flow per Operating Manual §3 · live counts from the plant database · click any area to open it on the GA</div>
+      </div>
+      <div class="ovtotals" id="ovtotals"></div>
+    </div>
+    <div class="ovsvgwrap" id="ovsvg"></div>
+    <div class="ovfoot">
+      <span>TAM-EI <b>PLANT NAVIGATOR 2026</b></span>
+      <span>SHEET · AREA INTERCONNECTION (BFD)</span>
+      <span>DATA · LIVE plant_* DB · TCI 21044-PR-MAN-00001 §3</span>
+      <span>BY <b>SUPER CLAUDE × MARIO</b></span>
+    </div>
+  </div>
 </div>
 
 <footer class="statusbar">
@@ -459,12 +473,12 @@ function route(){
     const eq=IDX.equipByTag.get(rest[0]);
     ROUTE=eq?{view:"asset",area:String(eq.area_code||""),tag:rest[0]}:{view:"plant"};
   }
-  else if(v==="cube")ROUTE={view:"cube",area:ROUTE.area};
+  else if(v==="ov"||v==="cube")ROUTE={view:"ov",area:ROUTE.area};
   else ROUTE={view:"plant"};
   render();
 }
 function render(){
-  closeCube(false);
+  closeOvPanel();
   drawZones(); /* refresh active state / heat */
   if(ROUTE.view==="plant"){
     $("#assetlayer").innerHTML="";
@@ -475,11 +489,11 @@ function render(){
     if(ROUTE.view==="asset")openAssetDrawer(ROUTE.tag);else openAreaDrawer(ROUTE.area);
     crumbs();
   }
-  if(ROUTE.view==="cube"){openCube();crumbs();}
+  if(ROUTE.view==="ov"){openOv();}
 }
 function crumbs(){
   let h=`<a onclick="nav('')">TENDRARA MICRO-LNG</a>`;
-  if(ROUTE.view==="cube")h+=` › <b>TCI CUBE</b>`;
+  if(ROUTE.view==="ov")h+=` › <b>AREA OVERVIEW</b>`;
   if(ROUTE.area){
     const a=IDX.areaByCode.get(ROUTE.area);
     h+=` › <a onclick="nav('a/${ROUTE.area}')">AREA ${ROUTE.area}${a?" · "+esc(a.description||""):""}</a>`;
@@ -771,7 +785,7 @@ function openAreaDrawer(code){
     <div class="stat" onclick="location.href='index.html#area/${code}'"><div class="n">${valves}</div><div class="l">Valves</div></div>
     <div class="stat" onclick="location.href='index.html#area/${code}'"><div class="n">${io}</div><div class="l">IO channels</div></div>
     <div class="stat" onclick="location.href='index.html#alarms'"><div class="n">${alarms}</div><div class="l">Alarms</div></div>
-    <div class="stat" onclick="nav('cube')"><div class="n">${t!=null?t.toFixed(1)+"%":"—"}</div><div class="l">TCI share</div></div>
+    <div class="stat" onclick="nav('ov')"><div class="n">${t!=null?t.toFixed(1)+"%":"—"}</div><div class="l">TCI share</div></div>
   </div>
   <div class="dsec">EQUIPMENT — click to open on the map</div>
   <div class="elist">`;
@@ -853,7 +867,7 @@ function openAssetDrawer(tag){
 $("#btnHome").onclick=()=>nav("");
 $("#btnFlows").onclick=function(){FLOWSON=!FLOWSON;this.classList.toggle("on",FLOWSON);drawFlows();};
 $("#btnTci").onclick=function(){TCION=!TCION;this.classList.toggle("on",TCION);$("#legend").classList.toggle("show",TCION);drawZones();};
-$("#btnCube").onclick=()=>nav("cube");
+$("#btnOv").onclick=()=>nav("ov");
 $("#btnEdit").onclick=()=>toggleEdit();
 function toggleEdit(force){
   EDIT=force===true?true:(force===false?false:!EDIT);
@@ -869,7 +883,7 @@ $("#btnFlows").classList.add("on");
 /* ── keyboard: Esc = up one level ────────────────────────────── */
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape")return;
-  if($("#cubewrap").classList.contains("open")){nav(ROUTE.area?"a/"+ROUTE.area:"");return;}
+  if($("#ovwrap").classList.contains("open")){nav(ROUTE.area?"a/"+ROUTE.area:"");return;}
   if(EDIT){toggleEdit(false);return;}
   if(ROUTE.view==="asset")nav("a/"+ROUTE.area);
   else if(ROUTE.view==="area")nav("");
@@ -883,7 +897,7 @@ $("#tcode").addEventListener("keydown",e=>{
   if(c==="PL00"||c==="EI00"||c==="HOME")nav("");
   else if(c==="EI10"&&arg)nav("a/"+arg);
   else if(c==="TAG"&&arg)goTag(arg);
-  else if(c==="CUBE")nav("cube");
+  else if(c==="CUBE"||c==="AREAS"||c==="PL10")nav("ov");
   else if(c==="CLASSIC")location.href="index.html";
   else if(/^\d{3}$/.test(c))nav("a/"+c);
   else if(c)goTag(v);
@@ -903,67 +917,123 @@ function goTag(t){
   }
 }
 
-/* ── TCI CUBE ────────────────────────────────────────────────── */
-let cubeRX=-24,cubeRY=32,cubeBuilt=false,cubeSpin=null;
-function faceTiles(title,unitLbl,data,color){
-  const entries=Object.entries(data).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  const tot=entries.reduce((s,[,v])=>s+v,0)||1;
-  let h=`<div class="fh"><span class="ft">${title}</span><span class="fv">${unitLbl}</span></div><div class="tiles">`;
-  entries.forEach(([k,v])=>{
-    const share=v/tot;
-    const w=Math.max(44,Math.round(268*share*1.55));
-    const hgt=Math.max(30,Math.round(72*Math.sqrt(share*2.2)));
-    h+=`<div class="tile" style="width:${w}px;height:${hgt}px;background:${color(k,v,share)}" onclick="nav('a/${k}')">
-      <span class="ta">${k}</span><span class="tp">${typeof v==="number"&&v<100?v.toFixed(v<10?2:1):Math.round(v)}${unitLbl.includes("%")?"%":""}</span></div>`;
-  });
-  return h+"</div>";
+/* ── AREA OVERVIEW — 2D block-flow sheet (module-101 language) ─ */
+function areaCounts(code){
+  return {
+    eq:(IDX.equipByArea.get(code)||[]).length,
+    ins:(IDX.instByUnit.get(code)||[]).length,
+    vl:(IDX.valvesByUnit.get(code)||[]).length,
+    io:(IDX.ioByUnit.get(code)||[]).length,
+    al:(IDX.alarmsByArea.get(code)||[]).length
+  };
 }
-function buildCube(){
-  if(cubeBuilt)return;cubeBuilt=true;
-  const cnt=(rows,key)=>{const m={};rows.forEach(r=>{const k=String(r[key]||"").trim();if(!k||!IDX.areaByCode.has(k))return;m[k]=(m[k]||0)+1;});return m;};
-  const M=cnt(DB.equip,"area_code");
-  const I=cnt(DB.inst,"unit");
-  const C={};DB.io.forEach(r=>{const k=String(r.unit||"").trim();if(k)C[k]=(C[k]||0)+1;});
-      DB.alarms.forEach(r=>{const k=String(r.area_code||"").trim();if(k)C[k]=(C[k]||0)+1;});
-  const E={};DB.motors.forEach(r=>{const k=String(r.area_code||"").trim();if(k)E[k]=(E[k]||0)+1;});
-      DB.loads.forEach(r=>{const k=String(r.unit_tag||"").replace(/\D/g,"");if(k)E[k]=(E[k]||0)+1;});
-  const dc=hue=>(k,v,s)=>`hsl(${hue},62%,${Math.round(58-s*34)}%)`;
-  const faces=[
-    {t:"TCI · COMPLEXITY",u:"% of plant",d:TCI,c:(k,v,s)=>tciColor(v),tr:"rotateY(0deg) translateZ(150px)"},
-    {t:"M · MECHANICAL",u:"equipment",d:M,c:dc(216),tr:"rotateY(90deg) translateZ(150px)"},
-    {t:"E · ELECTRICAL",u:"drives + loads",d:E,c:dc(0),tr:"rotateY(180deg) translateZ(150px)"},
-    {t:"I · INSTRUMENTATION",u:"instruments",d:I,c:dc(140),tr:"rotateY(270deg) translateZ(150px)"},
-    {t:"C · CONTROL",u:"IO + alarms",d:C,c:dc(43),tr:"rotateX(90deg) translateZ(150px)"}
-  ];
-  let h="";
-  faces.forEach(f=>{h+=`<div class="face" style="transform:${f.tr}">${faceTiles(f.t,f.u,f.d,f.c)}</div>`;});
-  h+=`<div class="face brandface" style="transform:rotateX(-90deg) translateZ(150px)">
-    <div class="b1">TENDRARA · TCI</div>
-    <div class="b2">21044-PR-MAN-00001 §3<br>PLANT DATA MODEL ANALYSIS<br>
-    M <b>5.525</b> · C <b>2.978</b> · I <b>2.411</b> · E <b>1.411</b> kh-p<br><br>
-    PLANT NAVIGATOR <b>2026</b><br>SUPER CLAUDE × MARIO</div>
-  </div>`;
-  $("#cube").innerHTML=h;
-  const st=$("#cubestage");
-  let d=null;
-  st.addEventListener("pointerdown",e=>{d={x:e.clientX,y:e.clientY,rx:cubeRX,ry:cubeRY};st.classList.add("dragging");st.setPointerCapture(e.pointerId);stopSpin();});
-  st.addEventListener("pointermove",e=>{if(!d)return;cubeRY=d.ry+(e.clientX-d.x)*0.45;cubeRX=Math.max(-88,Math.min(88,d.rx-(e.clientY-d.y)*0.45));cubeXform();});
-  st.addEventListener("pointerup",()=>{d=null;st.classList.remove("dragging");});
+const OV_NAMES={"200":"LNG PLANT INLET","220":"LNG STORAGE","230":"FLARE SYSTEM","310":"DEHYDRATION",
+  "330":"AMINE SWEETENING","340":"REFRIGERATION","350":"LIQUEFACTION","360":"FLASH GAS / BOG",
+  "370":"VAPORIZER","410":"HOT OIL PACKAGE","480":"FUEL DISTRIBUTION","500":"INSTRUMENT AIR",
+  "530":"OILY WATER","540":"RAW WATER","550":"CLOSED DRAIN","120":"CORROSION INHIBITOR","600":"NITROGEN"};
+function ovBlock(x,y,w,h,code,big){
+  const a=IDX.areaByCode.get(code)||{};
+  const name=OV_NAMES[code]||a.description||"";
+  const c=areaCounts(code);
+  const t=TCI[code];
+  let s=`<g class="ovblk" onclick="nav('a/${code}')" transform="translate(${x},${y})">
+    <rect class="card" width="${w}" height="${h}" rx="6" fill="#fff" stroke="#C9CED4" stroke-width="1.5"/>`;
+  if(big){
+    s+=`<text x="11" y="23" font-family="Segoe UI,Arial" font-size="16" font-weight="700" fill="#15171A">${code}</text>
+    <text x="11" y="36" font-family="Segoe UI,Arial" font-size="7.6" fill="#4A4F57" letter-spacing=".04em">${esc(name)}</text>
+    <text x="11" y="53" font-family="Consolas,monospace" font-size="8.6" fill="#15171A">EQ <tspan font-weight="700">${c.eq}</tspan> · INST <tspan font-weight="700">${c.ins}</tspan> · VLV <tspan font-weight="700">${c.vl}</tspan></text>
+    <text x="11" y="65" font-family="Consolas,monospace" font-size="8.6" fill="#4A4F57">IO ${c.io} · ALARMS ${c.al}</text>`;
+    if(t!=null){
+      const bw=Math.max(3,Math.round((w-70)*Math.min(1,t/33)));
+      s+=`<rect x="11" y="${h-13}" width="${bw}" height="5" rx="2.5" fill="${tciColor(t)}"/>
+      <text x="${11+bw+5}" y="${h-8}" font-family="Consolas,monospace" font-size="7.2" fill="#4A4F57">TCI ${t.toFixed(2)}%${TCI_EST.has(code)?"*":""}</text>`;
+    }
+  }else{
+    s+=`<text x="10" y="19" font-family="Segoe UI,Arial" font-size="12.5" font-weight="700" fill="#15171A">${code}</text>
+    <text x="10" y="30" font-family="Segoe UI,Arial" font-size="7" fill="#4A4F57" letter-spacing=".04em">${esc(name)}</text>
+    <text x="10" y="45" font-family="Consolas,monospace" font-size="8" fill="#15171A">EQ ${c.eq} · INST ${c.ins} · IO ${c.io}</text>`;
+  }
+  return s+"</g>";
 }
-function cubeXform(){$("#cube").style.transform=`rotateX(${cubeRX}deg) rotateY(${cubeRY}deg)`;}
-function stopSpin(){if(cubeSpin){cancelAnimationFrame(cubeSpin);cubeSpin=null;}}
-function openCube(){
-  buildCube();
-  $("#cubewrap").classList.add("open");
-  const spin=()=>{cubeRY+=0.12;cubeXform();cubeSpin=requestAnimationFrame(spin);};
-  stopSpin();spin();
-  crumbs();
+function buildOverview(){
+  const A=`<defs>
+    <marker id="ovm" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#4A4F57"/></marker>
+    <marker id="ovr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#C8102E"/></marker>
+    <marker id="ovb" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#0B5CAD"/></marker>
+    <marker id="ovg" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1F8A4C"/></marker>
+    <marker id="ova" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#B26A00"/></marker>
+  </defs>`;
+  let s=`<svg viewBox="0 0 1000 570" xmlns="http://www.w3.org/2000/svg">${A}`;
+  /* row A — side systems */
+  s+=ovBlock(55,30,140,56,"230");
+  s+=ovBlock(480,30,140,56,"340");
+  s+=ovBlock(760,30,140,56,"360");
+  /* row B - main gas path */
+  const MB=[["200",55],["330",235],["310",415],["350",595],["220",775]];
+  MB.forEach(function(b){ s+=ovBlock(b[1],150,140,84,b[0],true); });
+  /* feed in / LNG out */
+  s+=`<text x="6" y="186" font-family="Consolas,monospace" font-size="9" fill="#4A4F57">FEED</text>
+      <text x="6" y="197" font-family="Consolas,monospace" font-size="9" fill="#4A4F57">GAS</text>
+      <line x1="30" y1="192" x2="53" y2="192" stroke="#C8102E" stroke-width="3" marker-end="url(#ovr)"/>`;
+  for(let i=0;i<MB.length-1;i++){
+    const x1=MB[i][1]+140, x2=MB[i+1][1]-2;
+    s+=`<line x1="${x1}" y1="192" x2="${x2}" y2="192" stroke="#C8102E" stroke-width="3" marker-end="url(#ovr)"/>`;
+  }
+  s+=`<line x1="915" y1="192" x2="952" y2="192" stroke="#C8102E" stroke-width="3" marker-end="url(#ovr)"/>
+      <text x="955" y="189" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">LNG</text>
+      <text x="955" y="200" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">TRUCKS</text>`;
+  /* reliefs to flare */
+  s+=`<line x1="125" y1="148" x2="125" y2="88" stroke="#4A4F57" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ovm)"/>
+      <text x="131" y="120" font-family="Consolas,monospace" font-size="7.5" fill="#4A4F57">HP/LP RELIEFS - ALL UNITS</text>`;
+  /* NH3 340 to 350 and 310 */
+  s+=`<polyline points="560,86 560,120 660,120 660,148" fill="none" stroke="#0B5CAD" stroke-width="1.6" marker-end="url(#ovb)"/>
+      <line x1="520" y1="86" x2="520" y2="148" stroke="#0B5CAD" stroke-width="1.6" marker-end="url(#ovb)"/>
+      <text x="566" y="112" font-family="Consolas,monospace" font-size="7.5" fill="#0B5CAD">NH3</text>`;
+  /* BOG 220 to 360, recycle 360 to 350 */
+  s+=`<line x1="820" y1="148" x2="820" y2="88" stroke="#1F8A4C" stroke-width="1.6" marker-end="url(#ovg)"/>
+      <text x="826" y="120" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">BOG</text>
+      <polyline points="760,58 700,58 700,148" fill="none" stroke="#1F8A4C" stroke-width="1.6" marker-end="url(#ovg)"/>
+      <text x="704" y="100" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">RECYCLE</text>`;
+  /* row C - thermal & fuel */
+  s+=ovBlock(55,300,140,64,"410");
+  s+=ovBlock(415,300,140,64,"370");
+  s+=ovBlock(625,300,140,64,"480");
+  /* hot oil 410 to 200 & 330 */
+  s+=`<line x1="110" y1="298" x2="110" y2="238" stroke="#B26A00" stroke-width="1.6" marker-end="url(#ova)"/>
+      <polyline points="195,332 300,332 300,238" fill="none" stroke="#B26A00" stroke-width="1.6" marker-end="url(#ova)"/>
+      <text x="118" y="268" font-family="Consolas,monospace" font-size="7.5" fill="#B26A00">HOT OIL</text>`;
+  /* fuel-gas bypass 200-370-480, flash gas to fuel, 480 to users */
+  s+=`<polyline points="150,238 150,268 380,268 380,332 413,332" fill="none" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#ovm)"/>
+      <text x="180" y="263" font-family="Consolas,monospace" font-size="7.5" fill="#4A4F57">FUEL-GAS BYPASS (U200)</text>
+      <line x1="555" y1="332" x2="622" y2="332" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#ovm)"/>
+      <polyline points="900,58 985,58 985,290 765,290 765,298" fill="none" stroke="#1F8A4C" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ovg)"/>
+      <text x="800" y="285" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">FLASH GAS - FUEL</text>
+      <line x1="765" y1="332" x2="822" y2="332" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#ovm)"/>
+      <text x="826" y="329" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">POWER GEN /</text>
+      <text x="826" y="340" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">FUEL USERS</text>`;
+  /* divider + utilities row */
+  s+=`<line x1="55" y1="410" x2="945" y2="410" stroke="#C9CED4" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="55" y="402" font-family="Consolas,monospace" font-size="8" letter-spacing=".14em" fill="#4A4F57">UTILITIES &amp; OFFSITES</text>`;
+  const UT=["500","600","120","540","550","530"];
+  UT.forEach(function(c,i){ s+=ovBlock(55+i*150,428,140,56,c); });
+  /* legend */
+  s+=`<g font-family="Consolas,monospace" font-size="7.5">
+      <line x1="55" y1="530" x2="80" y2="530" stroke="#C8102E" stroke-width="3"/><text x="85" y="533" fill="#4A4F57">MAIN GAS / LNG</text>
+      <line x1="185" y1="530" x2="210" y2="530" stroke="#0B5CAD" stroke-width="1.6"/><text x="215" y="533" fill="#4A4F57">NH3 REFRIGERANT</text>
+      <line x1="330" y1="530" x2="355" y2="530" stroke="#1F8A4C" stroke-width="1.6"/><text x="360" y="533" fill="#4A4F57">BOG / FLASH GAS</text>
+      <line x1="470" y1="530" x2="495" y2="530" stroke="#B26A00" stroke-width="1.6"/><text x="500" y="533" fill="#4A4F57">HOT OIL</text>
+      <line x1="560" y1="530" x2="585" y2="530" stroke="#4A4F57" stroke-width="1.5" stroke-dasharray="5 4"/><text x="590" y="533" fill="#4A4F57">RELIEF / INTERMITTENT</text>
+      <text x="740" y="533" fill="#4A4F57">TCI BAR = % OF PLANT COMPLEXITY (* ESTIMATED)</text></g>`;
+  s+="</svg>";
+  document.querySelector("#ovsvg").innerHTML=s;
+  const tot={eq:DB.equip.length,ins:DB.inst.length,vl:DB.valves.length,io:DB.io.length,al:DB.alarms.length};
+  document.querySelector("#ovtotals").innerHTML=[["AREAS",Object.keys(OV_NAMES).length],["EQUIPMENT",tot.eq],["INSTRUMENTS",tot.ins],
+    ["VALVES",tot.vl],["IO CH",tot.io],["ALARMS",tot.al]]
+    .map(function(x){ return `<div class="ovtot"><div class="n">${x[1]}</div><div class="l">${x[0]}</div></div>`; }).join("");
 }
-function closeCube(navBack){
-  stopSpin();
-  $("#cubewrap").classList.remove("open");
-}
-window.closeCube=()=>{ nav(ROUTE.area?"a/"+ROUTE.area:""); };
+function openOv(){ buildOverview(); document.querySelector("#ovwrap").classList.add("open"); crumbs(); }
+function closeOvPanel(){ document.querySelector("#ovwrap").classList.remove("open"); }
+window.closeOv=function(){ nav(ROUTE.area?"a/"+ROUTE.area:""); };
 
 boot();
 </script>
