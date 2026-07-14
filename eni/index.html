@@ -165,10 +165,10 @@
 <div class="cmdbar">
   <div class="tcode">
     <label>TX</label>
-    <input id="tcode" placeholder="EI00 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI30 alarms · EI40 cross-check · EI50 change requests · TAG <tag>">
+    <input id="tcode" placeholder="EI00 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI30 alarms · EI40 cross-check · EI50 change requests · EI60 commissioning · TAG <tag> · SEARCH <text>">
   </div>
   <div class="crumbs" id="crumbs">…</div>
-  <div class="gsearch"><input id="gsearch" placeholder="⌕ tag / service search" list="taglist"><datalist id="taglist"></datalist></div>
+  <div class="gsearch"><input id="gsearch" placeholder="⌕ search all — e.g. 3333, suction, S221" list="taglist"><datalist id="taglist"></datalist></div>
   <button class="userchip" id="userchip" title="Click to change user">USER <b>—</b></button>
 </div>
 
@@ -322,6 +322,8 @@ function route(){
   else if(v==="alarms") ROUTE={view:"alarms"};
   else if(v==="xcheck") ROUTE={view:"xcheck"};
   else if(v==="cr") ROUTE={view:"cr"};
+  else if(v==="comm") ROUTE={view:"comm"};
+  else if(v==="search") ROUTE={view:"search", q:rest.join("/")||""};
   else ROUTE={view:"home"};
   render();
 }
@@ -351,7 +353,8 @@ function buildTree(){
   html+=`<div class="thead" style="margin-top:12px">REPORTS</div>
   <div class="tnode ${ROUTE.view==='alarms'?'sel':''}" onclick="nav('alarms')"><span class="tw">▤</span><span class="code">EI30</span><span class="lbl">Alarm register</span><span class="cnt">${DB.alarms.length}</span></div>
   <div class="tnode ${ROUTE.view==='xcheck'?'sel':''}" onclick="nav('xcheck')"><span class="tw">▤</span><span class="code">EI40</span><span class="lbl">Cross-check IO ↔ index</span></div>
-  <div class="tnode ${ROUTE.view==='cr'?'sel':''}" onclick="nav('cr')"><span class="tw">▤</span><span class="code">EI50</span><span class="lbl">Change requests</span><span class="cnt">${DB.crs.length}</span></div>`;
+  <div class="tnode ${ROUTE.view==='cr'?'sel':''}" onclick="nav('cr')"><span class="tw">▤</span><span class="code">EI50</span><span class="lbl">Change requests</span><span class="cnt">${DB.crs.length}</span></div>
+  <div class="tnode ${ROUTE.view==='comm'?'sel':''}" onclick="nav('comm')"><span class="tw">▤</span><span class="code">EI60</span><span class="lbl">Commissioning progress</span><span class="cnt">${DB.vers.filter(v=>v.result==="FAIL").length}✗</span></div>`;
   t.innerHTML=html;
 }
 function toggleArea(code){
@@ -371,6 +374,8 @@ function render(){
   else if(ROUTE.view==="alarms") renderAlarms(c);
   else if(ROUTE.view==="xcheck") renderXcheck(c);
   else if(ROUTE.view==="cr") renderCRs(c);
+  else if(ROUTE.view==="comm") renderComm(c);
+  else if(ROUTE.view==="search") renderSearch(c, ROUTE.q);
   crumbs();
 }
 function crumbs(){
@@ -381,6 +386,8 @@ function crumbs(){
   if(ROUTE.view==="alarms") h+=` › <b>ALARM REGISTER</b>`;
   if(ROUTE.view==="xcheck") h+=` › <b>CROSS-CHECK</b>`;
   if(ROUTE.view==="cr") h+=` › <b>CHANGE REQUESTS</b>`;
+  if(ROUTE.view==="comm") h+=` › <b>COMMISSIONING</b>`;
+  if(ROUTE.view==="search") h+=` › <b>SEARCH “${esc(ROUTE.q||"")}”</b>`;
   $("#crumbs").innerHTML=h;
 }
 
@@ -408,13 +415,25 @@ async function setVerify(table, tag, result, panel, kind){
 window.setVerify=setVerify;
 
 /* ── cross-check engine ──────────────────────────────────────── */
+// Canonical JB/panel name: same physical box may be written P-PN-S221A.1,
+// P-PN-S221A, P-PN-PK351-5 vs P-PK-PK-351-5, or with 0↔O typos (0S361/OS361).
+// Uppercase → drop trailing ".n" terminal-strip suffix → drop P-PN-/P-PK- prefix
+// → strip separators → letter O to 0.
+function canonJB(x){
+  return (x||"").trim().toUpperCase()
+    .replace(/\.\d+$/,"")
+    .replace(/^P-(PN|PK)-/,"")
+    .replace(/[^A-Z0-9]/g,"")
+    .replace(/O/g,"0");
+}
 function xcheckRow(io){
   const t=(io.tag||"").trim(); if(!t) return {code:"NOTAG", cls:"dim", txt:"NO TAG"};
   const inst=IDX.instByTag.get(t), vlv=IDX.valveByTag.get(t);
   const ref=inst||vlv;
   if(!ref) return {code:"MISSING", cls:"fail", txt:"NOT IN INDEX"};
   const jb=(ref.junction_box||"").trim(), panel=(io.rio_panel||"").trim();
-  if(jb && panel && jb!==panel) return {code:"JBDIFF", cls:"warn", txt:"JB≠PANEL", detail:`index JB ${jb}`};
+  if(jb && panel && canonJB(jb)!==canonJB(panel))
+    return {code:"JBDIFF", cls:"warn", txt:"JB MISMATCH", detail:`instrument index says JB ${jb} — IO list wires it to ${panel}`};
   const s1=(io.signal_type||"").toUpperCase().replace(/\s/g,""), s2=((ref.signal_type||"")+"").toUpperCase().replace(/\s/g,"");
   if(s1&&s2&&s1!==s2&&!s1.includes(s2)&&!s2.includes(s1)) return {code:"SIGDIFF", cls:"warn", txt:"SIGNAL≠", detail:`index ${ref.signal_type}`};
   return {code:"OK", cls:"ok", txt:"MATCH", src:inst?"INST":"VALVE"};
@@ -620,12 +639,18 @@ function renderAlarms(c){
 }
 
 function renderXcheck(c){
-  const findings=[];
+  let findings=[];
   DB.io.forEach(r=>{ const x=xcheckRow(r); if(["MISSING","JBDIFF","SIGDIFF"].includes(x.code)) findings.push({io:r,x}); });
   // reverse: instruments with a JB assignment but no IO channel
-  const reverse=[];
+  let reverse=[];
   IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)) reverse.push(r); });
   IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)) reverse.push(r); });
+  const totF=findings.length, totR=reverse.length;
+  const f=(window._xcFilter||"").toLowerCase();
+  if(f){
+    findings=findings.filter(({io,x})=>((io.tag||"")+" "+(io.rio_panel||"")+" "+(io.channel||"")+" "+(io.description||"")+" "+(io.unit||"")+" "+x.txt+" "+(x.detail||"")).toLowerCase().includes(f));
+    reverse=reverse.filter(r=>((r.tag||"")+" "+(r.service||"")+" "+(r.junction_box||"")+" "+(r.signal_type||"")+" "+(r.unit||"")).toLowerCase().includes(f));
+  }
   const rows=findings.map(({io,x})=>`<tr>
     <td class="tag" onclick="openInst('${esc((io.tag||"").trim())}')">${nz(io.tag)}</td>
     <td class="mono">${nz(io.rio_panel)}</td><td class="mono dim">${nz(io.channel)}</td>
@@ -647,14 +672,130 @@ function renderXcheck(c){
     <div class="fact"><div class="n" style="color:var(--fail)">${findings.filter(f=>f.x.code==="MISSING").length}</div><div class="l">IO TAG NOT IN INDEX</div></div>
     <div class="fact"><div class="n" style="color:var(--amber)">${findings.filter(f=>f.x.code==="JBDIFF").length}</div><div class="l">JB ≠ PANEL</div></div>
     <div class="fact"><div class="n" style="color:var(--amber)">${findings.filter(f=>f.x.code==="SIGDIFF").length}</div><div class="l">SIGNAL MISMATCH</div></div>
-    <div class="fact"><div class="n" style="color:var(--blue)">${reverse.length}</div><div class="l">INDEXED W/ JB, NO IO CH</div></div>
+    <div class="fact"><div class="n" style="color:var(--blue)">${totR}</div><div class="l">INDEXED W/ JB, NO IO CH</div></div>
   </div>
-  <h2>Findings — IO list side (${findings.length})</h2>
+  <div class="toolrow">
+    <input id="xcFilter" placeholder="⌕ filter findings — tag, panel, area, text (e.g. 3333)" style="width:320px"
+      value="${esc(window._xcFilter||"")}" oninput="window._xcFilter=this.value;render()">
+    <span class="spacer"></span>
+    <span class="mono" style="font-size:11px;color:var(--ink-soft)">${findings.length}/${totF} + ${reverse.length}/${totR} shown</span>
+  </div>
+  <h2>Findings — IO list side (${findings.length}${f?" of "+totF:""})</h2>
   ${findings.length?`<table class="data"><thead><tr><th>TAG</th><th>PANEL</th><th>CH</th><th>FINDING</th><th>DETAIL</th><th>AREA</th></tr></thead><tbody>${rows}</tbody></table>`
-    :`<div class="empty">No discrepancies — every IO tag reconciles with the index. ✓</div>`}
-  <h2>Findings — index side: instruments/valves with a JB but no IO channel (${reverse.length})</h2>
+    :`<div class="empty">${f?"No findings match “"+esc(window._xcFilter)+"”.":"No discrepancies — every IO tag reconciles with the index. ✓"}</div>`}
+  <h2>Findings — index side: instruments/valves with a JB but no IO channel (${reverse.length}${f?" of "+totR:""})</h2>
   ${reverse.length?`<table class="data"><thead><tr><th>TAG</th><th>SERVICE</th><th>JB (INDEX)</th><th>SIGNAL</th><th>AREA</th></tr></thead><tbody>${revRows}</tbody></table>`
     :`<div class="empty">None. ✓</div>`}`;
+  const xf=$("#xcFilter"); if(xf){ xf.focus(); xf.setSelectionRange(xf.value.length,xf.value.length); }
+}
+
+/* ── global search results (EI70 / gsearch) ──────────────────── */
+function searchAll(q){
+  const s=q.toLowerCase(); const out=[]; const seen=new Set();
+  const push=(kind,cls,tag,service,area,extra,click)=>{ out.push({kind,cls,tag,service,area,extra,click}); };
+  DB.inst.forEach(r=>{ const hay=((r.tag||"")+" "+(r.service||"")+" "+(r.instrument_type||"")+" "+(r.junction_box||"")+" "+(r.line_number||"")).toLowerCase();
+    if(hay.includes(s)){ seen.add((r.tag||"").trim()); push("INSTRUMENT","info",r.tag,r.service,r.unit,r.junction_box,`openInst('${esc((r.tag||"").trim())}')`);} });
+  DB.valves.forEach(r=>{ const t=(r.tag||"").trim(); if(seen.has(t)) return; // 47 TSVs exist in both indexes — show once
+    const hay=(t+" "+(r.service||"")+" "+(r.instrument_type||"")+" "+(r.junction_box||"")).toLowerCase();
+    if(hay.includes(s)){ seen.add(t); push("VALVE","crimson",r.tag,r.service,r.unit,r.junction_box,`openInst('${esc(t)}')`);} });
+  DB.io.forEach(r=>{ const t=(r.tag||"").trim();
+    const hay=(t+" "+(r.description||"")+" "+(r.rio_panel||"")+" "+(r.channel||"")).toLowerCase();
+    if(hay.includes(s) && !seen.has(t)){ seen.add(t||("ch"+r.id));
+      push("IO CHANNEL","dim",r.tag||"(spare)",r.description,r.unit,(r.rio_panel||"")+" "+(r.channel||""),
+        t?`openInst('${esc(t)}')`:`nav('station/${encodeURIComponent(r.rio_panel||"")}')`);} });
+  DB.alarms.forEach(r=>{ const hay=((r.alarm_tag||"")+" "+(r.instrument_tag||"")+" "+(r.description||"")).toLowerCase();
+    if(hay.includes(s)) push("ALARM","warn",r.alarm_tag,r.description,r.area_code,r.instrument_tag,
+      r.instrument_tag?`openInst('${esc((r.instrument_tag||"").trim())}')`:"");});
+  DB.equip.forEach(r=>{ const hay=((r.tag||"")+" "+(r.service||"")).toLowerCase();
+    if(hay.includes(s)) push("EQUIPMENT","ok",r.tag,r.service,r.area_code,r.skid_tag,`nav('area/${esc(String(r.area_code||""))}')`);});
+  IDX.stations.forEach(st=>{ if(st.panel.toLowerCase().includes(s))
+    push("STATION","info",st.panel,(st.jb&&st.jb.service)||"IO station",st.unit,st.rows.length+" ch",`nav('station/${encodeURIComponent(st.panel)}')`);});
+  return out;
+}
+function renderSearch(c,q){
+  q=(q||"").trim();
+  if(!q){ c.innerHTML=`<div class="empty">Type a search term above (tag fragment, service, panel… e.g. <span class="mono">3333</span>).</div>`; return; }
+  const res=searchAll(q); const MAX=400;
+  c.innerHTML=`
+  <div class="kicker">SEARCH <span class="sub">· ALL OBJECT TYPES · SUBSTRING MATCH</span></div>
+  <h1>Results for “${esc(q)}”</h1>
+  <div class="facts">
+    ${["INSTRUMENT","VALVE","IO CHANNEL","ALARM","EQUIPMENT","STATION"].map(k=>{
+      const n=res.filter(r=>r.kind===k).length; return n?`<div class="fact"><div class="n">${n}</div><div class="l">${k}S</div></div>`:"";}).join("")}
+    ${res.length?"":'<div class="fact"><div class="n">0</div><div class="l">MATCHES</div></div>'}
+  </div>
+  ${res.length?`<table class="data"><thead><tr><th>TYPE</th><th>TAG / ID</th><th>SERVICE / DESCRIPTION</th><th>AREA</th><th>REF</th></tr></thead>
+  <tbody>${res.slice(0,MAX).map(r=>`<tr class="rowlink" onclick="${r.click}">
+    <td><span class="chip ${r.cls}">${r.kind}</span></td>
+    <td class="mono" style="font-weight:700;color:var(--blue)">${nz(r.tag)}</td>
+    <td class="dim">${nz(r.service)}</td>
+    <td class="mono">${nz(r.area)}</td>
+    <td class="mono dim">${nz(r.extra,"")}</td></tr>`).join("")}</tbody></table>
+  ${res.length>MAX?`<div class="note">Showing first ${MAX} of ${res.length} — refine the search.</div>`:""}`
+  :`<div class="empty">Nothing matches “${esc(q)}” in instruments, valves, IO, alarms, equipment or stations.</div>`}`;
+}
+
+/* ── commissioning dashboard (EI60) ──────────────────────────── */
+function renderComm(c){
+  const key=r=>(r.tag||"ch"+r.id).trim();
+  const st=v=>{ const x=verOf("plant_io_list",v,"FIELD_VERIFY"); return x?x.result:null; };
+  const areas=[...IDX.areaStations.keys()].sort();
+  let okT=0, failT=0;
+  const rows=areas.map(u=>{
+    const stations=IDX.areaStations.get(u)||[];
+    const ch=stations.reduce((n,s)=>n+s.rows.length,0);
+    let ok=0, fail=0;
+    stations.forEach(s=>s.rows.forEach(r=>{ const v=st(key(r)); if(v==="OK") ok++; else if(v==="FAIL") fail++; }));
+    okT+=ok; failT+=fail;
+    const pct=Math.round(100*ok/Math.max(1,ch));
+    const a=IDX.areaByCode.get(String(u));
+    return `<tr class="rowlink" onclick="nav('area/${esc(u)}')">
+      <td class="mono" style="font-weight:700;color:var(--crimson)">${esc(u)}</td>
+      <td>${a?esc(a.description||""):""}</td>
+      <td class="r mono">${stations.length}</td><td class="r mono">${ch}</td>
+      <td class="r mono" style="color:var(--ok)">${ok||""}</td>
+      <td class="r mono" style="color:var(--fail)">${fail||""}</td>
+      <td class="r mono">${ch-ok-fail}</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1"><i style="width:${pct}%"></i></div><span class="mono">${pct}%</span></div></td></tr>`;
+  }).join("");
+  const punch=DB.vers.filter(v=>v.result==="FAIL").sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
+  const recent=[...DB.vers].sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||"")).slice(0,15);
+  const pct=Math.round(100*okT/Math.max(1,DB.io.length));
+  c.innerHTML=`
+  <div class="kicker">TX EI60 <span class="sub">· COMMISSIONING · FIELD VERIFICATION PROGRESS</span></div>
+  <h1>Commissioning progress</h1>
+  <p class="lead">Live loop-check / field-verification status across all IO stations. Every OK/FAIL pressed in a
+  station view lands here instantly — shared by the whole team. FAIL items form the punch list.</p>
+  <div class="facts">
+    <div class="fact"><div class="n">${DB.io.length}</div><div class="l">IO CHANNELS TOTAL</div></div>
+    <div class="fact"><div class="n" style="color:var(--ok)">${okT}</div><div class="l">VERIFIED OK</div></div>
+    <div class="fact"><div class="n" style="color:var(--fail)">${failT}</div><div class="l">PUNCH LIST (FAIL)</div></div>
+    <div class="fact"><div class="n">${DB.io.length-okT-failT}</div><div class="l">PENDING</div></div>
+    <div class="fact"><div class="n">${pct}%</div><div class="l">OVERALL COMPLETE</div></div>
+  </div>
+  <h2>Progress by area</h2>
+  <table class="data"><thead><tr><th>AREA</th><th>DESCRIPTION</th><th class="r">ST</th><th class="r">CH</th>
+  <th class="r">OK</th><th class="r">FAIL</th><th class="r">PEND</th><th style="width:190px">PROGRESS</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <h2>Punch list — failed verifications (${punch.length})</h2>
+  ${punch.length?`<table class="data"><thead><tr><th>TAG</th><th>PANEL</th><th>CHECK</th><th>DISCREPANCY</th><th>BY</th><th>DATE</th></tr></thead>
+  <tbody>${punch.map(v=>`<tr>
+    <td class="tag" onclick="openInst('${esc(v.object_tag)}')">${esc(v.object_tag)}</td>
+    <td class="mono">${nz(v.rio_panel)}</td>
+    <td><span class="chip fail">${esc(v.check_kind)}</span></td>
+    <td class="dim">${nz(v.notes)}</td>
+    <td class="mono">${esc(v.verified_by)}</td>
+    <td class="mono dim">${esc((v.created_at||"").slice(0,16).replace("T"," "))}</td></tr>`).join("")}</tbody></table>`
+  :`<div class="empty">Punch list is clean — no FAIL verifications recorded. ✓</div>`}
+  <h2>Recent activity</h2>
+  ${recent.length?`<table class="data"><thead><tr><th>DATE</th><th>TAG</th><th>CHECK</th><th>RESULT</th><th>BY</th></tr></thead>
+  <tbody>${recent.map(v=>`<tr>
+    <td class="mono dim">${esc((v.created_at||"").slice(0,16).replace("T"," "))}</td>
+    <td class="tag" onclick="openInst('${esc(v.object_tag)}')">${esc(v.object_tag)}</td>
+    <td class="mono dim">${esc(v.check_kind)}</td>
+    <td><span class="chip ${v.result==="OK"?"ok":v.result==="FAIL"?"fail":"dim"}">${esc(v.result)}</span></td>
+    <td class="mono">${esc(v.verified_by)}</td></tr>`).join("")}</tbody></table>`
+  :`<div class="empty">No verifications yet — open a station (EI20) and start checking channels.</div>`}`;
 }
 
 function renderCRs(c){
@@ -693,21 +834,27 @@ function openInst(tag){
   let h="";
   if(ref){
     const rng=inst?(nz(ref.range,"")+" "+nz(ref.units,"")):(nz(ref.inst_range,"")+" "+nz(ref.range_unit,""));
-    h+=`<div class="kicker">${inst?"INSTRUMENT INDEX":"ACTUATED VALVE INDEX"} <span class="sub">· ${esc(table)}</span></div>
+    const area=IDX.areaByCode.get(String(ref.unit));
+    h+=`<div class="kicker">${inst?"INSTRUMENT INDEX":"ACTUATED VALVE INDEX"} <span class="sub">· ${esc(table)} · ITEM ${nz(ref.item,"—")} REV ${nz(ref.rev,"—")}</span></div>
     <div class="jbcard">
-      ${kv("Service", nz(ref.service))}
-      ${kv("Type", nz(ref.instrument_type))}
-      ${kv("Range / settings", esc(rng.trim())||"—")}
-      ${kv("Signal", nz(ref.signal_type)+(ref.signal_output?" / "+esc(ref.signal_output):""))}
-      ${kv("Junction box", nz(ref.junction_box))}
-      ${kv("Line / equipment", nz(ref.line_number,"")+" "+nz(ref.equipment,""))}
-      ${kv("P&ID", nz(ref.tam_pid)+(ref.itf_pid?" · ITF "+esc(ref.itf_pid):""))}
-      ${kv("Manufacturer / model", nz(ref.manufacturer,"")+" "+nz(ref.model,""))}
-      ${kv("ATEX (inst / JB)", nz(ref.instrument_atex,"—")+" / "+nz(ref.jb_atex,"—"))}
-      ${kv("Supplied by", nz(ref.instrument_supplied_by,"—"))}
-      ${kv("Area", nz(ref.unit))}
-      ${kv("System", nz(ref.system,"—"))}
+      ${kv("Service — what it measures / controls", nz(ref.service))}
+      ${kv("Instrument type", nz(ref.instrument_type))}
+      ${kv("Calibrated range (settings)", esc(rng.trim())||"—")}
+      ${kv("Operating point", nz(ref.op,"—"))}
+      ${kv("Signal in / out", nz(ref.signal_type)+(ref.signal_output?" → "+esc(ref.signal_output):""))}
+      ${kv("Junction box (JB) — field enclosure the cable lands in", nz(ref.junction_box))}
+      ${kv("Process line", nz(ref.line_number,"—"))}
+      ${kv("On equipment", nz(ref.equipment,"—"))}
+      ${kv("P&ID drawing", nz(ref.tam_pid)+(ref.itf_pid?" · ITF "+esc(ref.itf_pid):""))}
+      ${kv("Manufacturer / model", nz(ref.manufacturer,"—")+" "+nz(ref.model,""))}
+      ${kv("Datasheet", nz(ref.datasheet,"—"))}
+      ${kv("ATEX — instrument / JB", nz(ref.instrument_atex,"—")+" / "+nz(ref.jb_atex,"—"))}
+      ${kv("Supplied by — instrument / JB", nz(ref.instrument_supplied_by,"—")+" / "+nz(ref.jb_supplied_by,"—"))}
+      ${kv("Area / unit", esc(String(ref.unit||"—"))+(area?" — "+esc(area.description||""):""))}
+      ${kv("Control system", nz(ref.system,"—"))}
     </div>`;
+    if(inst&&vlv) h+=`<div class="note">⚠ This tag exists in <b>both</b> the instrument and the actuated-valve index
+      (typical for TSV thermal safety valves) — the instrument entry is shown; data is identical in both.</div>`;
     if(ref.notes) h+=`<div class="note">NOTES: ${esc(ref.notes)}</div>`;
   } else {
     h+=`<div class="empty">Tag not present in the instrument / valve index — IO channel data only.
@@ -722,7 +869,11 @@ function openInst(tag){
       <td class="mono">${nz(r.signal_type)}</td><td class="dim">${nz(r.description)}</td>
       <td>${verChip("plant_io_list",tag)}</td></tr>`).join("")}</tbody></table>`;
     const x=xcheckRow(io[0]);
-    h+=`<div style="margin-top:8px">CROSS-CHECK: <span class="chip ${x.cls}">${x.txt}</span> <span class="mono dim" style="font-size:11px">${esc(x.detail||"")}</span></div>`;
+    h+=`<div style="margin-top:8px">CROSS-CHECK: <span class="chip ${x.cls}">${x.txt}</span> <span class="mono dim" style="font-size:11px">${esc(x.detail||"")}</span></div>
+    <div class="note"><b>Reading this card:</b> the <b>junction box (JB)</b> is the field enclosure where the instrument’s
+    cable physically terminates; the <b>panel</b> is the RIO station whose IO card reads the signal (usually the same
+    box — name variants like “.1” terminal-strip suffixes are matched automatically). <b>JB MISMATCH</b> means the
+    instrument index and the IO wiring list point to different boxes — worth checking in the field.</div>`;
   } else if(ref){
     h+=`<div class="note">No IO channel found for this tag (may be local-only, pneumatic, or pending IO digitization).</div>`;
   }
@@ -790,19 +941,18 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="EI30") nav("alarms");
   else if(cmd==="EI40") nav("xcheck");
   else if(cmd==="EI50") nav("cr");
+  else if(cmd==="EI60") nav("comm");
   else if(cmd==="TAG"&&a) openInst(a);
+  else if((cmd==="SEARCH"||cmd==="FIND")&&a) nav("search/"+encodeURIComponent(a));
   else if(IDX.areaByCode.has(cmd)) nav("area/"+cmd);
-  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI30, EI40, EI50, TAG <tag>","err");
+  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI30, EI40, EI50, EI60, TAG <tag>, SEARCH <text>","err");
 });
 $("#gsearch").addEventListener("keydown", e=>{
   if(e.key!=="Enter") return;
   const q=e.target.value.trim(); if(!q) return;
   const exact=[...IDX.instByTag.keys(),...IDX.valveByTag.keys()].find(t=>t.toUpperCase()===q.toUpperCase());
-  if(exact){ openInst(exact); return; }
-  // fuzzy: first tag or service containing the text
-  const hit=DB.inst.find(r=>(r.tag||"").toUpperCase().includes(q.toUpperCase())||(r.service||"").toUpperCase().includes(q.toUpperCase()))
-        || DB.valves.find(r=>(r.tag||"").toUpperCase().includes(q.toUpperCase()));
-  if(hit) openInst(hit.tag); else status("✗ No tag or service matches “"+q+"”","err");
+  if(exact){ openInst(exact); return; }              // exact tag → open the card directly
+  nav("search/"+encodeURIComponent(q));              // anything else → full results list
 });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeInst(); closeCR(); } });
 
