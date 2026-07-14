@@ -161,8 +161,9 @@
   .note{margin-top:12px;font-size:10.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:7px;line-height:1.5;}
 
   /* ── AREA OVERVIEW — executive block-flow sheet ─────────────── */
-  .ovwrap{position:fixed;inset:0;background:rgba(5,7,10,.9);z-index:60;display:none;
-    align-items:flex-start;justify-content:center;overflow:auto;padding:26px 20px 40px;}
+  .ovwrap{position:absolute;inset:0;z-index:26;display:none;background:
+      radial-gradient(1200px 700px at 60% 40%, #0C1017 0%, var(--canvas) 70%);
+    align-items:flex-start;justify-content:center;overflow:auto;padding:18px 20px 34px;}
   .ovwrap.open{display:flex;}
   .ovsheet{width:min(1080px,96vw);background:#fff;border-radius:4px;box-shadow:0 24px 80px rgba(0,0,0,.6);
     border-top:4px solid var(--crimson);display:flex;flex-direction:column;}
@@ -186,10 +187,7 @@
   .ovfoot span:first-child{padding-left:0;}
   .ovfoot span:last-child{border-right:none;}
   .ovfoot b{color:var(--crimson);}
-  .ovclose{position:fixed;top:22px;right:30px;font-family:var(--mono);font-size:13px;color:#B9C7D6;background:rgba(10,14,20,.8);
-    border:1px solid #33404F;border-radius:4px;padding:7px 16px;cursor:pointer;z-index:61;}
-  .ovclose:hover{border-color:#fff;color:#fff;}
-
+  
   /* statusbar */
   .statusbar{flex:none;display:flex;align-items:center;gap:16px;padding:6px 18px;background:#fff;
     border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
@@ -214,8 +212,8 @@
 <div class="cmdbar">
   <div class="tcode">
     <label>TX</label>
-    <input id="tcode" placeholder="PL00 · EI10 350 · TAG E-353-1 · AREAS"
-      title="Transactions: PL00 plant · EI10 <area> · TAG <tag> · AREAS (PL10 block diagram) · CLASSIC">
+    <input id="tcode" placeholder="PL00 BFD · GA · EI10 350 · TAG E-353-1"
+      title="Transactions: PL00 overview (BFD) · GA spatial view · EI10 <area> · TAG <tag> · CLASSIC">
   </div>
   <div class="crumbs" id="crumbs">…</div>
   <div class="gsearch"><input id="gsearch" placeholder="⌕ area / equipment tag" list="taglist"><datalist id="taglist"></datalist></div>
@@ -233,10 +231,10 @@
     </div>
     <div class="hud">
       <div class="row">
-        <button class="hbtn" id="btnHome" title="Zoom out to full plant [Esc]">⌂ PLANT</button>
+        <button class="hbtn" id="btnHome" title="Back to the process-area overview (BFD)">▦ OVERVIEW</button>
         <button class="hbtn" id="btnFlows" title="Process flow links">⇢ FLOWS</button>
         <button class="hbtn" id="btnTci" title="TCI complexity heat layer">◉ TCI HEAT</button>
-        <button class="hbtn" id="btnOv" title="Area overview — interconnection block diagram + asset inventory">▦ AREAS</button>
+        <button class="hbtn" id="btnOv" title="Full plant GA — spatial view">⛶ PLANT GA</button>
         <button class="hbtn" id="btnEdit" title="Placement mode: drag zones and assets, positions save to the plant DB">✥ PLACE</button>
       </div>
     </div>
@@ -250,6 +248,34 @@
     <div class="loadingveil" id="veil">CONNECTING TO PLANT DATABASE…</div>
   </div>
 
+  <!-- AREA OVERVIEW — block flow sheet -->
+<div class="ovwrap" id="ovwrap">
+  <div class="ovsheet">
+    <div class="ovhead">
+      <div>
+        <div class="k">TENDRARA MICRO-LNG · TX PL10</div>
+        <h2>Process areas — interconnection &amp; asset inventory</h2>
+        <div class="s">Block flow per Operating Manual §3 · live counts from the plant database · click any area to open it on the GA</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+        <div class="ovtotals" id="ovtotals"></div>
+        <div style="display:flex;gap:7px;align-items:center">
+          <button class="btn primary" onclick="nav('ga')" style="font-family:var(--mono);font-size:10.5px;letter-spacing:.06em">⛶ PLANT GA — SPATIAL VIEW</button>
+          <a class="abtn" href="index.html">CLASSIC TABLES ⧉</a>
+        </div>
+      </div>
+    </div>
+    <div class="ovsvgwrap" id="ovsvg"></div>
+    <div class="ovfoot">
+      <span>TAM-EI <b>PLANT NAVIGATOR 2026</b></span>
+      <span>SHEET · AREA INTERCONNECTION (BFD)</span>
+      <span>DATA · LIVE plant_* DB · TCI 21044-PR-MAN-00001 §3</span>
+      <span>BY <b>SUPER CLAUDE × MARIO</b></span>
+    </div>
+  </div>
+</div>
+
+
   <aside class="drawer" id="drawer">
     <div class="dhead">
       <button class="dx" onclick="closeDrawer()">✕</button>
@@ -261,27 +287,6 @@
   </aside>
 </div>
 
-<!-- AREA OVERVIEW — block flow sheet -->
-<div class="ovwrap" id="ovwrap">
-  <button class="ovclose" onclick="closeOv()">✕ CLOSE [ESC]</button>
-  <div class="ovsheet">
-    <div class="ovhead">
-      <div>
-        <div class="k">TENDRARA MICRO-LNG · TX PL10</div>
-        <h2>Process areas — interconnection &amp; asset inventory</h2>
-        <div class="s">Block flow per Operating Manual §3 · live counts from the plant database · click any area to open it on the GA</div>
-      </div>
-      <div class="ovtotals" id="ovtotals"></div>
-    </div>
-    <div class="ovsvgwrap" id="ovsvg"></div>
-    <div class="ovfoot">
-      <span>TAM-EI <b>PLANT NAVIGATOR 2026</b></span>
-      <span>SHEET · AREA INTERCONNECTION (BFD)</span>
-      <span>DATA · LIVE plant_* DB · TCI 21044-PR-MAN-00001 §3</span>
-      <span>BY <b>SUPER CLAUDE × MARIO</b></span>
-    </div>
-  </div>
-</div>
 
 <footer class="statusbar">
   <span class="brand">TAM-EI · <b>PLANT VIEW</b></span>
@@ -463,7 +468,7 @@ function fitArea(code,anim){
 })();
 
 /* ── routing ─────────────────────────────────────────────────── */
-let ROUTE={view:"plant"};
+let ROUTE={view:"home"};
 function nav(h){location.hash=h;}
 function route(){
   const h=location.hash.replace(/^#\/?/,"");
@@ -471,16 +476,17 @@ function route(){
   if(v==="a"&&rest[0])ROUTE={view:"area",area:rest[0]};
   else if(v==="t"&&rest[0]){
     const eq=IDX.equipByTag.get(rest[0]);
-    ROUTE=eq?{view:"asset",area:String(eq.area_code||""),tag:rest[0]}:{view:"plant"};
+    ROUTE=eq?{view:"asset",area:String(eq.area_code||""),tag:rest[0]}:{view:"home"};
   }
-  else if(v==="ov"||v==="cube")ROUTE={view:"ov",area:ROUTE.area};
-  else ROUTE={view:"plant"};
+  else if(v==="ga")ROUTE={view:"ga"};
+  else ROUTE={view:"home"};
   render();
 }
 function render(){
+  if(ROUTE.view==="home"){ openOv(); closeDrawer(); crumbs(); return; }
   closeOvPanel();
   drawZones(); /* refresh active state / heat */
-  if(ROUTE.view==="plant"){
+  if(ROUTE.view==="ga"){
     $("#assetlayer").innerHTML="";
     fitPlant(); closeDrawer(); crumbs();
   }else if(ROUTE.view==="area"||ROUTE.view==="asset"){
@@ -489,17 +495,16 @@ function render(){
     if(ROUTE.view==="asset")openAssetDrawer(ROUTE.tag);else openAreaDrawer(ROUTE.area);
     crumbs();
   }
-  if(ROUTE.view==="ov"){openOv();}
 }
 function crumbs(){
   let h=`<a onclick="nav('')">TENDRARA MICRO-LNG</a>`;
-  if(ROUTE.view==="ov")h+=` › <b>AREA OVERVIEW</b>`;
+  if(ROUTE.view==="home")h+=` › <b>PROCESS AREAS (BFD)</b> · click an area to enter`;
   if(ROUTE.area){
     const a=IDX.areaByCode.get(ROUTE.area);
     h+=` › <a onclick="nav('a/${ROUTE.area}')">AREA ${ROUTE.area}${a?" · "+esc(a.description||""):""}</a>`;
   }
   if(ROUTE.view==="asset")h+=` › <b>${esc(ROUTE.tag)}</b>`;
-  if(ROUTE.view==="plant")h+=` › <b>PLANT GA</b> · click an area to enter · scroll to zoom`;
+  if(ROUTE.view==="ga")h+=` › <b>PLANT GA</b> · click an area to enter · scroll to zoom`;
   $("#crumbs").innerHTML=h;
 }
 window.nav=nav;
@@ -785,7 +790,7 @@ function openAreaDrawer(code){
     <div class="stat" onclick="location.href='index.html#area/${code}'"><div class="n">${valves}</div><div class="l">Valves</div></div>
     <div class="stat" onclick="location.href='index.html#area/${code}'"><div class="n">${io}</div><div class="l">IO channels</div></div>
     <div class="stat" onclick="location.href='index.html#alarms'"><div class="n">${alarms}</div><div class="l">Alarms</div></div>
-    <div class="stat" onclick="nav('ov')"><div class="n">${t!=null?t.toFixed(1)+"%":"—"}</div><div class="l">TCI share</div></div>
+    <div class="stat" onclick="nav('')"><div class="n">${t!=null?t.toFixed(1)+"%":"—"}</div><div class="l">TCI share</div></div>
   </div>
   <div class="dsec">EQUIPMENT — click to open on the map</div>
   <div class="elist">`;
@@ -867,7 +872,7 @@ function openAssetDrawer(tag){
 $("#btnHome").onclick=()=>nav("");
 $("#btnFlows").onclick=function(){FLOWSON=!FLOWSON;this.classList.toggle("on",FLOWSON);drawFlows();};
 $("#btnTci").onclick=function(){TCION=!TCION;this.classList.toggle("on",TCION);$("#legend").classList.toggle("show",TCION);drawZones();};
-$("#btnOv").onclick=()=>nav("ov");
+$("#btnOv").onclick=()=>nav("ga");
 $("#btnEdit").onclick=()=>toggleEdit();
 function toggleEdit(force){
   EDIT=force===true?true:(force===false?false:!EDIT);
@@ -883,10 +888,10 @@ $("#btnFlows").classList.add("on");
 /* ── keyboard: Esc = up one level ────────────────────────────── */
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape")return;
-  if($("#ovwrap").classList.contains("open")){nav(ROUTE.area?"a/"+ROUTE.area:"");return;}
   if(EDIT){toggleEdit(false);return;}
   if(ROUTE.view==="asset")nav("a/"+ROUTE.area);
-  else if(ROUTE.view==="area")nav("");
+  else if(ROUTE.view==="area")nav("ga");
+  else if(ROUTE.view==="ga")nav("");
 });
 
 /* ── tcode + search ──────────────────────────────────────────── */
@@ -897,7 +902,8 @@ $("#tcode").addEventListener("keydown",e=>{
   if(c==="PL00"||c==="EI00"||c==="HOME")nav("");
   else if(c==="EI10"&&arg)nav("a/"+arg);
   else if(c==="TAG"&&arg)goTag(arg);
-  else if(c==="CUBE"||c==="AREAS"||c==="PL10")nav("ov");
+  else if(c==="GA"||c==="PL20")nav("ga");
+  else if(c==="CUBE"||c==="AREAS"||c==="PL10")nav("");
   else if(c==="CLASSIC")location.href="index.html";
   else if(/^\d{3}$/.test(c))nav("a/"+c);
   else if(c)goTag(v);
