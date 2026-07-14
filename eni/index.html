@@ -550,15 +550,33 @@ window.setVerify=setVerify;
 
 /* ── cross-check engine ──────────────────────────────────────── */
 // Canonical JB/panel name: same physical box may be written P-PN-S221A.1,
-// P-PN-S221A, P-PN-PK351-5 vs P-PK-PK-351-5, or with 0↔O typos (0S361/OS361).
-// Uppercase → drop trailing ".n" terminal-strip suffix → drop P-PN-/P-PK- prefix
-// → strip separators → letter O to 0.
+// P-PN-S221A, P-PN-PK351-5 vs P-PK-PK-351-5, E-PB-0S201.1 (field JB feeding the
+// same remote-IO panel), or with 0↔O typos (0S361/OS361).
+// Uppercase → drop trailing ".n" terminal-strip suffix → drop P-PN-/P-PK-/E-PB-
+// prefix → strip separators → letter O to 0.
 function canonJB(x){
   return (x||"").trim().toUpperCase()
     .replace(/\.\d+$/,"")
-    .replace(/^P-(PN|PK)-/,"")
+    .replace(/^(P-PN|P-PK|E-PB)-/,"")
     .replace(/[^A-Z0-9]/g,"")
     .replace(/O/g,"0");
+}
+// Signal-type "family": plant_io_list records the *physical/electrical* signal
+// (4-20 mA, 24 VDC, Dry contact, Solenoid valve, PT-100…) while
+// plant_instruments/plant_valves record the *logical IO point type*
+// (AI/AO/DI/DO/RTD/DI NAMUR…). These are two different, both-correct
+// vocabularies describing the same channel — compare by family, not by
+// literal string, so e.g. "4-20 mA" ~ "AI"/"AO" and "24 VDC" ~ "DI"/"DO".
+function sigFamily(raw){
+  const s=(raw||"").toUpperCase().replace(/[\s\-\/]/g,"");
+  if(!s) return "";
+  // RTD lives in the ANALOG family too: every RTD-sensed tag in this plant is a
+  // head-mounted transmitter that puts 4-20 mA on the wire to the IO card — the
+  // index records the sensor element (RTD/PT-100), the IO list records the loop.
+  if(/^(AI|AO|420MA|RTD|PT100)$/.test(s)) return "ANALOG";
+  if(/^(DI|DO|DINAMUR|NAMUR|24VDC|230VAC|DRYCONTACT|SOLENOIDVALVE|SOLENOIDVALVECOIL|DISCRETESWITCH|PILOTLIGHT)$/.test(s)) return "DIGITAL";
+  if(/MODBUS|PROFIBUS|PROFINET|HART/.test(s)) return "BUS";
+  return s; // unrecognized vocabulary — fall back to literal compare, still catches real typos
 }
 function xcheckRow(io){
   const t=(io.tag||"").trim(); if(!t) return {code:"NOTAG", cls:"dim", txt:"NO TAG"};
@@ -568,8 +586,8 @@ function xcheckRow(io){
   const jb=(ref.junction_box||"").trim(), panel=(io.rio_panel||"").trim();
   if(jb && panel && canonJB(jb)!==canonJB(panel))
     return {code:"JBDIFF", cls:"warn", txt:"JB MISMATCH", detail:`instrument index says JB ${jb} — IO list wires it to ${panel}`};
-  const s1=(io.signal_type||"").toUpperCase().replace(/\s/g,""), s2=((ref.signal_type||"")+"").toUpperCase().replace(/\s/g,"");
-  if(s1&&s2&&s1!==s2&&!s1.includes(s2)&&!s2.includes(s1)) return {code:"SIGDIFF", cls:"warn", txt:"SIGNAL≠", detail:`index ${ref.signal_type}`};
+  const f1=sigFamily(io.signal_type), f2=sigFamily(ref.signal_type);
+  if(f1&&f2&&f1!==f2) return {code:"SIGDIFF", cls:"warn", txt:"SIGNAL≠", detail:`index ${ref.signal_type}`};
   return {code:"OK", cls:"ok", txt:"MATCH", src:inst?"INST":"VALVE"};
 }
 
