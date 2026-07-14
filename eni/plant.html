@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TAM Plant Navigator 2026 — Tendrara Micro-LNG</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA; --ok:#1F8A4C;
+    --amber:#B26A00; --blue:#0B5CAD; --fail:#B3261E;
+    --canvas:#07090C; --canvas-line:#1E2530; --glow:#7FD4FF;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:var(--sans);color:var(--ink);background:var(--canvas);-webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+  /* ── brandbar (SAP chrome kept) ─────────────────────────────── */
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:9px 24px;border-bottom:1px solid var(--line);background:#fff;flex:none;}
+  .brandbar .vendor img{height:38px;display:block;}
+  .brandbar .apptitle{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);}
+  .brandbar .apptitle b{color:var(--crimson);}
+  .accent{height:3px;background:var(--crimson);flex:none;}
+
+  .cmdbar{display:flex;align-items:center;gap:14px;padding:7px 18px;background:var(--bg-soft);
+    border-bottom:1px solid var(--line);flex:none;}
+  .tcode{display:flex;align-items:center;gap:6px;}
+  .tcode label{font-family:var(--mono);font-size:10px;color:var(--ink-soft);letter-spacing:.08em;}
+  .tcode input{font-family:var(--mono);font-size:12px;width:180px;padding:5px 8px;border:1px solid var(--line-strong);
+    border-radius:3px;background:#fff;text-transform:uppercase;}
+  .tcode input:focus{outline:2px solid #f4c3cc;border-color:var(--crimson);}
+  .crumbs{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .crumbs a{color:var(--blue);text-decoration:none;cursor:pointer;}
+  .crumbs a:hover{text-decoration:underline;}
+  .crumbs b{color:var(--ink);}
+  .gsearch input{font-family:var(--mono);font-size:12px;width:220px;padding:5px 9px;border:1px solid var(--line-strong);border-radius:3px;}
+  .userchip{font-family:var(--mono);font-size:11px;color:var(--ink-soft);cursor:pointer;border:1px solid var(--line-strong);
+    background:#fff;border-radius:20px;padding:4px 12px;white-space:nowrap;}
+  .userchip b{color:var(--crimson);}
+  a.classiclink{font-family:var(--mono);font-size:10.5px;color:var(--blue);text-decoration:none;border:1px solid var(--line-strong);
+    background:#fff;border-radius:3px;padding:4px 10px;white-space:nowrap;}
+  a.classiclink:hover{border-color:var(--blue);}
+
+  /* ── stage ──────────────────────────────────────────────────── */
+  .stage{position:relative;flex:1;min-height:0;display:flex;}
+  #viewport{position:relative;flex:1;overflow:hidden;background:
+      radial-gradient(1200px 700px at 60% 40%, #0C1017 0%, var(--canvas) 70%);
+    cursor:grab;touch-action:none;}
+  #viewport.dragging{cursor:grabbing;}
+  #world{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
+  #world.anim{transition:transform .65s cubic-bezier(.22,.9,.28,1);}
+  #gaimg{display:block;user-select:none;pointer-events:none;opacity:.92;}
+  #flowsvg{position:absolute;inset:0;pointer-events:none;overflow:visible;}
+  .flowpath{fill:none;stroke-linecap:round;}
+  .flowmain{stroke:#E8425C;stroke-width:3;filter:drop-shadow(0 0 6px rgba(232,66,92,.55));
+    stroke-dasharray:10 7;animation:flow 1.6s linear infinite;}
+  .flowside{stroke-width:2;stroke-dasharray:6 6;animation:flow 2.2s linear infinite;opacity:.85;}
+  @keyframes flow{to{stroke-dashoffset:-34;}}
+  .flowlbl{font-family:var(--mono);font-size:11px;font-weight:700;paint-order:stroke;stroke:#07090C;stroke-width:3px;}
+
+  /* area zones */
+  .zone{position:absolute;border:1.5px solid rgba(127,212,255,.55);border-radius:4px;cursor:pointer;
+    background:rgba(127,212,255,.05);transition:background .18s,border-color .18s,box-shadow .18s;}
+  .zone:hover{background:rgba(127,212,255,.14);border-color:var(--glow);box-shadow:0 0 22px rgba(127,212,255,.25), inset 0 0 30px rgba(127,212,255,.08);}
+  .zone.active{border-color:#fff;background:transparent;cursor:default;box-shadow:none;}
+  .zone.heat:hover{filter:brightness(1.15);}
+  .zone.sub{border-style:dashed;}
+  .zlbl{position:absolute;top:0;left:0;transform:translate(-1px,calc(-100% - 2px));display:flex;align-items:baseline;gap:6px;
+    background:rgba(7,9,12,.85);border:1px solid rgba(127,212,255,.4);border-radius:3px;padding:2px 7px;white-space:nowrap;pointer-events:none;}
+  .zlbl .zc{font-family:var(--mono);font-weight:700;color:#fff;}
+  .zlbl .zn{font-family:var(--mono);color:#9FB4C8;text-transform:uppercase;letter-spacing:.06em;}
+  .zlbl .zt{font-family:var(--mono);font-weight:700;color:#FFD166;}
+  .zone .rs{position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;border:1.5px solid var(--glow);
+    background:#07090C;border-radius:2px;cursor:nwse-resize;display:none;}
+  body.editing .zone .rs{display:block;}
+  body.editing .zone{cursor:move;}
+
+  /* asset icons */
+  .asset{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;
+    cursor:pointer;z-index:5;}
+  .asset .ic{width:34px;height:34px;border-radius:7px;background:rgba(10,14,20,.92);
+    border:1.5px solid #3B4A5C;display:flex;align-items:center;justify-content:center;transition:.15s;
+    box-shadow:0 2px 10px rgba(0,0,0,.55);}
+  .asset:hover .ic{border-color:var(--glow);box-shadow:0 0 16px rgba(127,212,255,.45);transform:scale(1.12);}
+  .asset.sel .ic{border-color:#E8425C;box-shadow:0 0 18px rgba(232,66,92,.6);}
+  .asset .tg{font-family:var(--mono);font-size:10px;font-weight:700;color:#DCE7F2;background:rgba(7,9,12,.8);
+    padding:0 5px;border-radius:2px;white-space:nowrap;letter-spacing:.02em;}
+  .asset svg{display:block;}
+  body.editing .asset{cursor:move;}
+  .asset.placed .tg{color:#8FE3A8;}
+
+  /* HUD */
+  .hud{position:absolute;left:14px;top:12px;z-index:20;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+  .hud .row{display:flex;gap:8px;pointer-events:auto;}
+  .hbtn{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.08em;border:1px solid #33404F;border-radius:4px;
+    background:rgba(10,14,20,.88);color:#B9C7D6;padding:6px 12px;cursor:pointer;transition:.15s;}
+  .hbtn:hover{border-color:var(--glow);color:#fff;}
+  .hbtn.on{border-color:#E8425C;color:#fff;background:rgba(200,16,46,.35);}
+  .hbtn.cube3d{border-color:#5C4FB8;}
+  .kpis{position:absolute;right:14px;top:12px;z-index:20;display:flex;gap:7px;}
+  .kpi{background:rgba(10,14,20,.88);border:1px solid #33404F;border-radius:5px;padding:5px 11px;text-align:right;}
+  .kpi .n{font-family:var(--mono);font-size:15px;font-weight:700;color:#fff;line-height:1.1;}
+  .kpi .l{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:#7E8FA1;text-transform:uppercase;}
+  .kpi.hot .n{color:#FFD166;}
+  .legend{position:absolute;left:14px;bottom:14px;z-index:20;background:rgba(10,14,20,.88);border:1px solid #33404F;
+    border-radius:5px;padding:8px 12px;font-family:var(--mono);font-size:9.5px;color:#9FB4C8;display:none;}
+  .legend.show{display:block;}
+  .legend .grad{height:8px;width:190px;border-radius:4px;margin:6px 0 3px;
+    background:linear-gradient(90deg,#1650C8,#18A05A,#E5C41C,#E8425C);}
+  .legend .mm{display:flex;justify-content:space-between;}
+  .edithint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:20;font-family:var(--mono);
+    font-size:10.5px;color:#FFD166;background:rgba(10,14,20,.9);border:1px solid #6B5A1E;border-radius:4px;
+    padding:5px 14px;display:none;letter-spacing:.05em;}
+  body.editing .edithint{display:block;}
+
+  /* ── drawer ─────────────────────────────────────────────────── */
+  .drawer{width:0;flex:none;background:#fff;border-left:1px solid var(--line);overflow:hidden;
+    transition:width .3s cubic-bezier(.22,.9,.28,1);display:flex;flex-direction:column;}
+  .drawer.open{width:390px;}
+  .drawer .dhead{padding:14px 18px 10px;border-bottom:2px solid var(--crimson);flex:none;}
+  .drawer .dkick{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--crimson);font-weight:700;}
+  .drawer h2{margin:3px 0 2px;font-size:19px;letter-spacing:-.01em;}
+  .drawer .dsub{font-size:12px;color:var(--ink-soft);}
+  .drawer .dbody{flex:1;overflow:auto;padding:12px 18px 30px;}
+  .drawer .dx{float:right;border:none;background:none;font-size:18px;cursor:pointer;color:var(--ink-soft);}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:10px 0;}
+  .stat{border:1px solid var(--line-strong);border-radius:5px;padding:7px 9px;background:var(--bg-soft);cursor:pointer;transition:.12s;}
+  .stat:hover{border-color:var(--crimson);}
+  .stat .n{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--crimson);line-height:1;}
+  .stat .l{font-size:9px;color:var(--ink-soft);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;}
+  .dsec{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);
+    margin:14px 0 6px;border-bottom:1px solid var(--line);padding-bottom:3px;}
+  .elist{display:flex;flex-direction:column;}
+  .erow{display:flex;align-items:center;gap:9px;padding:5px 4px;border-bottom:1px solid var(--line);cursor:pointer;border-radius:3px;}
+  .erow:hover{background:var(--bg-soft);}
+  .erow .eic{width:26px;height:26px;border-radius:5px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none;}
+  .erow .et{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--blue);white-space:nowrap;}
+  .erow .es{font-size:11px;color:var(--ink-soft);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .erow .chipmini{font-family:var(--mono);font-size:8.5px;color:var(--ok);border:1px solid var(--ok);border-radius:8px;padding:0 6px;}
+  .chip{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;
+    padding:2px 8px;border-radius:10px;border:1px solid;white-space:nowrap;}
+  .chip.info{color:var(--blue);border-color:var(--blue);background:#EAF3FB;}
+  .chip.warn{color:var(--amber);border-color:var(--amber);background:#FFF7EC;}
+  .chip.crimson{color:var(--crimson);border-color:var(--crimson);background:#FBE9EC;}
+  .chip.dim{color:var(--ink-soft);border-color:var(--line-strong);background:var(--bg-soft);}
+  table.mini{width:100%;border-collapse:collapse;font-size:11px;}
+  table.mini th{font-family:var(--mono);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);
+    text-align:left;padding:4px 5px;border-bottom:1.5px solid var(--line-strong);}
+  table.mini td{padding:4px 5px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.mini td.g{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--blue);white-space:nowrap;}
+  .btnrow{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap;}
+  button.btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);font-size:11.5px;font-weight:600;
+    padding:6px 12px;border-radius:4px;cursor:pointer;transition:.12s;font-family:var(--sans);}
+  button.btn:hover{border-color:var(--crimson);color:var(--crimson);}
+  button.btn.primary{background:var(--crimson);color:#fff;border-color:var(--crimson);}
+  a.abtn{font-family:var(--mono);font-size:10.5px;color:var(--blue);text-decoration:none;border:1px solid var(--line-strong);
+    border-radius:4px;padding:6px 11px;}
+  a.abtn:hover{border-color:var(--blue);}
+  .note{margin-top:12px;font-size:10.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:7px;line-height:1.5;}
+
+  /* ── TCI cube ───────────────────────────────────────────────── */
+  .cubewrap{position:fixed;inset:0;background:rgba(5,7,10,.94);z-index:60;display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:10px;}
+  .cubewrap.open{display:flex;}
+  .cubetitle{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:#9FB4C8;text-transform:uppercase;}
+  .cubetitle b{color:#fff;}
+  .cubestage{width:560px;height:460px;perspective:1300px;cursor:grab;}
+  .cubestage.dragging{cursor:grabbing;}
+  #cube{position:relative;width:300px;height:300px;margin:80px auto;transform-style:preserve-3d;}
+  .face{position:absolute;width:300px;height:300px;border:1px solid rgba(127,212,255,.35);background:rgba(10,16,24,.93);
+    display:flex;flex-direction:column;padding:10px;backface-visibility:visible;}
+  .face .fh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .face .ft{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;color:#fff;}
+  .face .fv{font-family:var(--mono);font-size:10px;color:#FFD166;}
+  .face .tiles{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;gap:3px;overflow:hidden;}
+  .tile{border-radius:3px;display:flex;flex-direction:column;justify-content:space-between;padding:4px 5px;cursor:pointer;
+    min-width:44px;transition:.12s;border:1px solid rgba(255,255,255,.12);}
+  .tile:hover{filter:brightness(1.25);border-color:#fff;}
+  .tile .ta{font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;}
+  .tile .tp{font-family:var(--mono);font-size:8.5px;color:rgba(255,255,255,.75);}
+  .face.brandface{align-items:center;justify-content:center;gap:8px;}
+  .brandface .b1{font-family:var(--mono);font-size:13px;letter-spacing:.2em;color:#fff;font-weight:700;}
+  .brandface .b2{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:#9FB4C8;text-align:center;line-height:2;}
+  .brandface .b2 b{color:#FFD166;}
+  .cubehint{font-family:var(--mono);font-size:10px;color:#7E8FA1;letter-spacing:.08em;}
+  .cubeclose{position:absolute;top:22px;right:30px;font-family:var(--mono);font-size:13px;color:#B9C7D6;background:none;
+    border:1px solid #33404F;border-radius:4px;padding:7px 16px;cursor:pointer;}
+  .cubeclose:hover{border-color:#fff;color:#fff;}
+
+  /* statusbar */
+  .statusbar{flex:none;display:flex;align-items:center;gap:16px;padding:6px 18px;background:#fff;
+    border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
+  .statusbar .msg{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .statusbar .msg.ok{color:var(--ok);}
+  .statusbar .msg.err{color:var(--fail);}
+  .statusbar .brand{letter-spacing:.08em;}
+  .statusbar .brand b{color:var(--crimson);}
+  .loadingveil{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:12px;color:#9FB4C8;letter-spacing:.15em;background:var(--canvas);}
+</style>
+</head>
+<body>
+
+<header class="brandbar">
+  <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'"></div>
+  <div class="apptitle"><b>PLANT NAVIGATOR</b> · TENDRARA MICRO-LNG · SPATIAL ASSET INTERFACE</div>
+  <div class="apptitle" style="text-align:right">EDITION <b>2026</b><br><span style="color:var(--crimson)">SUPER CLAUDE × MARIO</span></div>
+</header>
+<div class="accent"></div>
+
+<div class="cmdbar">
+  <div class="tcode">
+    <label>TX</label>
+    <input id="tcode" placeholder="PL00 · EI10 350 · TAG E-353-1 · CUBE"
+      title="Transactions: PL00 plant · EI10 <area> · TAG <tag> · CUBE · CLASSIC">
+  </div>
+  <div class="crumbs" id="crumbs">…</div>
+  <div class="gsearch"><input id="gsearch" placeholder="⌕ area / equipment tag" list="taglist"><datalist id="taglist"></datalist></div>
+  <a class="classiclink" href="index.html" title="Open the classic table-based EI Navigator">CLASSIC VIEW ⧉</a>
+  <button class="userchip" id="userchip">USER <b>—</b></button>
+</div>
+
+<div class="stage">
+  <div id="viewport">
+    <div id="world">
+      <img id="gaimg" src="/images/tendrara_areas.png" alt="Plant GA">
+      <svg id="flowsvg"></svg>
+      <div id="zonelayer"></div>
+      <div id="assetlayer"></div>
+    </div>
+    <div class="hud">
+      <div class="row">
+        <button class="hbtn" id="btnHome" title="Zoom out to full plant [Esc]">⌂ PLANT</button>
+        <button class="hbtn" id="btnFlows" title="Process flow links">⇢ FLOWS</button>
+        <button class="hbtn" id="btnTci" title="TCI complexity heat layer">◉ TCI HEAT</button>
+        <button class="hbtn cube3d" id="btnCube" title="TCI multidimensional cube">◳ TCI CUBE</button>
+        <button class="hbtn" id="btnEdit" title="Placement mode: drag zones and assets, positions save to the plant DB">✥ PLACE</button>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="legend" id="legend">
+      <div>TECHNOLOGICAL COMPLEXITY INDEX — share of plant complexity</div>
+      <div class="grad"></div>
+      <div class="mm"><span>LOW</span><span>TCI %</span><span>HIGH</span></div>
+    </div>
+    <div class="edithint">PLACEMENT MODE — drag assets or zones · corner handle resizes zones · every drop saves to plant_asset_positions</div>
+    <div class="loadingveil" id="veil">CONNECTING TO PLANT DATABASE…</div>
+  </div>
+
+  <aside class="drawer" id="drawer">
+    <div class="dhead">
+      <button class="dx" onclick="closeDrawer()">✕</button>
+      <div class="dkick" id="dkick">—</div>
+      <h2 id="dtitle">—</h2>
+      <div class="dsub" id="dsub"></div>
+    </div>
+    <div class="dbody" id="dbody"></div>
+  </aside>
+</div>
+
+<!-- TCI CUBE -->
+<div class="cubewrap" id="cubewrap">
+  <button class="cubeclose" onclick="closeCube()">✕ CLOSE [ESC]</button>
+  <div class="cubetitle">TENDRARA <b>COMPLEXITY CUBE</b> — physical size vs complexity size</div>
+  <div class="cubestage" id="cubestage"><div id="cube"></div></div>
+  <div class="cubehint">DRAG TO ROTATE · CLICK A TILE TO FLY TO THAT AREA · FACES = TCI / M / E / I / C / ID</div>
+</div>
+
+<footer class="statusbar">
+  <span class="brand">TAM-EI · <b>PLANT VIEW</b></span>
+  <span class="msg" id="statusmsg">Initializing…</span>
+  <span class="brand">© 2026 · ENGINEERED BY <b>SUPER CLAUDE × MARIO</b></span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<script>
+"use strict";
+/* ════════════════════════════════════════════════════════════════
+   TAM PLANT NAVIGATOR 2026 — spatial interface over the plant GA
+   One coordinate space: percent of the GA drawing. Zones (areas)
+   and assets live in plant_asset_positions. Navigation = zoom.
+   ════════════════════════════════════════════════════════════════ */
+const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+/* session (shared with classic navigator) */
+const SESSION=(()=>{ try{ return JSON.parse(localStorage.getItem("eni_session")||"null"); }catch(e){ return null; } })();
+if(!SESSION){ location.replace("account.html"); }
+const $=s=>document.querySelector(s);
+const esc=v=>v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const nz=(v,d="—")=>(v==null||v==="")?d:esc(v);
+function status(m,c){const el=$("#statusmsg");el.textContent=m;el.className="msg "+(c||"");}
+$("#userchip").innerHTML = SESSION?`<b>${esc(SESSION.name)}</b> · ${esc(SESSION.group||"")}`:"—";
+$("#userchip").onclick=()=>{localStorage.removeItem("eni_session");location.href="account.html";};
+
+/* GA logical size — everything in percent of this */
+const WW=1600, WH=Math.round(1600*3179/4494); /* GA aspect 4494×3179 */
+const px = p => p/100*WW, py = p => p/100*WH;
+
+/* TCI — Technological Complexity Index (Manual 21044-PR-MAN-00001 §3; * = estimated from treemap) */
+const TCI={ "350":32.89,"340":14.02,"330":8.29,"360":7.23,"220":6.38,"310":3.68,"480":2.96,"200":2.53,
+            "410":2.20,"370":1.50,"230":1.33,"530":1.10,"500":0.90,"540":0.45,"550":0.40,"120":0.20,"430":0.15,"600":0.30 };
+const TCI_EST=new Set(["410","530","500","540","550","120","430","600"]);
+function tciColor(v){ /* 0..33 → blue→green→yellow→red */
+  const t=Math.min(1,Math.pow((v||0)/33,0.42));
+  const stops=[[22,80,200],[24,160,90],[229,196,28],[232,66,92]];
+  const seg=Math.min(2,Math.floor(t*3)), f=t*3-seg;
+  const a=stops[seg], b=stops[seg+1];
+  return `rgb(${Math.round(a[0]+(b[0]-a[0])*f)},${Math.round(a[1]+(b[1]-a[1])*f)},${Math.round(a[2]+(b[2]-a[2])*f)})`;
+}
+
+const DB={areas:[],equip:[],inst:[],valves:[],alarms:[],io:[],pos:[],loads:[],motors:[]};
+const IDX={areaByCode:new Map(),equipByArea:new Map(),equipByTag:new Map(),
+           zones:new Map(),   /* area_code → [{tag,x,y,w,h,sub}] */
+           posByTag:new Map(),/* equipment tag → pos row */
+           instByUnit:new Map(),valvesByUnit:new Map(),alarmsByArea:new Map(),ioByUnit:new Map()};
+
+async function fetchAll(table,order){
+  const rows=[];const page=1000;
+  for(let from=0;;from+=page){
+    let q=sb.from(table).select("*").range(from,from+page-1);
+    if(order)q=q.order(order);
+    const {data,error}=await q;
+    if(error)throw new Error(table+": "+error.message);
+    rows.push(...data);
+    if(data.length<page)break;
+  }
+  return rows;
+}
+
+/* ── boot ────────────────────────────────────────────────────── */
+async function boot(){
+  status("Loading plant master data…");
+  try{
+    const [areas,equip,inst,valves,alarms,io,pos,loads,motors]=await Promise.all([
+      fetchAll("plant_areas","area_code"),fetchAll("plant_equipment","tag"),fetchAll("plant_instruments"),
+      fetchAll("plant_valves"),fetchAll("plant_alarms"),fetchAll("plant_io_list"),
+      fetchAll("plant_asset_positions"),fetchAll("plant_electrical_loads"),fetchAll("plant_mcc_motors")
+    ]);
+    Object.assign(DB,{areas,equip,inst,valves,alarms,io,pos,loads,motors});
+    buildIndexes(); buildKpis(); buildDatalist();
+    drawZones(); drawFlows();
+    $("#veil").style.display="none";
+    window.addEventListener("hashchange",route);
+    requestAnimationFrame(()=>{ fitPlant(false); route(); });
+    status(`✓ Connected · ${DB.areas.length} areas · ${DB.equip.length} equipment · ${DB.inst.length} instruments · ${DB.io.length} IO channels — spatial index ready`,"ok");
+  }catch(e){
+    $("#veil").textContent="✗ "+e.message; status("✗ "+e.message,"err");
+  }
+}
+
+function buildIndexes(){
+  DB.areas.forEach(a=>IDX.areaByCode.set(String(a.area_code),a));
+  DB.inst=DB.inst.filter(r=>r.removed!==true);
+  DB.valves=DB.valves.filter(r=>r.removed!==true);
+  DB.equip.forEach(e=>{
+    const c=String(e.area_code||"");
+    if(!IDX.equipByArea.has(c))IDX.equipByArea.set(c,[]);
+    IDX.equipByArea.get(c).push(e);
+    if(e.tag)IDX.equipByTag.set(e.tag.trim(),e);
+  });
+  DB.pos.forEach(p=>{
+    if(p.object_kind==="area"){
+      const base=p.object_tag.split(":")[0];
+      if(!IDX.zones.has(base))IDX.zones.set(base,[]);
+      IDX.zones.get(base).push(p);
+    }else if(p.object_kind==="equipment"){
+      IDX.posByTag.set(p.object_tag,p);
+    }
+  });
+  const put=(m,k,r)=>{k=String(k||"").trim();if(!k)return;if(!m.has(k))m.set(k,[]);m.get(k).push(r);};
+  DB.inst.forEach(r=>put(IDX.instByUnit,r.unit,r));
+  DB.valves.forEach(r=>put(IDX.valvesByUnit,r.unit,r));
+  DB.alarms.forEach(r=>put(IDX.alarmsByArea,r.area_code,r));
+  DB.io.forEach(r=>put(IDX.ioByUnit,r.unit,r));
+}
+
+function buildKpis(){
+  const power=DB.loads.reduce((s,l)=>s+(+l.power_rating_kw||0),0);
+  const k=[["POWER KW",power?Math.round(power).toLocaleString("en-US"):"13,126",1],
+           ["EQUIPMENT",DB.equip.length],["DRIVES",DB.motors.length],
+           ["INSTRUMENTS",DB.inst.length],["IO CH",DB.io.length],["ALARMS",DB.alarms.length]];
+  $("#kpis").innerHTML=k.map(x=>`<div class="kpi ${x[2]?'hot':''}"><div class="n">${x[1]}</div><div class="l">${x[0]}</div></div>`).join("");
+}
+
+function buildDatalist(){
+  const dl=$("#taglist");
+  let h=DB.areas.filter(a=>a.description).map(a=>`<option value="${a.area_code}">${esc(a.description)}</option>`).join("");
+  h+=DB.equip.map(e=>`<option value="${esc(e.tag)}">${esc(e.service||"")}</option>`).join("");
+  dl.innerHTML=h;
+}
+
+/* ── camera ──────────────────────────────────────────────────── */
+const CAM={x:0,y:0,k:1};
+function applyCam(anim){
+  const w=$("#world");
+  if(anim){w.classList.add("anim");clearTimeout(applyCam._t);applyCam._t=setTimeout(()=>w.classList.remove("anim"),700);}
+  else w.classList.remove("anim");
+  w.style.transform=`translate(${CAM.x}px,${CAM.y}px) scale(${CAM.k})`;
+}
+function fitRect(x,y,w,h,pad,anim){
+  const vp=$("#viewport").getBoundingClientRect();
+  const rw=px(w)*(1+pad), rh=py(h)*(1+pad);
+  const k=Math.min(vp.width/rw, vp.height/rh);
+  CAM.k=Math.min(k,6);
+  CAM.x=vp.width/2 - CAM.k*(px(x)+px(w)/2);
+  CAM.y=vp.height/2 - CAM.k*(py(y)+py(h)/2);
+  applyCam(anim!==false);
+}
+function fitPlant(anim){ fitRect(0,0,100,100,0.02,anim); }
+function fitArea(code,anim){
+  const zs=IDX.zones.get(code); if(!zs||!zs.length){fitPlant(anim);return;}
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  zs.forEach(z=>{x0=Math.min(x0,+z.x);y0=Math.min(y0,+z.y);x1=Math.max(x1,+z.x + +z.w);y1=Math.max(y1,+z.y + +z.h);});
+  fitRect(x0,y0,x1-x0,y1-y0,0.45,anim);
+}
+
+/* wheel zoom + pan */
+(function(){
+  const vp=$("#viewport");
+  vp.addEventListener("wheel",e=>{
+    e.preventDefault();
+    const r=vp.getBoundingClientRect();
+    const mx=e.clientX-r.left,my=e.clientY-r.top;
+    const f=e.deltaY<0?1.18:1/1.18;
+    const nk=Math.max(0.2,Math.min(9,CAM.k*f));
+    CAM.x=mx-(mx-CAM.x)*nk/CAM.k; CAM.y=my-(my-CAM.y)*nk/CAM.k; CAM.k=nk;
+    applyCam(false);
+  },{passive:false});
+  let drag=null;
+  vp.addEventListener("pointerdown",e=>{
+    if(e.target.closest(".asset,.hud,.kpis,.legend,.hbtn"))return;
+    if(EDIT&&e.target.closest(".zone"))return;
+    drag={sx:e.clientX,sy:e.clientY,cx:CAM.x,cy:CAM.y,moved:0};
+    vp.classList.add("dragging");vp.setPointerCapture(e.pointerId);
+  });
+  vp.addEventListener("pointermove",e=>{
+    if(!drag)return;
+    drag.moved=Math.max(drag.moved,Math.abs(e.clientX-drag.sx)+Math.abs(e.clientY-drag.sy));
+    CAM.x=drag.cx+(e.clientX-drag.sx);CAM.y=drag.cy+(e.clientY-drag.sy);applyCam(false);
+  });
+  vp.addEventListener("pointerup",()=>{
+    if(drag&&drag.moved>5){window._panned=true;setTimeout(()=>window._panned=false,120);}
+    drag=null;vp.classList.remove("dragging");
+  });
+})();
+
+/* ── routing ─────────────────────────────────────────────────── */
+let ROUTE={view:"plant"};
+function nav(h){location.hash=h;}
+function route(){
+  const h=location.hash.replace(/^#\/?/,"");
+  const [v,...rest]=h.split("/").map(decodeURIComponent);
+  if(v==="a"&&rest[0])ROUTE={view:"area",area:rest[0]};
+  else if(v==="t"&&rest[0]){
+    const eq=IDX.equipByTag.get(rest[0]);
+    ROUTE=eq?{view:"asset",area:String(eq.area_code||""),tag:rest[0]}:{view:"plant"};
+  }
+  else if(v==="cube")ROUTE={view:"cube",area:ROUTE.area};
+  else ROUTE={view:"plant"};
+  render();
+}
+function render(){
+  closeCube(false);
+  drawZones(); /* refresh active state / heat */
+  if(ROUTE.view==="plant"){
+    $("#assetlayer").innerHTML="";
+    fitPlant(); closeDrawer(); crumbs();
+  }else if(ROUTE.view==="area"||ROUTE.view==="asset"){
+    drawAssets(ROUTE.area);
+    fitArea(ROUTE.area);
+    if(ROUTE.view==="asset")openAssetDrawer(ROUTE.tag);else openAreaDrawer(ROUTE.area);
+    crumbs();
+  }
+  if(ROUTE.view==="cube"){openCube();crumbs();}
+}
+function crumbs(){
+  let h=`<a onclick="nav('')">TENDRARA MICRO-LNG</a>`;
+  if(ROUTE.view==="cube")h+=` › <b>TCI CUBE</b>`;
+  if(ROUTE.area){
+    const a=IDX.areaByCode.get(ROUTE.area);
+    h+=` › <a onclick="nav('a/${ROUTE.area}')">AREA ${ROUTE.area}${a?" · "+esc(a.description||""):""}</a>`;
+  }
+  if(ROUTE.view==="asset")h+=` › <b>${esc(ROUTE.tag)}</b>`;
+  if(ROUTE.view==="plant")h+=` › <b>PLANT GA</b> · click an area to enter · scroll to zoom`;
+  $("#crumbs").innerHTML=h;
+}
+window.nav=nav;
+
+/* ── zones ───────────────────────────────────────────────────── */
+let TCION=false, FLOWSON=true, EDIT=false;
+function drawZones(){
+  const L=$("#zonelayer");let h="";
+  IDX.zones.forEach((zs,code)=>{
+    const a=IDX.areaByCode.get(code)||{};
+    const t=TCI[code];
+    zs.forEach(z=>{
+      const sub=z.object_tag.includes(":");
+      const active=ROUTE.area===code&&ROUTE.view!=="plant";
+      const heat=TCION&&t!=null?`background:${tciColor(t)}55;border-color:${tciColor(t)};`:"";
+      h+=`<div class="zone ${sub?'sub':''} ${active?'active':''} ${TCION?'heat':''}" data-tag="${esc(z.object_tag)}" data-code="${code}"
+        style="left:${px(z.x)}px;top:${py(z.y)}px;width:${px(z.w)}px;height:${py(z.h)}px;${heat}"
+        onclick="zoneClick(event,'${code}')">
+        ${sub?"":`<div class="zlbl"><span class="zc">${code}</span><span class="zn">${esc(a.description||"")}</span>${TCION&&t!=null?`<span class="zt">${t.toFixed(2)}%${TCI_EST.has(code)?"*":""}</span>`:""}</div>`}
+        <div class="rs" data-rs="1"></div>
+      </div>`;
+    });
+  });
+  L.innerHTML=h;
+  if(EDIT)bindZoneDrag();
+}
+function zoneClick(e,code){
+  if(EDIT||window._panned)return;
+  if(ROUTE.view!=="plant"&&ROUTE.area===code)return;
+  nav("a/"+code);
+}
+window.zoneClick=zoneClick;
+
+/* ── process flow links (module-101 language) ────────────────── */
+function zoneCenter(code){
+  const zs=IDX.zones.get(code);if(!zs||!zs.length)return null;
+  const z=zs.find(x=>!x.object_tag.includes(":"))||zs[0];
+  return [px(+z.x + +z.w/2), py(+z.y + +z.h/2)];
+}
+function drawFlows(){
+  const S=$("#flowsvg");
+  S.setAttribute("width",WW);S.setAttribute("height",WH);S.setAttribute("viewBox",`0 0 ${WW} ${WH}`);
+  if(!FLOWSON){S.innerHTML="";return;}
+  const defs=`<defs>
+    <marker id="am" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#E8425C"/></marker>
+    <marker id="ab" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5CA9FF"/></marker>
+    <marker id="ag" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8FE3A8"/></marker>
+    <marker id="ao" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#FFB65C"/></marker>
+  </defs>`;
+  const C=code=>zoneCenter(code);
+  function link(a,b,cls,stroke,marker,bend){
+    const p1=C(a),p2=C(b);if(!p1||!p2)return "";
+    const mx=(p1[0]+p2[0])/2+(bend||0),my=(p1[1]+p2[1])/2-(Math.abs(bend||0)*0.6);
+    return `<path class="flowpath ${cls}" style="stroke:${stroke}" marker-end="url(#${marker})" d="M${p1[0]},${p1[1]} Q${mx},${my} ${p2[0]},${p2[1]}"/>`;
+  }
+  let h=defs;
+  /* main gas path 200→330→310→350→220 */
+  h+=link("200","330","flowmain","#E8425C","am",-16);
+  h+=link("330","310","flowmain","#E8425C","am",0);
+  h+=link("310","350","flowmain","#E8425C","am",0);
+  h+=link("350","220","flowmain","#E8425C","am",90);
+  /* side loops */
+  h+=link("340","350","flowside","#5CA9FF","ab",40);   /* NH3 refrigerant */
+  h+=link("360","350","flowside","#8FE3A8","ag",-60);  /* BOG recycle */
+  h+=link("220","360","flowside","#8FE3A8","ag",-140); /* BOG from storage */
+  h+=link("410","330","flowside","#FFB65C","ao",-70);  /* hot oil */
+  h+=link("360","480","flowside","#FFB65C","ao",50);   /* fuel gas */
+  const t=C("220");
+  if(t)h+=`<text class="flowlbl" x="${t[0]+px(16)}" y="${t[1]+py(2)}" fill="#8FE3A8">▶ LNG TO TRUCKS</text>`;
+  S.innerHTML=h;
+}
+
+/* ── asset icons ─────────────────────────────────────────────── */
+function tagKind(tag){
+  const m=(tag||"").toUpperCase().match(/^([A-Z]+)/);
+  const p=m?m[1]:"";
+  if(p==="FPK"||p==="PK"||p==="X")return "pkg";
+  if(p==="TK"||p==="TA")return "tank";
+  if(p==="P")return "pump";
+  if(p==="C")return "comp";
+  if(p==="E")return "hx";
+  if(p==="V")return "vessel";
+  if(p==="F")return "filter";
+  if(p==="T")return "column";
+  if(p==="B")return "burner";
+  if(p==="S")return "pkg";
+  return "gen";
+}
+function iconSvg(kind,s){
+  s=s||20;const st=`fill="none" stroke="#7FD4FF" stroke-width="1.6"`;
+  const shapes={
+    pump:`<circle cx="10" cy="10" r="7" ${st}/><path d="M10 3 L16.2 13.5 L3.8 13.5 Z" ${st}/>`,
+    comp:`<path d="M3 6 L17 3 L17 17 L3 14 Z" ${st}/><line x1="3" y1="10" x2="17" y2="10" ${st}/>`,
+    hx:`<circle cx="10" cy="10" r="7.4" ${st}/><path d="M2.6 10 L7 10 L9 6 L12 14 L14 10 L17.4 10" ${st}/>`,
+    vessel:`<rect x="5.4" y="2.5" width="9.2" height="15" rx="4.6" ${st}/><line x1="5.4" y1="7.5" x2="14.6" y2="7.5" ${st}/>`,
+    filter:`<path d="M4 3 L16 3 L11.5 10 L11.5 16.5 L8.5 16.5 L8.5 10 Z" ${st}/>`,
+    column:`<rect x="6.6" y="1.6" width="6.8" height="16.8" rx="3.4" ${st}/><line x1="6.6" y1="6.5" x2="13.4" y2="6.5" ${st}/><line x1="6.6" y1="10" x2="13.4" y2="10" ${st}/><line x1="6.6" y1="13.5" x2="13.4" y2="13.5" ${st}/>`,
+    tank:`<path d="M3.5 8 A6.5 5 0 0 1 16.5 8 L16.5 16.5 L3.5 16.5 Z" ${st}/><line x1="3.5" y1="8" x2="16.5" y2="8" ${st}/>`,
+    pkg:`<rect x="3" y="3" width="14" height="14" rx="1.6" ${st}/><line x1="3" y1="3" x2="17" y2="17" ${st}/><line x1="17" y1="3" x2="3" y2="17" ${st}/>`,
+    burner:`<path d="M10 2 C13 6 16 8 16 12 A6 6 0 0 1 4 12 C4 8 7 6 10 2 Z" ${st}/>`,
+    gen:`<rect x="4" y="4" width="12" height="12" rx="2" transform="rotate(45 10 10)" ${st}/>`
+  };
+  return `<svg width="${s}" height="${s}" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">${shapes[kind]||shapes.gen}</svg>`;
+}
+
+/* default deterministic grid inside the primary zone for unplaced assets */
+function defaultPositions(code){
+  const list=(IDX.equipByArea.get(code)||[]);
+  const zs=IDX.zones.get(code)||[];
+  const z=zs.find(x=>!x.object_tag.includes(":"))||zs[0];
+  const out=new Map();
+  if(!z)return out;
+  const n=list.length;if(!n)return out;
+  const zx=+z.x, zy=+z.y, zw=+z.w, zh=+z.h;
+  const ratio=(zw*WW)/(zh*WH*1.15);
+  const cols=Math.max(1,Math.ceil(Math.sqrt(n*ratio)));
+  const rows=Math.max(1,Math.ceil(n/cols));
+  list.forEach((e,i)=>{
+    const c=i%cols, r=Math.floor(i/cols);
+    out.set(e.tag,{
+      x: zx + zw*(0.14 + 0.72*(cols===1?0.5:c/(cols-1))),
+      y: zy + zh*(0.16 + 0.68*(rows===1?0.5:r/(rows-1)))
+    });
+  });
+  return out;
+}
+
+function drawAssets(code){
+  const L=$("#assetlayer");
+  const list=IDX.equipByArea.get(code)||[];
+  const defs=defaultPositions(code);
+  let h="";
+  list.forEach(e=>{
+    const t=e.tag;
+    const p=IDX.posByTag.get(t)||defs.get(t);
+    if(!p)return;
+    const placed=IDX.posByTag.has(t);
+    const kind=tagKind(t);
+    const sel=ROUTE.view==="asset"&&ROUTE.tag===t;
+    h+=`<div class="asset ${placed?'placed':''} ${sel?'sel':''}" data-tag="${esc(t)}"
+      style="left:${px(+p.x)}px;top:${py(+p.y)}px"
+      onclick="assetClick(event,'${esc(t)}')" title="${esc(e.service||t)}">
+      <div class="ic">${iconSvg(kind)}</div><div class="tg">${esc(t)}</div>
+    </div>`;
+  });
+  L.innerHTML=h;
+  if(EDIT)bindAssetDrag();
+}
+function assetClick(e,tag){ if(EDIT)return; nav("t/"+encodeURIComponent(tag)); }
+window.assetClick=assetClick;
+
+/* ── drag / placement mode ───────────────────────────────────── */
+async function savePos(kind,tag,fields){
+  const row=Object.assign({scope:"plant",object_kind:kind,object_tag:tag,updated_by:SESSION?SESSION.name:"?",updated_at:new Date().toISOString()},fields);
+  const {data,error}=await sb.from("plant_asset_positions")
+    .upsert(row,{onConflict:"scope,object_kind,object_tag"}).select();
+  if(error){status("✗ save: "+error.message,"err");return;}
+  const saved=data[0];
+  if(kind==="equipment")IDX.posByTag.set(tag,saved);
+  else{
+    const base=tag.split(":")[0];
+    const arr=IDX.zones.get(base)||[];
+    const i=arr.findIndex(z=>z.object_tag===tag);
+    if(i>=0)arr[i]=saved;else arr.push(saved);
+  }
+  status(`✓ position saved · ${tag} → x ${(+saved.x).toFixed(2)}% y ${(+saved.y).toFixed(2)}%`,"ok");
+}
+function dragify(el,onMove,onDrop){
+  el.addEventListener("pointerdown",e=>{
+    if(!EDIT)return;
+    e.stopPropagation();e.preventDefault();
+    const start={x:e.clientX,y:e.clientY};
+    const r={moved:false};
+    el.setPointerCapture(e.pointerId);
+    const mv=ev=>{
+      const dx=(ev.clientX-start.x)/CAM.k/WW*100, dy=(ev.clientY-start.y)/CAM.k/WH*100;
+      if(Math.abs(dx)+Math.abs(dy)>0.01)r.moved=true;
+      onMove(dx,dy);
+    };
+    const up=ev=>{
+      el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);
+      if(r.moved)onDrop();
+    };
+    el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);
+  });
+}
+function bindAssetDrag(){
+  document.querySelectorAll("#assetlayer .asset").forEach(el=>{
+    const tag=el.dataset.tag;
+    const eq=IDX.equipByTag.get(tag);if(!eq)return;
+    const defs=defaultPositions(String(eq.area_code));
+    let base=IDX.posByTag.get(tag)||defs.get(tag);
+    let cur={x:+base.x,y:+base.y};
+    dragify(el,
+      (dx,dy)=>{cur={x:+base.x+dx,y:+base.y+dy};
+        el.style.left=px(cur.x)+"px";el.style.top=py(cur.y)+"px";},
+      ()=>{base=cur;savePos("equipment",tag,{x:+cur.x.toFixed(3),y:+cur.y.toFixed(3)});el.classList.add("placed");});
+  });
+}
+function bindZoneDrag(){
+  document.querySelectorAll("#zonelayer .zone").forEach(el=>{
+    const tag=el.dataset.tag, code=el.dataset.code;
+    const arr=IDX.zones.get(code)||[];
+    const z=arr.find(x=>x.object_tag===tag);if(!z)return;
+    let base={x:+z.x,y:+z.y,w:+z.w,h:+z.h},cur={...base};
+    const rs=el.querySelector(".rs");
+    if(rs){
+      rs.addEventListener("pointerdown",e=>{
+        if(!EDIT)return;e.stopPropagation();e.preventDefault();
+        const start={x:e.clientX,y:e.clientY};
+        rs.setPointerCapture(e.pointerId);
+        const mv=ev=>{
+          const dw=(ev.clientX-start.x)/CAM.k/WW*100, dh=(ev.clientY-start.y)/CAM.k/WH*100;
+          cur.w=Math.max(1,base.w+dw);cur.h=Math.max(1,base.h+dh);
+          el.style.width=px(cur.w)+"px";el.style.height=py(cur.h)+"px";
+        };
+        const up=()=>{rs.removeEventListener("pointermove",mv);rs.removeEventListener("pointerup",up);
+          base={...cur};savePos("area",tag,{x:+cur.x.toFixed(3),y:+cur.y.toFixed(3),w:+cur.w.toFixed(3),h:+cur.h.toFixed(3)});drawFlows();};
+        rs.addEventListener("pointermove",mv);rs.addEventListener("pointerup",up);
+      });
+    }
+    dragify(el,
+      (dx,dy)=>{cur.x=base.x+dx;cur.y=base.y+dy;
+        el.style.left=px(cur.x)+"px";el.style.top=py(cur.y)+"px";},
+      ()=>{base={...cur};savePos("area",tag,{x:+cur.x.toFixed(3),y:+cur.y.toFixed(3),w:+cur.w.toFixed(3),h:+cur.h.toFixed(3)});drawFlows();});
+  });
+}
+
+/* ── loop-family heuristics (tag → related instruments) ─────── */
+function familyNum(tag){
+  const m=(tag||"").match(/(\d{3})/);return m?m[1]:null;
+}
+/* prefer the explicit `equipment` column; fall back to loop-number family */
+function eqRefMatch(ref,tag){
+  if(!ref)return false;
+  const R=String(ref).toUpperCase(), T=String(tag).toUpperCase();
+  if(R.includes(T))return true;
+  const base=T.split(/[ \/]/)[0].replace(/A\/B.*$/,"");
+  return base.length>3&&R.includes(base);
+}
+function relatedInst(eq){
+  const unit=String(eq.area_code||"");
+  const all=IDX.instByUnit.get(unit)||[];
+  let list=all.filter(i=>eqRefMatch(i.equipment,eq.tag));
+  let mode="equipment column";
+  if(!list.length){
+    const fam=familyNum(eq.tag);
+    if(fam)list=all.filter(i=>{const m=(i.tag||"").match(/(\d{3,})/);return m&&m[1].slice(0,3)===fam;});
+    mode="loop-family heuristic";
+  }
+  return {list,unitN:all.length,mode};
+}
+function relatedValves(eq){
+  const unit=String(eq.area_code||"");
+  const all=IDX.valvesByUnit.get(unit)||[];
+  let list=all.filter(v=>eqRefMatch(v.equipment,eq.tag));
+  if(!list.length){
+    const fam=familyNum(eq.tag);
+    if(fam)list=all.filter(v=>{const m=(v.tag||"").match(/(\d{3,})/);return m&&m[1].slice(0,3)===fam;});
+  }
+  return list;
+}
+
+/* ── drawers ─────────────────────────────────────────────────── */
+function openDrawer(){$("#drawer").classList.add("open");}
+function closeDrawer(){$("#drawer").classList.remove("open");}
+window.closeDrawer=closeDrawer;
+
+function openAreaDrawer(code){
+  const a=IDX.areaByCode.get(code)||{};
+  const eq=IDX.equipByArea.get(code)||[];
+  const inst=(IDX.instByUnit.get(code)||[]).length;
+  const valves=(IDX.valvesByUnit.get(code)||[]).length;
+  const io=(IDX.ioByUnit.get(code)||[]).length;
+  const alarms=(IDX.alarmsByArea.get(code)||[]).length;
+  const t=TCI[code];
+  $("#dkick").textContent="PROCESS AREA · TX EI10 "+code;
+  $("#dtitle").textContent="AREA "+code;
+  $("#dsub").innerHTML=`${esc(a.description||"")} ${t!=null?`&nbsp;<span class="chip crimson">TCI ${t.toFixed(2)}%${TCI_EST.has(code)?"*":""}</span>`:""}`;
+  let h=`<div class="statgrid">
+    <div class="stat" onclick="location.href='index.html#area/${code}'"><div class="n">${eq.length}</div><div class="l">Equipment</div></div>
+    <div class="stat" onclick="location.href='index.html#area/${code}'"><div class="n">${inst}</div><div class="l">Instruments</div></div>
+    <div class="stat" onclick="location.href='index.html#area/${code}'"><div class="n">${valves}</div><div class="l">Valves</div></div>
+    <div class="stat" onclick="location.href='index.html#area/${code}'"><div class="n">${io}</div><div class="l">IO channels</div></div>
+    <div class="stat" onclick="location.href='index.html#alarms'"><div class="n">${alarms}</div><div class="l">Alarms</div></div>
+    <div class="stat" onclick="nav('cube')"><div class="n">${t!=null?t.toFixed(1)+"%":"—"}</div><div class="l">TCI share</div></div>
+  </div>
+  <div class="dsec">EQUIPMENT — click to open on the map</div>
+  <div class="elist">`;
+  eq.forEach(e=>{
+    h+=`<div class="erow" onclick="nav('t/${encodeURIComponent(e.tag)}')">
+      <div class="eic">${iconSvg(tagKind(e.tag),16)}</div>
+      <span class="et">${esc(e.tag)}</span><span class="es">${esc(e.service||"")}</span>
+      ${IDX.posByTag.has(e.tag)?'<span class="chipmini">XY</span>':""}
+    </div>`;
+  });
+  h+=`</div>
+  <div class="btnrow">
+    <a class="abtn" href="index.html#area/${code}">CLASSIC TABLES ⧉</a>
+    <button class="btn" onclick="toggleEdit(true)">✥ PLACE ASSETS</button>
+  </div>
+  <div class="note">Assets tagged <b style="color:var(--ok)">XY</b> have surveyed GA coordinates in <span style="font-family:var(--mono)">plant_asset_positions</span>;
+  the rest are auto-arranged inside the area zone until you place them.</div>`;
+  $("#dbody").innerHTML=h;
+  openDrawer();
+}
+
+function openAssetDrawer(tag){
+  const eq=IDX.equipByTag.get(tag);if(!eq){closeDrawer();return;}
+  const code=String(eq.area_code||"");
+  const a=IDX.areaByCode.get(code)||{};
+  const {list:inst,unitN,mode}=relatedInst(eq);
+  const valves=relatedValves(eq);
+  const instTags=new Set(inst.map(i=>(i.tag||"").trim()));
+  const alarms=(IDX.alarmsByArea.get(code)||[]).filter(al=>instTags.has((al.instrument_tag||"").trim()));
+  const io=(IDX.ioByUnit.get(code)||[]).filter(ch=>{
+    const m=(ch.tag||"").match(/(\d{3,})/);const f=familyNum(tag);
+    return f&&m&&m[1].slice(0,3)===f;
+  });
+  const fam=familyNum(tag);
+  $("#dkick").textContent="ASSET · AREA "+code+" · "+esc(a.description||"");
+  $("#dtitle").textContent=tag;
+  $("#dsub").textContent=eq.service||"";
+  let h=`<div class="statgrid">
+    <div class="stat"><div class="n">${inst.length}</div><div class="l">Loop instr.</div></div>
+    <div class="stat"><div class="n">${valves.length}</div><div class="l">Loop valves</div></div>
+    <div class="stat"><div class="n">${io.length}</div><div class="l">IO channels</div></div>
+  </div>`;
+  h+=`<div class="dsec">IDENTITY</div><table class="mini">
+    <tr><td class="g">AREA</td><td>${code} · ${esc(a.description||"")}</td></tr>
+    ${eq.skid_tag?`<tr><td class="g">SKID</td><td>${esc(eq.skid_tag)}</td></tr>`:""}
+    ${eq.document?`<tr><td class="g">P&amp;ID</td><td>${esc(eq.document)}</td></tr>`:""}
+    <tr><td class="g">POSITION</td><td>${IDX.posByTag.has(tag)?"surveyed XY on GA":"auto-arranged (not placed yet)"}</td></tr>
+  </table>`;
+  if(inst.length){
+    h+=`<div class="dsec">RELATED INSTRUMENTS (${inst.length} of ${unitN} in unit)</div>
+    <table class="mini"><tr><th>TAG</th><th>TYPE</th><th>SIGNAL</th><th>RANGE</th></tr>`;
+    inst.slice(0,40).forEach(i=>{
+      h+=`<tr><td class="g">${esc(i.tag)}</td><td>${nz(i.instrument_type,"")}</td><td>${nz(i.signal_type,"")}</td><td>${nz(i.range,"")} ${nz(i.units,"")}</td></tr>`;
+    });
+    h+=`</table>`;
+  }
+  if(valves.length){
+    h+=`<div class="dsec">RELATED VALVES (${valves.length})</div><table class="mini"><tr><th>TAG</th><th>TYPE</th><th>P&amp;ID</th></tr>`;
+    valves.slice(0,25).forEach(v=>h+=`<tr><td class="g">${esc(v.tag)}</td><td>${nz(v.instrument_type,"")}</td><td>${nz(v.tam_pid,"")}</td></tr>`);
+    h+=`</table>`;
+  }
+  if(alarms.length){
+    h+=`<div class="dsec">PROTECTIVE ALARMS (${alarms.length})</div><table class="mini"><tr><th>TAG</th><th>TYPE</th><th>SET POINT</th></tr>`;
+    alarms.slice(0,25).forEach(al=>h+=`<tr><td class="g">${esc(al.alarm_tag)}</td><td>${nz(al.type,"")}</td><td>${nz(al.set_point,"")}</td></tr>`);
+    h+=`</table>`;
+  }
+  h+=`<div class="btnrow">
+    <a class="abtn" href="index.html#search/${encodeURIComponent(fam||tag)}">SEARCH IN CLASSIC ⧉</a>
+    <a class="abtn" href="index.html#area/${code}">AREA TABLES ⧉</a>
+    <button class="btn" onclick="nav('a/${code}')">◂ BACK TO AREA</button>
+  </div>
+  <div class="note">Relations resolved via <b>${mode}</b>${mode==="loop-family heuristic"?` (loop numbers starting <b>${esc(fam||"—")}</b> in unit ${code})`:""}.
+  Verify against the P&amp;ID (${esc(eq.document||"see drawings")}).</div>`;
+  $("#dbody").innerHTML=h;
+  openDrawer();
+}
+
+/* ── HUD buttons ─────────────────────────────────────────────── */
+$("#btnHome").onclick=()=>nav("");
+$("#btnFlows").onclick=function(){FLOWSON=!FLOWSON;this.classList.toggle("on",FLOWSON);drawFlows();};
+$("#btnTci").onclick=function(){TCION=!TCION;this.classList.toggle("on",TCION);$("#legend").classList.toggle("show",TCION);drawZones();};
+$("#btnCube").onclick=()=>nav("cube");
+$("#btnEdit").onclick=()=>toggleEdit();
+function toggleEdit(force){
+  EDIT=force===true?true:(force===false?false:!EDIT);
+  document.body.classList.toggle("editing",EDIT);
+  $("#btnEdit").classList.toggle("on",EDIT);
+  drawZones();
+  if(ROUTE.area)drawAssets(ROUTE.area);
+  status(EDIT?"PLACEMENT MODE ON — drag zones/assets; drops save to plant_asset_positions":"Placement mode off","");
+}
+window.toggleEdit=toggleEdit;
+$("#btnFlows").classList.add("on");
+
+/* ── keyboard: Esc = up one level ────────────────────────────── */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape")return;
+  if($("#cubewrap").classList.contains("open")){nav(ROUTE.area?"a/"+ROUTE.area:"");return;}
+  if(EDIT){toggleEdit(false);return;}
+  if(ROUTE.view==="asset")nav("a/"+ROUTE.area);
+  else if(ROUTE.view==="area")nav("");
+});
+
+/* ── tcode + search ──────────────────────────────────────────── */
+$("#tcode").addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  const v=e.target.value.trim().toUpperCase();e.target.value="";
+  const [c,arg]=v.split(/\s+/);
+  if(c==="PL00"||c==="EI00"||c==="HOME")nav("");
+  else if(c==="EI10"&&arg)nav("a/"+arg);
+  else if(c==="TAG"&&arg)goTag(arg);
+  else if(c==="CUBE")nav("cube");
+  else if(c==="CLASSIC")location.href="index.html";
+  else if(/^\d{3}$/.test(c))nav("a/"+c);
+  else if(c)goTag(v);
+});
+$("#gsearch").addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  const v=e.target.value.trim();e.target.value="";
+  if(/^\d{3}$/.test(v)&&IDX.zones.has(v))nav("a/"+v);else goTag(v);
+});
+function goTag(t){
+  const hit=IDX.equipByTag.get(t)||IDX.equipByTag.get(t.toUpperCase());
+  if(hit)nav("t/"+encodeURIComponent(hit.tag));
+  else{
+    const part=[...IDX.equipByTag.keys()].find(k=>k.toUpperCase().includes(t.toUpperCase()));
+    if(part)nav("t/"+encodeURIComponent(part));
+    else status("✗ no equipment tag matches “"+t+"” — try the classic navigator for instruments","err");
+  }
+}
+
+/* ── TCI CUBE ────────────────────────────────────────────────── */
+let cubeRX=-24,cubeRY=32,cubeBuilt=false,cubeSpin=null;
+function faceTiles(title,unitLbl,data,color){
+  const entries=Object.entries(data).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const tot=entries.reduce((s,[,v])=>s+v,0)||1;
+  let h=`<div class="fh"><span class="ft">${title}</span><span class="fv">${unitLbl}</span></div><div class="tiles">`;
+  entries.forEach(([k,v])=>{
+    const share=v/tot;
+    const w=Math.max(44,Math.round(268*share*1.55));
+    const hgt=Math.max(30,Math.round(72*Math.sqrt(share*2.2)));
+    h+=`<div class="tile" style="width:${w}px;height:${hgt}px;background:${color(k,v,share)}" onclick="nav('a/${k}')">
+      <span class="ta">${k}</span><span class="tp">${typeof v==="number"&&v<100?v.toFixed(v<10?2:1):Math.round(v)}${unitLbl.includes("%")?"%":""}</span></div>`;
+  });
+  return h+"</div>";
+}
+function buildCube(){
+  if(cubeBuilt)return;cubeBuilt=true;
+  const cnt=(rows,key)=>{const m={};rows.forEach(r=>{const k=String(r[key]||"").trim();if(!k||!IDX.areaByCode.has(k))return;m[k]=(m[k]||0)+1;});return m;};
+  const M=cnt(DB.equip,"area_code");
+  const I=cnt(DB.inst,"unit");
+  const C={};DB.io.forEach(r=>{const k=String(r.unit||"").trim();if(k)C[k]=(C[k]||0)+1;});
+      DB.alarms.forEach(r=>{const k=String(r.area_code||"").trim();if(k)C[k]=(C[k]||0)+1;});
+  const E={};DB.motors.forEach(r=>{const k=String(r.area_code||"").trim();if(k)E[k]=(E[k]||0)+1;});
+      DB.loads.forEach(r=>{const k=String(r.unit_tag||"").replace(/\D/g,"");if(k)E[k]=(E[k]||0)+1;});
+  const dc=hue=>(k,v,s)=>`hsl(${hue},62%,${Math.round(58-s*34)}%)`;
+  const faces=[
+    {t:"TCI · COMPLEXITY",u:"% of plant",d:TCI,c:(k,v,s)=>tciColor(v),tr:"rotateY(0deg) translateZ(150px)"},
+    {t:"M · MECHANICAL",u:"equipment",d:M,c:dc(216),tr:"rotateY(90deg) translateZ(150px)"},
+    {t:"E · ELECTRICAL",u:"drives + loads",d:E,c:dc(0),tr:"rotateY(180deg) translateZ(150px)"},
+    {t:"I · INSTRUMENTATION",u:"instruments",d:I,c:dc(140),tr:"rotateY(270deg) translateZ(150px)"},
+    {t:"C · CONTROL",u:"IO + alarms",d:C,c:dc(43),tr:"rotateX(90deg) translateZ(150px)"}
+  ];
+  let h="";
+  faces.forEach(f=>{h+=`<div class="face" style="transform:${f.tr}">${faceTiles(f.t,f.u,f.d,f.c)}</div>`;});
+  h+=`<div class="face brandface" style="transform:rotateX(-90deg) translateZ(150px)">
+    <div class="b1">TENDRARA · TCI</div>
+    <div class="b2">21044-PR-MAN-00001 §3<br>PLANT DATA MODEL ANALYSIS<br>
+    M <b>5.525</b> · C <b>2.978</b> · I <b>2.411</b> · E <b>1.411</b> kh-p<br><br>
+    PLANT NAVIGATOR <b>2026</b><br>SUPER CLAUDE × MARIO</div>
+  </div>`;
+  $("#cube").innerHTML=h;
+  const st=$("#cubestage");
+  let d=null;
+  st.addEventListener("pointerdown",e=>{d={x:e.clientX,y:e.clientY,rx:cubeRX,ry:cubeRY};st.classList.add("dragging");st.setPointerCapture(e.pointerId);stopSpin();});
+  st.addEventListener("pointermove",e=>{if(!d)return;cubeRY=d.ry+(e.clientX-d.x)*0.45;cubeRX=Math.max(-88,Math.min(88,d.rx-(e.clientY-d.y)*0.45));cubeXform();});
+  st.addEventListener("pointerup",()=>{d=null;st.classList.remove("dragging");});
+}
+function cubeXform(){$("#cube").style.transform=`rotateX(${cubeRX}deg) rotateY(${cubeRY}deg)`;}
+function stopSpin(){if(cubeSpin){cancelAnimationFrame(cubeSpin);cubeSpin=null;}}
+function openCube(){
+  buildCube();
+  $("#cubewrap").classList.add("open");
+  const spin=()=>{cubeRY+=0.12;cubeXform();cubeSpin=requestAnimationFrame(spin);};
+  stopSpin();spin();
+  crumbs();
+}
+function closeCube(navBack){
+  stopSpin();
+  $("#cubewrap").classList.remove("open");
+}
+window.closeCube=()=>{ nav(ROUTE.area?"a/"+ROUTE.area:""); };
+
+boot();
+</script>
+</body>
+</html>
