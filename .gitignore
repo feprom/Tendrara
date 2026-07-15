@@ -1,0 +1,20 @@
+# EPC drawings are NOT published.
+#
+# publish/ is the GitHub Pages root (CNAME -> tendrara.neo-ware.com), so anything
+# committed here is served anonymously on the public internet. The 90 ESA/ITALFLUID
+# PDFs were being served that way — they now live in the PRIVATE Supabase Storage
+# bucket `plant-docs` and are reached through signed URLs (doc-url Edge Function),
+# which require a signed-in session.
+#
+# Do not remove this rule. If you need a drawing on the site, it belongs in storage
+# and gets linked from the E&I Navigator (EI70 / EI80), not committed here.
+docs/
+
+# The two genuinely public handouts, linked from the training decks:
+!docs/LNGSafetyData.pdf
+!docs/SAF05-ING-FR01.pdf
+
+# Local tooling / secrets — must never reach a public repo
+node_modules/
+.env
+*.local
