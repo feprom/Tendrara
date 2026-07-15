@@ -152,6 +152,28 @@
   .toolrow{display:flex;gap:8px;align-items:center;margin:10px 0 4px;flex-wrap:wrap;}
   .toolrow input,.toolrow select{font-family:var(--mono);font-size:11.5px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:3px;background:#fff;}
   .toolrow .spacer{flex:1;}
+  .toolrow .flabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);}
+  /* ── EI50 change-request register: fixed layout so long reason text can't blow up the table ── */
+  #dt-crs table.data{table-layout:fixed;width:100%;}
+  #dt-crs table.data td{word-break:break-word;}
+  #dt-crs .cw-cr{width:72px;}
+  #dt-crs .cw-date{width:78px;}
+  #dt-crs .cw-disc{width:92px;}
+  #dt-crs .cw-area{width:52px;}
+  #dt-crs .cw-tag{width:112px;}
+  #dt-crs .cw-field{width:88px;}
+  #dt-crs .cw-delta{width:20%;}
+  #dt-crs .cw-reason{width:auto;}
+  #dt-crs .cw-by{width:92px;}
+  #dt-crs .cw-status{width:96px;}
+  /* clamped cells — click to expand in place */
+  .clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;position:relative;}
+  .clamp:hover{background:var(--bg-soft);}
+  .clamp.open{-webkit-line-clamp:unset;background:var(--bg-soft);outline:1px solid var(--line-strong);
+    padding:4px 6px;border-radius:3px;white-space:pre-wrap;}
+  .clamp.one{-webkit-line-clamp:1;}
+  .crflag{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.05em;
+    color:var(--amber);border:1px solid var(--amber);background:#FFF7EC;border-radius:2px;padding:0 3px;margin-right:4px;}
   button.btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);font-size:12px;font-weight:600;
     padding:5px 12px;border-radius:4px;cursor:pointer;transition:.12s;font-family:var(--sans);}
   button.btn:hover{border-color:var(--crimson);color:var(--crimson);}
@@ -1513,27 +1535,108 @@ function renderComm(c){
   :`<div class="empty">No verifications yet — open a station (EI20) and start checking channels.</div>`}`;
 }
 
+/* discipline is derived from object_table — CRs have no discipline column of their own */
+const CR_DISC={io_list:"ELEC / IO", instruments:"INSTRUMENT", valves:"VALVE", alarms:"ALARM",
+  equipment:"PROCESS", jb:"ELEC / IO", rios:"ELEC / IO", pid_drawings:"PROCESS",
+  mcc_motors:"ELEC / IO", electrical_loads:"ELEC / IO", safety_critical:"SAFETY"};
+const crDisc=r=>CR_DISC[(r.object_table||"").replace("plant_","")]||"OTHER";
+/* area is derived by resolving the CR's tag through the instrument / valve / IO indexes */
+function crUnit(r){
+  const t=(r.object_tag||"").trim(); if(!t) return null;
+  const i=IDX.instByTag.get(t);  if(i&&i.unit) return String(i.unit);
+  const v=IDX.valveByTag.get(t); if(v&&v.unit) return String(v.unit);
+  const io=IDX.ioByTag.get(t);   if(io&&io.length&&io[0].unit) return String(io[0].unit);
+  return null;
+}
+function crSetFilter(k,v){ window["_cr"+k]=v; render(); }
+window.crSetFilter=crSetFilter;
+function crClear(){ window._crStatus="ALL"; window._crDisc="ALL"; window._crArea="ALL"; render(); }
+window.crClear=crClear;
+
 function renderCRs(c){
-  const list=[...DB.crs].sort((a,b)=>b.id-a.id);
+  const all=[...DB.crs].sort((a,b)=>b.id-a.id);
   const chip=s=>({PENDING:"warn",APPROVED:"info",IMPLEMENTED:"ok",REJECTED:"fail"}[s]||"dim");
+  const fStatus=window._crStatus||"ALL", fDisc=window._crDisc||"ALL", fArea=window._crArea||"ALL";
+
+  let list=all;
+  if(fStatus!=="ALL") list=list.filter(r=>r.status===fStatus);
+  if(fDisc!=="ALL")   list=list.filter(r=>crDisc(r)===fDisc);
+  if(fArea!=="ALL")   list=list.filter(r=>crUnit(r)===fArea);
+
+  const n=s=>all.filter(r=>r.status===s).length;
+  const pending=n("PENDING"), implemented=n("IMPLEMENTED"), approved=n("APPROVED"), rejected=n("REJECTED");
+  const disciplines=[...new Set(all.map(crDisc))].sort();
+  const areas=[...new Set(all.map(crUnit).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+
+  const sbtn=(v,label,cnt,cls)=>`<button class="btn mini ${fStatus===v?"primary":(cls||"")}"
+    onclick="crSetFilter('Status','${v}')">${label}${cnt!=null?` · ${cnt}`:""}</button>`;
+
+  const tbl=list.length?dataTable("crs","VERIFY","Change requests",[
+      {label:"CR NO", get:r=>r.cr_no, cls:"cw-cr mono",
+        html:(r,v)=>`<span style="font-weight:700;color:var(--crimson)">${esc(v)}</span>`},
+      {label:"DATE", get:r=>(r.created_at||"").slice(0,10), cls:"cw-date mono dim"},
+      {label:"DISCIPLINE", get:r=>crDisc(r), cls:"cw-disc mono dim"},
+      {label:"AREA", get:r=>crUnit(r), cls:"cw-area mono dim", blank:"—"},
+      {label:"TAG", get:r=>r.object_tag, cls:"cw-tag tag",
+        html:(r,v)=>`<span onclick="event.stopPropagation();openInst('${esc((v||"").trim())}')">${esc(v)}</span>`},
+      {label:"FIELD", get:r=>r.field_name, cls:"cw-field mono"},
+      {label:"OLD → NEW", get:r=>`${r.old_value||"∅"} → ${r.new_value||"∅"}`, cls:"cw-delta mono",
+        html:(r)=>`<div class="clamp" onclick="event.stopPropagation();this.classList.toggle('open')" title="Click to expand"><span class="dim">${nz(r.old_value,"∅")}</span> → <b>${nz(r.new_value,"∅")}</b></div>`},
+      {label:"REASON", get:r=>r.reason, cls:"cw-reason dim",
+        html:(r,v)=>{
+          const s=String(v||"");
+          const blocked=/BLOCKING|CONTINGENT ON|ACTION ON ESA/i.test(s);
+          const flag=blocked?`<span class="crflag">${/ACTION ON ESA/i.test(s)?"ESA":"BLOCKED"}</span>`:"";
+          return s?`<div class="clamp" onclick="event.stopPropagation();this.classList.toggle('open')" title="Click to expand">${flag}${esc(s)}</div>`:"—";
+        }},
+      {label:"BY", get:r=>r.requested_by, cls:"cw-by mono dim",
+        html:(r,v)=>`<span title="${esc(v)}">${esc(String(v||"").split("@")[0])}</span>`},
+      {label:"STATUS", get:r=>r.status, cls:"cw-status",
+        html:(r,v)=>`<span class="chip ${chip(v)}">${esc(v)}</span>`}
+    ], list, {sort:0, dir:-1, sheet:"Change requests"})
+    :`<div class="dtempty">No change requests match the current filters. <a href="#" onclick="crClear();return false;">Clear filters</a></div>`;
+
   c.innerHTML=`
   <div class="kicker">TX EI50 <span class="sub">· MANAGEMENT OF CHANGE · DATA REVISION LOG</span></div>
   <h1>Change requests</h1>
   <p class="lead">MOC-style register (<span class="mono">plant_change_requests</span>). Requests are raised from any
   instrument card and never modify master data directly — an approver implements them at the next data revision.</p>
-  ${list.length?`<table class="data"><thead><tr><th>CR NO</th><th>DATE</th><th>OBJECT</th><th>TAG</th><th>FIELD</th>
-  <th>OLD → NEW</th><th>REASON</th><th>BY</th><th>STATUS</th></tr></thead>
-  <tbody>${list.map(r=>`<tr>
-    <td class="mono" style="font-weight:700;color:var(--crimson)">${esc(r.cr_no)}</td>
-    <td class="mono dim">${esc((r.created_at||"").slice(0,10))}</td>
-    <td class="mono dim">${esc((r.object_table||"").replace("plant_",""))}</td>
-    <td class="tag" onclick="openInst('${esc(r.object_tag)}')">${esc(r.object_tag)}</td>
-    <td class="mono">${nz(r.field_name)}</td>
-    <td class="mono"><span class="dim">${nz(r.old_value,"∅")}</span> → <b>${nz(r.new_value,"∅")}</b></td>
-    <td class="dim">${nz(r.reason)}</td>
-    <td class="mono">${esc(r.requested_by)}</td>
-    <td><span class="chip ${chip(r.status)}">${esc(r.status)}</span></td></tr>`).join("")}</tbody></table>`
-  :`<div class="empty">No change requests yet. Open any instrument (click a tag) and press “Raise change request”.</div>`}`;
+  <div class="facts">
+    <div class="fact link" onclick="crSetFilter('Status','ALL')"><div class="fbody">
+      <div class="n">${all.length}</div><div class="l">TOTAL REQUESTS</div></div></div>
+    <div class="fact link" onclick="crSetFilter('Status','PENDING')"><div class="fbody">
+      <div class="n" style="color:var(--amber)">${pending}</div><div class="l">PENDING · AWAITING ACTION</div></div></div>
+    <div class="fact link" onclick="crSetFilter('Status','IMPLEMENTED')"><div class="fbody">
+      <div class="n" style="color:var(--ok)">${implemented}</div><div class="l">IMPLEMENTED</div></div></div>
+    <div class="fact"><div class="fbody">
+      <div class="n">${disciplines.length}</div><div class="l">DISCIPLINES · ${areas.length} AREAS</div></div></div>
+  </div>
+  <div class="toolrow" style="margin-top:14px">
+    <span class="flabel">Status</span>
+    ${sbtn("ALL","All",all.length)}
+    ${sbtn("PENDING","Pending",pending)}
+    ${sbtn("APPROVED","Approved",approved)}
+    ${sbtn("IMPLEMENTED","Implemented",implemented)}
+    ${sbtn("REJECTED","Rejected",rejected)}
+    <span class="flabel" style="margin-left:8px">Discipline</span>
+    <select onchange="crSetFilter('Disc',this.value)">
+      <option value="ALL"${fDisc==="ALL"?" selected":""}>All disciplines</option>
+      ${disciplines.map(d=>`<option value="${esc(d)}"${fDisc===d?" selected":""}>${esc(d)} · ${all.filter(r=>crDisc(r)===d).length}</option>`).join("")}
+    </select>
+    <span class="flabel">Area</span>
+    <select onchange="crSetFilter('Area',this.value)">
+      <option value="ALL"${fArea==="ALL"?" selected":""}>All areas</option>
+      ${areas.map(a=>{const ar=IDX.areaByCode.get(a);
+        return `<option value="${esc(a)}"${fArea===a?" selected":""}>${esc(a)}${ar&&ar.description?" · "+esc(String(ar.description).slice(0,22)):""} · ${all.filter(r=>crUnit(r)===a).length}</option>`;}).join("")}
+    </select>
+    <span class="spacer"></span>
+    ${(fStatus!=="ALL"||fDisc!=="ALL"||fArea!=="ALL")?`<button class="btn mini" onclick="crClear()">✕ Clear filters</button>`:""}
+    <span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} of ${all.length} shown</span>
+  </div>
+  ${all.length?tbl:`<div class="empty">No change requests yet. Open any instrument (click a tag) and press “Raise change request”.</div>`}
+  <p class="note" style="margin-top:10px">Long <span class="mono">reason</span> and <span class="mono">old → new</span>
+  cells are clamped to two lines — <b>click any cell to expand it in place</b>. Column header sorts; the card’s own
+  ⌕ filter searches every column; ⭳ Excel exports exactly what is filtered.</p>`;
 }
 
 /* ── drawings & documents register (EI70) ────────────────────── */
