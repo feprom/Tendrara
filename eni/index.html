@@ -162,6 +162,8 @@
   #dt-crs .cw-area{width:52px;}
   #dt-crs .cw-tag{width:112px;}
   #dt-crs .cw-field{width:88px;}
+  #dt-crs .cw-party{width:84px;}
+  #dt-crs .cw-panel{width:116px;}
   #dt-crs .cw-delta{width:20%;}
   #dt-crs .cw-reason{width:auto;}
   #dt-crs .cw-by{width:92px;}
@@ -172,8 +174,6 @@
   .clamp.open{-webkit-line-clamp:unset;background:var(--bg-soft);outline:1px solid var(--line-strong);
     padding:4px 6px;border-radius:3px;white-space:pre-wrap;}
   .clamp.one{-webkit-line-clamp:1;}
-  .crflag{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.05em;
-    color:var(--amber);border:1px solid var(--amber);background:#FFF7EC;border-radius:2px;padding:0 3px;margin-right:4px;}
   button.btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);font-size:12px;font-weight:600;
     padding:5px 12px;border-radius:4px;cursor:pointer;transition:.12s;font-family:var(--sans);}
   button.btn:hover{border-color:var(--crimson);color:var(--crimson);}
@@ -377,11 +377,26 @@ const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), 
 /* P&ID renders that exist on disk under /pid/<doc_no>/_full.png (40 of 47).
    Missing renders (legend sheet + 6 pending): open disabled, shown as PENDING. */
 const NO_RENDER = new Set(["PRO13-ING-PR00","PRO13-ING-PR32","PRO13-ING-PR34","PRO13-ING-PR35","PRO13-ING-PR36","PRO13-ING-PR37","PRO13-ING-PR39"]);
-function dwgUrl(doc_no){ return NO_RENDER.has(doc_no) ? null : "/pid/"+encodeURIComponent(doc_no)+"/_full.png"; }
+/* Renders now live in the PRIVATE plant-renders bucket, not on disk.
+   dwgPath() returns the STORAGE PATH (or null) — it is no longer a usable href.
+   Callers must go through openStorage()/data-sp, which mint a signed URL.
+   The path comes from the document registry, so it follows the current revision:
+   when ESA reissues a drawing, this points at the new rev with no code change. */
+function dwgPath(doc_no){
+  const f = (DB.docfiles||[]).find(x => x.doc_no===doc_no && x.role==="RENDER_FULL");
+  return f ? { bucket:f.bucket, path:f.file_path } : null;
+}
+function docSource(doc_no){
+  return (DB.docfiles||[]).find(x => x.doc_no===doc_no && x.role==="SOURCE") || null;
+}
+function hasRender(doc_no){ return !!dwgPath(doc_no); }
+/* legacy shim: anything still calling dwgUrl() gets null instead of a broken
+   /pid/... link, so it degrades to "no render" rather than a 404 image. */
+function dwgUrl(doc_no){ return null; }
 function dwgLink(pid_no){
   const d=IDX.dwgByPid.get((pid_no||"").trim());
   if(!d) return null;
-  return {d, url:dwgUrl(d.doc_no)};
+  return {d, url:null, sp:dwgPath(d.doc_no)};   // sp = {bucket,path} for openStorage()
 }
 /* JB electrical drawings: drawing_file "IE24090_SE05_P-PN-....pdf" → SE code →
    page renders listed in doc-manifest.js (auto-generated from /elec). */
@@ -412,7 +427,9 @@ function docsSection(table, tag, mfr, model){
   const docs=docsFor(tag, model);
   const rows=docs.map(d=>`<tr>
     <td><span class="chip ${d.doc_kind==="DATASHEET"?"info":"dim"}">${esc(d.doc_kind)}</span></td>
-    <td><a href="${esc(d.file_url)}" target="_blank" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(d.title)} ⧉</a>
+    <td>${/^https?:\/\//i.test(d.file_url||"")
+        ? `<a href="${esc(d.file_url)}" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(d.title)} ⧉</a>`
+        : `<a onclick="openStorage('plant-docs','${esc(d.file_url)}')" style="color:var(--blue);font-weight:600;text-decoration:none;cursor:pointer">${esc(d.title)} ⧉</a>`}
       ${!d.object_tag?'<span class="chip dim" title="Applies to every asset of this model">MODEL</span>':""}</td>
     <td><span class="chip ${d.source==="WEB"?"warn":"ok"}">${esc(d.source)}</span></td>
     <td class="mono dim" style="font-size:10px">${nz(d.uploaded_by,"")} ${esc((d.created_at||"").slice(0,10))}</td></tr>`).join("");
@@ -475,6 +492,73 @@ function status(msg, cls){ const el=$("#statusmsg"); el.textContent=msg; el.clas
 const SESSION=(()=>{ try{ return JSON.parse(localStorage.getItem("eni_session")||"null"); }catch(e){ return null; } })();
 if(!SESSION){ location.replace("account.html"); }
 function getUser(){ return SESSION ? SESSION.name : "UNKNOWN"; }
+
+/* ── documents: private storage + signed URLs ─────────────────────────────────
+   The plant-docs / plant-renders buckets are PRIVATE — no anonymous URL works.
+   Every PDF/render is fetched through the doc-url Edge Function, which checks the
+   session token and returns a URL valid for ~2 minutes.
+
+   Design note: resolving a URL is now ASYNC, but the render templates are sync.
+   Rather than rewrite every template, links carry data-* attributes and resolve
+   on click (openDocNo / openStorage); images resolve after render (hydrateDocImages).
+   Short-lived URLs are cached in-memory so a tiled P&ID doesn't fire 20 requests. */
+const FN_BASE = window.SUPABASE_URL + "/functions/v1";
+const _urlCache = new Map();   // key -> {url, exp}
+
+function sessionToken(){
+  if(!SESSION || !SESSION.token) return null;
+  if(SESSION.token_exp && Date.now() > SESSION.token_exp) return null;   // expired
+  return SESSION.token;
+}
+function needSignIn(msg){
+  status("✗ "+(msg||"Your session expired — sign in again to open documents"),"err");
+}
+async function docUrl(payload){
+  const key = JSON.stringify(payload);
+  const hit = _urlCache.get(key);
+  if(hit && Date.now() < hit.exp) return hit.url;
+
+  const token = sessionToken();
+  if(!token){ needSignIn(); throw new Error("no session token"); }
+
+  const r = await fetch(`${FN_BASE}/doc-url`, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", apikey: window.SUPABASE_ANON_KEY,
+              Authorization: "Bearer "+token },
+    body: JSON.stringify(payload)
+  });
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(r.status===401){ needSignIn(j.error); throw new Error(j.error||"unauthorized"); }
+  if(!r.ok) throw new Error(j.error || `doc-url failed (${r.status})`);
+  // cache a little short of the real expiry so we never hand out a dead URL
+  _urlCache.set(key, { url:j.url, exp: Date.now() + Math.max(((j.expires_in||120)-15),15)*1000 });
+  return j.url;
+}
+/* open the CURRENT revision of a document by its doc_no */
+async function openDocNo(doc_no){
+  try{ status("Opening "+doc_no+"…");
+       const url=await docUrl({ document: doc_no });
+       window.open(url,"_blank","noopener"); status("✓ "+doc_no+" opened","ok");
+  }catch(e){ if(!/no session token|unauthorized/.test(e.message)) status("✗ "+e.message,"err"); }
+}
+/* open one specific stored object (a given revision's file, a render) */
+async function openStorage(bucket, path){
+  try{ const url=await docUrl({ bucket, path });
+       window.open(url,"_blank","noopener");
+  }catch(e){ if(!/no session token|unauthorized/.test(e.message)) status("✗ "+e.message,"err"); }
+}
+/* <img data-sp="bucket|path"> placeholders -> real signed src, after render */
+async function hydrateDocImages(root){
+  const els=[...(root||document).querySelectorAll("img[data-sp]:not([data-sp-done])")];
+  for(const el of els){
+    el.setAttribute("data-sp-done","1");
+    const [bucket,...rest]=el.getAttribute("data-sp").split("|");
+    try{ el.src = await docUrl({ bucket, path: rest.join("|") }); }
+    catch(e){ el.replaceWith(Object.assign(document.createElement("div"),
+      {className:"empty", style:"padding:14px", textContent:"Render unavailable: "+e.message})); }
+  }
+}
+window.openDocNo=openDocNo; window.openStorage=openStorage; window.hydrateDocImages=hydrateDocImages;
 function setUserChip(){
   $("#userchip").innerHTML = SESSION
     ? `<b>${esc(SESSION.name)}</b> · ${esc(SESSION.group||"")} <span style="opacity:.6">⏻</span>` : "SIGN IN";
@@ -500,16 +584,21 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
       fetchAll("plant_safety_critical"), fetchAll("plant_change_requests"), fetchAll("plant_verifications"),
       fetchAll("plant_pid_drawings","doc_no"), fetchAll("plant_asset_docs"),
       fetchAll("plant_mcc_motors"), fetchAll("plant_electrical_loads"),
-      fetchAll("plant_cause_effect"), fetchAll("plant_cause_effect_effects")
+      fetchAll("plant_cause_effect"), fetchAll("plant_cause_effect_effects"),
+      // document registry: identities + the files of each CURRENT revision.
+      // Only SOURCE/RENDER_FULL — the 500+ tiles are fetched on demand, not up front.
+      fetchAll("plant_documents","doc_no"),
+      sb.from("v_doc_current_files").select("*").in("role",["SOURCE","RENDER_FULL"])
+        .then(r=>r.data||[])
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -601,6 +690,7 @@ function buildTree(){
   <div class="tnode ${ROUTE.view==='alarms'?'sel':''}" onclick="nav('alarms')"><span class="tw">▤</span><span class="code">EI30</span><span class="lbl">Alarm register</span><span class="cnt">${DB.alarms.length}</span></div>
   <div class="tnode ${ROUTE.view==='xcheck'?'sel':''}" onclick="nav('xcheck')"><span class="tw">▤</span><span class="code">EI40</span><span class="lbl">Cross-check IO ↔ index</span></div>
   <div class="tnode ${ROUTE.view==='cr'?'sel':''}" onclick="nav('cr')"><span class="tw">▤</span><span class="code">EI50</span><span class="lbl">Change requests</span><span class="cnt">${DB.crs.length}</span></div>
+  <div class="tnode ${ROUTE.view==='docs'?'sel':''}" onclick="nav('docs')"><span class="tw">▤</span><span class="code">EI80</span><span class="lbl">Documents</span><span class="cnt">${(DB.docs||[]).length}</span></div>
   <div class="tnode ${ROUTE.view==='comm'?'sel':''}" onclick="nav('comm')"><span class="tw">▤</span><span class="code">EI60</span><span class="lbl">Commissioning progress</span><span class="cnt">${DB.vers.filter(v=>v.result==="FAIL").length}✗</span></div>
   <div class="tnode ${ROUTE.view==='drawings'?'sel':''}" onclick="nav('drawings')"><span class="tw">▤</span><span class="code">EI70</span><span class="lbl">Drawings &amp; documents</span><span class="cnt">${DB.drawings.length}</span></div>`;
   t.innerHTML=html;
@@ -624,8 +714,86 @@ function render(){
   else if(ROUTE.view==="cr") renderCRs(c);
   else if(ROUTE.view==="comm") renderComm(c);
   else if(ROUTE.view==="drawings") renderDrawings(c);
+  else if(ROUTE.view==="docs") renderDocs(c);
   else if(ROUTE.view==="search") renderSearch(c, ROUTE.q);
   crumbs();
+  hydrateDocImages(c);   // swap any data-sp placeholders for signed URLs
+}
+
+/* ── document register + revision history (EI80) ──────────────────────────── */
+async function showRevisions(doc_no){
+  const box=document.getElementById("revbox-"+CSS.escape(doc_no));
+  if(!box) return;
+  if(box.dataset.open==="1"){ box.innerHTML=""; box.dataset.open="0"; return; }
+  box.dataset.open="1"; box.innerHTML='<div class="dim" style="padding:6px">Loading revisions…</div>';
+  const {data,error}=await sb.from("v_document_revisions").select("*")
+    .eq("doc_no",doc_no).order("created_at",{ascending:false});
+  if(error){ box.innerHTML='<div class="dim">'+esc(error.message)+'</div>'; return; }
+  box.innerHTML=`<table class="data" style="margin:6px 0 10px">
+    <thead><tr><th>REV</th><th>DATE</th><th>STATUS</th><th>SOURCE</th><th>SIZE</th><th>RENDERS</th><th></th></tr></thead>
+    <tbody>${data.map(r=>`<tr>
+      <td class="mono" style="font-weight:700">${esc(r.rev)}</td>
+      <td class="mono dim">${nz(r.rev_date)}</td>
+      <td><span class="chip ${r.is_current?"ok":"dim"}">${esc(r.status)}</span></td>
+      <td class="dim" style="font-size:11px">${nz(r.source,"")}</td>
+      <td class="mono dim">${r.bytes?(r.bytes/1e6).toFixed(1)+" MB":"—"}</td>
+      <td class="mono dim">${r.render_files||0}</td>
+      <td>${r.file_path&&r.uploaded
+            ?`<button ${OPENBTN} onclick="openStorage('${esc(r.bucket)}','${esc(r.file_path)}')">OPEN ⧉</button>`
+            :`<span class="chip warn">NOT UPLOADED</span>`}</td></tr>`).join("")}</tbody></table>`;
+}
+window.showRevisions=showRevisions;
+
+function renderDocs(c){
+  const f=(window._docFilter||"").toLowerCase();
+  const fk=window._docKind||"ALL";
+  let list=[...(DB.docs||[])].sort((a,b)=>(a.doc_no||"").localeCompare(b.doc_no||""));
+  if(fk!=="ALL") list=list.filter(d=>d.doc_kind===fk);
+  if(f) list=list.filter(d=>((d.doc_no||"")+" "+(d.title||"")+" "+(d.rio_panel||"")+" "+(d.pid_no||"")).toLowerCase().includes(f));
+  const kinds=[...new Set((DB.docs||[]).map(d=>d.doc_kind).filter(Boolean))].sort();
+  const inStore=new Set((DB.docfiles||[]).filter(x=>x.role==="SOURCE").map(x=>x.doc_no));
+  c.innerHTML=`
+  <div class="kicker">TX EI80 <span class="sub">· DOCUMENT CONTROL · REVISIONS</span></div>
+  <h1>Documents</h1>
+  <p class="lead">Every document, its <b>current revision</b>, and its full revision history.
+  A reissue supersedes — it never overwrites — so you can always open the revision that was current
+  when a change request was raised.</p>
+  <div class="facts">
+    <div class="fact"><div class="fbody"><div class="n">${(DB.docs||[]).length}</div><div class="l">DOCUMENTS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--ok)">${inStore.size}</div><div class="l">PDF IN STORAGE</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--amber)">${(DB.docs||[]).length-inStore.size}</div><div class="l">NOT UPLOADED</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${kinds.length}</div><div class="l">DOC KINDS</div></div></div>
+  </div>
+  <div class="toolrow">
+    <input placeholder="⌕ filter — doc no, title, panel" style="width:280px"
+      value="${esc(window._docFilter||"")}" oninput="window._docFilter=this.value;render()">
+    <span class="flabel">Kind</span>
+    <select onchange="window._docKind=this.value;render()">
+      <option value="ALL">All kinds</option>
+      ${kinds.map(k=>`<option value="${esc(k)}"${fk===k?" selected":""}>${esc(k)} · ${(DB.docs||[]).filter(d=>d.doc_kind===k).length}</option>`).join("")}
+    </select>
+    <span class="spacer"></span>
+    <span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} of ${(DB.docs||[]).length} shown</span>
+  </div>
+  <table class="data"><thead><tr><th>DOC NO</th><th>KIND</th><th>TITLE</th><th>PANEL / P&amp;ID</th><th>REV</th><th>FILE</th><th></th></tr></thead>
+  <tbody>${list.map(d=>{
+    const cur=(DB.docfiles||[]).find(x=>x.doc_no===d.doc_no);
+    const src=docSource(d.doc_no);
+    return `<tr>
+      <td class="mono" style="font-weight:700;color:var(--crimson)">${esc(d.doc_no)}</td>
+      <td><span class="chip dim">${nz(d.doc_kind)}</span></td>
+      <td class="dim">${nz(d.title)}</td>
+      <td class="mono dim" style="font-size:10.5px">${nz(d.rio_panel||d.pid_no,"")}</td>
+      <td class="mono">${nz(cur&&cur.rev)}</td>
+      <td>${src?`<button ${OPENBTN} onclick="openDocNo('${esc(d.doc_no)}')">PDF ⧉</button>`
+                :`<span class="chip warn">NOT UPLOADED</span>`}</td>
+      <td><button class="btn mini" onclick="showRevisions('${esc(d.doc_no)}')">Revisions ▾</button></td></tr>
+      <tr><td colspan="7" style="padding:0"><div id="revbox-${esc(d.doc_no)}" data-open="0"></div></td></tr>`;}).join("")}
+  </tbody></table>
+  <div class="note">Storage is <b>private</b>: OPEN mints a signed URL good for ~2 minutes.
+  To issue a new revision (e.g. when ESA returns the revised SE29 for CR-00102):
+  <span class="mono">select new_document_revision('IE24090_SE29','3','2026-08-01','ESA AS-BUILT','Mario Mendizabal');</span>
+  then upload the file against the returned revision_id.</div>`;
 }
 function crumbs(){
   let h=`<a onclick="nav('')">TENDRARA</a>`;
@@ -1445,8 +1613,9 @@ function searchAll(q){
   IDX.stations.forEach(st=>{ if(st.panel.toLowerCase().includes(s))
     push("STATION","info",st.panel,(st.jb&&st.jb.service)||"IO station",st.unit,st.rows.length+" ch",`nav('station/${encodeURIComponent(st.panel)}')`);});
   DB.drawings.forEach(d=>{ const hay=((d.doc_no||"")+" "+(d.pid_no||"")+" "+(d.title||"")).toLowerCase();
+    const sp=dwgPath(d.doc_no);
     if(hay.includes(s)) push("DRAWING","crimson",d.doc_no,d.title,d.area_code,d.pid_no,
-      dwgUrl(d.doc_no)?`window.open('${dwgUrl(d.doc_no)}','_blank')`:`nav('drawings')`);});
+      sp?`openStorage('${esc(sp.bucket)}','${esc(sp.path)}')`:`nav('drawings')`);});
   return out;
 }
 function renderSearch(c,q){
@@ -1550,7 +1719,8 @@ function crUnit(r){
 }
 function crSetFilter(k,v){ window["_cr"+k]=v; render(); }
 window.crSetFilter=crSetFilter;
-function crClear(){ window._crStatus="ALL"; window._crDisc="ALL"; window._crArea="ALL"; render(); }
+function crClear(){ window._crStatus="ALL"; window._crDisc="ALL"; window._crArea="ALL";
+  window._crParty="ALL"; window._crPanel="ALL"; render(); }
 window.crClear=crClear;
 
 function renderCRs(c){
@@ -1559,14 +1729,22 @@ function renderCRs(c){
   const fStatus=window._crStatus||"ALL", fDisc=window._crDisc||"ALL", fArea=window._crArea||"ALL";
 
   let list=all;
+  const fParty=window._crParty||"ALL", fPanel=window._crPanel||"ALL";
   if(fStatus!=="ALL") list=list.filter(r=>r.status===fStatus);
   if(fDisc!=="ALL")   list=list.filter(r=>crDisc(r)===fDisc);
   if(fArea!=="ALL")   list=list.filter(r=>crUnit(r)===fArea);
+  if(fPanel!=="ALL")  list=list.filter(r=>(r.rio_panel||"")===fPanel);
+  if(fParty==="EXTERNAL") list=list.filter(r=>!!r.action_party);
+  else if(fParty==="TAM") list=list.filter(r=>!r.action_party);
+  else if(fParty!=="ALL") list=list.filter(r=>r.action_party===fParty);
 
   const n=s=>all.filter(r=>r.status===s).length;
   const pending=n("PENDING"), implemented=n("IMPLEMENTED"), approved=n("APPROVED"), rejected=n("REJECTED");
   const disciplines=[...new Set(all.map(crDisc))].sort();
   const areas=[...new Set(all.map(crUnit).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const parties=[...new Set(all.map(r=>r.action_party).filter(Boolean))].sort();
+  const panels=[...new Set(all.map(r=>r.rio_panel).filter(Boolean))].sort();
+  const extPending=all.filter(r=>r.action_party&&r.status==="PENDING").length;
 
   const sbtn=(v,label,cnt,cls)=>`<button class="btn mini ${fStatus===v?"primary":(cls||"")}"
     onclick="crSetFilter('Status','${v}')">${label}${cnt!=null?` · ${cnt}`:""}</button>`;
@@ -1577,17 +1755,23 @@ function renderCRs(c){
       {label:"DATE", get:r=>(r.created_at||"").slice(0,10), cls:"cw-date mono dim"},
       {label:"DISCIPLINE", get:r=>crDisc(r), cls:"cw-disc mono dim"},
       {label:"AREA", get:r=>crUnit(r), cls:"cw-area mono dim", blank:"—"},
+      {label:"PANEL", get:r=>r.rio_panel, cls:"cw-panel mono",
+        html:(r,v)=>v?`<span class="tag" title="Open station ${esc(v)}"
+          onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`
+          :`<span class="dim">—</span>`},
       {label:"TAG", get:r=>r.object_tag, cls:"cw-tag tag",
         html:(r,v)=>`<span onclick="event.stopPropagation();openInst('${esc((v||"").trim())}')">${esc(v)}</span>`},
       {label:"FIELD", get:r=>r.field_name, cls:"cw-field mono"},
       {label:"OLD → NEW", get:r=>`${r.old_value||"∅"} → ${r.new_value||"∅"}`, cls:"cw-delta mono",
         html:(r)=>`<div class="clamp" onclick="event.stopPropagation();this.classList.toggle('open')" title="Click to expand"><span class="dim">${nz(r.old_value,"∅")}</span> → <b>${nz(r.new_value,"∅")}</b></div>`},
+      {label:"ACTION BY", get:r=>r.action_party||"TAM", cls:"cw-party mono",
+        html:(r,v)=>r.action_party
+          ? `<span class="chip crimson" title="${esc(r.action_party)} must execute this change — TAM remains the responsible owner">${esc(r.action_party)}</span>`
+          : `<span class="dim" title="Actioned in-house by TAM">TAM</span>`},
       {label:"REASON", get:r=>r.reason, cls:"cw-reason dim",
         html:(r,v)=>{
           const s=String(v||"");
-          const blocked=/BLOCKING|CONTINGENT ON|ACTION ON ESA/i.test(s);
-          const flag=blocked?`<span class="crflag">${/ACTION ON ESA/i.test(s)?"ESA":"BLOCKED"}</span>`:"";
-          return s?`<div class="clamp" onclick="event.stopPropagation();this.classList.toggle('open')" title="Click to expand">${flag}${esc(s)}</div>`:"—";
+          return s?`<div class="clamp" onclick="event.stopPropagation();this.classList.toggle('open')" title="Click to expand">${esc(s)}</div>`:"—";
         }},
       {label:"BY", get:r=>r.requested_by, cls:"cw-by mono dim",
         html:(r,v)=>`<span title="${esc(v)}">${esc(String(v||"").split("@")[0])}</span>`},
@@ -1608,8 +1792,8 @@ function renderCRs(c){
       <div class="n" style="color:var(--amber)">${pending}</div><div class="l">PENDING · AWAITING ACTION</div></div></div>
     <div class="fact link" onclick="crSetFilter('Status','IMPLEMENTED')"><div class="fbody">
       <div class="n" style="color:var(--ok)">${implemented}</div><div class="l">IMPLEMENTED</div></div></div>
-    <div class="fact"><div class="fbody">
-      <div class="n">${disciplines.length}</div><div class="l">DISCIPLINES · ${areas.length} AREAS</div></div></div>
+    <div class="fact link" onclick="crSetFilter('Party','EXTERNAL')"><div class="fbody">
+      <div class="n" style="color:var(--crimson)">${extPending}</div><div class="l">PENDING ON A VENDOR</div></div></div>
   </div>
   <div class="toolrow" style="margin-top:14px">
     <span class="flabel">Status</span>
@@ -1629,8 +1813,20 @@ function renderCRs(c){
       ${areas.map(a=>{const ar=IDX.areaByCode.get(a);
         return `<option value="${esc(a)}"${fArea===a?" selected":""}>${esc(a)}${ar&&ar.description?" · "+esc(String(ar.description).slice(0,22)):""} · ${all.filter(r=>crUnit(r)===a).length}</option>`;}).join("")}
     </select>
+    <span class="flabel">Panel</span>
+    <select onchange="crSetFilter('Panel',this.value)">
+      <option value="ALL"${fPanel==="ALL"?" selected":""}>All panels</option>
+      ${panels.map(p=>`<option value="${esc(p)}"${fPanel===p?" selected":""}>${esc(p)} · ${all.filter(r=>r.rio_panel===p).length}</option>`).join("")}
+    </select>
+    <span class="flabel">Action by</span>
+    <select onchange="crSetFilter('Party',this.value)">
+      <option value="ALL"${fParty==="ALL"?" selected":""}>Anyone</option>
+      <option value="EXTERNAL"${fParty==="EXTERNAL"?" selected":""}>Any vendor · ${all.filter(r=>!!r.action_party).length}</option>
+      <option value="TAM"${fParty==="TAM"?" selected":""}>TAM in-house · ${all.filter(r=>!r.action_party).length}</option>
+      ${parties.map(p=>`<option value="${esc(p)}"${fParty===p?" selected":""}>${esc(p)} · ${all.filter(r=>r.action_party===p).length}</option>`).join("")}
+    </select>
     <span class="spacer"></span>
-    ${(fStatus!=="ALL"||fDisc!=="ALL"||fArea!=="ALL")?`<button class="btn mini" onclick="crClear()">✕ Clear filters</button>`:""}
+    ${(fStatus!=="ALL"||fDisc!=="ALL"||fArea!=="ALL"||fParty!=="ALL"||fPanel!=="ALL")?`<button class="btn mini" onclick="crClear()">✕ Clear filters</button>`:""}
     <span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} of ${all.length} shown</span>
   </div>
   ${all.length?tbl:`<div class="empty">No change requests yet. Open any instrument (click a tag) and press “Raise change request”.</div>`}
@@ -1650,21 +1846,28 @@ const REF_DOCS=[
   {file:"TAM158 MR Refrigerant Loop Alarm List.xlsx", title:"MR Refrigerant Loop Alarm List", kind:"ALARMS"},
   {file:"LNGSafetyData.pdf", title:"LNG Safety Data", kind:"SAFETY"}
 ];
+const OPENBTN='class="btn mini" style="border:1px solid var(--crimson);color:var(--crimson);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:10.5px;background:#fff;cursor:pointer"';
 function renderDrawings(c){
   const f=(window._dwgFilter||"").toLowerCase();
   let list=[...DB.drawings].sort((a,b)=>(a.doc_no||"").localeCompare(b.doc_no||""));
   if(f) list=list.filter(d=>((d.doc_no||"")+" "+(d.pid_no||"")+" "+(d.title||"")+" "+(d.area_code||"")).toLowerCase().includes(f));
-  const withR=DB.drawings.filter(d=>dwgUrl(d.doc_no)).length;
+  const withR=DB.drawings.filter(d=>dwgPath(d.doc_no)).length;
+  const withPdf=DB.drawings.filter(d=>docSource(d.doc_no)).length;
+  // reference docs now come from the registry, not a hardcoded array
+  const refs=(DB.docs||[]).filter(d=>["MANUAL","SAFETY","PROCESS","NETWORK","PCS_DRAWING"].includes(d.doc_kind))
+    .sort((a,b)=>(a.doc_kind+a.doc_no).localeCompare(b.doc_kind+b.doc_no));
   c.innerHTML=`
-  <div class="kicker">TX EI70 <span class="sub">· P&amp;ID REGISTER · REFERENCE DOCUMENTS</span></div>
+  <div class="kicker">TX EI70 <span class="sub">· DOCUMENT REGISTER · REVISION CONTROLLED</span></div>
   <h1>Drawings &amp; documents</h1>
-  <p class="lead">Live register from <span class="mono">plant_pid_drawings</span>. OPEN launches the digitized render
-  (<span class="mono">/pid/&lt;doc&gt;/_full.png</span>) in a new tab; every instrument card links back here through its P&amp;ID.</p>
+  <p class="lead">Live register from <span class="mono">plant_documents</span> +
+  <span class="mono">plant_document_revisions</span>. Files live in <b>private</b> Supabase Storage —
+  every OPEN mints a signed link valid for ~2 minutes. Links follow the <b>current revision</b>
+  automatically, so an ESA reissue needs no code change.</p>
   <div class="facts">
-    <div class="fact"><div class="n">${DB.drawings.length}</div><div class="l">P&amp;IDs REGISTERED</div></div>
-    <div class="fact"><div class="n" style="color:var(--ok)">${withR}</div><div class="l">RENDERS AVAILABLE</div></div>
-    <div class="fact"><div class="n" style="color:var(--amber)">${DB.drawings.length-withR}</div><div class="l">RENDER PENDING</div></div>
-    <div class="fact"><div class="n">${REF_DOCS.length}</div><div class="l">REFERENCE DOCS</div></div>
+    <div class="fact"><div class="fbody"><div class="n">${DB.drawings.length}</div><div class="l">P&amp;IDs REGISTERED</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--ok)">${withPdf}</div><div class="l">SOURCE PDF IN STORAGE</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:${withR?'var(--ok)':'var(--amber)'}">${withR}</div><div class="l">RENDERS IN STORAGE</div></div></div>
+    <div class="fact link" onclick="nav('docs')"><div class="fbody"><div class="n">${(DB.docs||[]).length}</div><div class="l">DOCUMENTS · REVISIONS →</div></div></div>
   </div>
   <div class="toolrow">
     <input id="dwgFilter" placeholder="⌕ filter — doc no, title, area" style="width:300px"
@@ -1672,9 +1875,9 @@ function renderDrawings(c){
     <span class="spacer"></span>
     <span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} shown</span>
   </div>
-  <table class="data"><thead><tr><th>DOC NO</th><th>P&amp;ID NO</th><th>TITLE</th><th>REV</th><th>STATUS</th><th>AREA</th><th></th></tr></thead>
+  <table class="data"><thead><tr><th>DOC NO</th><th>P&amp;ID NO</th><th>TITLE</th><th>REV</th><th>STATUS</th><th>AREA</th><th>PDF</th><th>RENDER</th></tr></thead>
   <tbody>${list.map(d=>{
-    const url=dwgUrl(d.doc_no);
+    const sp=dwgPath(d.doc_no), src=docSource(d.doc_no);
     return `<tr>
     <td class="mono" style="font-weight:700;color:var(--crimson)">${esc(d.doc_no)}</td>
     <td class="mono">${nz(d.pid_no)}</td>
@@ -1682,15 +1885,19 @@ function renderDrawings(c){
     <td class="mono">${nz(d.revision)}</td>
     <td class="mono dim" style="font-size:10px">${nz(d.status,"")}</td>
     <td class="mono" ${d.area_code&&IDX.areaByCode.has(String(d.area_code))?`style="color:var(--blue);cursor:pointer" onclick="nav('area/${esc(String(d.area_code))}')"`:""}>${nz(d.area_code)}</td>
-    <td>${url?`<a class="btn mini" style="text-decoration:none;display:inline-block;border:1px solid var(--crimson);color:var(--crimson);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:10.5px" href="${url}" target="_blank">OPEN ⧉</a>`
-             :`<span class="chip warn">PENDING</span>`}</td></tr>`;}).join("")}</tbody></table>
-  <h2>Reference documents (<span class="mono">/docs</span>)</h2>
-  <table class="data"><thead><tr><th>KIND</th><th>TITLE</th><th>FILE</th><th></th></tr></thead>
-  <tbody>${REF_DOCS.map(r=>`<tr>
-    <td><span class="chip info">${r.kind}</span></td>
-    <td>${esc(r.title)}</td>
-    <td class="mono dim" style="font-size:10.5px">${esc(r.file)}</td>
-    <td><a class="btn mini" style="text-decoration:none;display:inline-block;border:1px solid var(--crimson);color:var(--crimson);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:10.5px" href="/docs/${encodeURIComponent(r.file)}" target="_blank">OPEN ⧉</a></td></tr>`).join("")}</tbody></table>
+    <td>${src?`<button ${OPENBTN} onclick="openDocNo('${esc(d.doc_no)}')">PDF ⧉</button>`:`<span class="chip warn">NOT UPLOADED</span>`}</td>
+    <td>${sp?`<button ${OPENBTN} onclick="openStorage('${esc(sp.bucket)}','${esc(sp.path)}')">RENDER ⧉</button>`:`<span class="chip dim">—</span>`}</td></tr>`;}).join("")}</tbody></table>
+  <h2>Reference documents</h2>
+  <table class="data"><thead><tr><th>KIND</th><th>DOC NO</th><th>TITLE</th><th>REV</th><th></th></tr></thead>
+  <tbody>${refs.map(r=>{
+    const src=docSource(r.doc_no);
+    const cur=(DB.docfiles||[]).find(x=>x.doc_no===r.doc_no);
+    return `<tr>
+    <td><span class="chip info">${esc(r.doc_kind)}</span></td>
+    <td class="mono" style="font-weight:700;color:var(--crimson)">${esc(r.doc_no)}</td>
+    <td>${esc(r.title||"")}</td>
+    <td class="mono">${nz(cur&&cur.rev)}</td>
+    <td>${src?`<button ${OPENBTN} onclick="openDocNo('${esc(r.doc_no)}')">OPEN ⧉</button>`:`<span class="chip warn">NOT UPLOADED</span>`}</td></tr>`;}).join("")}</tbody></table>
   <h2>JB / electrical drawings (IE24090)</h2>
   <table class="data"><thead><tr><th>JB / PANEL</th><th>DRAWING</th><th>PAGES — CLICK TO OPEN</th></tr></thead>
   <tbody>${[...DB.jb].sort((a,b)=>(a.drawing_file||"").localeCompare(b.drawing_file||"")).map(j=>{
@@ -1704,9 +1911,11 @@ function renderDrawings(c){
   ${(window.ENI_JB_DRAWINGS||{}).SE00?`<tr><td class="mono" style="font-weight:700">SYSTEM ARCHITECTURE</td>
     <td class="mono dim" style="font-size:10.5px">IE24090-SE00 — PCS/ESD architecture</td><td>${pageLinks(window.ENI_JB_DRAWINGS.SE00)}</td></tr>`:""}
   </tbody></table>
-  <div class="note">General rule of this register: if a digitized render exists on disk it is a direct link;
-  otherwise the reference is shown with RENDER PENDING. Page renders are auto-listed in
-  <span class="mono">eni/doc-manifest.js</span> — regenerate it when new drawings are digitized.</div>`;
+  <div class="note">Files are served from <b>private</b> buckets via signed URLs — a copied link dies in
+  ~2 minutes, and there is no anonymous access. NOT UPLOADED means the row is registered but its bytes
+  are not in storage yet (run <span class="mono">tools/migrate-docs-to-storage.mjs</span>).
+  Page renders below still come from <span class="mono">eni/doc-manifest.js</span> (local paths) —
+  pending migration to storage.</div>`;
   const df=$("#dwgFilter"); if(df){ df.focus(); df.setSelectionRange(df.value.length,df.value.length); }
 }
 
@@ -1884,7 +2093,11 @@ function openCR(table, tag){
 function closeCR(){ $("#crOvl").classList.remove("open"); }
 async function submitCR(){
   if(!crCtx) return;
+  // stamp the panel (tablero) the tag lives on — only when it is unambiguous in the IO list
+  const ioRows=IDX.ioByTag.get((crCtx.tag||"").trim())||[];
+  const panels=[...new Set(ioRows.map(r=>r.rio_panel).filter(Boolean))];
   const row={object_table:crCtx.table, object_tag:crCtx.tag, field_name:$("#crField").value,
+    rio_panel: panels.length===1 ? panels[0] : null,
     old_value:$("#crOld").value||null, new_value:$("#crNew").value||null,
     reason:$("#crReason").value||null, requested_by:$("#crBy").value||getUser()};
   if(!row.new_value && !row.reason){ status("✗ Provide a new value or a reason","err"); return; }
@@ -1910,6 +2123,8 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="EI50") nav("cr");
   else if(cmd==="EI60") nav("comm");
   else if(cmd==="EI70") nav("drawings");
+  else if(cmd==="EI80") nav("docs");
+  else if(cmd==="DOC"&&a) openDocNo(a);
   else if(cmd==="TAG"&&a) openInst(a);
   else if((cmd==="SEARCH"||cmd==="FIND")&&a) nav("search/"+encodeURIComponent(a));
   else if(IDX.areaByCode.has(cmd)) nav("area/"+cmd);

@@ -108,14 +108,29 @@ async function sha(email,pin){
   const buf=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email.toLowerCase()+":"+pin));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
 }
-function setSession(u,g){
+function setSession(u,g,token,expires_in){
   localStorage.setItem("eni_session", JSON.stringify({
     id:u.id, name:u.full_name, email:u.email, company:u.company,
     group:u.group_code, group_name:g?g.name:u.group_code, level:g?g.level:0,
-    permissions:g?g.permissions:{}, ts:Date.now()
+    permissions:g?g.permissions:{}, ts:Date.now(),
+    // session token issued by the eni-auth Edge Function. Required to fetch signed
+    // URLs for documents (the storage buckets are private — no token, no PDFs).
+    token: token||null,
+    token_exp: token ? Date.now()+((expires_in||43200)*1000) : 0
   }));
   localStorage.setItem("eni_user", u.full_name); // legacy key used by verifications/CRs
   location.href="index.html";
+}
+const FN_BASE = window.SUPABASE_URL + "/functions/v1";
+async function callFn(name, body){
+  const r = await fetch(`${FN_BASE}/${name}`, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", apikey: window.SUPABASE_ANON_KEY },
+    body: JSON.stringify(body)
+  });
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(j.error || `${name} failed (${r.status})`);
+  return j;
 }
 async function loadGroups(){
   const [{data,error},{data:doms}]=await Promise.all([
@@ -157,30 +172,46 @@ async function signUp(){
     return say(error.message,"err");
   }
   say("Account created — entering…","ok");
-  setSession(data, GROUPS.find(g=>g.code===data.group_code));
+  // sign in through eni-auth so the new session gets a real token (needed for documents)
+  try{
+    const r = await callFn("eni-auth", { email, pin });
+    setSession(data, GROUPS.find(g=>g.code===data.group_code), r.token, r.expires_in);
+  }catch(e){
+    // account exists but token issue failed — let them in without document access
+    // rather than stranding them; index.html will prompt to sign in again.
+    say("Account created, but the session token could not be issued ("+(e.message||e)+"). Documents will ask you to sign in again.","err");
+    setSession(data, GROUPS.find(g=>g.code===data.group_code), null, 0);
+  }
 }
+// Sign-in now happens SERVER-SIDE in the eni-auth Edge Function.
+// Previously this read eni_users.pin_hash with the publishable key and compared it
+// in the browser — which meant anyone holding that public key could pull every PIN
+// hash and brute-force a 4-digit PIN offline. The browser no longer sees pin_hash
+// at all; it gets back a signed session token instead.
 async function signIn(){
   const email=document.getElementById("inEmail").value.trim().toLowerCase();
   const pin=document.getElementById("inPin").value;
   if(!email.includes("@")) return say("Enter your email.","err");
   if(!/^\d{4,8}$/.test(pin)) return say("PIN must be 4–8 digits.","err");
   document.getElementById("btnIn").disabled=true;
-  const {data:u,error}=await sb.from("eni_users").select("*").eq("email",email).maybeSingle();
-  if(error){ document.getElementById("btnIn").disabled=false; return say(error.message,"err"); }
-  if(!u){ document.getElementById("btnIn").disabled=false; return say("No account for "+email+" — use OPEN ACCOUNT.","err"); }
-  if(u.active===false){ document.getElementById("btnIn").disabled=false; return say("This account is deactivated — contact an administrator.","err"); }
-  const h=await sha(email,pin);
-  if(!u.pin_hash){
-    // pre-created account (e.g. seeded admin): first PIN entry registers it
-    const {error:e2}=await sb.from("eni_users").update({pin_hash:h,last_login:new Date().toISOString()}).eq("id",u.id);
-    if(e2){ document.getElementById("btnIn").disabled=false; return say(e2.message,"err"); }
-  } else if(u.pin_hash!==h){
-    document.getElementById("btnIn").disabled=false; return say("Wrong PIN.","err");
-  } else {
-    sb.from("eni_users").update({last_login:new Date().toISOString()}).eq("id",u.id).then(()=>{});
+  try{
+    const r = await callFn("eni-auth", { email, pin });
+    say("Welcome back, "+r.user.name+" — entering…","ok");
+    setSession(
+      { id:r.user.id, full_name:r.user.name, email:r.user.email,
+        company:r.user.company, group_code:r.user.group },
+      { name:r.user.group_name, level:r.user.level, permissions:r.user.permissions },
+      r.token, r.expires_in
+    );
+  }catch(e){
+    document.getElementById("btnIn").disabled=false;
+    const m=String(e.message||e);
+    if(m.includes("ENI_SESSION_SECRET"))
+      return say("Sign-in is not configured yet: ENI_SESSION_SECRET is missing on the server. Add it in Dashboard > Edge Functions > Secrets.","err");
+    if(m.includes("Failed to fetch"))
+      return say("Cannot reach the sign-in service. Check your connection.","err");
+    say(m,"err");
   }
-  say("Welcome back, "+u.full_name+" — entering…","ok");
-  setSession(u, GROUPS.find(g=>g.code===u.group_code));
 }
 document.addEventListener("keydown",e=>{ if(e.key==="Enter"){
   if(document.getElementById("paneIn").style.display!=="none") signIn(); else signUp(); }});
