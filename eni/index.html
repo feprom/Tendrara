@@ -9,6 +9,9 @@
     --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
     --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA; --ok:#1F8A4C;
     --amber:#B26A00; --blue:#0B5CAD; --fail:#B3261E;
+    /* ESD system yellow — readable on white, AA contrast for the ink tone */
+    --esd-ink:#7A5B00; --esd-line:#E5B800; --esd-bg:#FFF8DC;
+    --esd-row:#FFFBEA; --esd-row-hi:#FFF4C9;
     --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
   }
   *{box-sizing:border-box;}
@@ -148,6 +151,14 @@
   .chip.info{color:var(--blue);border-color:var(--blue);background:#EAF3FB;}
   .chip.dim{color:var(--ink-soft);border-color:var(--line-strong);background:var(--bg-soft);}
   .chip.crimson{color:var(--crimson);border-color:var(--crimson);background:#FBE9EC;}
+
+  /* ── ESD system (contract E2023040, parallel to the PCS) ───
+     Everything belonging to the ESD safety system is marked yellow:
+     the cabinet, its IO channels and the field instruments behind them. */
+  .chip.esd{color:var(--esd-ink);border-color:var(--esd-line);background:var(--esd-bg);}
+  tr.esd-row{background:var(--esd-row);}
+  tr.esd-row:hover{background:var(--esd-row-hi);}
+  tr.esd-row td:first-child{box-shadow:inset 3px 0 0 var(--esd-line);}
 
   .toolrow{display:flex;gap:8px;align-items:center;margin:10px 0 4px;flex-wrap:wrap;}
   .toolrow input,.toolrow select{font-family:var(--mono);font-size:11.5px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:3px;background:#fff;}
@@ -900,6 +911,42 @@ function crumbs(){
   $("#crumbs").innerHTML=h;
 }
 
+/* ── control-system helpers (PCS vs ESD) ─────────────────────
+   The plant runs two parallel control systems: the PCS (contract IE24090 /
+   IE25072, vendor ESA) and the ESD safety system (contract E2023040, vendor
+   Enermove). Rows carry system='PCS'|'ESD'. Anything ESD renders yellow so
+   it is obvious at a glance that the cabinet, the instrument and the channel
+   belong to the safety system and not to process control.
+   Fallback: rows loaded before the 'system' column existed are inferred from
+   the drawing/JB naming — E2023040_* drawings and E-PB-* junction boxes. */
+function sysOf(r){
+  if(!r) return null;
+  if(r.system) return r.system;
+  if(r.sys) return r.sys;
+  const d=String(r.drawing_file||"");
+  if(/^E2023040/i.test(d)) return "ESD";
+  const jb=String(r.junction_box||r.jb_tag||"");
+  if(/^E-PB-/i.test(jb)) return "ESD";
+  return null;
+}
+function isESD(r){ return sysOf(r)==="ESD"; }
+/* a station is ESD when its panel/JB is ESD, or when its channels are */
+function stationSys(s){
+  if(!s) return null;
+  if(s.jb && sysOf(s.jb)) return sysOf(s.jb);
+  const sys=new Set((s.rows||[]).map(sysOf).filter(Boolean));
+  if(sys.size===1) return [...sys][0];
+  if(sys.has("ESD")) return "PCS/ESD";
+  return null;
+}
+function systemBadge(sOrRow){
+  const sys = sOrRow && sOrRow.rows ? stationSys(sOrRow) : sysOf(sOrRow);
+  if(sys==="ESD")     return `<span class="chip esd" title="Emergency Shutdown system — contract E2023040 (Enermove). Runs in parallel with the PCS.">ESD</span>`;
+  if(sys==="PCS/ESD") return `<span class="chip esd" title="Mixed: this station carries both PCS and ESD channels.">PCS + ESD</span>`;
+  if(sys==="PCS")     return `<span class="chip dim" title="Process Control System — contract IE24090 / IE25072 (ESA).">PCS</span>`;
+  return "";
+}
+
 /* ── verification helpers ────────────────────────────────────── */
 function verOf(table,tag,kind){ return IDX.verByKey.get(table+"|"+tag+"|"+(kind||"FIELD_VERIFY")); }
 function verChip(table,tag,kind){
@@ -1220,6 +1267,15 @@ function renderHome(c){
     <span style="flex:1"></span>
     <span class="pv-legend" style="margin:0">${legend}</span>
   </div>
+  <div class="note" style="border-left:3px solid var(--esd-line);background:var(--esd-row)">
+    <b>Two control systems.</b> The <span class="chip dim">PCS</span> process control system
+    (contract <span class="mono">IE24090 / IE25072</span>, ESA Elettromeccanica) and the
+    <span class="chip esd">ESD</span> emergency shutdown system
+    (contract <span class="mono">E2023040</span>, Enermove) run <b>in parallel</b>.
+    Anything belonging to the ESD — its cabinet, its junction boxes, its IO channels and the
+    instruments wired to them — is shown <b>tinted yellow</b> throughout this application.
+    ESD junction boxes are tagged <span class="mono">E-PB-*</span>; PCS panels <span class="mono">P-PN-*</span>.
+  </div>
   <div class="bfd">${bfdSvg(cnt)}</div>
   <div class="note">Transactions: <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
   <span class="mono">TAG PT-3411.1</span> instrument · <span class="mono">EI30/EI40/EI50</span> reports.
@@ -1276,7 +1332,10 @@ function dtTableHTML(id){
   }).join("");
   const body=rows.map(r=>{
     const click=t.rowClick&&t.rowClick(r);
-    const attr=click?` class="rowlink" onclick="${click}"`:"";
+    // ESD rows are tinted yellow in every list, whether or not the table
+    // shows an explicit SYSTEM column.
+    const cls=[click?"rowlink":"", isESD(r)?"esd-row":""].filter(Boolean).join(" ");
+    const attr=`${cls?` class="${cls}"`:""}${click?` onclick="${click}"`:""}`;
     return `<tr${attr}>${t.cols.map(c=>`<td class="${c.cls||""}${c.r?" r":""}">${c.html?c.html(r,c.get(r)):nz(c.get(r),c.blank!=null?c.blank:"")}</td>`).join("")}</tr>`;
   }).join("");
   return rows.length?`<table class="data"><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>`
@@ -1384,8 +1443,9 @@ function renderArea(c, code){
     const ver=s.rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id),"FIELD_VERIFY");return v&&v.result==="OK";}).length;
     const jb=s.jb, rio=rioByCanon.get(canonJB(s.panel));
     return {panel:s.panel, rio:rio?rio.tag:"", service:(jb&&jb.service)||(rio&&rio.service)||"", ex:(jb&&jb.ex_rating)||"",
+      sys:stationSys(s)||(rio?sysOf(rio):null)||"",
       ch:s.rows.length, pct:Math.round(100*ver/Math.max(1,s.rows.length)), orphan:false, nav:s.panel};
-  }).concat(orphanRios.map(r=>({panel:r.tag, rio:r.tag, service:r.service||"", ex:"", ch:0, pct:0, orphan:true, nav:null})));
+  }).concat(orphanRios.map(r=>({panel:r.tag, rio:r.tag, service:r.service||"", ex:"", sys:sysOf(r)||"", ch:0, pct:0, orphan:true, nav:null})));
 
   // equipment first, then field devices, control, electrical, safety (operating-manual order)
   const eqTbl = eq.length?dataTable("eq","EQ","Equipment",[
@@ -1397,6 +1457,7 @@ function renderArea(c, code){
   const instTbl = inst.length?dataTable("inst","INST","Instruments",[
       {label:"TAG", get:r=>r.tag, cls:"tag"},
       {label:"TYPE", get:r=>r.instrument_type, cls:"dim"},
+      {label:"SYSTEM", get:r=>r.system||"", cls:"mono", html:(r,v)=>v?systemBadge({system:v}):'<span class="dim">—</span>'},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
       {label:"JB", get:r=>r.junction_box, cls:"mono dim"},
@@ -1414,6 +1475,7 @@ function renderArea(c, code){
   const stTbl = stationRows.length?dataTable("stations","ST","Stations — RIO panels / JB",[
       {label:"PANEL / JB", get:r=>r.panel, cls:"mono", html:(r,v)=>r.orphan?`<span class="dim">${esc(v)}</span> <span class="chip dim">REGISTRY</span>`:`<b style="color:var(--blue)">${esc(v)}</b>`},
       {label:"RIO NODE", get:r=>r.rio, cls:"mono", html:(r,v)=>v?esc(v):'<span class="dim">—</span>'},
+      {label:"SYSTEM", get:r=>r.sys, cls:"mono", html:(r,v)=>v?systemBadge({system:v}):'<span class="dim">—</span>'},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       {label:"EX RATING", get:r=>r.ex, cls:"mono"},
       {label:"CH", get:r=>r.ch, num:true, r:true, cls:"mono"},
@@ -1513,7 +1575,7 @@ function renderStation(c, panel){
   const body=shown.map(r=>{
     const t=(r.tag||"").trim()||("ch"+r.id);
     const x=xcheckRow(r);
-    return `<tr>
+    return `<tr class="${isESD(r)?"esd-row":""}">
       <td class="mono dim">${nz(r.slot)}</td>
       <td class="mono">${nz(r.channel)}</td>
       <td class="tag" onclick="openInst('${esc(t)}')">${nz(r.tag,'<span class="dim">spare</span>')}</td>
@@ -1533,7 +1595,7 @@ function renderStation(c, panel){
   const spareN=rows.filter(isSpare).length;
   c.innerHTML=`
   <div class="kicker">TX EI20 <span class="sub">· STATION / IO LIST · AREA ${esc(s.unit)}</span></div>
-  <h1>${esc(panel)}</h1>
+  <h1>${esc(panel)} ${systemBadge(s)}</h1>
   <p class="lead">${jb?esc(jb.service||""):"IO station (no JB datasheet digitized yet)."}</p>
   ${jb?`<div class="jbcard">
     <div class="jbcell"><div class="k">Enclosure</div><div class="v">${nz(jb.enclosure_type)}</div></div>

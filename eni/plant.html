@@ -139,6 +139,11 @@
   .erow .et{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--blue);white-space:nowrap;}
   .erow .es{font-size:11px;color:var(--ink-soft);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .erow .chipmini{font-family:var(--mono);font-size:8.5px;color:var(--ok);border:1px solid var(--ok);border-radius:8px;padding:0 6px;}
+  /* ── ESD system (contract E2023040) — parallel to the PCS, always yellow ── */
+  .chip.esd{color:#7A5B00;border-color:#E5B800;background:#FFF8DC;}
+  .mini tr.esd-row{background:#FFFBEA;box-shadow:inset 3px 0 0 #E5B800;}
+  .esdnote{font-size:10.5px;color:#7A5B00;background:#FFFBEA;border:1px solid #E5B800;
+    border-radius:4px;padding:5px 8px;margin-top:8px;line-height:1.45;}
   .chip{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;
     padding:2px 8px;border-radius:10px;border:1px solid;white-space:nowrap;}
   .chip.info{color:var(--blue);border-color:var(--blue);background:#EAF3FB;}
@@ -737,6 +742,19 @@ function bindZoneDrag(){
 function familyNum(tag){
   const m=(tag||"").match(/(\d{3})/);return m?m[1]:null;
 }
+/* ── PCS vs ESD ───────────────────────────────────────────────
+   Two control systems run in parallel: the PCS (IE24090/IE25072, ESA) and the
+   ESD safety system (E2023040, Enermove). Anything ESD is shown yellow.
+   Rows carry system='PCS'|'ESD'; older rows are inferred from the E-PB-*
+   junction-box / E2023040_* drawing naming. */
+function sysOf(r){
+  if(!r) return null;
+  if(r.system) return r.system;
+  if(/^E2023040/i.test(String(r.drawing_file||""))) return "ESD";
+  if(/^E-PB-/i.test(String(r.junction_box||r.jb_tag||""))) return "ESD";
+  return null;
+}
+function isESD(r){ return sysOf(r)==="ESD"; }
 /* prefer the explicit `equipment` column; fall back to loop-number family */
 function eqRefMatch(ref,tag){
   if(!ref)return false;
@@ -843,9 +861,14 @@ function openAssetDrawer(tag){
     h+=`<div class="dsec">RELATED INSTRUMENTS (${inst.length} of ${unitN} in unit)</div>
     <table class="mini"><tr><th>TAG</th><th>TYPE</th><th>SIGNAL</th><th>RANGE</th></tr>`;
     inst.slice(0,40).forEach(i=>{
-      h+=`<tr><td class="g">${esc(i.tag)}</td><td>${nz(i.instrument_type,"")}</td><td>${nz(i.signal_type,"")}</td><td>${nz(i.range,"")} ${nz(i.units,"")}</td></tr>`;
+      h+=`<tr class="${isESD(i)?"esd-row":""}"><td class="g">${esc(i.tag)} ${isESD(i)?'<span class="chip esd">ESD</span>':""}</td><td>${nz(i.instrument_type,"")}</td><td>${nz(i.signal_type,"")}</td><td>${nz(i.range,"")} ${nz(i.units,"")}</td></tr>`;
     });
     h+=`</table>`;
+    const esdN=inst.filter(isESD).length;
+    if(esdN) h+=`<div class="esdnote"><b>${esdN} of these ${inst.length} instruments belong to the ESD system</b>
+      (emergency shutdown, contract E2023040 — runs in parallel with the PCS). They are wired into the
+      <span style="font-family:var(--mono)">E-PB-*</span> ESD junction boxes, not the PCS
+      <span style="font-family:var(--mono)">P-PN-*</span> panels.</div>`;
   }
   if(valves.length){
     h+=`<div class="dsec">RELATED VALVES (${valves.length})</div><table class="mini"><tr><th>TAG</th><th>TYPE</th><th>P&amp;ID</th></tr>`;
