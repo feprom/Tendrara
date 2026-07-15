@@ -152,6 +152,21 @@
   .chip.dim{color:var(--ink-soft);border-color:var(--line-strong);background:var(--bg-soft);}
   .chip.crimson{color:var(--crimson);border-color:var(--crimson);background:#FBE9EC;}
 
+  /* ── change request card (EI50) ─────────────────────────────
+     old → new reads as the instruction: what it is now, what is being asked. */
+  .crdelta{display:flex;align-items:stretch;gap:0;border:1px solid var(--line-strong);border-radius:5px;
+    overflow:hidden;margin:12px 0 4px;background:#fff;}
+  .crdelta .crside{flex:1;padding:9px 12px;min-width:0;}
+  .crdelta .crside:first-child{background:var(--bg-soft);}
+  .crdelta .crlab{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-soft);margin-bottom:3px;}
+  .crdelta .crval{font-size:12.5px;line-height:1.45;word-break:break-word;}
+  .crdelta .crarrow{display:flex;align-items:center;padding:0 10px;font-size:18px;color:var(--crimson);
+    background:var(--bg-soft);border-left:1px solid var(--line);border-right:1px solid var(--line);}
+  .crreason{white-space:pre-wrap;font-size:12.5px;line-height:1.6;color:var(--ink);
+    background:var(--bg-soft);border:1px solid var(--line);border-left:3px solid var(--crimson);
+    border-radius:4px;padding:11px 13px;}
+
   /* ── ESD system (contract E2023040, parallel to the PCS) ───
      Everything belonging to the ESD safety system is marked yellow:
      the cabinet, its IO channels and the field instruments behind them. */
@@ -1970,7 +1985,7 @@ function renderCRs(c){
         html:(r,v)=>`<span title="${esc(v)}">${esc(String(v||"").split("@")[0])}</span>`},
       {label:"STATUS", get:r=>r.status, cls:"cw-status",
         html:(r,v)=>`<span class="chip ${chip(v)}">${esc(v)}</span>`}
-    ], list, {sort:0, dir:-1, sheet:"Change requests"})
+    ], list, {sort:0, dir:-1, sheet:"Change requests", rowClick:r=>`openCRCard('${esc(r.cr_no)}')`})
     :`<div class="dtempty">No change requests match the current filters. <a href="#" onclick="crClear();return false;">Clear filters</a></div>`;
 
   c.innerHTML=`
@@ -2193,6 +2208,76 @@ function openInst(tag){
 }
 function closeInst(){ $("#instOvl").classList.remove("open"); }
 window.openInst=openInst; window.closeInst=closeInst;
+
+/* ── change request card ─────────────────────────────────────────
+   The CR table clamps `reason` to two lines, but a good CR reason is a full
+   explanation — what was found, the evidence, why it matters, what is being
+   asked. This card shows it whole, with the old → new instruction up top and
+   links through to the tag and the panel it concerns. */
+function crChipCls(s){
+  return s==="IMPLEMENTED"?"ok" : s==="PENDING"?"warn" : s==="REJECTED"?"fail" : s==="APPROVED"?"info" : "dim";
+}
+function openCRCard(crNo){
+  crNo=(crNo||"").trim(); if(!crNo) return;
+  const r=(DB.crs||[]).find(x=>(x.cr_no||"").trim()===crNo);
+  if(!r) return status("✗ Change request "+crNo+" not found","err");
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  const when=s=>s?esc(String(s).slice(0,16).replace("T"," ")):"—";
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(r.cr_no)}</span>
+     — change request <span class="chip ${crChipCls(r.status)}">${esc(r.status)}</span>`;
+
+  // old → new reads as the instruction: what it is now, what is being asked for
+  let h=`<div class="kicker">MANAGEMENT OF CHANGE <span class="sub">· plant_change_requests · ${esc(r.object_table||"")}</span></div>
+  <div class="crdelta">
+    <div class="crside">
+      <div class="crlab">CURRENT / AS FOUND</div>
+      <div class="crval dim">${nz(r.old_value,"∅")}</div>
+    </div>
+    <div class="crarrow">→</div>
+    <div class="crside">
+      <div class="crlab">REQUESTED ACTION</div>
+      <div class="crval"><b>${nz(r.new_value,"∅")}</b></div>
+    </div>
+  </div>
+  <div class="jbcard">
+    ${kv("Object", `${esc(r.object_table||"—")} · <b>${nz(r.object_tag)}</b>`)}
+    ${kv("Field", nz(r.field_name))}
+    ${kv("Panel / JB", r.rio_panel
+        ? `<a style="color:var(--blue);cursor:pointer;font-weight:700" onclick="closeInst();nav('station/'+encodeURIComponent('${esc(r.rio_panel)}'))">${esc(r.rio_panel)} →</a>`
+        : "—")}
+    ${kv("Action by", r.action_party
+        ? `<span class="chip crimson" title="${esc(r.action_party)} must execute this change — TAM remains the responsible owner">${esc(r.action_party)}</span>`
+        : `<span class="dim">TAM (in-house)</span>`)}
+    ${kv("Raised by", nz(r.requested_by))}
+    ${kv("Raised on", when(r.created_at))}
+    ${kv("Reviewed by", nz(r.reviewed_by,"—"))}
+    ${kv("Reviewed on", when(r.reviewed_at))}
+  </div>`;
+
+  h+=`<h2 style="margin-top:16px">Reason</h2>
+      <div class="crreason">${esc(r.reason||"—")}</div>`;
+
+  // everything else raised against the same tag
+  const sib=(DB.crs||[]).filter(x=>x.object_tag===r.object_tag && x.cr_no!==r.cr_no);
+  if(sib.length) h+=`<h2 style="margin-top:16px">Other requests on ${esc(r.object_tag)}</h2>
+    <table class="data"><thead><tr><th>CR</th><th>FIELD</th><th>OLD → NEW</th><th>STATUS</th></tr></thead><tbody>${
+      sib.map(x=>`<tr class="rowlink" onclick="openCRCard('${esc(x.cr_no)}')">
+        <td class="mono" style="font-weight:700;color:var(--crimson)">${esc(x.cr_no)}</td>
+        <td class="mono">${nz(x.field_name)}</td>
+        <td class="mono dim">${nz(x.old_value,"∅")} → ${nz(x.new_value,"∅")}</td>
+        <td><span class="chip ${crChipCls(x.status)}">${esc(x.status)}</span></td></tr>`).join("")
+    }</tbody></table>`;
+
+  h+=`<div class="toolrow" style="margin-top:18px">
+    ${r.object_tag?`<button class="btn" onclick="openInst('${esc((r.object_tag||"").trim())}')">Open ${esc(r.object_tag)} →</button>`:""}
+    <span class="spacer"></span>
+    <span class="mono dim" style="font-size:11px">Master data is never modified by a request — an approver implements it at the next data revision.</span>
+  </div>`;
+  $("#instBody").innerHTML=h;
+  $("#instOvl").classList.add("open");
+  hydrateDocRefs($("#instBody"));
+}
+window.openCRCard=openCRCard;
 
 /* ── alarm card (configure / document) ───────────────────────── */
 function openAlarm(atag){
