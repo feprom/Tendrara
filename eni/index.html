@@ -745,6 +745,7 @@ function route(){
   else if(v==="cr") ROUTE={view:"cr"};
   else if(v==="comm") ROUTE={view:"comm"};
   else if(v==="drawings") ROUTE={view:"drawings"};
+  else if(v==="docs") ROUTE={view:"docs"};
   else if(v==="search") ROUTE={view:"search", q:rest.join("/")||""};
   else ROUTE={view:"home"};
   render();
@@ -894,6 +895,7 @@ function crumbs(){
   if(ROUTE.view==="cr") h+=` › <b>CHANGE REQUESTS</b>`;
   if(ROUTE.view==="comm") h+=` › <b>COMMISSIONING</b>`;
   if(ROUTE.view==="drawings") h+=` › <b>DRAWINGS &amp; DOCUMENTS</b>`;
+  if(ROUTE.view==="docs") h+=` › <b>DOCUMENT CONTROL</b>`;
   if(ROUTE.view==="search") h+=` › <b>SEARCH “${esc(ROUTE.q||"")}”</b>`;
   $("#crumbs").innerHTML=h;
 }
