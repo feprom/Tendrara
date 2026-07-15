@@ -272,7 +272,7 @@
 <div class="cmdbar">
   <div class="tcode">
     <label>TX</label>
-    <input id="tcode" placeholder="EI00 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI30 alarms · EI40 cross-check · EI50 change requests · EI60 commissioning · TAG <tag> · SEARCH <text>">
+    <input id="tcode" placeholder="EI00 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI30 alarms · EI40 cross-check · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · DOC <doc_no> · TAG <tag> · SEARCH <text>">
   </div>
   <div class="crumbs" id="crumbs">…</div>
   <div class="gsearch"><input id="gsearch" placeholder="⌕ search all — e.g. 3333, suction, S221" list="taglist"><datalist id="taglist"></datalist></div>
@@ -400,18 +400,31 @@ function dwgLink(pid_no){
 }
 /* JB electrical drawings: drawing_file "IE24090_SE05_P-PN-....pdf" → SE code →
    page renders listed in doc-manifest.js (auto-generated from /elec). */
-function jbPages(drawing_file){
-  const m=(drawing_file||"").match(/SE\d+/);
-  if(!m) return null;
-  const pages=(window.ENI_JB_DRAWINGS||{})[m[0]];
-  return pages&&pages.length ? {se:m[0], pages} : null;
+/* "IE24090_SE29_P-PN-OT331.1.pdf" -> "IE24090_SE29" (the doc_no in plant_documents).
+   Falls back to matching the panel tag, for rows whose drawing_file is odd. */
+function jbDocNo(drawing_file, jb_tag){
+  const m=(drawing_file||"").match(/^(IE\d+_SE\d+)/i);
+  if(m) return m[1].toUpperCase();
+  const d=(DB.docs||[]).find(x=>x.rio_panel && jb_tag && x.rio_panel.trim()===jb_tag.trim());
+  return d ? d.doc_no : null;
 }
+/* Page renders now come from the registry (current revision, private storage) —
+   NOT from doc-manifest.js, whose /elec/... paths only existed on the dev machine
+   and were never published. */
+function jbPages(drawing_file, jb_tag){
+  const doc_no=jbDocNo(drawing_file, jb_tag);
+  if(!doc_no) return null;
+  const pages=(DB.docfiles||[]).filter(x=>x.doc_no===doc_no && x.role==="RENDER_PAGE")
+    .sort((a,b)=>(a.page||0)-(b.page||0));
+  return pages.length ? {doc_no, pages} : null;
+}
+/* every page opens through a signed URL — no static hrefs */
 function pageLinks(pages){
-  return pages.map(u=>{
-    const pm=u.match(/p(\d+)[^/]*\.png$/);
-    return `<a href="${u}" target="_blank" style="font-family:var(--mono);font-size:10.5px;color:var(--crimson);
-      text-decoration:none;border:1px solid var(--crimson);border-radius:3px;padding:1px 7px;margin:2px 3px 0 0;display:inline-block">P${pm?pm[1]:"?"} ⧉</a>`;
-  }).join("");
+  return pages.map(f=>
+    `<a onclick="openStorage('${esc(f.bucket)}','${esc(f.file_path)}')" title="${esc(f.file_name||"")}"
+      style="font-family:var(--mono);font-size:10.5px;color:var(--crimson);cursor:pointer;
+      text-decoration:none;border:1px solid var(--crimson);border-radius:3px;padding:1px 7px;margin:2px 3px 0 0;display:inline-block"
+      >P${f.page!=null?f.page:"?"} ⧉</a>`).join("");
 }
 
 /* ── asset documents / datasheets (plant_asset_docs) ─────────── */
@@ -423,6 +436,13 @@ function docsFor(tag, model){
     (d.object_tag && d.object_tag.trim()===t) ||
     (!d.object_tag && d.model && m && d.model.trim().toUpperCase()===m));
 }
+/* ONE documents section per asset. It merges two things that used to be separate:
+     1. AUTO references from plant_doc_refs — every drawing/manual page that mentions
+        this tag, with the exact page. Filled async by renderDocRefs().
+     2. MANUAL attachments from plant_asset_docs — vendor datasheets someone attached
+        by hand. That table is currently EMPTY, which is why this section always looked
+        broken: it only ever rendered "nothing attached yet".
+   Auto refs come first because they are the ones that actually exist. */
 function docsSection(table, tag, mfr, model){
   const docs=docsFor(tag, model);
   const rows=docs.map(d=>`<tr>
@@ -433,11 +453,14 @@ function docsSection(table, tag, mfr, model){
       ${!d.object_tag?'<span class="chip dim" title="Applies to every asset of this model">MODEL</span>':""}</td>
     <td><span class="chip ${d.source==="WEB"?"warn":"ok"}">${esc(d.source)}</span></td>
     <td class="mono dim" style="font-size:10px">${nz(d.uploaded_by,"")} ${esc((d.created_at||"").slice(0,10))}</td></tr>`).join("");
-  return `<h2 style="margin-top:16px">Documents &amp; datasheets ${docs.length?`(${docs.length})`:""}
-    <button class="btn mini" style="float:right" onclick="openDoc('${esc(table)}','${esc(tag)}','${esc(mfr||"")}','${esc(model||"")}')">+ Attach document</button></h2>
-  ${docs.length?`<table class="data"><thead><tr><th>KIND</th><th>DOCUMENT</th><th>SOURCE</th><th>BY</th></tr></thead><tbody>${rows}</tbody></table>`
-    :`<div class="empty" style="padding:14px">No datasheet or document attached yet.
-      Local PDFs go in <span class="mono">/docs/datasheets/</span>; web datasheets can be linked directly.</div>`}`;
+  return `<h2 style="margin-top:18px">Documents — where this tag appears
+    <button class="btn mini" style="float:right" onclick="openDoc('${esc(table)}','${esc(tag)}','${esc(mfr||"")}','${esc(model||"")}')">+ Attach datasheet</button></h2>
+  <div class="note" style="margin:0 0 6px">Indexed automatically from the IO list, the P&amp;ID index and the
+  document text. <b>PDF p.N</b> opens the source <i>at that page</i>; <b>IMG</b> opens the page render.
+  <span class="chip dim">~</span> = the tag appears in that page's text, so it may be a passing mention.</div>
+  <div data-docrefs="${esc(tag)}"><div class="dim" style="padding:8px">Looking up references…</div></div>
+  ${docs.length?`<h3 style="margin-top:14px;font-size:13px">Attached datasheets (${docs.length})</h3>
+    <table class="data"><thead><tr><th>KIND</th><th>DOCUMENT</th><th>SOURCE</th><th>BY</th></tr></thead><tbody>${rows}</tbody></table>`:""}`;
 }
 let docCtx=null;
 function openDoc(table, tag, mfr, model){
@@ -504,6 +527,9 @@ function getUser(){ return SESSION ? SESSION.name : "UNKNOWN"; }
    Short-lived URLs are cached in-memory so a tiled P&ID doesn't fire 20 requests. */
 const FN_BASE = window.SUPABASE_URL + "/functions/v1";
 const _urlCache = new Map();   // key -> {url, exp}
+/* shared style for every "open a document" button. Declared HERE, next to the other
+   document helpers and above every use — it used to sit 1100 lines further down. */
+const OPENBTN='class="btn mini" style="border:1px solid var(--crimson);color:var(--crimson);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:10.5px;background:#fff;cursor:pointer"';
 
 function sessionToken(){
   if(!SESSION || !SESSION.token) return null;
@@ -541,12 +567,23 @@ async function openDocNo(doc_no){
        window.open(url,"_blank","noopener"); status("✓ "+doc_no+" opened","ok");
   }catch(e){ if(!/no session token|unauthorized/.test(e.message)) status("✗ "+e.message,"err"); }
 }
-/* open one specific stored object (a given revision's file, a render) */
-async function openStorage(bucket, path){
+/* open one specific stored object (a given revision's file, a render).
+   page: browsers' built-in PDF viewers honour #page=N, so a 229-page manual opens
+   exactly where the tag is mentioned instead of at the cover. The fragment is added
+   client-side — it never goes to the server, so it cannot break the signature. */
+async function openStorage(bucket, path, page){
   try{ const url=await docUrl({ bucket, path });
-       window.open(url,"_blank","noopener");
+       window.open(url + (page?("#page="+page):""), "_blank","noopener");
   }catch(e){ if(!/no session token|unauthorized/.test(e.message)) status("✗ "+e.message,"err"); }
 }
+async function openDocPage(doc_no, page){
+  try{ status("Opening "+doc_no+(page?" p."+page:"")+"…");
+       const url=await docUrl({ document: doc_no });
+       window.open(url + (page?("#page="+page):""), "_blank","noopener");
+       status("✓ "+doc_no+(page?" p."+page:"")+" opened","ok");
+  }catch(e){ if(!/no session token|unauthorized/.test(e.message)) status("✗ "+e.message,"err"); }
+}
+window.openDocPage=openDocPage;
 /* <img data-sp="bucket|path"> placeholders -> real signed src, after render */
 async function hydrateDocImages(root){
   const els=[...(root||document).querySelectorAll("img[data-sp]:not([data-sp-done])")];
@@ -559,6 +596,56 @@ async function hydrateDocImages(root){
   }
 }
 window.openDocNo=openDocNo; window.openStorage=openStorage; window.hydrateDocImages=hydrateDocImages;
+
+/* ── "Where to find this" — the information ↔ document link ───────────────────
+   A tag in the DB is only half the answer; an engineer needs the page in a real
+   document. v_asset_doc_refs resolves tag -> doc + exact page + storage object.
+   Fetched per tag on demand (3.5k refs, no point loading them all up front). */
+const REFKIND = {
+  IO_CHANNEL:{label:"WIRING",  chip:"crimson", hint:"JB drawing sheet where this channel is landed"},
+  PID:       {label:"P&ID",    chip:"info",    hint:"the drawing that draws it"},
+  MANUAL:    {label:"MANUAL",  chip:"ok",      hint:"mentioned in the document text"},
+  ALARM:     {label:"ALARM",   chip:"warn",    hint:"alarm & trip list"},
+  DATASHEET: {label:"DATASHEET", chip:"dim",   hint:"vendor datasheet"}
+};
+/* fills every <div data-docrefs="TAG"> found under root. Auto-discovery means the
+   instrument card, the panel card and the alarm card all get references without each
+   one having to remember to call this. */
+async function hydrateDocRefs(root){
+  const els=[...(root||document).querySelectorAll("[data-docrefs]:not([data-docrefs-done])")];
+  for(const el of els){
+    el.setAttribute("data-docrefs-done","1");
+    await renderDocRefs(el.getAttribute("data-docrefs"), el);
+  }
+}
+window.hydrateDocRefs=hydrateDocRefs;
+
+async function renderDocRefs(tag, elOrId){
+  const el=typeof elOrId==="string"?document.getElementById(elOrId):elOrId;
+  if(!el) return;
+  const {data,error}=await sb.from("v_asset_doc_refs").select("*").eq("tag",tag);
+  if(error){ el.innerHTML=`<div class="dim">${esc(error.message)}</div>`; return; }
+  if(!data.length){ el.innerHTML=`<div class="empty" style="padding:12px">No document reference indexed for this tag yet.</div>`; return; }
+  const order={IO_CHANNEL:0,PID:1,ALARM:2,MANUAL:3,DATASHEET:4};
+  data.sort((a,b)=>(order[a.ref_kind]-order[b.ref_kind])||((a.page||0)-(b.page||0)));
+  el.innerHTML=`<table class="data"><thead><tr><th>WHERE</th><th>DOCUMENT</th><th>PAGE</th><th>WHAT'S THERE</th><th></th></tr></thead>
+  <tbody>${data.map(r=>{
+    const k=REFKIND[r.ref_kind]||{label:r.ref_kind,chip:"dim",hint:""};
+    return `<tr>
+    <td><span class="chip ${k.chip}" title="${esc(k.hint)}">${k.label}</span>
+        ${r.confidence==="TEXT_MATCH"?`<span class="chip dim" title="The tag literally appears on this page — it may be a passing mention, not the definitive description">~</span>`:""}</td>
+    <td class="mono" style="font-weight:700;color:var(--crimson);cursor:pointer" onclick="nav('docs')"
+        title="${esc(r.title||"")}">${esc(r.doc_no)}${r.rev?`<span class="dim" style="font-weight:400"> rev ${esc(r.rev)}</span>`:""}</td>
+    <td class="mono">${r.page!=null?"p."+r.page:"—"}</td>
+    <td class="dim" style="font-size:11px"><div class="clamp one" onclick="this.classList.toggle('open')">${esc(r.context||"")}</div></td>
+    <td style="white-space:nowrap">
+      ${r.pdf_path?`<button ${OPENBTN} onclick="openStorage('${esc(r.pdf_bucket)}','${esc(r.pdf_path)}',${r.page||0})"
+          title="Open the PDF straight at page ${r.page||1}">PDF${r.page?" p."+r.page:""} ⧉</button>`:""}
+      ${r.render_path?`<button class="btn mini" style="margin-left:4px"
+          onclick="openStorage('${esc(r.render_bucket)}','${esc(r.render_path)}')" title="Open the page render (image)">IMG ⧉</button>`:""}
+    </td></tr>`;}).join("")}</tbody></table>`;
+}
+window.renderDocRefs=renderDocRefs;
 function setUserChip(){
   $("#userchip").innerHTML = SESSION
     ? `<b>${esc(SESSION.name)}</b> · ${esc(SESSION.group||"")} <span style="opacity:.6">⏻</span>` : "SIGN IN";
@@ -593,10 +680,11 @@ async function boot(){
       fetchAll("plant_mcc_motors"), fetchAll("plant_electrical_loads"),
       fetchAll("plant_cause_effect"), fetchAll("plant_cause_effect_effects"),
       // document registry: identities + the files of each CURRENT revision.
-      // Only SOURCE/RENDER_FULL — the 500+ tiles are fetched on demand, not up front.
+      // SOURCE + RENDER_FULL + RENDER_PAGE (~385 rows). The 532 tiles stay out —
+      // they are only needed by the P&ID tile viewer, which can fetch on demand.
       fetchAll("plant_documents","doc_no"),
-      sb.from("v_doc_current_files").select("*").in("role",["SOURCE","RENDER_FULL"])
-        .then(r=>r.data||[])
+      sb.from("v_doc_current_files").select("*").in("role",["SOURCE","RENDER_FULL","RENDER_PAGE"])
+        .order("page").then(r=>r.data||[])
     ]);
     Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles});
     buildIndexes();
@@ -718,6 +806,7 @@ function render(){
   else if(ROUTE.view==="search") renderSearch(c, ROUTE.q);
   crumbs();
   hydrateDocImages(c);   // swap any data-sp placeholders for signed URLs
+  hydrateDocRefs(c);     // fill any docsSection() reference tables (station card)
 }
 
 /* ── document register + revision history (EI80) ──────────────────────────── */
@@ -1453,11 +1542,23 @@ function renderStation(c, panel){
     <div class="jbcell"><div class="k">RIO system</div><div class="v mono">${nz(jb.rio_system)}</div></div>
     <div class="jbcell"><div class="k">Network</div><div class="v mono">${nz(jb.net_port1)}${jb.net_port2?" · "+esc(jb.net_port2):""}</div></div>
     <div class="jbcell"><div class="k">Power / fuse</div><div class="v mono">${nz(jb.power_source)} · ${nz(jb.fuse)}</div></div>
-    ${(()=>{ const jp=jbPages(jb.drawing_file);
+    ${(()=>{ const tag=(jb.jb_tag||"").trim();
+      const doc_no=jbDocNo(jb.drawing_file, tag);
+      const jp=jbPages(jb.drawing_file, tag);
+      const src=doc_no?docSource(doc_no):null;
+      const rev=doc_no?(DB.docfiles||[]).find(x=>x.doc_no===doc_no):null;
       let v=nz(jb.drawing_file);
-      if(jp) v+=`<div style="margin-top:5px">${pageLinks(jp.pages)}</div>`;
-      else v+=` <span class="chip warn">RENDER PENDING</span>`;
-      return `<div class="jbcell" style="grid-column:1/-1"><div class="k">Drawing — ${jp?jp.pages.length+" pages, click to open":"no render digitized yet"}</div><div class="v mono">${v}</div></div>`; })()}
+      // the source PDF — this was missing entirely: the panel showed the file name
+      // as plain text with no way to open it.
+      if(src) v+=` <button ${OPENBTN} style="margin-left:6px" onclick="openDocNo('${esc(doc_no)}')">PDF ⧉</button>`;
+      else if(doc_no) v+=` <span class="chip warn">PDF NOT UPLOADED</span>`;
+      if(doc_no) v+=` <button class="btn mini" style="margin-left:4px" onclick="nav('docs')" title="Document register / revisions">${esc(doc_no)}${rev&&rev.rev?" rev "+esc(rev.rev):""} ▸</button>`;
+      if(jp) v+=`<div style="margin-top:6px">${pageLinks(jp.pages)}</div>`;
+      else v+=`<div style="margin-top:5px"><span class="chip dim">no page renders</span></div>`;
+      const hdr = doc_no
+        ? `Drawing — ${jp?jp.pages.length+" pages in storage, click to open":"source PDF only"}`
+        : `Drawing — not matched to the document register`;
+      return `<div class="jbcell" style="grid-column:1/-1"><div class="k">${hdr}</div><div class="v mono">${v}</div></div>`; })()}
     <div class="jbcell" style="grid-column:1/-1"><div class="k">Module layout</div><div class="v mono">${nz(jb.module_layout)}</div></div>
   </div>
   ${docsSection("plant_jb", (jb.jb_tag||"").trim(), "", "")}`:""}
@@ -1835,18 +1936,10 @@ function renderCRs(c){
   ⌕ filter searches every column; ⭳ Excel exports exactly what is filtered.</p>`;
 }
 
-/* ── drawings & documents register (EI70) ────────────────────── */
-const REF_DOCS=[
-  {file:"21044-PR-MAN-00001_01.pdf", title:"Operating Manual — Tendrara Micro-LNG", kind:"MANUAL"},
-  {file:"ELD11-ING-PR01.pdf", title:"Electrical drawing ELD11-ING-PR01", kind:"ELECTRICAL"},
-  {file:"SAF01-ING-FR01 - Rev.2 - safety & isolation philosophy.pdf", title:"Safety & Isolation Philosophy (Rev.2)", kind:"SAFETY"},
-  {file:"SAF05-ING-FR01 - (21044-PR-RBP-00001)_1.pdf", title:"Risk-Based Philosophy 21044-PR-RBP-00001", kind:"SAFETY"},
-  {file:"PRO02-ING-FR01 - (21044-PR-HMB-00001)_7.xlsx", title:"Heat & Material Balance 21044-PR-HMB-00001 (Rev.7)", kind:"PROCESS"},
-  {file:"PRO02-ING-FR02 - Rev.1B - Process Description.doc", title:"Process Description (Rev.1B)", kind:"PROCESS"},
-  {file:"TAM158 MR Refrigerant Loop Alarm List.xlsx", title:"MR Refrigerant Loop Alarm List", kind:"ALARMS"},
-  {file:"LNGSafetyData.pdf", title:"LNG Safety Data", kind:"SAFETY"}
-];
-const OPENBTN='class="btn mini" style="border:1px solid var(--crimson);color:var(--crimson);border-radius:4px;padding:2px 10px;font-family:var(--mono);font-size:10.5px;background:#fff;cursor:pointer"';
+/* ── drawings & documents register (EI70) ──────────────────────
+   REF_DOCS (a hardcoded list of /docs/*.pdf paths) lived here. Deleted: the reference
+   documents now come from plant_documents, so they carry a real revision and open from
+   private storage. A hardcoded path list would drift the moment ESA reissues anything. */
 function renderDrawings(c){
   const f=(window._dwgFilter||"").toLowerCase();
   let list=[...DB.drawings].sort((a,b)=>(a.doc_no||"").localeCompare(b.doc_no||""));
@@ -1901,21 +1994,28 @@ function renderDrawings(c){
   <h2>JB / electrical drawings (IE24090)</h2>
   <table class="data"><thead><tr><th>JB / PANEL</th><th>DRAWING</th><th>PAGES — CLICK TO OPEN</th></tr></thead>
   <tbody>${[...DB.jb].sort((a,b)=>(a.drawing_file||"").localeCompare(b.drawing_file||"")).map(j=>{
-    const jp=jbPages(j.drawing_file);
+    const tag=(j.jb_tag||"").trim();
+    const doc_no=jbDocNo(j.drawing_file, tag), jp=jbPages(j.drawing_file, tag);
+    const src=doc_no?docSource(doc_no):null;
     return `<tr>
-      <td class="tag" onclick="${IDX.stations.has((j.jb_tag||"").trim())?`nav('station/${encodeURIComponent(j.jb_tag.trim())}')`:""}">${esc(j.jb_tag)}</td>
-      <td class="mono dim" style="font-size:10.5px">${nz(j.drawing_file)}</td>
-      <td>${jp?pageLinks(jp.pages):'<span class="chip warn">RENDER PENDING</span>'}</td></tr>`;}).join("")}
-  ${(window.ENI_PROFINET||[]).length?`<tr><td class="mono" style="font-weight:700">PROFINET NETWORK</td>
-    <td class="mono dim" style="font-size:10.5px">system overview</td><td>${pageLinks(window.ENI_PROFINET)}</td></tr>`:""}
-  ${(window.ENI_JB_DRAWINGS||{}).SE00?`<tr><td class="mono" style="font-weight:700">SYSTEM ARCHITECTURE</td>
-    <td class="mono dim" style="font-size:10.5px">IE24090-SE00 — PCS/ESD architecture</td><td>${pageLinks(window.ENI_JB_DRAWINGS.SE00)}</td></tr>`:""}
+      <td class="tag" onclick="${IDX.stations.has(tag)?`nav('station/${encodeURIComponent(tag)}')`:""}">${esc(j.jb_tag)}</td>
+      <td class="mono dim" style="font-size:10.5px">${nz(j.drawing_file)}
+        ${src?`<button ${OPENBTN} style="margin-left:6px" onclick="openDocNo('${esc(doc_no)}')">PDF ⧉</button>`:""}</td>
+      <td>${jp?pageLinks(jp.pages):'<span class="chip dim">no page renders</span>'}</td></tr>`;}).join("")}
+  ${(()=>{ const jp=jbPages("ISD03","");
+    const n=(DB.docfiles||[]).filter(x=>x.doc_no==="ISD03-ING-PR01"&&x.role==="RENDER_PAGE");
+    const src=docSource("ISD03-ING-PR01");
+    return (n.length||src)?`<tr><td class="mono" style="font-weight:700">PROFINET NETWORK</td>
+      <td class="mono dim" style="font-size:10.5px">ISD03-ING-PR01 — PLC architecture
+        ${src?`<button ${OPENBTN} style="margin-left:6px" onclick="openDocNo('ISD03-ING-PR01')">PDF ⧉</button>`:""}</td>
+      <td>${n.length?pageLinks(n):'<span class="chip dim">no page renders</span>'}</td></tr>`:""; })()}
   </tbody></table>
   <div class="note">Files are served from <b>private</b> buckets via signed URLs — a copied link dies in
   ~2 minutes, and there is no anonymous access. NOT UPLOADED means the row is registered but its bytes
   are not in storage yet (run <span class="mono">tools/migrate-docs-to-storage.mjs</span>).
-  Page renders below still come from <span class="mono">eni/doc-manifest.js</span> (local paths) —
-  pending migration to storage.</div>`;
+  Page links now come from the document registry, not <span class="mono">doc-manifest.js</span> — they follow
+  the current revision. To find a specific tag <i>with its page</i>, open the tag and see
+  <b>“Where to find this”</b>.</div>`;
   const df=$("#dwgFilter"); if(df){ df.focus(); df.setSelectionRange(df.value.length,df.value.length); }
 }
 
@@ -1945,8 +2045,10 @@ function openInst(tag){
       ${kv("On equipment", ref.equipment?`<a style="color:var(--blue);cursor:pointer;font-weight:700" onclick="openEquip('${esc((ref.equipment||"").trim())}')">${esc(ref.equipment)} →</a>`:"—")}
       ${(()=>{ const l=dwgLink(ref.tam_pid);
         let v=nz(ref.tam_pid)+(ref.itf_pid?" · ITF "+esc(ref.itf_pid):"");
-        if(l&&l.url) v+=` <a href="${l.url}" target="_blank" style="color:var(--crimson);font-weight:700;text-decoration:none">OPEN ⧉</a>`;
-        else if(l) v+=` <span class="chip warn">RENDER PENDING</span>`;
+        // was: <a href="${l.url}"> — dead since renders moved to private storage.
+        if(l&&l.sp) v+=` <button ${OPENBTN} style="margin-left:6px" onclick="openStorage('${esc(l.sp.bucket)}','${esc(l.sp.path)}')">RENDER ⧉</button>`;
+        if(l&&docSource(l.d.doc_no)) v+=` <button ${OPENBTN} style="margin-left:4px" onclick="openDocNo('${esc(l.d.doc_no)}')">PDF ⧉</button>`;
+        else if(l&&!l.sp) v+=` <span class="chip warn">NOT UPLOADED</span>`;
         if(l) v+=`<div style="font-size:10px;color:var(--ink-soft);margin-top:2px">${esc(l.d.doc_no)} · ${esc(l.d.title||"")}</div>`;
         return kv("P&ID drawing", v); })()}
       ${kv("Manufacturer / model", nz(ref.manufacturer,"—")+" "+nz(ref.model,""))}
@@ -1994,6 +2096,8 @@ function openInst(tag){
   </div>`;
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
+  // the information ↔ document link: every place this tag appears, with the page
+  hydrateDocRefs($("#instBody"));
 }
 function closeInst(){ $("#instOvl").classList.remove("open"); }
 window.openInst=openInst; window.closeInst=closeInst;
@@ -2031,6 +2135,7 @@ function openAlarm(atag){
   “Set point verified” button.</div>`;
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
+  hydrateDocRefs($("#instBody"));
 }
 window.openAlarm=openAlarm;
 
@@ -2062,6 +2167,7 @@ function openEquip(etag){
   </div>`;
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
+  hydrateDocRefs($("#instBody"));
 }
 window.openEquip=openEquip;
 
@@ -2128,7 +2234,7 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="TAG"&&a) openInst(a);
   else if((cmd==="SEARCH"||cmd==="FIND")&&a) nav("search/"+encodeURIComponent(a));
   else if(IDX.areaByCode.has(cmd)) nav("area/"+cmd);
-  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI30, EI40, EI50, EI60, EI70, TAG <tag>, SEARCH <text>","err");
+  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI30, EI40, EI50, EI60, EI70, EI80, DOC <doc_no>, TAG <tag>, SEARCH <text>","err");
 });
 $("#gsearch").addEventListener("keydown", e=>{
   if(e.key!=="Enter") return;
