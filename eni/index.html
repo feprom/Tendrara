@@ -718,6 +718,17 @@ function buildIndexes(){
   DB.valves=DB.valves.filter(r=>r.removed!==true);
   DB.inst.forEach(r=>{ if(r.tag) IDX.instByTag.set(r.tag.trim(),r); });
   DB.valves.forEach(r=>{ if(r.tag) IDX.valveByTag.set(r.tag.trim(),r); });
+  // A shared field device carries ONE index row per control system. E.g. FT-3301 is a
+  // single transmitter whose signal feeds FIC-3301 (PCS) and FALL-3301 → PSD (ESD): it
+  // has a PCS row (P-PN-OS332.1 / AI.3) and an ESD row (E-PN-0S333.1 / %EW0). The Maps
+  // above are keyed by tag alone, so for those tags they keep only the last row and the
+  // other branch disappears — which made the cross-check report a false JB MISMATCH on
+  // whichever branch lost. Keep every row per tag here so xcheckRow can pick the branch
+  // that belongs to the channel it is checking.
+  IDX.refsByTag = new Map();
+  IDX.valveRows = new Set(DB.valves);          // to label a ref INST vs VALVE without a scan
+  DB.inst.concat(DB.valves).forEach(r=>{ if(!r.tag) return; const t=r.tag.trim();
+    if(!IDX.refsByTag.has(t)) IDX.refsByTag.set(t,[]); IDX.refsByTag.get(t).push(r); });
   DB.io.forEach(r=>{ if(r.tag){ const t=r.tag.trim(); if(!IDX.ioByTag.has(t)) IDX.ioByTag.set(t,[]); IDX.ioByTag.get(t).push(r);} });
   DB.alarms.forEach(a=>{ const k=(a.instrument_tag||"").trim(); if(!k) return;
     if(!IDX.alarmsByInst.has(k)) IDX.alarmsByInst.set(k,[]); IDX.alarmsByInst.get(k).push(a); });
@@ -976,6 +987,16 @@ window.setVerify=setVerify;
 // same remote-IO panel), or with 0↔O typos (0S361/OS361).
 // Uppercase → drop trailing ".n" terminal-strip suffix → drop P-PN-/P-PK-/E-PB-
 // prefix → strip separators → letter O to 0.
+// Canonical JB name, used to compare an instrument's junction_box against an IO
+// channel's panel: drops a ".N" terminal-strip suffix, drops the panel prefix,
+// and folds the O/0 spelling variants (P-PN-OS332.1 vs P-PN-0S332.1).
+//
+// ⚠ Do NOT add E-PN- to the prefix list. The ESD boxes were renamed E-PB-* → E-PN-*
+// when the plant moved from PROFIBUS to PROFINET. Stripping the ESD prefix would make
+// E-PN-0S201.1 and P-PN-0S201.1 canonicalise identically, so an ESD channel would
+// silently "match" an instrument wired to the PCS box of the same skid — hiding real
+// mismatches. The two systems are independent and must stay distinguishable. The legacy
+// E-PB- entry below is now dead but harmless; it is kept only for old data.
 function canonJB(x){
   return (x||"").trim().toUpperCase()
     .replace(/\.\d+$/,"")
@@ -1020,10 +1041,17 @@ function isSpare(io){
 function xcheckRow(io){
   if(isSpare(io)) return {code:"SPARE", cls:"dim", txt:"SPARE"};
   const t=(io.tag||"").trim(); if(!t) return {code:"NOTAG", cls:"dim", txt:"NO TAG"};
-  const inst=IDX.instByTag.get(t), vlv=IDX.valveByTag.get(t);
-  const ref=inst||vlv;
-  if(!ref) return {code:"MISSING", cls:"fail", txt:"NOT IN INDEX"};
-  const jb=(ref.junction_box||"").trim(), panel=(io.rio_panel||"").trim();
+  const all=IDX.refsByTag.get(t)||[];
+  if(!all.length) return {code:"MISSING", cls:"fail", txt:"NOT IN INDEX"};
+  const panel=(io.rio_panel||"").trim();
+  // A tag may hold one index row per control system (see refsByTag above). Check this
+  // channel against ITS OWN branch: prefer the row whose system matches the channel's,
+  // then any row whose JB matches the panel. Single-row tags are unaffected — all[0].
+  const jbOk=r=>panel && canonJB((r.junction_box||"").trim())===canonJB(panel);
+  const sysOk=r=>r.system && io.system && r.system===io.system;
+  const ref = all.find(r=>sysOk(r)&&jbOk(r)) || all.find(jbOk) || all.find(sysOk) || all[0];
+  const inst = !IDX.valveRows.has(ref);
+  const jb=(ref.junction_box||"").trim();
   if(jb && panel && canonJB(jb)!==canonJB(panel))
     return {code:"JBDIFF", cls:"warn", txt:"JB MISMATCH", detail:`instrument index says JB ${jb} — IO list wires it to ${panel}`};
   const f1=sigFamily(io.signal_type), f2=sigFamily(ref.signal_type);
