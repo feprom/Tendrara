@@ -194,6 +194,11 @@
   #dt-crs .cw-reason{width:auto;}
   #dt-crs .cw-by{width:92px;}
   #dt-crs .cw-status{width:96px;}
+  /* ── EI25 IO list: 1,354 rows, so keep the action column intact and let the
+     description absorb the slack instead of every column stretching ── */
+  #dt-iolist .dtbody{max-height:72vh;}   /* taller than the 460px default: this is a working list, but keep the sticky header + scroll */
+  #dt-iolist td.nowrap, #dt-iolist th.nowrap{white-space:nowrap;}
+  #dt-iolist td.nowrap button.btn.mini{margin-right:3px;}
   /* clamped cells — click to expand in place */
   .clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;position:relative;}
   .clamp:hover{background:var(--bg-soft);}
@@ -298,7 +303,7 @@
 <div class="cmdbar">
   <div class="tcode">
     <label>TX</label>
-    <input id="tcode" placeholder="EI00 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI30 alarms · EI40 cross-check · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · DOC <doc_no> · TAG <tag> · SEARCH <text>">
+    <input id="tcode" placeholder="EI00 · EI25 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI25 IO list · EI30 alarms · EI40 cross-check · EI41 missing set points · EI42 spare capacity · EI43 unattributed records · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · DOC <doc_no> · TAG <tag> · SEARCH <text>">
   </div>
   <div class="crumbs" id="crumbs">…</div>
   <div class="gsearch"><input id="gsearch" placeholder="⌕ search all — e.g. 3333, suction, S221" list="taglist"><datalist id="taglist"></datalist></div>
@@ -328,7 +333,7 @@
         <label>Current value</label><input id="crOld" readonly>
         <label>New value</label><input id="crNew" placeholder="Proposed value">
         <label>Reason</label><textarea id="crReason" placeholder="Justification / field evidence"></textarea>
-        <label>Requested by</label><input id="crBy">
+        <label>Requested by</label><input id="crBy" readonly title="Taken from your sign-in — a CR is always attributed to the signed-in account" style="background:#f4f4f4;color:#555;cursor:not-allowed">
       </div>
       <div class="toolrow" style="margin-top:16px">
         <span class="spacer"></span>
@@ -395,7 +400,7 @@
    ════════════════════════════════════════════════════════════════ */
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[]};
+const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[]};
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
              dwgByPid:new Map(), dwgByDoc:new Map()};
@@ -513,6 +518,7 @@ async function submitDoc(){
     file_url: url,
     source: /^https?:\/\//i.test(url) ? "WEB" : "LOCAL",
     uploaded_by: getUser(),
+    uploaded_by_id: getUserId(),
     notes: $("#docNotes").value.trim()||null
   };
   if(!row.title || !row.file_url) return status("✗ Title and file/URL are required","err");
@@ -541,6 +547,48 @@ function status(msg, cls){ const el=$("#statusmsg"); el.textContent=msg; el.clas
 const SESSION=(()=>{ try{ return JSON.parse(localStorage.getItem("eni_session")||"null"); }catch(e){ return null; } })();
 if(!SESSION){ location.replace("account.html"); }
 function getUser(){ return SESSION ? SESSION.name : "UNKNOWN"; }
+/* Attribution is by eni_users.id — the text name is kept alongside as a display
+   snapshot (and is the only attribution the pre-2026-07-16 rows and the system
+   rows like "Claude (migration 035)" ever had). A null id therefore means
+   "not a human account", not "unknown"; the _ui views expose that as
+   *_by_is_system. Old sessions minted before id was stored return null, which
+   the nullable FK tolerates. */
+function getUserId(){ return SESSION && SESSION.id ? SESSION.id : null; }
+
+/* The _ui views are read-only, so inserts go to the base tables and come back in
+   the BASE shape — without the resolved *_by_name columns every renderer now
+   reads. These two shape a freshly-written row into what the view would have
+   returned, so DB.crs / DB.vers stay homogeneous without a re-fetch. Rows we
+   write always carry the session user, so the name resolves locally. */
+function crUiShape(r){
+  return Object.assign({}, r, {
+    requested_by_name: r.requested_by_id ? getUser() : r.requested_by,
+    requested_by_email: r.requested_by_id ? (SESSION&&SESSION.email)||null : null,
+    requested_by_group: r.requested_by_id ? (SESSION&&SESSION.group)||null : null,
+    requested_by_is_system: r.requested_by_id==null && r.requested_by!=null,
+    reviewed_by_name: r.reviewed_by || null,
+    reviewed_by_email: null,
+    reviewed_by_is_system: r.reviewed_by_id==null && r.reviewed_by!=null
+  });
+}
+function verUiShape(r){
+  return Object.assign({}, r, {
+    verified_by_name: r.verified_by_id ? getUser() : r.verified_by,
+    verified_by_email: r.verified_by_id ? (SESSION&&SESSION.email)||null : null,
+    verified_by_is_system: r.verified_by_id==null && r.verified_by!=null
+  });
+}
+
+/* Renders an attribution. A resolved id shows the account (email on hover); a
+   null id on a row that still carries text means a migration wrote it or it
+   predates accounts — flag it, so nobody reads "Claude (migration 035)" as a
+   person who signed the change off. */
+function byLine(name, email, isSystem, dash){
+  if(name==null || name==="") return dash||"—";
+  return isSystem
+    ? `<span title="Written by a migration or before accounts existed — not a signed-in user">${esc(name)} <span class="chip dim" style="font-size:9px;margin-left:4px">SYSTEM</span></span>`
+    : `<span title="${esc(email||name)}">${esc(name)}</span>`;
+}
 
 /* ── documents: private storage + signed URLs ─────────────────────────────────
    The plant-docs / plant-renders buckets are PRIVATE — no anonymous URL works.
@@ -697,11 +745,16 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
-      fetchAll("plant_safety_critical"), fetchAll("plant_change_requests"), fetchAll("plant_verifications"),
+      // CRs + verifications are read through the _ui views, which resolve
+      // *_by_id -> eni_users.full_name and fall back to the stored text for
+      // system/legacy rows. Writes still target the base tables (see submitCR /
+      // setVerify), so anything pushed into DB.crs / DB.vers after an insert
+      // must be shaped to the view's columns — that is what crUiShape does.
+      fetchAll("plant_safety_critical"), fetchAll("v_change_requests_ui"), fetchAll("v_verifications_ui"),
       fetchAll("plant_pid_drawings","doc_no"), fetchAll("plant_asset_docs"),
       fetchAll("plant_mcc_motors"), fetchAll("plant_electrical_loads"),
       fetchAll("plant_cause_effect"), fetchAll("plant_cause_effect_effects"),
@@ -710,9 +763,12 @@ async function boot(){
       // they are only needed by the P&ID tile viewer, which can fetch on demand.
       fetchAll("plant_documents","doc_no"),
       sb.from("v_doc_current_files").select("*").in("role",["SOURCE","RENDER_FULL","RENDER_PAGE"])
-        .order("page").then(r=>r.data||[])
+        .order("page").then(r=>r.data||[]),
+      // one feed of every user action (CR / review / verification / doc revision /
+      // asset doc), already resolved to a user name. ~350 rows. Feeds EI43.
+      fetchAll("v_user_activity")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -728,6 +784,7 @@ async function boot(){
 }
 
 function buildIndexes(){
+  dqInvalidate();   // the DQ tree chips are derived from this data — recompute after it is (re)built
   DB.areas.forEach(a=>IDX.areaByCode.set(String(a.area_code),a));
   DB.inst=DB.inst.filter(r=>r.removed!==true);
   DB.valves=DB.valves.filter(r=>r.removed!==true);
@@ -789,7 +846,11 @@ function route(){
   if(v==="area" && rest[0]) ROUTE={view:"area", area:rest[0]};
   else if(v==="station" && rest[0]) ROUTE={view:"station", panel:rest[0]};
   else if(v==="alarms") ROUTE={view:"alarms"};
+  else if(v==="iolist") ROUTE={view:"iolist"};
   else if(v==="xcheck") ROUTE={view:"xcheck"};
+  else if(v==="setpoints") ROUTE={view:"setpoints"};
+  else if(v==="spares") ROUTE={view:"spares"};
+  else if(v==="unattrib") ROUTE={view:"unattrib"};
   else if(v==="cr") ROUTE={view:"cr"};
   else if(v==="comm") ROUTE={view:"comm"};
   else if(v==="drawings") ROUTE={view:"drawings"};
@@ -824,12 +885,22 @@ function buildTree(){
   html+=`<div class="thead" style="margin-top:6px">PROCESS UNITS</div>`+PROC_ORDER.map(areaNode).join("");
   html+=`<div class="thead" style="margin-top:6px">UTILITIES &amp; OFFSITES</div>`+UTIL_ORDER.map(areaNode).join("");
   html+=`<div class="thead" style="margin-top:12px">REPORTS</div>
+  <div class="tnode ${ROUTE.view==='iolist'?'sel':''}" onclick="nav('iolist')"><span class="tw">▤</span><span class="code">EI25</span><span class="lbl">IO list</span><span class="cnt">${DB.io.length}</span></div>
   <div class="tnode ${ROUTE.view==='alarms'?'sel':''}" onclick="nav('alarms')"><span class="tw">▤</span><span class="code">EI30</span><span class="lbl">Alarm register</span><span class="cnt">${DB.alarms.length}</span></div>
-  <div class="tnode ${ROUTE.view==='xcheck'?'sel':''}" onclick="nav('xcheck')"><span class="tw">▤</span><span class="code">EI40</span><span class="lbl">Cross-check IO ↔ index</span></div>
   <div class="tnode ${ROUTE.view==='cr'?'sel':''}" onclick="nav('cr')"><span class="tw">▤</span><span class="code">EI50</span><span class="lbl">Change requests</span><span class="cnt">${DB.crs.length}</span></div>
   <div class="tnode ${ROUTE.view==='docs'?'sel':''}" onclick="nav('docs')"><span class="tw">▤</span><span class="code">EI80</span><span class="lbl">Documents</span><span class="cnt">${(DB.docs||[]).length}</span></div>
   <div class="tnode ${ROUTE.view==='comm'?'sel':''}" onclick="nav('comm')"><span class="tw">▤</span><span class="code">EI60</span><span class="lbl">Commissioning progress</span><span class="cnt">${DB.vers.filter(v=>v.result==="FAIL").length}✗</span></div>
   <div class="tnode ${ROUTE.view==='drawings'?'sel':''}" onclick="nav('drawings')"><span class="tw">▤</span><span class="code">EI70</span><span class="lbl">Drawings &amp; documents</span><span class="cnt">${DB.drawings.length}</span></div>`;
+
+  /* DATA QUALITY CHECK — reports that judge the data rather than present it.
+     Each one answers "what is wrong / missing / unowned here", so they are counted
+     by findings, not by rows: the count chip is the size of the problem. */
+  const dq=dqCounts();
+  html+=`<div class="thead" style="margin-top:12px">DATA QUALITY CHECK</div>
+  <div class="tnode ${ROUTE.view==='xcheck'?'sel':''}" onclick="nav('xcheck')"><span class="tw">▤</span><span class="code">EI40</span><span class="lbl">Cross-check IO ↔ index</span><span class="cnt" style="color:${dq.xcheck?"var(--fail)":"var(--ok)"}">${dq.xcheck||"✓"}</span></div>
+  <div class="tnode ${ROUTE.view==='setpoints'?'sel':''}" onclick="nav('setpoints')"><span class="tw">▤</span><span class="code">EI41</span><span class="lbl">Missing set points</span><span class="cnt" style="color:${dq.setpoints?"var(--amber)":"var(--ok)"}">${dq.setpoints||"✓"}</span></div>
+  <div class="tnode ${ROUTE.view==='spares'?'sel':''}" onclick="nav('spares')"><span class="tw">▤</span><span class="code">EI42</span><span class="lbl">Spare capacity per JB</span><span class="cnt" style="color:var(--blue)">${dq.spares}</span></div>
+  <div class="tnode ${ROUTE.view==='unattrib'?'sel':''}" onclick="nav('unattrib')"><span class="tw">▤</span><span class="code">EI43</span><span class="lbl">Unattributed records</span><span class="cnt" style="color:${dq.unattrib?"var(--amber)":"var(--ok)"}">${dq.unattrib||"✓"}</span></div>`;
   t.innerHTML=html;
 }
 function toggleArea(code){
@@ -847,7 +918,11 @@ function render(){
   else if(ROUTE.view==="area") renderArea(c, ROUTE.area);
   else if(ROUTE.view==="station") renderStation(c, ROUTE.panel);
   else if(ROUTE.view==="alarms") renderAlarms(c);
+  else if(ROUTE.view==="iolist") renderIOList(c);
   else if(ROUTE.view==="xcheck") renderXcheck(c);
+  else if(ROUTE.view==="setpoints") renderSetpoints(c);
+  else if(ROUTE.view==="spares") renderSpares(c);
+  else if(ROUTE.view==="unattrib") renderUnattributed(c);
   else if(ROUTE.view==="cr") renderCRs(c);
   else if(ROUTE.view==="comm") renderComm(c);
   else if(ROUTE.view==="drawings") renderDrawings(c);
@@ -939,7 +1014,11 @@ function crumbs(){
   if(ROUTE.view==="station"){ const s=IDX.stations.get(ROUTE.panel);
     h+=` › <a onclick="nav('area/${esc(s?s.unit:'')}')">AREA ${esc(s?s.unit:"?")}</a> › <b>${esc(ROUTE.panel)}</b>`; }
   if(ROUTE.view==="alarms") h+=` › <b>ALARM REGISTER</b>`;
-  if(ROUTE.view==="xcheck") h+=` › <b>CROSS-CHECK</b>`;
+  if(ROUTE.view==="iolist") h+=` › <b>IO LIST</b>`;
+  if(ROUTE.view==="xcheck") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>CROSS-CHECK</b>`;
+  if(ROUTE.view==="setpoints") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>MISSING SET POINTS</b>`;
+  if(ROUTE.view==="spares") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>SPARE CAPACITY</b>`;
+  if(ROUTE.view==="unattrib") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>UNATTRIBUTED RECORDS</b>`;
   if(ROUTE.view==="cr") h+=` › <b>CHANGE REQUESTS</b>`;
   if(ROUTE.view==="comm") h+=` › <b>COMMISSIONING</b>`;
   if(ROUTE.view==="drawings") h+=` › <b>DRAWINGS &amp; DOCUMENTS</b>`;
@@ -990,19 +1069,20 @@ function verChip(table,tag,kind){
   const v=verOf(table,tag,kind);
   if(!v) return `<span class="chip dim">UNVERIFIED</span>`;
   const cls=v.result==="OK"?"ok":v.result==="FAIL"?"fail":"dim";
-  return `<span class="chip ${cls}" title="${esc(v.verified_by)} · ${esc((v.created_at||"").slice(0,16).replace("T"," "))}${v.notes?" · "+esc(v.notes):""}">${v.result}</span>`;
+  return `<span class="chip ${cls}" title="${esc(v.verified_by_name)} · ${esc((v.created_at||"").slice(0,16).replace("T"," "))}${v.notes?" · "+esc(v.notes):""}">${v.result}</span>`;
 }
 async function setVerify(table, tag, result, panel, kind){
   kind=kind||"FIELD_VERIFY";
   let notes=null;
   if(result==="FAIL"){ notes=prompt("FAIL — describe the discrepancy found:",""); if(notes===null) return; }
-  const row={object_table:table, object_tag:tag, rio_panel:panel||null, check_kind:kind, result, notes, verified_by:getUser()};
+  const row={object_table:table, object_tag:tag, rio_panel:panel||null, check_kind:kind, result, notes,
+             verified_by:getUser(), verified_by_id:getUserId()};
   status("Saving verification "+tag+" …");
   const {data,error}=await sb.from("plant_verifications").upsert(row,{onConflict:"object_table,object_tag,check_kind"}).select();
   if(error){ status("✗ "+error.message,"err"); return; }
-  const v=data[0]; IDX.verByKey.set(table+"|"+tag+"|"+kind, v);
+  const v=verUiShape(data[0]); IDX.verByKey.set(table+"|"+tag+"|"+kind, v);
   const i=DB.vers.findIndex(x=>x.id===v.id); if(i>=0) DB.vers[i]=v; else DB.vers.push(v);
-  status(`✓ ${tag} marked ${result} by ${v.verified_by}`,"ok");
+  status(`✓ ${tag} marked ${result} by ${v.verified_by_name}`,"ok");
   render();
 }
 window.setVerify=setVerify;
@@ -1652,24 +1732,28 @@ function renderStation(c, panel){
   const filter=(window._ioFilter||"").toLowerCase();
   const shown=rows.filter(r=>!filter || JSON.stringify(r).toLowerCase().includes(filter));
   const body=shown.map(r=>{
-    const t=(r.tag||"").trim()||("ch"+r.id);
+    // Identity, not just the tag — see actionTag(). A spare's tag is the literal
+    // "SPARE" on every panel, so verifying one used to upsert onto a single shared
+    // row and stamp every other spare channel in the plant with that result.
+    const a=actionTag(r);
     const x=xcheckRow(r);
     return `<tr class="${isESD(r)?"esd-row":""}">
       <td class="mono dim">${nz(r.slot)}</td>
       <td class="mono">${nz(r.channel)}</td>
-      <td class="tag" onclick="openInst('${esc(t)}')">${nz(r.tag,'<span class="dim">spare</span>')}</td>
+      <td class="${a?"tag":"mono"}" ${a?`onclick="openInst('${esc(a)}')"`:""}>${a?esc(r.tag):`<span class="dim">${isSpare(r)?"spare":"(no tag)"}</span>`}</td>
       <td class="dim">${nz(r.description)}</td>
       <td class="mono">${nz(r.signal_type)}</td>
       <td class="mono dim">${nz(r.brand,"")}</td>
       <td><span class="chip ${x.cls}" title="${esc(x.detail||"")}">${x.txt}</span></td>
-      <td>${verChip("plant_io_list",t)}</td>
+      <td>${a?verChip("plant_io_list",a):`<span class="dim">—</span>`}</td>
       <td style="white-space:nowrap">
-        <button class="btn mini ok" onclick="setVerify('plant_io_list','${esc(t)}','OK','${esc(panel)}')">OK</button>
-        <button class="btn mini fail" onclick="setVerify('plant_io_list','${esc(t)}','FAIL','${esc(panel)}')">FAIL</button>
+        ${a?`<button class="btn mini ok" onclick="setVerify('plant_io_list','${esc(a)}','OK','${esc(panel)}')">OK</button>
+        <button class="btn mini fail" onclick="setVerify('plant_io_list','${esc(a)}','FAIL','${esc(panel)}')">FAIL</button>`
+        :`<span class="dim" title="${isSpare(r)?"A spare shares the tag &quot;SPARE&quot; with every other spare — no identity of its own to verify":"No tag on this channel"}">—</span>`}
       </td></tr>`;
   }).join("");
-  const okN=rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id));return v&&v.result==="OK";}).length;
-  const failN=rows.filter(r=>{const v=verOf("plant_io_list",(r.tag||"ch"+r.id));return v&&v.result==="FAIL";}).length;
+  const okN=rows.filter(r=>{const a=actionTag(r); const v=a&&verOf("plant_io_list",a); return v&&v.result==="OK";}).length;
+  const failN=rows.filter(r=>{const a=actionTag(r); const v=a&&verOf("plant_io_list",a); return v&&v.result==="FAIL";}).length;
   const mism=rows.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(xcheckRow(r).code)).length;
   const spareN=rows.filter(isSpare).length;
   c.innerHTML=`
@@ -1765,30 +1849,120 @@ function renderAlarms(c){
   vendor documentation — raise a change request from the instrument card once confirmed in the field.</div>`;
 }
 
+/* ══ EI25 — IO LIST ════════════════════════════════════════════════════════════
+   The master list of all IO channels: one page to consult AND to work from, so a
+   technician does not have to walk panel-by-panel through EI20 to verify a loop.
+   Every row carries the same actions as the station view (OK / FAIL / raise CR) —
+   deliberately the SAME setVerify/openCR calls, not a second implementation, so
+   a fix to the write path applies here too.
+
+   IDENTITY, and why it is not just the tag. A verification upserts on
+   (object_table, object_tag, check_kind), so the tag IS the primary key of the
+   check. A spare channel's tag is the literal string "SPARE" — truthy, and
+   identical on every spare channel in the plant. Verifying one would therefore
+   upsert onto a single shared "SPARE" row and silently overwrite the last person's
+   result on a completely different panel. A blank tag is no identity either.
+   actionTag() returns the tag ONLY when it identifies exactly one channel;
+   otherwise "" and the row gets no actions. */
+function rowTag(r){ return (r.tag||"").trim(); }
+function actionTag(r){ const t=rowTag(r); return (t && !isSpare(r)) ? t : ""; }
+
+function renderIOList(c){
+  const fArea=window._ioArea||"", fPanel=window._ioPanel||"", fSys=window._ioSys||"", fState=window._ioState||"";
+
+  // Derive once per render, not once per sort comparison: xcheckRow() and verOf()
+  // are index lookups, and dtView() calls col.get() O(n log n) times while sorting.
+  // 1,354 rows × ~11 comparisons would be ~15k redundant reconciliations per click.
+  const all=DB.io.map(r=>{
+    const a=actionTag(r);   // "" when the row has no identity of its own (spare / untagged)
+    return Object.assign({}, r, {_t:rowTag(r), _a:a, _x:xcheckRow(r),
+                                 _v:a?verOf("plant_io_list",a):null, _spare:isSpare(r)});
+  });
+
+  const areas=[...new Set(DB.io.map(r=>r.unit).filter(Boolean))].sort();
+  const panels=[...new Set(DB.io.filter(r=>!fArea||r.unit===fArea).map(r=>r.rio_panel).filter(Boolean))].sort();
+
+  let list=all;
+  if(fArea)  list=list.filter(r=>r.unit===fArea);
+  if(fPanel) list=list.filter(r=>(r.rio_panel||"")===fPanel);
+  if(fSys)   list=list.filter(r=>(sysOf(r)||"PCS")===fSys);
+  if(fState==="unverified") list=list.filter(r=>!r._v && !r._spare);
+  else if(fState==="ok")     list=list.filter(r=>r._v&&r._v.result==="OK");
+  else if(fState==="fail")   list=list.filter(r=>r._v&&r._v.result==="FAIL");
+  else if(fState==="finding")list=list.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code));
+  else if(fState==="spare")  list=list.filter(r=>r._spare);
+
+  const okN=all.filter(r=>r._v&&r._v.result==="OK").length;
+  const failN=all.filter(r=>r._v&&r._v.result==="FAIL").length;
+  const spareN=all.filter(r=>r._spare).length;
+  const findN=all.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code)).length;
+  const liveN=all.length-spareN;
+  const unvN=liveN-okN-failN;
+  const pct=liveN?Math.round((okN+failN)/liveN*100):0;
+
+  const sel=(id,val,opts,ph)=>`<select onchange="window.${id}=this.value;${id==="_ioArea"?"window._ioPanel='';":""}render()">
+    <option value="">${ph}</option>${opts.map(o=>`<option value="${esc(o.v!=null?o.v:o)}" ${val===(o.v!=null?o.v:o)?"selected":""}>${esc(o.l!=null?o.l:o)}</option>`).join("")}</select>`;
+
+  c.innerHTML=`
+  <div class="kicker">TX EI25 <span class="sub">· MASTER IO LIST · plant_io_list</span></div>
+  <h1>IO list</h1>
+  <p class="lead">Every IO channel in the plant, across all ${new Set(DB.io.map(r=>r.rio_panel)).size} panels. Filter it, sort it,
+  export it — and verify a channel or raise a change request straight from the row. Actions here are identical to the
+  station view (EI20); this is the same data, without the walk.</p>
+  <div class="facts">
+    <div class="fact"><div class="n">${all.length}</div><div class="l">IO CHANNELS</div></div>
+    <div class="fact"><div class="n" style="color:var(--ok)">${okN}</div><div class="l">VERIFIED OK</div></div>
+    <div class="fact"><div class="n" style="color:var(--fail)">${failN}</div><div class="l">FAILED</div></div>
+    <div class="fact"><div class="n" style="color:var(--amber)">${unvN}</div><div class="l">UNVERIFIED</div></div>
+    <div class="fact"><div class="n" style="color:var(--fail)">${findN}</div><div class="l">X-CHECK FINDINGS</div></div>
+    <div class="fact"><div class="n" style="color:var(--blue)">${spareN}</div><div class="l">SPARE (RESERVE)</div></div>
+    <div class="fact"><div class="n">${pct}%</div><div class="l">LIVE CH CHECKED</div></div>
+  </div>
+  <div class="toolrow">
+    ${sel("_ioArea",fArea,areas,"ALL AREAS")}
+    ${sel("_ioPanel",fPanel,panels,"ALL PANELS")}
+    ${sel("_ioSys",fSys,["PCS","ESD"],"ALL SYSTEMS")}
+    ${sel("_ioState",fState,[{v:"unverified",l:"UNVERIFIED (live only)"},{v:"ok",l:"VERIFIED OK"},{v:"fail",l:"FAILED"},{v:"finding",l:"X-CHECK FINDINGS"},{v:"spare",l:"SPARE CHANNELS"}],"ALL STATES")}
+    ${(fArea||fPanel||fSys||fState)?`<button class="btn mini" onclick="ioClear()">Clear filters</button>`:""}
+    <span class="spacer"></span>
+    <span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} of ${all.length} shown</span>
+  </div>
+  ${dataTable("iolist","IO","IO channels",[
+    {label:"AREA", get:r=>r.unit, cls:"mono dim"},
+    {label:"PANEL", get:r=>r.rio_panel, cls:"mono",
+      html:(r,v)=>v?`<span class="tag" onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`:"—"},
+    {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
+    {label:"CH", get:r=>r.channel, cls:"mono"},
+    {label:"TAG", get:r=>r.tag, cls:"mono",
+      html:(r,v)=>r._a?`<span class="tag" onclick="event.stopPropagation();openInst('${esc(r._a)}')">${esc(v)}</span>`
+        :r._spare?`<span class="dim" title="Reserved / unused channel">spare</span>`
+        :`<span class="dim" title="Channel has no tag in the IO list">(no tag)</span>`},
+    {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
+    {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
+    {label:"SYS", get:r=>sysOf(r)||"PCS", cls:"mono",
+      html:r=>systemBadge(r)||`<span class="dim">PCS</span>`},
+    {label:"X-CHECK", get:r=>r._x.txt,
+      html:r=>`<span class="chip ${r._x.cls}" title="${esc(r._x.detail||"")}">${r._x.txt}</span>`},
+    {label:"VERIFY", get:r=>r._a?(r._v?r._v.result:"UNVERIFIED"):"—",
+      html:r=>r._a?verChip("plant_io_list",r._a):`<span class="dim">—</span>`},
+    {label:"", get:()=>"", cls:"nowrap",
+      html:r=>r._a?`<button class="btn mini ok" onclick="event.stopPropagation();setVerify('plant_io_list','${esc(r._a)}','OK','${esc(r.rio_panel||"")}')">OK</button>
+        <button class="btn mini fail" onclick="event.stopPropagation();setVerify('plant_io_list','${esc(r._a)}','FAIL','${esc(r.rio_panel||"")}')">FAIL</button>
+        <button class="btn mini" onclick="event.stopPropagation();openCR('plant_io_list','${esc(r._a)}')" title="Raise a change request against this channel">CR</button>`
+        :`<span class="dim" title="${r._spare?"A spare channel shares the tag &quot;SPARE&quot; with every other spare — it has no identity of its own to verify or raise a change request against":"This channel has no tag, so there is nothing to verify against"}">—</span>`}
+  ], list, {sheet:"IO list"})}
+  <div class="note">Rows tinted yellow are <b>ESD</b> (contract E2023040) — they run in parallel with the PCS.
+  <b>SPARE</b> channels are reserved capacity, not a defect; they carry no tag, so they cannot be verified.
+  X-check findings are explained in <a href="#/xcheck" style="font-weight:700;color:var(--blue)">EI40</a>.</div>`;
+}
+function ioClear(){ window._ioArea=window._ioPanel=window._ioSys=window._ioState=""; render(); }
+window.ioClear=ioClear;
+
 function renderXcheck(c){
-  let findings=[];
-  DB.io.forEach(r=>{ const x=xcheckRow(r); if(["MISSING","JBDIFF","SIGDIFF"].includes(x.code)) findings.push({io:r,x}); });
-  // reverse: instruments with a JB assignment but no IO channel (excluding
-  // bus/serial devices, which never get a discrete IO channel by design)
-  let reverse=[], busExcluded=0;
-  // A device whose channels are drawn under its alarm tags (see instByAlarmTag / xcheckRow) has
-  // no IO row under its own tag — it IS wired, via its contacts. Without this it reports as
-  // "indexed but never wired", which is the same false finding as the forward direction.
-  const hasIO=t=>IDX.ioByTag.has(t) ||
-    (IDX.alarmsByInst.get(t)||[]).some(a=>IDX.ioByTag.has((a.alarm_tag||"").trim()));
-  IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !hasIO(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
-  IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !hasIO(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
+  // engines live in the DATA QUALITY CHECK block above — EI40 and EI42 read the same ones
+  let {findings, reverse, busExcluded}=xcheckFindings();
   const totF=findings.length, totR=reverse.length;
-  // SPARE capacity per JB — reserved/unused channels are counted, not flagged.
-  const spareByPanel=new Map();
-  DB.io.forEach(r=>{ if(!isSpare(r)) return;
-    const p=(r.rio_panel||"—").trim();
-    const isA=/^A[IO]/i.test((r.channel||""));
-    const e=spareByPanel.get(p)||{panel:p,unit:r.unit,total:0,analog:0,digital:0};
-    e.total++; if(isA) e.analog++; else e.digital++; if(!e.unit&&r.unit) e.unit=r.unit;
-    spareByPanel.set(p,e); });
-  const spares=[...spareByPanel.values()].sort((a,b)=>b.total-a.total||a.panel.localeCompare(b.panel));
-  const spareTot=spares.reduce((n,s)=>n+s.total,0);
+  const {spareTot}=spareCapacity();
   const f=(window._xcFilter||"").toLowerCase();
   if(f){
     findings=findings.filter(({io,x})=>((io.tag||"")+" "+(io.rio_panel||"")+" "+(io.channel||"")+" "+(io.description||"")+" "+(io.unit||"")+" "+x.txt+" "+(x.detail||"")).toLowerCase().includes(f));
@@ -1818,12 +1992,8 @@ function renderXcheck(c){
     <div class="fact"><div class="n" style="color:var(--blue)">${totR}</div><div class="l">INDEXED W/ JB, NO IO CH</div></div>
     <div class="fact"><div class="n" style="color:var(--blue)">${spareTot}</div><div class="l">SPARE CHANNELS (RESERVE)</div></div>
   </div>
-  <h2>Spare capacity — per JB / panel</h2>
-  <p class="lead" style="margin-top:-4px">Reserved / unused IO channels. Not a finding — this is free capacity for future tie-ins, sized per panel.</p>
-  ${spares.length?`<table class="data"><thead><tr><th>PANEL / JB</th><th>AREA</th><th class="r">SPARE CH</th><th class="r">ANALOG</th><th class="r">DIGITAL</th></tr></thead><tbody>${
-    spares.map(s=>`<tr><td class="mono" style="font-weight:600">${esc(s.panel)}</td><td class="mono dim">${nz(s.unit)}</td><td class="r mono">${s.total}</td><td class="r mono dim">${s.analog||""}</td><td class="r mono dim">${s.digital||""}</td></tr>`).join("")
-  }<tr style="border-top:2px solid var(--rule)"><td style="font-weight:700">TOTAL</td><td></td><td class="r mono" style="font-weight:700">${spareTot}</td><td class="r mono dim">${spares.reduce((n,s)=>n+s.analog,0)}</td><td class="r mono dim">${spares.reduce((n,s)=>n+s.digital,0)}</td></tr></tbody></table>`
-    :`<div class="empty">No spare channels recorded.</div>`}
+  <div class="note">Spare capacity per JB moved to its own report — <a href="#/spares" style="font-weight:700;color:var(--blue)">EI42 Spare capacity</a>
+  (${spareTot} reserved channels). It is free capacity, not a finding, which is why it no longer sits inside a findings report.</div>
   <div class="toolrow">
     <input id="xcFilter" placeholder="⌕ filter findings — tag, panel, area, text (e.g. 3333)" style="width:320px"
       value="${esc(window._xcFilter||"")}" oninput="window._xcFilter=this.value;render()">
@@ -1838,6 +2008,221 @@ function renderXcheck(c){
     :`<div class="empty">None. ✓</div>`}
   ${busExcluded?`<div class="note">${busExcluded} analyzer/bus device(s) (Modbus, etc.) excluded above — they talk to the control system over a serial link and never get a discrete IO card channel, so they aren't reconciliation candidates.</div>`:""}`;
   const xf=$("#xcFilter"); if(xf){ xf.focus(); xf.setSelectionRange(xf.value.length,xf.value.length); }
+}
+
+/* ══ DATA QUALITY CHECK — shared engines ═══════════════════════════════════════
+   EI40/41/42/43 all judge the data rather than present it. The three engines below
+   are the single source of truth for "what is wrong": the tree counts, the report
+   pages and the home facts all call these, so a number can never disagree with the
+   list it links to. Each is pure (reads DB, returns data, renders nothing). */
+
+/* Spare = reserved/unused capacity, NOT a finding. Lifted out of renderXcheck so
+   EI42 and EI40 cannot drift apart. */
+function spareCapacity(){
+  const byPanel=new Map();
+  DB.io.forEach(r=>{ if(!isSpare(r)) return;
+    const p=(r.rio_panel||"—").trim();
+    const isA=/^A[IO]/i.test((r.channel||""));
+    const e=byPanel.get(p)||{panel:p,unit:r.unit,total:0,analog:0,digital:0,rows:[]};
+    e.total++; if(isA) e.analog++; else e.digital++; if(!e.unit&&r.unit) e.unit=r.unit;
+    e.rows.push(r); byPanel.set(p,e); });
+  const spares=[...byPanel.values()].sort((a,b)=>b.total-a.total||a.panel.localeCompare(b.panel));
+  return {spares, spareTot:spares.reduce((n,s)=>n+s.total,0),
+          analogTot:spares.reduce((n,s)=>n+s.analog,0),
+          digitalTot:spares.reduce((n,s)=>n+s.digital,0)};
+}
+
+/* The reconciliation itself, both directions. */
+function xcheckFindings(){
+  const findings=[];
+  DB.io.forEach(r=>{ const x=xcheckRow(r); if(["MISSING","JBDIFF","SIGDIFF"].includes(x.code)) findings.push({io:r,x}); });
+  // reverse: instruments with a JB assignment but no IO channel (excluding
+  // bus/serial devices, which never get a discrete IO channel by design)
+  const reverse=[]; let busExcluded=0;
+  // A device whose channels are drawn under its alarm tags (see instByAlarmTag / xcheckRow) has
+  // no IO row under its own tag — it IS wired, via its contacts. Without this it reports as
+  // "indexed but never wired", which is the same false finding as the forward direction.
+  const hasIO=t=>IDX.ioByTag.has(t) ||
+    (IDX.alarmsByInst.get(t)||[]).some(a=>IDX.ioByTag.has((a.alarm_tag||"").trim()));
+  IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !hasIO(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
+  IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !hasIO(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
+  return {findings, reverse, busExcluded};
+}
+
+/* Alarms with no set point — pending from the C&E / vendor docs.
+   Trimmed, so a whitespace-only set_point counts as missing rather than as set. */
+function missingSetpoints(){ return DB.alarms.filter(a=>!String(a.set_point==null?"":a.set_point).trim()); }
+
+/* Records with no human owner. Reads v_user_activity, which already coalesces the
+   account name over the stored text across all five activity types.
+     SYSTEM       = no user id, but text survives ("Claude (migration 035)") —
+                    a migration/script wrote it. Expected, not a defect.
+     UNATTRIBUTED = no user id AND no text — nobody knows who did this. Real gap.
+   Keeping the two apart is the whole point; lumping them would bury the 2 real
+   gaps under 26 rows of expected machine writes. */
+function unattributedRecords(){
+  const rows=(DB.activity||[]).filter(a=>a.user_id==null);
+  return {rows,
+    system: rows.filter(a=>a.user_name!=null && a.user_name!==""),
+    orphan: rows.filter(a=>a.user_name==null || a.user_name==="")};
+}
+
+/* One call for the tree chips, so the sidebar never disagrees with the pages.
+   MEMOISED, and it has to be: buildTree() runs on every render(), and render() is
+   wired to oninput on several filter boxes — so an un-cached dqCounts() would
+   re-reconcile all 1,354 IO channels against the index on every keystroke.
+   The inputs (io / inst / valves / alarms / activity) are all loaded once at boot
+   and never mutated in-session, so the cache is cleared in buildIndexes() — the
+   one place that runs when that data is (re)built. */
+let _dqCache=null;
+function dqInvalidate(){ _dqCache=null; }
+function dqCounts(){
+  if(_dqCache) return _dqCache;
+  if(!DB.io.length && !DB.alarms.length) return {xcheck:0,setpoints:0,spares:0,unattrib:0};
+  const {findings,reverse}=xcheckFindings();
+  return (_dqCache={xcheck:findings.length+reverse.length,
+          setpoints:missingSetpoints().length,
+          spares:spareCapacity().spareTot,
+          unattrib:unattributedRecords().rows.length});
+}
+
+/* ══ EI41 — MISSING SET POINTS ═════════════════════════════════════════════════
+   An alarm with no set point is an alarm nobody can commission: the trip value is
+   still sitting in the C&E matrix or a vendor document. Split out of EI30, where
+   it was only a counter, so the list itself is actionable. */
+function renderSetpoints(c){
+  const miss=missingSetpoints();
+  const byType=[...new Set(miss.map(a=>a.type).filter(Boolean))].sort();
+  const byArea=[...new Set(miss.map(a=>a.area_code).filter(Boolean))].sort();
+  c.innerHTML=`
+  <div class="kicker">TX EI41 <span class="sub">· DATA QUALITY CHECK · ALARM SET POINTS</span></div>
+  <h1>Missing set points</h1>
+  <p class="lead">Alarms in <span class="mono">plant_alarms</span> with no <span class="mono">set_point</span> recorded.
+  Each one is pending from the cause &amp; effect matrix or the vendor documentation — confirm the value, then raise a
+  change request from the row so the trip value lands in the register with an owner against it.</p>
+  <div class="facts">
+    <div class="fact"><div class="n">${DB.alarms.length}</div><div class="l">ALARMS TOTAL</div></div>
+    <div class="fact"><div class="n" style="color:${miss.length?"var(--amber)":"var(--ok)"}">${miss.length}</div><div class="l">MISSING SET POINT</div></div>
+    <div class="fact"><div class="n" style="color:var(--ok)">${DB.alarms.length-miss.length}</div><div class="l">SET</div></div>
+    <div class="fact"><div class="n">${DB.alarms.length?Math.round((DB.alarms.length-miss.length)/DB.alarms.length*100):0}%</div><div class="l">COMPLETE</div></div>
+    ${byType.map(t=>`<div class="fact"><div class="n" style="color:var(--amber)">${miss.filter(a=>a.type===t).length}</div><div class="l">${esc(t)}</div></div>`).join("")}
+  </div>
+  ${miss.length?dataTable("setpoints","ALM","Alarms without a set point",[
+    {label:"ALARM TAG", get:r=>r.alarm_tag, cls:"mono",
+      html:(r,v)=>`<span class="tag" onclick="event.stopPropagation();openAlarm('${esc((r.alarm_tag||"").trim())}')">${esc(v)}</span>`},
+    {label:"INSTRUMENT", get:r=>r.instrument_tag, cls:"mono",
+      html:(r,v)=>v?`<span class="tag" onclick="event.stopPropagation();openInst('${esc(String(v).trim())}')">${esc(v)}</span>`:"—"},
+    {label:"TYPE", get:r=>r.type, cls:"mono",
+      html:(r,v)=>v?`<span class="chip warn">${esc(v)}</span>`:"—"},
+    {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
+    {label:"AREA", get:r=>r.area_code, cls:"mono dim"},
+    {label:"SOURCE DOC", get:r=>r.document, cls:"mono dim"},
+    {label:"SET POINT", get:()=>"NOT SET", html:()=>`<span class="chip warn">NOT SET</span>`},
+    {label:"", get:()=>"", cls:"nowrap",
+      html:r=>`<button class="btn mini" onclick="event.stopPropagation();openCR('plant_alarms','${esc((r.alarm_tag||"").trim())}')" title="Raise a change request to record the confirmed set point">CR</button>`}
+  ], miss, {sort:4, sheet:"Missing set points"})
+  :`<div class="empty">Every alarm has a set point recorded. ✓</div>`}
+  <div class="note">Filter by area or type using the ⌕ box above the table${byArea.length?` — ${byArea.length} area(s) affected: <span class="mono">${byArea.map(esc).join(" · ")}</span>`:""}.
+  Set points confirmed in the field should go in as a change request, not a direct edit, so the value carries a reviewer.</div>`;
+}
+
+/* ══ EI42 — SPARE CAPACITY ═════════════════════════════════════════════════════
+   Free capacity for future tie-ins. This is NOT a finding — it lived inside the
+   cross-check report, where it read like one. Here it is what it actually is:
+   an asset register of what is still available, sized per panel. */
+function renderSpares(c){
+  const {spares, spareTot, analogTot, digitalTot}=spareCapacity();
+  const tot=DB.io.length;
+  const panelsWith=spares.length, panelsAll=new Set(DB.io.map(r=>r.rio_panel).filter(Boolean)).size;
+  const chans=spares.flatMap(s=>s.rows.map(r=>Object.assign({},r,{_panelUnit:s.unit})));
+  c.innerHTML=`
+  <div class="kicker">TX EI42 <span class="sub">· DATA QUALITY CHECK · SPARE IO CAPACITY</span></div>
+  <h1>Spare capacity per JB</h1>
+  <p class="lead">Reserved and unused IO channels, per panel. <b>Not a defect</b> — this is the free capacity available for
+  future tie-ins. A channel counts as spare when its tag is literally <span class="mono">SPARE</span> or it has no tag and
+  its description starts with SPARE.</p>
+  <div class="facts">
+    <div class="fact"><div class="n" style="color:var(--blue)">${spareTot}</div><div class="l">SPARE CHANNELS</div></div>
+    <div class="fact"><div class="n">${tot?Math.round(spareTot/tot*100):0}%</div><div class="l">OF ${tot} TOTAL</div></div>
+    <div class="fact"><div class="n" style="color:var(--blue)">${analogTot}</div><div class="l">ANALOG (AI/AO)</div></div>
+    <div class="fact"><div class="n" style="color:var(--blue)">${digitalTot}</div><div class="l">DIGITAL (DI/DO)</div></div>
+    <div class="fact"><div class="n">${panelsWith}/${panelsAll}</div><div class="l">PANELS WITH SPARES</div></div>
+  </div>
+  ${spares.length?dataTable("sparesum","ST","Spare capacity by panel",[
+    {label:"PANEL / JB", get:r=>r.panel, cls:"mono",
+      html:(r,v)=>`<span class="tag" onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`},
+    {label:"AREA", get:r=>r.unit, cls:"mono dim"},
+    {label:"SPARE CH", get:r=>r.total, num:true, r:true, cls:"mono"},
+    {label:"ANALOG", get:r=>r.analog, num:true, r:true, cls:"mono dim"},
+    {label:"DIGITAL", get:r=>r.digital, num:true, r:true, cls:"mono dim"}
+  ], spares, {sort:2, dir:-1, sheet:"Spare capacity by panel"})
+  :`<div class="empty">No spare channels recorded.</div>`}
+  ${chans.length?dataTable("sparech","IO","Spare channels — detail",[
+    {label:"PANEL", get:r=>r.rio_panel, cls:"mono",
+      html:(r,v)=>v?`<span class="tag" onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`:"—"},
+    {label:"AREA", get:r=>r.unit||r._panelUnit, cls:"mono dim"},
+    {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
+    {label:"CH", get:r=>r.channel, cls:"mono"},
+    {label:"KIND", get:r=>/^A[IO]/i.test(r.channel||"")?"ANALOG":"DIGITAL",
+      html:(r,v)=>`<span class="chip dim">${v}</span>`},
+    {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
+    {label:"SIGNAL", get:r=>r.signal_type, cls:"mono dim"},
+    {label:"SYS", get:r=>sysOf(r)||"PCS", html:r=>systemBadge(r)||`<span class="dim">PCS</span>`}
+  ], chans, {collapsed:true, sheet:"Spare channels"}):""}
+  <div class="note">The detail list is collapsed by default — expand it with ▸ to see which physical slots are free on a
+  given panel before committing a tie-in.</div>`;
+}
+
+/* ══ EI43 — UNATTRIBUTED RECORDS ═══════════════════════════════════════════════
+   Who did what. Reads v_user_activity (built 2026-07-16, see SQL/041).
+   The report deliberately separates two things that look identical in a name column:
+   a machine write that is *expected* (migrations), and a record whose author is
+   genuinely unknown. Only the second is a gap worth chasing. */
+function renderUnattributed(c){
+  const {rows, system, orphan}=unattributedRecords();
+  const total=(DB.activity||[]).length;
+  const attributed=total-rows.length;
+  const byAct=[...new Set(rows.map(a=>a.activity))].sort();
+  const cols=[
+    {label:"WHEN", get:r=>(r.at||"").slice(0,16).replace("T"," "), cls:"mono dim"},
+    {label:"ACTIVITY", get:r=>r.activity, cls:"mono",
+      html:(r,v)=>`<span class="chip ${v==="change_request"?"info":v==="review"?"warn":v==="verification"?"ok":"dim"}">${esc(String(v).replace(/_/g," ").toUpperCase())}</span>`},
+    {label:"OBJECT", get:r=>r.object_tag, cls:"mono",
+      html:(r,v)=>v?`<span class="tag" onclick="event.stopPropagation();openInst('${esc(String(v).trim())}')">${esc(v)}</span>`:"—"},
+    {label:"TABLE", get:r=>r.object_table, cls:"mono dim"},
+    {label:"DETAIL", get:r=>r.detail, cls:"dim"},
+    {label:"WRITTEN BY", get:r=>r.user_name||"(nobody)",
+      html:r=>byLine(r.user_name, null, r.user_name!=null&&r.user_name!=="", '<span class="chip fail">UNATTRIBUTED</span>')}
+  ];
+  c.innerHTML=`
+  <div class="kicker">TX EI43 <span class="sub">· DATA QUALITY CHECK · RECORD OWNERSHIP</span></div>
+  <h1>Unattributed records</h1>
+  <p class="lead">Every action in the system should name the account that took it (<span class="mono">*_by_id</span> → <span class="mono">eni_users</span>).
+  These ${rows.length} records do not. They fall into two very different groups, and the split is the point of this report.</p>
+  <div class="facts">
+    <div class="fact"><div class="n">${total}</div><div class="l">ACTIONS TOTAL</div></div>
+    <div class="fact"><div class="n" style="color:var(--ok)">${attributed}</div><div class="l">ATTRIBUTED TO AN ACCOUNT</div></div>
+    <div class="fact"><div class="n" style="color:var(--blue)">${system.length}</div><div class="l">SYSTEM-WRITTEN (EXPECTED)</div></div>
+    <div class="fact"><div class="n" style="color:${orphan.length?"var(--fail)":"var(--ok)"}">${orphan.length}</div><div class="l">TRULY UNATTRIBUTED</div></div>
+    <div class="fact"><div class="n">${total?Math.round(attributed/total*100):0}%</div><div class="l">OWNED</div></div>
+  </div>
+
+  <h2>Truly unattributed (${orphan.length})</h2>
+  <p class="lead" style="margin-top:-4px">No account <b>and</b> no name — nobody knows who did this. These are the only real gaps here.</p>
+  ${orphan.length?dataTable("unattr-orphan","VERIFY","No known author",cols,orphan,{sort:0,dir:-1,sheet:"Unattributed"})
+    :`<div class="empty">Every record names an author. ✓</div>`}
+
+  <h2 style="margin-top:18px">System-written (${system.length})</h2>
+  <p class="lead" style="margin-top:-4px">Written by a migration or script — the name survives as text but there is no account behind it,
+  because these were never people. <b>Expected, not a defect.</b> They must not be "fixed" by inventing accounts in
+  <span class="mono">eni_users</span>; the record is honest exactly as it stands.</p>
+  ${system.length?dataTable("unattr-sys","VERIFY","Machine-written records",cols,system,{sort:0,dir:-1,sheet:"System written"})
+    :`<div class="empty">No system-written records.</div>`}
+
+  <div class="note">Attribution is <b>client-asserted</b> in phase 1 — the browser sends the user id and the RLS policies accept it.
+  It is a good-faith record of who did what, <b>not an access-control boundary</b>. Closing that needs the phase-2 move in
+  <span class="mono">SQL/020</span> (Supabase Auth + per-group RLS, or RPC-gated writes).${byAct.length?`
+  Affected activity types: <span class="mono">${byAct.map(a=>esc(a.replace(/_/g," "))).join(" · ")}</span>.`:""}</div>`;
 }
 
 /* ── global search results (EI70 / gsearch) ──────────────────── */
@@ -1939,7 +2324,7 @@ function renderComm(c){
     <td class="mono">${nz(v.rio_panel)}</td>
     <td><span class="chip fail">${esc(v.check_kind)}</span></td>
     <td class="dim">${nz(v.notes)}</td>
-    <td class="mono">${esc(v.verified_by)}</td>
+    <td class="mono">${esc(v.verified_by_name)}</td>
     <td class="mono dim">${esc((v.created_at||"").slice(0,16).replace("T"," "))}</td></tr>`).join("")}</tbody></table>`
   :`<div class="empty">Punch list is clean — no FAIL verifications recorded. ✓</div>`}
   <h2>Recent activity</h2>
@@ -1949,7 +2334,7 @@ function renderComm(c){
     <td class="tag" onclick="openInst('${esc(v.object_tag)}')">${esc(v.object_tag)}</td>
     <td class="mono dim">${esc(v.check_kind)}</td>
     <td><span class="chip ${v.result==="OK"?"ok":v.result==="FAIL"?"fail":"dim"}">${esc(v.result)}</span></td>
-    <td class="mono">${esc(v.verified_by)}</td></tr>`).join("")}</tbody></table>`
+    <td class="mono">${esc(v.verified_by_name)}</td></tr>`).join("")}</tbody></table>`
   :`<div class="empty">No verifications yet — open a station (EI20) and start checking channels.</div>`}`;
 }
 
@@ -2022,7 +2407,7 @@ function renderCRs(c){
           const s=String(v||"");
           return s?`<div class="clamp" onclick="event.stopPropagation();this.classList.toggle('open')" title="Click to expand">${esc(s)}</div>`:"—";
         }},
-      {label:"BY", get:r=>r.requested_by, cls:"cw-by mono dim",
+      {label:"BY", get:r=>r.requested_by_name, cls:"cw-by mono dim",
         html:(r,v)=>`<span title="${esc(v)}">${esc(String(v||"").split("@")[0])}</span>`},
       {label:"STATUS", get:r=>r.status, cls:"cw-status",
         html:(r,v)=>`<span class="chip ${chip(v)}">${esc(v)}</span>`}
@@ -2289,9 +2674,9 @@ function openCRCard(crNo){
     ${kv("Action by", r.action_party
         ? `<span class="chip crimson" title="${esc(r.action_party)} must execute this change — TAM remains the responsible owner">${esc(r.action_party)}</span>`
         : `<span class="dim">TAM (in-house)</span>`)}
-    ${kv("Raised by", nz(r.requested_by))}
+    ${kv("Raised by", byLine(r.requested_by_name, r.requested_by_email, r.requested_by_is_system))}
     ${kv("Raised on", when(r.created_at))}
-    ${kv("Reviewed by", nz(r.reviewed_by,"—"))}
+    ${kv("Reviewed by", byLine(r.reviewed_by_name, r.reviewed_by_email, r.reviewed_by_is_system))}
     ${kv("Reviewed on", when(r.reviewed_at))}
   </div>`;
 
@@ -2423,12 +2808,16 @@ async function submitCR(){
   const row={object_table:crCtx.table, object_tag:crCtx.tag, field_name:$("#crField").value,
     rio_panel: panels.length===1 ? panels[0] : null,
     old_value:$("#crOld").value||null, new_value:$("#crNew").value||null,
-    reason:$("#crReason").value||null, requested_by:$("#crBy").value||getUser()};
+    reason:$("#crReason").value||null,
+    // attribution comes from the session, never from the form — #crBy is a
+    // read-only echo of the signed-in user, so a typed name cannot mis-attribute
+    // a CR to someone else.
+    requested_by:getUser(), requested_by_id:getUserId()};
   if(!row.new_value && !row.reason){ status("✗ Provide a new value or a reason","err"); return; }
   status("Submitting change request…");
   const {data,error}=await sb.from("plant_change_requests").insert(row).select();
   if(error){ status("✗ "+error.message,"err"); return; }
-  DB.crs.push(data[0]); closeCR();
+  DB.crs.push(crUiShape(data[0])); closeCR();
   status(`✓ ${data[0].cr_no} raised for ${crCtx.tag} (PENDING)`,"ok");
   render();
 }
@@ -2442,8 +2831,12 @@ $("#tcode").addEventListener("keydown", e=>{
   if(cmd==="EI00"||cmd==="/N"||cmd==="HOME") nav("");
   else if(cmd==="EI10"&&a) nav("area/"+a);
   else if(cmd==="EI20"&&a){ const p=[...IDX.stations.keys()].find(k=>k.toUpperCase()===a)||a; nav("station/"+encodeURIComponent(p)); }
+  else if(cmd==="EI25") nav("iolist");
   else if(cmd==="EI30") nav("alarms");
   else if(cmd==="EI40") nav("xcheck");
+  else if(cmd==="EI41") nav("setpoints");
+  else if(cmd==="EI42") nav("spares");
+  else if(cmd==="EI43") nav("unattrib");
   else if(cmd==="EI50") nav("cr");
   else if(cmd==="EI60") nav("comm");
   else if(cmd==="EI70") nav("drawings");
@@ -2452,7 +2845,7 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="TAG"&&a) openInst(a);
   else if((cmd==="SEARCH"||cmd==="FIND")&&a) nav("search/"+encodeURIComponent(a));
   else if(IDX.areaByCode.has(cmd)) nav("area/"+cmd);
-  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI30, EI40, EI50, EI60, EI70, EI80, DOC <doc_no>, TAG <tag>, SEARCH <text>","err");
+  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI25, EI30, EI40, EI41, EI42, EI43, EI50, EI60, EI70, EI80, DOC <doc_no>, TAG <tag>, SEARCH <text>","err");
 });
 $("#gsearch").addEventListener("keydown", e=>{
   if(e.key!=="Enter") return;
