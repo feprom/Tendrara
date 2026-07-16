@@ -401,7 +401,7 @@
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[]};
-const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), ioByTag:new Map(),
+const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), alarmByTag:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
              dwgByPid:new Map(), dwgByDoc:new Map()};
 
@@ -815,6 +815,10 @@ function buildIndexes(){
   IDX.instByAlarmTag = new Map();
   DB.alarms.forEach(a=>{ const at=(a.alarm_tag||"").trim(), it=(a.instrument_tag||"").trim();
     if(at && it && at!==it) IDX.instByAlarmTag.set(at, it); });
+  // alarm_tag → the alarm row itself. instByAlarmTag only gives the parent's tag, but
+  // EI25 needs the alarm (set point, type) when a channel IS an alarm contact.
+  IDX.alarmByTag = new Map();
+  DB.alarms.forEach(a=>{ const at=(a.alarm_tag||"").trim(); if(at) IDX.alarmByTag.set(at, a); });
   DB.jb.forEach(j=>IDX.jbByTag.set((j.jb_tag||"").trim(), j));
   // stations = distinct rio_panel in IO list
   DB.io.forEach(r=>{
@@ -1124,8 +1128,14 @@ function sigFamily(raw){
   // index records the sensor element (RTD/PT-100), the IO list records the loop.
   if(/MODBUS|PROFIBUS|PROFINET|HART/.test(s)) return "BUS";
   if(/^(AI|AO)$/.test(s) || /^(4\-?20MA|420MA|RTD|PT100)/.test(s)) return "ANALOG";
-  // digital: DI/DO in any form (incl. "DO 24VDC" -> "DO24VDC"), or a digital keyword
-  if(/^(DI|DO)/.test(s) || /(24VDC|230VAC|110VAC|DRYCONTACT|NAMUR|SOLENOID|DISCRETESWITCH|PILOTLIGHT)/.test(s)) return "DIGITAL";
+  // digital: DI/DO in any form (incl. "DO 24VDC" -> "DO24VDC"), or a digital keyword.
+  // FDI/FDO are the ESD system's PROFIsafe fail-safe channels ("F-DI"/"F-DO" — the
+  // hyphen is already stripped above). They are digital I/O; the F is a safety rating,
+  // not a signal family (it lives in plant_io_list.is_failsafe since SQL/042). Without
+  // this they fell through to the literal-compare fallback and only matched because
+  // BOTH the IO list and the index happen to spell them "F-DI" — a coincidence, not a
+  // check. If either side were ever written as "24 VDC" it would fire a false SIGDIFF.
+  if(/^F?(DI|DO)/.test(s) || /(24VDC|230VAC|110VAC|DRYCONTACT|NAMUR|SOLENOID|DISCRETESWITCH|PILOTLIGHT)/.test(s)) return "DIGITAL";
   return s; // unrecognized vocabulary — fall back to literal compare, still catches real typos
 }
 // Bus/serial-connected devices (analyzers on Modbus, etc.) have no discrete IO
@@ -1177,17 +1187,22 @@ function xcheckRow(io){
   // vs the analyser's PCS box "JB mismatch"). The contact's own JB is not recorded in the index,
   // so there is nothing here to disagree with. Non-bus parents — e.g. the SD-480-* smoke
   // detectors, whose two contacts land in the same box as the detector — are checked normally.
+  // Every return from here down carries `ref` — the index row THIS channel was
+  // actually checked against — and `parent` when the channel is an alarm contact.
+  // The branch-picking above is subtle (system, then JB, then first); callers that
+  // need the instrument behind a channel (EI25's RANGE / ALARMS columns) must reuse
+  // that decision rather than re-resolve the tag and risk picking the other branch.
   if(viaAlarm && isBusDevice(ref))
-    return {code:"OKALM", cls:"ok", txt:"MATCH (ALARM)", src:"ALARM",
+    return {code:"OKALM", cls:"ok", txt:"MATCH (ALARM)", src:"ALARM", ref, parent:viaAlarm,
       detail:`hardwired alarm contact of bus device ${viaAlarm} — its index row records the ${nz(ref.signal_type,"bus")} link, so JB/signal are not comparable at contact level`};
   const jb=(ref.junction_box||"").trim();
   if(jb && panel && canonJB(jb)!==canonJB(panel))
-    return {code:"JBDIFF", cls:"warn", txt:"JB MISMATCH", detail:`instrument index says JB ${jb} — IO list wires it to ${panel}`};
+    return {code:"JBDIFF", cls:"warn", txt:"JB MISMATCH", ref, parent:viaAlarm, detail:`instrument index says JB ${jb} — IO list wires it to ${panel}`};
   const f1=sigFamily(io.signal_type), f2=sigFamily(ref.signal_type);
-  if(f1&&f2&&f1!==f2) return {code:"SIGDIFF", cls:"warn", txt:"SIGNAL≠", detail:`index ${ref.signal_type}`};
-  if(viaAlarm) return {code:"OKALM", cls:"ok", txt:"MATCH (ALARM)", src:"ALARM",
+  if(f1&&f2&&f1!==f2) return {code:"SIGDIFF", cls:"warn", txt:"SIGNAL≠", ref, parent:viaAlarm, detail:`index ${ref.signal_type}`};
+  if(viaAlarm) return {code:"OKALM", cls:"ok", txt:"MATCH (ALARM)", src:"ALARM", ref, parent:viaAlarm,
     detail:`channel is one alarm contact of ${viaAlarm} — see the alarm register`};
-  return {code:"OK", cls:"ok", txt:"MATCH", src:inst?"INST":"VALVE"};
+  return {code:"OK", cls:"ok", txt:"MATCH", src:inst?"INST":"VALVE", ref};
 }
 
 /* ── canonical area metadata (per PRO02 process description) ──── */
@@ -1867,38 +1882,142 @@ function renderAlarms(c){
 function rowTag(r){ return (r.tag||"").trim(); }
 function actionTag(r){ const t=rowTag(r); return (t && !isSpare(r)) ? t : ""; }
 
+/* ── IO direction: one vocabulary ─────────────────────────────────────────────
+   plant_io_list holds two unrelated channel vocabularies (see SQL/042):
+     PCS  AI.1 / AO.1 / DI.1 / DO.1        — direction in the channel name
+     ESD  %EW0 (input word = AI) · %E0.0 (input bit = DI) · %A0.0 (output bit = DO)
+   and 16 PCS rows on the central PLC's DO module addressed E0.0..E0.15, which LOOK
+   like inputs (E = Eingang) but are outputs — signal_type says "DO 24VDC".
+
+   signal_type cannot be used for direction: on PCS it records the ELECTRICAL interface,
+   so AO.1 and AI.1 are both "4-20 mA" and DO.1 and DI.1 are both "24 VDC". Only the
+   channel string carries direction reliably.
+
+   SQL/042 normalised this into io_kind, so the column is the source of truth. The
+   fallback below re-derives it in the browser for a row that predates the migration
+   (or arrives from a future contract with a vocabulary nobody has taught it yet) —
+   returns "" rather than guessing, so an unknown channel shows as unclassified
+   instead of being silently bucketed into the wrong card. */
+function ioKind(r){
+  if(r && r.io_kind) return r.io_kind;
+  const c=String((r&&r.channel)||"").trim();
+  if(!c) return "";
+  if(/^AI/i.test(c)) return "AI";
+  if(/^AO/i.test(c)) return "AO";
+  if(/^DI/i.test(c)) return "DI";
+  if(/^DO/i.test(c)) return "DO";
+  if(/^%EW/.test(c)) return "AI";
+  if(/^%AW/.test(c)) return "AO";
+  if(/^%E[0-9]/.test(c)) return "DI";
+  if(/^%A[0-9]/.test(c)) return "DO";
+  if(/^E[0-9]/i.test(c)) return "DO";   // central PLC DO module — E-prefixed but an output
+  return "";
+}
+function isFailsafe(r){
+  if(r && r.is_failsafe===true) return true;
+  return /^F-D[IO]$/i.test(String((r&&r.signal_type)||"").trim());
+}
+const IO_KINDS=["AI","AO","DI","DO"];
+
+/* RANGE and ALARMS are NOT columns of plant_io_list — the IO list records the wiring,
+   the instrument index records the engineering. Both are resolved per channel:
+
+   RANGE  — the two indexes spell it differently: plant_instruments has range + units,
+            plant_valves has inst_range + range_unit (same convention openInst uses).
+            The ref comes from xcheckRow(), which already picked the right row for a
+            tag that has one index row per control system — re-resolving the tag here
+            could pick the other branch and show a range from the wrong system.
+            Currently 286 of 1,146 identifiable channels have one; valve ranges are
+            all empty in the DB today, but the shape is handled so it lights up if filled.
+   ALARMS — a channel is either the DEVICE (its alarms hang off alarmsByInst) or one
+            alarm CONTACT of a device (the channel's own tag IS the alarm_tag). Those
+            are different questions and mixing them up would list a device's whole
+            alarm set against one of its contacts. */
+function rangeOf(ref){
+  if(!ref) return "";
+  const r=String(ref.range!=null?ref.range:(ref.inst_range!=null?ref.inst_range:"")).trim();
+  const u=String(ref.units!=null?ref.units:(ref.range_unit!=null?ref.range_unit:"")).trim();
+  if(!r) return "";
+  return u?r+" "+u:r;
+}
+function alarmsOf(io){
+  const t=actionTag(io); if(!t) return [];
+  const own=IDX.alarmByTag.get(t);
+  if(own) return [own];                       // this channel IS an alarm contact
+  return IDX.alarmsByInst.get(t)||[];         // this channel is the device — list its alarms
+}
+function alarmChips(list){
+  if(!list.length) return `<span class="dim">—</span>`;
+  return list.map(a=>{
+    const at=(a.alarm_tag||"").trim();
+    const sp=String(a.set_point==null?"":a.set_point).trim();
+    return `<span class="chip ${sp?"warn":"dim"}" style="cursor:pointer;margin-right:3px"
+      onclick="event.stopPropagation();openAlarm('${esc(at)}')"
+      title="${esc(at)}${a.type?" · "+esc(a.type):""} · ${sp?"set point "+esc(sp):"NO SET POINT — see EI41"}">${esc(at)}</span>`;
+  }).join("");
+}
+
 function renderIOList(c){
-  const fArea=window._ioArea||"", fPanel=window._ioPanel||"", fSys=window._ioSys||"", fState=window._ioState||"";
+  const fArea=window._ioArea||"", fPanel=window._ioPanel||"", fSys=window._ioSys||"",
+        fState=window._ioState||"", fKind=window._ioKind||"";
 
   // Derive once per render, not once per sort comparison: xcheckRow() and verOf()
   // are index lookups, and dtView() calls col.get() O(n log n) times while sorting.
   // 1,354 rows × ~11 comparisons would be ~15k redundant reconciliations per click.
   const all=DB.io.map(r=>{
     const a=actionTag(r);   // "" when the row has no identity of its own (spare / untagged)
-    return Object.assign({}, r, {_t:rowTag(r), _a:a, _x:xcheckRow(r),
-                                 _v:a?verOf("plant_io_list",a):null, _spare:isSpare(r)});
+    const x=xcheckRow(r);
+    const alm=alarmsOf(r);
+    return Object.assign({}, r, {_t:rowTag(r), _a:a, _x:x, _spare:isSpare(r),
+      _v:a?verOf("plant_io_list",a):null,
+      _rng:rangeOf(x.ref),                                  // ref = the row xcheckRow checked against
+      _alm:alm, _almTxt:alm.map(z=>(z.alarm_tag||"").trim()).join(" "),
+      _k:ioKind(r), _fs:isFailsafe(r)});
   });
 
   const areas=[...new Set(DB.io.map(r=>r.unit).filter(Boolean))].sort();
   const panels=[...new Set(DB.io.filter(r=>!fArea||r.unit===fArea).map(r=>r.rio_panel).filter(Boolean))].sort();
+  // only offer these filter options if the plant actually has such rows
+  const fsAny=all.some(r=>r._fs), unkAny=all.some(r=>!r._k);
 
   let list=all;
   if(fArea)  list=list.filter(r=>r.unit===fArea);
   if(fPanel) list=list.filter(r=>(r.rio_panel||"")===fPanel);
   if(fSys)   list=list.filter(r=>(sysOf(r)||"PCS")===fSys);
+  if(fKind==="F-SAFE") list=list.filter(r=>r._fs);
+  else if(fKind==="?") list=list.filter(r=>!r._k);
+  else if(fKind) list=list.filter(r=>r._k===fKind);
   if(fState==="unverified") list=list.filter(r=>!r._v && !r._spare);
   else if(fState==="ok")     list=list.filter(r=>r._v&&r._v.result==="OK");
   else if(fState==="fail")   list=list.filter(r=>r._v&&r._v.result==="FAIL");
   else if(fState==="finding")list=list.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code));
   else if(fState==="spare")  list=list.filter(r=>r._spare);
 
-  const okN=all.filter(r=>r._v&&r._v.result==="OK").length;
-  const failN=all.filter(r=>r._v&&r._v.result==="FAIL").length;
-  const spareN=all.filter(r=>r._spare).length;
-  const findN=all.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code)).length;
-  const liveN=all.length-spareN;
+  /* EVERY card counts the FILTERED list, not the full set — the point of the cards is
+     to size whatever you just filtered to ("this panel has 16 AI, 3 spare"). `all` is
+     kept only for the "N of M shown" readout. */
+  const okN=list.filter(r=>r._v&&r._v.result==="OK").length;
+  const failN=list.filter(r=>r._v&&r._v.result==="FAIL").length;
+  const spareN=list.filter(r=>r._spare).length;
+  const findN=list.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code)).length;
+  const rngN=list.filter(r=>r._rng).length;
+  const almN=list.filter(r=>r._alm.length).length;
+  const liveN=list.length-spareN;
   const unvN=liveN-okN-failN;
   const pct=liveN?Math.round((okN+failN)/liveN*100):0;
+  const fsN=list.filter(r=>r._fs).length;
+  const unkN=list.filter(r=>!r._k).length;
+  // AI+AO+DI+DO already sums to the row count, so SPARE is a SUBSET of them, not a
+  // fifth bucket — the labels say so, because five cards that look additive but
+  // aren't is exactly how someone ends up double-counting a panel's capacity.
+  const kind=k=>list.filter(r=>r._k===k);
+  const kindCard=k=>{
+    const rows=kind(k), sp=rows.filter(r=>r._spare).length, lv=rows.length-sp;
+    return `<div class="fact" title="${k}: ${rows.length} channel(s) — ${lv} live · ${sp} spare${
+      k==="AI"||k==="AO"?"" : ` · ${rows.filter(r=>r._fs).length} fail-safe`}">
+      <div class="fbody"><div class="n">${rows.length}</div>
+      <div class="l">${k} · ${sp?`<span style="color:var(--blue)">${sp} spare</span>`:`<span style="color:var(--ok)">all live</span>`}</div></div></div>`;
+  };
 
   const sel=(id,val,opts,ph)=>`<select onchange="window.${id}=this.value;${id==="_ioArea"?"window._ioPanel='';":""}render()">
     <option value="">${ph}</option>${opts.map(o=>`<option value="${esc(o.v!=null?o.v:o)}" ${val===(o.v!=null?o.v:o)?"selected":""}>${esc(o.l!=null?o.l:o)}</option>`).join("")}</select>`;
@@ -1909,40 +2028,75 @@ function renderIOList(c){
   <p class="lead">Every IO channel in the plant, across all ${new Set(DB.io.map(r=>r.rio_panel)).size} panels. Filter it, sort it,
   export it — and verify a channel or raise a change request straight from the row. Actions here are identical to the
   station view (EI20); this is the same data, without the walk.</p>
+  <!-- what the channels ARE — AI+AO+DI+DO = the row count; SPARE is a subset of them -->
   <div class="facts">
-    <div class="fact"><div class="n">${all.length}</div><div class="l">IO CHANNELS</div></div>
-    <div class="fact"><div class="n" style="color:var(--ok)">${okN}</div><div class="l">VERIFIED OK</div></div>
-    <div class="fact"><div class="n" style="color:var(--fail)">${failN}</div><div class="l">FAILED</div></div>
-    <div class="fact"><div class="n" style="color:var(--amber)">${unvN}</div><div class="l">UNVERIFIED</div></div>
-    <div class="fact"><div class="n" style="color:var(--fail)">${findN}</div><div class="l">X-CHECK FINDINGS</div></div>
-    <div class="fact"><div class="n" style="color:var(--blue)">${spareN}</div><div class="l">SPARE (RESERVE)</div></div>
-    <div class="fact"><div class="n">${pct}%</div><div class="l">LIVE CH CHECKED</div></div>
+    <div class="fact" style="border-color:var(--crimson)" title="${list.length} channel(s) in the current filter, of ${all.length} in the plant">
+      <div class="fbody"><div class="n">${list.length}</div>
+      <div class="l">${list.length===all.length?"IO CHANNELS":`SHOWN <span class="dim">of ${all.length}</span>`}</div></div></div>
+    ${IO_KINDS.map(kindCard).join("")}
+    <div class="fact" title="Reserved / unused channels. Already counted inside AI/AO/DI/DO above — this is a subset, not a fifth bucket.">
+      <div class="fbody"><div class="n" style="color:var(--blue)">${spareN}</div>
+      <div class="l">SPARE <span class="dim">· of the above</span></div></div></div>
+    ${fsN?`<div class="fact" title="PROFIsafe fail-safe channels (ESD F-DI / F-DO) — emergency stops, fire &amp; gas beacons. Counted in DI/DO; this is their safety rating.">
+      <div class="fbody"><div class="n" style="color:var(--crimson)">${fsN}</div>
+      <div class="l">F-SAFE <span class="dim">· of the above</span></div></div></div>`:""}
+    ${unkN?`<div class="fact" title="Channel address in a vocabulary io_kind does not know — see SQL/042. Not counted in any card above.">
+      <div class="fbody"><div class="n" style="color:var(--amber)">${unkN}</div>
+      <div class="l">UNCLASSIFIED</div></div></div>`:""}
+  </div>
+  <!-- what STATE they are in -->
+  <div class="facts">
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--ok)">${okN}</div><div class="l">VERIFIED OK</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--fail)">${failN}</div><div class="l">FAILED</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--amber)">${unvN}</div><div class="l">UNVERIFIED <span class="dim">· live only</span></div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--fail)">${findN}</div><div class="l">X-CHECK FINDINGS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${rngN}</div><div class="l">WITH RANGE</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${almN}</div><div class="l">WITH ALARMS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${pct}%</div><div class="l">LIVE CH CHECKED</div></div></div>
   </div>
   <div class="toolrow">
     ${sel("_ioArea",fArea,areas,"ALL AREAS")}
     ${sel("_ioPanel",fPanel,panels,"ALL PANELS")}
     ${sel("_ioSys",fSys,["PCS","ESD"],"ALL SYSTEMS")}
+    ${sel("_ioKind",fKind,IO_KINDS.concat(fsAny?["F-SAFE"]:[]).concat(unkAny?["?"]:[]),"ALL IO TYPES")}
     ${sel("_ioState",fState,[{v:"unverified",l:"UNVERIFIED (live only)"},{v:"ok",l:"VERIFIED OK"},{v:"fail",l:"FAILED"},{v:"finding",l:"X-CHECK FINDINGS"},{v:"spare",l:"SPARE CHANNELS"}],"ALL STATES")}
-    ${(fArea||fPanel||fSys||fState)?`<button class="btn mini" onclick="ioClear()">Clear filters</button>`:""}
+    ${(fArea||fPanel||fSys||fState||fKind)?`<button class="btn mini" onclick="ioClear()">Clear filters</button>`:""}
     <span class="spacer"></span>
     <span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} of ${all.length} shown</span>
   </div>
   ${dataTable("iolist","IO","IO channels",[
-    {label:"AREA", get:r=>r.unit, cls:"mono dim"},
+    {label:"AREA", get:r=>r.unit, cls:"mono dim",
+      html:(r,v)=>v?`<span class="tag" title="${esc(areaName(v))} — open the area" onclick="event.stopPropagation();nav('area/${esc(v)}')">${esc(v)}</span>`:"—"},
     {label:"PANEL", get:r=>r.rio_panel, cls:"mono",
-      html:(r,v)=>v?`<span class="tag" onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`:"—"},
+      html:(r,v)=>v?`<span class="tag" title="Open station ${esc(v)}" onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`:"—"},
     {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
-    {label:"CH", get:r=>r.channel, cls:"mono"},
+    // CH is the address AS DRAWN (%EW0 on ESD sheets, AI.1 on PCS) — the number a
+    // technician looks for on the panel. KIND is the normalised direction, so the two
+    // vocabularies are readable side by side instead of one hiding the other.
+    {label:"CH", get:r=>r.channel, cls:"mono",
+      html:(r,v)=>`<span title="Address as drawn${r._k?" · "+r._k:""}">${nz(v,"—")}</span>`},
+    {label:"KIND", get:r=>r._k||"?", cls:"mono",
+      html:r=>r._k?`<span class="chip dim" title="${r._k}${r.channel?" · as drawn: "+esc(r.channel):""}">${r._k}</span>${
+        r._fs?` <span class="chip esd" title="PROFIsafe fail-safe channel (ESD ${esc(r.signal_type||"F-DI/F-DO")}) — emergency stop / fire &amp; gas. Digital I/O; this is its safety rating.">F-SAFE</span>`:""}`
+        :`<span class="chip warn" title="Channel vocabulary not recognised — see SQL/042">?</span>`},
     {label:"TAG", get:r=>r.tag, cls:"mono",
       html:(r,v)=>r._a?`<span class="tag" onclick="event.stopPropagation();openInst('${esc(r._a)}')">${esc(v)}</span>`
         :r._spare?`<span class="dim" title="Reserved / unused channel">spare</span>`
         :`<span class="dim" title="Channel has no tag in the IO list">(no tag)</span>`},
     {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
     {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
+    {label:"RANGE", get:r=>r._rng, cls:"mono", blank:"—",
+      html:(r,v)=>v?`<span class="tag" title="From the ${IDX.valveRows&&IDX.valveRows.has(r._x.ref)?"actuated-valve":"instrument"} index${r._x.parent?" (via parent "+esc(r._x.parent)+")":""} — open the card" onclick="event.stopPropagation();openInst('${esc((r._x.parent||r._a||"").trim())}')">${esc(v)}</span>`
+        :`<span class="dim" title="${r._a?"No range recorded in the instrument index for this tag":"No index row — nothing to take a range from"}">—</span>`},
+    {label:"ALARMS", get:r=>r._almTxt,   // no nowrap: a device with 4 alarms should wrap, not widen the table
+      html:r=>alarmChips(r._alm)},
     {label:"SYS", get:r=>sysOf(r)||"PCS", cls:"mono",
       html:r=>systemBadge(r)||`<span class="dim">PCS</span>`},
     {label:"X-CHECK", get:r=>r._x.txt,
-      html:r=>`<span class="chip ${r._x.cls}" title="${esc(r._x.detail||"")}">${r._x.txt}</span>`},
+      html:r=>{
+        const find=["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code);
+        return `<span class="chip ${r._x.cls}" ${find?`style="cursor:pointer" onclick="event.stopPropagation();nav('xcheck')"`:""} title="${esc(r._x.detail||"")}${find?" · click for the full cross-check report (EI40)":""}">${r._x.txt}</span>`;
+      }},
     {label:"VERIFY", get:r=>r._a?(r._v?r._v.result:"UNVERIFIED"):"—",
       html:r=>r._a?verChip("plant_io_list",r._a):`<span class="dim">—</span>`},
     {label:"", get:()=>"", cls:"nowrap",
@@ -1951,11 +2105,26 @@ function renderIOList(c){
         <button class="btn mini" onclick="event.stopPropagation();openCR('plant_io_list','${esc(r._a)}')" title="Raise a change request against this channel">CR</button>`
         :`<span class="dim" title="${r._spare?"A spare channel shares the tag &quot;SPARE&quot; with every other spare — it has no identity of its own to verify or raise a change request against":"This channel has no tag, so there is nothing to verify against"}">—</span>`}
   ], list, {sheet:"IO list"})}
-  <div class="note">Rows tinted yellow are <b>ESD</b> (contract E2023040) — they run in parallel with the PCS.
-  <b>SPARE</b> channels are reserved capacity, not a defect; they carry no tag, so they cannot be verified.
-  X-check findings are explained in <a href="#/xcheck" style="font-weight:700;color:var(--blue)">EI40</a>.</div>`;
+  <div class="note">Everything underlined is clickable: <b>AREA</b> → the area · <b>PANEL</b> → the station (EI20) ·
+  <b>TAG</b> / <b>RANGE</b> → the instrument card · <b>ALARMS</b> → the alarm card (EI30) · an <b>X-CHECK</b> finding → the
+  cross-check report (<a href="#/xcheck" style="font-weight:700;color:var(--blue)">EI40</a>).<br>
+  <b>RANGE</b> and <b>ALARMS</b> are not columns of <span class="mono">plant_io_list</span> — the IO list records the wiring,
+  the instrument index and alarm register record the engineering. Range is read from the same index row the cross-check
+  used for that channel (${rngN} of ${all.length} channels have one); a channel that is itself an alarm contact shows that
+  one alarm, a channel that is the device shows all of its alarms. An alarm chip is <span class="chip dim">grey</span> when
+  it has no set point — those are listed in <a href="#/setpoints" style="font-weight:700;color:var(--blue)">EI41</a>.<br>
+  Rows tinted yellow are <b>ESD</b> (contract E2023040) — they run in parallel with the PCS.
+  <b>SPARE</b> channels are reserved capacity, not a defect; they share the tag "SPARE", so they have no identity to verify.<br>
+  <b>The cards count what you filtered to</b>, so filter to a panel and they size that panel. AI+AO+DI+DO adds up to the
+  row count — <b>SPARE and F-SAFE are subsets of those</b>, not extra buckets, so don't add all five together.
+  <b>CH</b> is the address as drawn — PCS sheets say <span class="mono">AI.1</span>, ESD sheets say
+  <span class="mono">%EW0</span> (Siemens: input word = analog in, <span class="mono">%E0.0</span> input bit = DI,
+  <span class="mono">%A0.0</span> output bit = DO). <b>KIND</b> is that normalised to one vocabulary
+  (<span class="mono">io_kind</span>, SQL/042) so the two systems are countable together; the raw address stays so you can
+  still find the channel on the panel. <span class="chip esd">F-SAFE</span> marks the ${fsN||32} PROFIsafe channels —
+  emergency stops and fire &amp; gas — which are digital I/O with a safety rating.</div>`;
 }
-function ioClear(){ window._ioArea=window._ioPanel=window._ioSys=window._ioState=""; render(); }
+function ioClear(){ window._ioArea=window._ioPanel=window._ioSys=window._ioState=window._ioKind=""; render(); }
 window.ioClear=ioClear;
 
 function renderXcheck(c){
@@ -2017,19 +2186,28 @@ function renderXcheck(c){
    list it links to. Each is pure (reads DB, returns data, renders nothing). */
 
 /* Spare = reserved/unused capacity, NOT a finding. Lifted out of renderXcheck so
-   EI42 and EI40 cannot drift apart. */
+   EI42 and EI40 cannot drift apart.
+
+   The analog/digital split goes through ioKind(), NOT a /^A[IO]/ test on the channel.
+   That test was the original implementation and it was WRONG for the whole ESD system:
+   no ESD channel starts with AI/AO — they are Siemens addresses (%EW0 = analog input
+   word), so all 128 ESD analog channels fell into the digital bucket. The report said
+   10 analog / 170 digital; the truth is 41 / 139. See SQL/042. */
 function spareCapacity(){
   const byPanel=new Map();
   DB.io.forEach(r=>{ if(!isSpare(r)) return;
     const p=(r.rio_panel||"—").trim();
-    const isA=/^A[IO]/i.test((r.channel||""));
-    const e=byPanel.get(p)||{panel:p,unit:r.unit,total:0,analog:0,digital:0,rows:[]};
-    e.total++; if(isA) e.analog++; else e.digital++; if(!e.unit&&r.unit) e.unit=r.unit;
+    const k=ioKind(r);
+    const isA=(k==="AI"||k==="AO");
+    const e=byPanel.get(p)||{panel:p,unit:r.unit,total:0,analog:0,digital:0,unknown:0,rows:[]};
+    e.total++; if(isA) e.analog++; else if(k) e.digital++; else e.unknown++;
+    if(!e.unit&&r.unit) e.unit=r.unit;
     e.rows.push(r); byPanel.set(p,e); });
   const spares=[...byPanel.values()].sort((a,b)=>b.total-a.total||a.panel.localeCompare(b.panel));
   return {spares, spareTot:spares.reduce((n,s)=>n+s.total,0),
           analogTot:spares.reduce((n,s)=>n+s.analog,0),
-          digitalTot:spares.reduce((n,s)=>n+s.digital,0)};
+          digitalTot:spares.reduce((n,s)=>n+s.digital,0),
+          unknownTot:spares.reduce((n,s)=>n+s.unknown,0)};
 }
 
 /* The reconciliation itself, both directions. */
@@ -2131,10 +2309,11 @@ function renderSetpoints(c){
    cross-check report, where it read like one. Here it is what it actually is:
    an asset register of what is still available, sized per panel. */
 function renderSpares(c){
-  const {spares, spareTot, analogTot, digitalTot}=spareCapacity();
+  const {spares, spareTot, analogTot, digitalTot, unknownTot}=spareCapacity();
   const tot=DB.io.length;
   const panelsWith=spares.length, panelsAll=new Set(DB.io.map(r=>r.rio_panel).filter(Boolean)).size;
-  const chans=spares.flatMap(s=>s.rows.map(r=>Object.assign({},r,{_panelUnit:s.unit})));
+  const chans=spares.flatMap(s=>s.rows.map(r=>Object.assign({},r,{_panelUnit:s.unit,_k:ioKind(r)})));
+  const byKind=k=>chans.filter(r=>r._k===k).length;
   c.innerHTML=`
   <div class="kicker">TX EI42 <span class="sub">· DATA QUALITY CHECK · SPARE IO CAPACITY</span></div>
   <h1>Spare capacity per JB</h1>
@@ -2142,17 +2321,21 @@ function renderSpares(c){
   future tie-ins. A channel counts as spare when its tag is literally <span class="mono">SPARE</span> or it has no tag and
   its description starts with SPARE.</p>
   <div class="facts">
-    <div class="fact"><div class="n" style="color:var(--blue)">${spareTot}</div><div class="l">SPARE CHANNELS</div></div>
-    <div class="fact"><div class="n">${tot?Math.round(spareTot/tot*100):0}%</div><div class="l">OF ${tot} TOTAL</div></div>
-    <div class="fact"><div class="n" style="color:var(--blue)">${analogTot}</div><div class="l">ANALOG (AI/AO)</div></div>
-    <div class="fact"><div class="n" style="color:var(--blue)">${digitalTot}</div><div class="l">DIGITAL (DI/DO)</div></div>
-    <div class="fact"><div class="n">${panelsWith}/${panelsAll}</div><div class="l">PANELS WITH SPARES</div></div>
+    <div class="fact" style="border-color:var(--crimson)"><div class="fbody"><div class="n" style="color:var(--blue)">${spareTot}</div><div class="l">SPARE CHANNELS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${tot?Math.round(spareTot/tot*100):0}%</div><div class="l">OF ${tot} TOTAL</div></div></div>
+    ${IO_KINDS.map(k=>`<div class="fact"><div class="fbody"><div class="n" style="color:var(--blue)">${byKind(k)}</div><div class="l">${k} SPARE</div></div></div>`).join("")}
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--blue)">${analogTot}</div><div class="l">ANALOG <span class="dim">AI+AO</span></div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:var(--blue)">${digitalTot}</div><div class="l">DIGITAL <span class="dim">DI+DO</span></div></div></div>
+    ${unknownTot?`<div class="fact"><div class="fbody"><div class="n" style="color:var(--amber)">${unknownTot}</div><div class="l">UNCLASSIFIED</div></div></div>`:""}
+    <div class="fact"><div class="fbody"><div class="n">${panelsWith}/${panelsAll}</div><div class="l">PANELS WITH SPARES</div></div></div>
   </div>
   ${spares.length?dataTable("sparesum","ST","Spare capacity by panel",[
     {label:"PANEL / JB", get:r=>r.panel, cls:"mono",
       html:(r,v)=>`<span class="tag" onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`},
     {label:"AREA", get:r=>r.unit, cls:"mono dim"},
     {label:"SPARE CH", get:r=>r.total, num:true, r:true, cls:"mono"},
+    ...IO_KINDS.map(k=>({label:k, num:true, r:true, cls:"mono dim",
+      get:r=>r.rows.filter(x=>ioKind(x)===k).length, blank:""})),
     {label:"ANALOG", get:r=>r.analog, num:true, r:true, cls:"mono dim"},
     {label:"DIGITAL", get:r=>r.digital, num:true, r:true, cls:"mono dim"}
   ], spares, {sort:2, dir:-1, sheet:"Spare capacity by panel"})
@@ -2163,14 +2346,19 @@ function renderSpares(c){
     {label:"AREA", get:r=>r.unit||r._panelUnit, cls:"mono dim"},
     {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
     {label:"CH", get:r=>r.channel, cls:"mono"},
-    {label:"KIND", get:r=>/^A[IO]/i.test(r.channel||"")?"ANALOG":"DIGITAL",
-      html:(r,v)=>`<span class="chip dim">${v}</span>`},
+    {label:"KIND", get:r=>r._k||"?",   // ioKind, not a channel-prefix guess — see spareCapacity()
+      html:(r,v)=>`<span class="chip ${r._k?"dim":"warn"}" title="${r._k?esc(r._k)+" · channel as drawn: "+esc(r.channel||""):"Channel vocabulary not recognised — see SQL/042"}">${esc(v)}</span>`},
     {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
     {label:"SIGNAL", get:r=>r.signal_type, cls:"mono dim"},
     {label:"SYS", get:r=>sysOf(r)||"PCS", html:r=>systemBadge(r)||`<span class="dim">PCS</span>`}
   ], chans, {collapsed:true, sheet:"Spare channels"}):""}
   <div class="note">The detail list is collapsed by default — expand it with ▸ to see which physical slots are free on a
-  given panel before committing a tie-in.</div>`;
+  given panel before committing a tie-in.<br>
+  <b>The analog/digital split was wrong until 2026-07-16</b> and is worth re-reading if you sized anything from it:
+  it tested the channel name for an <span class="mono">AI/AO</span> prefix, which no ESD channel has — ESD uses Siemens
+  addresses (<span class="mono">%EW0</span> = analog input word), so all ESD analog spares were counted as digital.
+  It reported 10 analog / 170 digital; the truth is ${analogTot} / ${digitalTot}. Direction now comes from
+  <span class="mono">io_kind</span> (SQL/042), which speaks both vocabularies.</div>`;
 }
 
 /* ══ EI43 — UNATTRIBUTED RECORDS ═══════════════════════════════════════════════
@@ -2187,8 +2375,16 @@ function renderUnattributed(c){
     {label:"WHEN", get:r=>(r.at||"").slice(0,16).replace("T"," "), cls:"mono dim"},
     {label:"ACTIVITY", get:r=>r.activity, cls:"mono",
       html:(r,v)=>`<span class="chip ${v==="change_request"?"info":v==="review"?"warn":v==="verification"?"ok":"dim"}">${esc(String(v).replace(/_/g," ").toUpperCase())}</span>`},
+    // Only tag-shaped objects open a card. A doc_revision's object_tag is a numeric
+    // document id, not a tag — openInst('12') would just error at the user.
     {label:"OBJECT", get:r=>r.object_tag, cls:"mono",
-      html:(r,v)=>v?`<span class="tag" onclick="event.stopPropagation();openInst('${esc(String(v).trim())}')">${esc(v)}</span>`:"—"},
+      html:(r,v)=>{
+        if(!v) return "—";
+        const t=String(v).trim();
+        const openable=["plant_io_list","plant_instruments","plant_valves","plant_alarms"].includes(r.object_table);
+        return openable?`<span class="tag" onclick="event.stopPropagation();openInst('${esc(t)}')">${esc(t)}</span>`
+          :`<span class="dim" title="${esc(r.object_table||"")} — not an instrument tag">${esc(t)}</span>`;
+      }},
     {label:"TABLE", get:r=>r.object_table, cls:"mono dim"},
     {label:"DETAIL", get:r=>r.detail, cls:"dim"},
     {label:"WRITTEN BY", get:r=>r.user_name||"(nobody)",
