@@ -747,6 +747,17 @@ function buildIndexes(){
   DB.io.forEach(r=>{ if(r.tag){ const t=r.tag.trim(); if(!IDX.ioByTag.has(t)) IDX.ioByTag.set(t,[]); IDX.ioByTag.get(t).push(r);} });
   DB.alarms.forEach(a=>{ const k=(a.instrument_tag||"").trim(); if(!k) return;
     if(!IDX.alarmsByInst.has(k)) IDX.alarmsByInst.set(k,[]); IDX.alarmsByInst.get(k).push(a); });
+  // Reverse of alarmsByInst: alarm_tag → parent instrument tag.
+  // Needed because the IO list is NOT always 1:1 with the index. A two-stage device is drawn as
+  // several channels under ITS OWN alarm tags, never under the instrument tag: the 6 SD-480-*
+  // smoke detectors are 12 DI (SD480S435PrAlm / …Alm per room — migration 036). Those channels
+  // are deliberately left as-drawn rather than renamed to the instrument tag, because two
+  // channels sharing one tag would break the one-row-per-tag assumption in refsByTag above.
+  // So the alarm register is what carries channel → device here, and both directions of the
+  // cross-check have to go through it or they invent findings that are not real.
+  IDX.instByAlarmTag = new Map();
+  DB.alarms.forEach(a=>{ const at=(a.alarm_tag||"").trim(), it=(a.instrument_tag||"").trim();
+    if(at && it && at!==it) IDX.instByAlarmTag.set(at, it); });
   DB.jb.forEach(j=>IDX.jbByTag.set((j.jb_tag||"").trim(), j));
   // stations = distinct rio_panel in IO list
   DB.io.forEach(r=>{
@@ -1056,7 +1067,19 @@ function isSpare(io){
 function xcheckRow(io){
   if(isSpare(io)) return {code:"SPARE", cls:"dim", txt:"SPARE"};
   const t=(io.tag||"").trim(); if(!t) return {code:"NOTAG", cls:"dim", txt:"NO TAG"};
-  const all=IDX.refsByTag.get(t)||[];
+  let all=IDX.refsByTag.get(t)||[];
+  // Not every channel is drawn under its device's tag. A multi-stage device is drawn as one
+  // channel per alarm contact (SD480S435PrAlm + SD480S435Alm = the two stages of SD-480-S435),
+  // so the raw tag is absent from the index and the channel looks MISSING when it is not.
+  // Fall back to the alarm register, which holds alarm_tag → instrument_tag. This resolves the
+  // channel to its PARENT device and then checks that parent normally — JB and signal family
+  // included — so a genuinely mis-wired contact is still caught.
+  let viaAlarm=null;
+  if(!all.length){
+    const parent=IDX.instByAlarmTag.get(t);
+    const prefs=parent?(IDX.refsByTag.get(parent)||[]):[];
+    if(prefs.length){ all=prefs; viaAlarm=parent; }
+  }
   if(!all.length) return {code:"MISSING", cls:"fail", txt:"NOT IN INDEX"};
   const panel=(io.rio_panel||"").trim();
   // A tag may hold one index row per control system (see refsByTag above). Check this
@@ -1066,11 +1089,24 @@ function xcheckRow(io){
   const sysOk=r=>r.system && io.system && r.system===io.system;
   const ref = all.find(r=>sysOk(r)&&jbOk(r)) || all.find(jbOk) || all.find(sysOk) || all[0];
   const inst = !IDX.valveRows.has(ref);
+  // An alarm contact of a BUS device is the one case where the parent's row says nothing about
+  // this channel. AT-3101/3301/3571 are modbus analysers whose PSD trip (AAHH-*) is a separate
+  // hardwired DI: the index row records the analyser's modbus link — its junction_box is the bus
+  // box and its signal_type is "modbus". Checking a volt-free contact against either compares two
+  // different things and manufactures findings (DI vs BUS "signal mismatch"; the contact's ESD box
+  // vs the analyser's PCS box "JB mismatch"). The contact's own JB is not recorded in the index,
+  // so there is nothing here to disagree with. Non-bus parents — e.g. the SD-480-* smoke
+  // detectors, whose two contacts land in the same box as the detector — are checked normally.
+  if(viaAlarm && isBusDevice(ref))
+    return {code:"OKALM", cls:"ok", txt:"MATCH (ALARM)", src:"ALARM",
+      detail:`hardwired alarm contact of bus device ${viaAlarm} — its index row records the ${nz(ref.signal_type,"bus")} link, so JB/signal are not comparable at contact level`};
   const jb=(ref.junction_box||"").trim();
   if(jb && panel && canonJB(jb)!==canonJB(panel))
     return {code:"JBDIFF", cls:"warn", txt:"JB MISMATCH", detail:`instrument index says JB ${jb} — IO list wires it to ${panel}`};
   const f1=sigFamily(io.signal_type), f2=sigFamily(ref.signal_type);
   if(f1&&f2&&f1!==f2) return {code:"SIGDIFF", cls:"warn", txt:"SIGNAL≠", detail:`index ${ref.signal_type}`};
+  if(viaAlarm) return {code:"OKALM", cls:"ok", txt:"MATCH (ALARM)", src:"ALARM",
+    detail:`channel is one alarm contact of ${viaAlarm} — see the alarm register`};
   return {code:"OK", cls:"ok", txt:"MATCH", src:inst?"INST":"VALVE"};
 }
 
@@ -1735,8 +1771,13 @@ function renderXcheck(c){
   // reverse: instruments with a JB assignment but no IO channel (excluding
   // bus/serial devices, which never get a discrete IO channel by design)
   let reverse=[], busExcluded=0;
-  IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
-  IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !IDX.ioByTag.has(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
+  // A device whose channels are drawn under its alarm tags (see instByAlarmTag / xcheckRow) has
+  // no IO row under its own tag — it IS wired, via its contacts. Without this it reports as
+  // "indexed but never wired", which is the same false finding as the forward direction.
+  const hasIO=t=>IDX.ioByTag.has(t) ||
+    (IDX.alarmsByInst.get(t)||[]).some(a=>IDX.ioByTag.has((a.alarm_tag||"").trim()));
+  IDX.instByTag.forEach((r,t)=>{ if(r.junction_box && !hasIO(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
+  IDX.valveByTag.forEach((r,t)=>{ if(r.junction_box && !hasIO(t)){ if(isBusDevice(r)) busExcluded++; else reverse.push(r); } });
   const totF=findings.length, totR=reverse.length;
   // SPARE capacity per JB — reserved/unused channels are counted, not flagged.
   const spareByPanel=new Map();
