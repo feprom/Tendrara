@@ -199,11 +199,12 @@
   #dt-crs .cw-reason{width:auto;}
   #dt-crs .cw-by{width:92px;}
   #dt-crs .cw-status{width:96px;}
-  /* ── EI25 IO list: 1,354 rows, so keep the action column intact and let the
-     description absorb the slack instead of every column stretching ── */
-  #dt-iolist .dtbody{max-height:72vh;}   /* taller than the 460px default: this is a working list, but keep the sticky header + scroll */
-  #dt-iolist td.nowrap, #dt-iolist th.nowrap{white-space:nowrap;}
-  #dt-iolist td.nowrap button.btn.mini{margin-right:3px;}
+  /* ── IO list (EI25 master + EI20 per-panel, same standard table): 1,354 rows, so
+     keep the action column intact and let the description absorb the slack instead
+     of every column stretching ── */
+  #dt-iolist .dtbody, #dt-st-io .dtbody{max-height:72vh;}   /* taller than the 460px default: this is a working list, but keep the sticky header + scroll */
+  #dt-iolist td.nowrap, #dt-iolist th.nowrap, #dt-st-io td.nowrap, #dt-st-io th.nowrap{white-space:nowrap;}
+  #dt-iolist td.nowrap button.btn.mini, #dt-st-io td.nowrap button.btn.mini{margin-right:3px;}
   /* clamped cells — click to expand in place */
   .clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;position:relative;}
   .clamp:hover{background:var(--bg-soft);}
@@ -1748,34 +1749,14 @@ function renderStation(c, panel){
   const s=IDX.stations.get(panel);
   if(!s){ c.innerHTML=`<div class="empty">Station ${esc(panel)} not found.</div>`; return; }
   const jb=s.jb;
-  const rows=[...s.rows].sort((a,b)=>String(a.slot).localeCompare(String(b.slot),undefined,{numeric:true})||(a.ch_num||0)-(b.ch_num||0));
-  const filter=(window._ioFilter||"").toLowerCase();
-  const shown=rows.filter(r=>!filter || JSON.stringify(r).toLowerCase().includes(filter));
-  const body=shown.map(r=>{
-    // Identity, not just the tag — see actionTag(). A spare's tag is the literal
-    // "SPARE" on every panel, so verifying one used to upsert onto a single shared
-    // row and stamp every other spare channel in the plant with that result.
-    const a=actionTag(r);
-    const x=xcheckRow(r);
-    return `<tr class="${isESD(r)?"esd-row":""}">
-      <td class="mono dim">${nz(r.slot)}</td>
-      <td class="mono">${nz(r.channel)}</td>
-      <td class="${a?"tag":"mono"}" ${a?`onclick="openInst('${esc(a)}')"`:""}>${a?esc(r.tag):`<span class="dim">${isSpare(r)?"spare":"(no tag)"}</span>`}</td>
-      <td class="dim">${nz(r.description)}</td>
-      <td class="mono">${nz(r.signal_type)}</td>
-      <td class="mono dim">${nz(r.brand,"")}</td>
-      <td><span class="chip ${x.cls}" title="${esc(x.detail||"")}">${x.txt}</span></td>
-      <td>${a?verChip("plant_io_list",a):`<span class="dim">—</span>`}</td>
-      <td style="white-space:nowrap">
-        ${a?`<button class="btn mini ok" onclick="setVerify('plant_io_list','${esc(a)}','OK','${esc(panel)}')">OK</button>
-        <button class="btn mini fail" onclick="setVerify('plant_io_list','${esc(a)}','FAIL','${esc(panel)}')">FAIL</button>`
-        :`<span class="dim" title="${isSpare(r)?"A spare shares the tag &quot;SPARE&quot; with every other spare — no identity of its own to verify":"No tag on this channel"}">—</span>`}
-      </td></tr>`;
-  }).join("");
-  const okN=rows.filter(r=>{const a=actionTag(r); const v=a&&verOf("plant_io_list",a); return v&&v.result==="OK";}).length;
-  const failN=rows.filter(r=>{const a=actionTag(r); const v=a&&verOf("plant_io_list",a); return v&&v.result==="FAIL";}).length;
-  const mism=rows.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(xcheckRow(r).code)).length;
-  const spareN=rows.filter(isSpare).length;
+  // ONE IO-list format: the panel table is the SAME derived rows + column set as the
+  // master IO list (EI25) — see ioDeriveRows()/ioCols(). It reads and exports exactly
+  // like EI25 filtered to this panel, instead of a second, diverging layout.
+  const rows=ioDeriveRows([...s.rows].sort((a,b)=>String(a.slot).localeCompare(String(b.slot),undefined,{numeric:true})||(a.ch_num||0)-(b.ch_num||0)));
+  const okN=rows.filter(r=>r._v&&r._v.result==="OK").length;
+  const failN=rows.filter(r=>r._v&&r._v.result==="FAIL").length;
+  const mism=rows.filter(r=>["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code)).length;
+  const spareN=rows.filter(r=>r._spare).length;
   c.innerHTML=`
   <div class="kicker">TX EI20 <span class="sub">· STATION / IO LIST · AREA ${esc(s.unit)}</span></div>
   <h1>${esc(panel)} ${systemBadge(s)}</h1>
@@ -1817,29 +1798,15 @@ function renderStation(c, panel){
     <div class="fact"><div class="n" style="color:var(--blue)">${spareN}</div><div class="l">SPARE CHANNELS</div></div>
   </div>
   <h2>IO list</h2>
-  <div class="toolrow">
-    <input id="ioFilter" placeholder="⌕ filter rows" value="${esc(window._ioFilter||"")}" oninput="window._ioFilter=this.value;render()">
-    <span class="spacer"></span>
-    <button class="btn" onclick="exportCSV('${esc(panel)}')">Export CSV</button>
-  </div>
-  <table class="data"><thead><tr><th>SLOT</th><th>CH</th><th>TAG</th><th>DESCRIPTION</th><th>SIGNAL</th><th>BRAND</th>
-  <th>X-CHECK</th><th>STATUS</th><th>VERIFY</th></tr></thead><tbody>${body}</tbody></table>
-  <div class="note">X-CHECK compares each channel tag against <span class="mono">plant_instruments</span> /
+  ${dataTable("st-io","IO","IO channels — "+panel, ioCols(), rows, {sheet:"IO "+panel})}
+  <div class="note">Same table as the master IO list (<a href="#/iolist" style="font-weight:700;color:var(--blue)">EI25</a>),
+  filtered to this panel — one standard format everywhere. Everything underlined is clickable: <b>TAG</b> / <b>RANGE</b> →
+  the instrument card · <b>ALARMS</b> → the alarm card (EI30) · an <b>X-CHECK</b> finding → the cross-check report (EI40).
+  X-CHECK compares each channel tag against <span class="mono">plant_instruments</span> /
   <span class="mono">plant_valves</span> (tag existence, JB assignment, signal type). Verifications are stored
-  live in <span class="mono">plant_verifications</span> — one status per tag, shared by the whole team.</div>`;
-  const f=$("#ioFilter"); if(f){ f.focus(); f.setSelectionRange(f.value.length,f.value.length); }
+  live in <span class="mono">plant_verifications</span> — one status per tag, shared by the whole team.
+  Filter and <b>⭳ Excel</b> export live in the table header.</div>`;
 }
-
-function exportCSV(panel){
-  const s=IDX.stations.get(panel); if(!s) return;
-  const cols=["rio_panel","slot","channel","tag","description","signal_type","brand","unit"];
-  const lines=[cols.join(",")].concat(s.rows.map(r=>cols.map(c=>`"${String(r[c]??"").replace(/"/g,'""')}"`).join(",")));
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([lines.join("\n")],{type:"text/csv"}));
-  a.download=panel.replace(/[^\w-]+/g,"_")+"_iolist.csv"; a.click();
-  status("✓ CSV exported for "+panel,"ok");
-}
-window.exportCSV=exportCSV;
 
 function renderAlarms(c){
   const f=(window._almFilter||"").toLowerCase();
@@ -1962,14 +1929,17 @@ function alarmChips(list){
   }).join("");
 }
 
-function renderIOList(c){
-  const fArea=window._ioArea||"", fPanel=window._ioPanel||"", fSys=window._ioSys||"",
-        fState=window._ioState||"", fKind=window._ioKind||"";
+/* ── ONE IO-list format ───────────────────────────────────────────────────────
+   ioDeriveRows() + ioCols() ARE the IO-list table. The master list (EI25) and
+   every per-panel station view (EI20) push the same derived rows through the
+   same column set, so an IO list reads — and exports — identically everywhere.
+   Add a column here and every view gets it; do NOT fork a second format.
 
-  // Derive once per render, not once per sort comparison: xcheckRow() and verOf()
-  // are index lookups, and dtView() calls col.get() O(n log n) times while sorting.
-  // 1,354 rows × ~11 comparisons would be ~15k redundant reconciliations per click.
-  const all=DB.io.map(r=>{
+   Derive once per render, not once per sort comparison: xcheckRow() and verOf()
+   are index lookups, and dtView() calls col.get() O(n log n) times while sorting.
+   1,354 rows × ~11 comparisons would be ~15k redundant reconciliations per click. */
+function ioDeriveRows(rows){
+  return rows.map(r=>{
     const a=actionTag(r);   // "" when the row has no identity of its own (spare / untagged)
     const x=xcheckRow(r);
     const alm=alarmsOf(r);
@@ -1979,6 +1949,56 @@ function renderIOList(c){
       _alm:alm, _almTxt:alm.map(z=>(z.alarm_tag||"").trim()).join(" "),
       _k:ioKind(r), _fs:isFailsafe(r)});
   });
+}
+function ioCols(){
+  return [
+    {label:"AREA", get:r=>r.unit, cls:"mono dim",
+      html:(r,v)=>v?`<span class="tag" title="${esc(areaName(v))} — open the area" onclick="event.stopPropagation();nav('area/${esc(v)}')">${esc(v)}</span>`:"—"},
+    {label:"PANEL", get:r=>r.rio_panel, cls:"mono",
+      html:(r,v)=>v?`<span class="tag" title="Open station ${esc(v)}" onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`:"—"},
+    {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
+    // CH is the address AS DRAWN (%EW0 on ESD sheets, AI.1 on PCS) — the number a
+    // technician looks for on the panel. KIND is the normalised direction, so the two
+    // vocabularies are readable side by side instead of one hiding the other.
+    {label:"CH", get:r=>r.channel, cls:"mono",
+      html:(r,v)=>`<span title="Address as drawn${r._k?" · "+r._k:""}">${nz(v,"—")}</span>`},
+    {label:"KIND", get:r=>r._k||"?", cls:"mono",
+      html:r=>r._k?`<span class="chip dim" title="${r._k}${r.channel?" · as drawn: "+esc(r.channel):""}">${r._k}</span>${
+        r._fs?` <span class="chip esd" title="PROFIsafe fail-safe channel (ESD ${esc(r.signal_type||"F-DI/F-DO")}) — emergency stop / fire &amp; gas. Digital I/O; this is its safety rating.">F-SAFE</span>`:""}`
+        :`<span class="chip warn" title="Channel vocabulary not recognised — see SQL/042">?</span>`},
+    {label:"TAG", get:r=>r.tag, cls:"mono",
+      html:(r,v)=>r._a?`<span class="tag" onclick="event.stopPropagation();openInst('${esc(r._a)}')">${esc(v)}</span>`
+        :r._spare?`<span class="dim" title="Reserved / unused channel">spare</span>`
+        :`<span class="dim" title="Channel has no tag in the IO list">(no tag)</span>`},
+    {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
+    {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
+    {label:"RANGE", get:r=>r._rng, cls:"mono", blank:"—",
+      html:(r,v)=>v?`<span class="tag" title="From the ${IDX.valveRows&&IDX.valveRows.has(r._x.ref)?"actuated-valve":"instrument"} index${r._x.parent?" (via parent "+esc(r._x.parent)+")":""} — open the card" onclick="event.stopPropagation();openInst('${esc((r._x.parent||r._a||"").trim())}')">${esc(v)}</span>`
+        :`<span class="dim" title="${r._a?"No range recorded in the instrument index for this tag":"No index row — nothing to take a range from"}">—</span>`},
+    {label:"ALARMS", get:r=>r._almTxt,   // no nowrap: a device with 4 alarms should wrap, not widen the table
+      html:r=>alarmChips(r._alm)},
+    {label:"SYS", get:r=>sysOf(r)||"PCS", cls:"mono",
+      html:r=>systemBadge(r)||`<span class="dim">PCS</span>`},
+    {label:"X-CHECK", get:r=>r._x.txt,
+      html:r=>{
+        const find=["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code);
+        return `<span class="chip ${r._x.cls}" ${find?`style="cursor:pointer" onclick="event.stopPropagation();nav('xcheck')"`:""} title="${esc(r._x.detail||"")}${find?" · click for the full cross-check report (EI40)":""}">${r._x.txt}</span>`;
+      }},
+    {label:"VERIFY", get:r=>r._a?(r._v?r._v.result:"UNVERIFIED"):"—",
+      html:r=>r._a?verChip("plant_io_list",r._a):`<span class="dim">—</span>`},
+    {label:"", get:()=>"", cls:"nowrap",
+      html:r=>r._a?`<button class="btn mini ok" onclick="event.stopPropagation();setVerify('plant_io_list','${esc(r._a)}','OK','${esc(r.rio_panel||"")}')">OK</button>
+        <button class="btn mini fail" onclick="event.stopPropagation();setVerify('plant_io_list','${esc(r._a)}','FAIL','${esc(r.rio_panel||"")}')">FAIL</button>
+        <button class="btn mini" onclick="event.stopPropagation();openCR('plant_io_list','${esc(r._a)}')" title="Raise a change request against this channel">CR</button>`
+        :`<span class="dim" title="${r._spare?"A spare channel shares the tag &quot;SPARE&quot; with every other spare — it has no identity of its own to verify or raise a change request against":"This channel has no tag, so there is nothing to verify against"}">—</span>`}
+  ];
+}
+
+function renderIOList(c){
+  const fArea=window._ioArea||"", fPanel=window._ioPanel||"", fSys=window._ioSys||"",
+        fState=window._ioState||"", fKind=window._ioKind||"";
+
+  const all=ioDeriveRows(DB.io);
 
   const areas=[...new Set(DB.io.map(r=>r.unit).filter(Boolean))].sort();
   const panels=[...new Set(DB.io.filter(r=>!fArea||r.unit===fArea).map(r=>r.rio_panel).filter(Boolean))].sort();
@@ -2069,47 +2089,7 @@ function renderIOList(c){
     <span class="spacer"></span>
     <span class="mono" style="font-size:11px;color:var(--ink-soft)">${list.length} of ${all.length} shown</span>
   </div>
-  ${dataTable("iolist","IO","IO channels",[
-    {label:"AREA", get:r=>r.unit, cls:"mono dim",
-      html:(r,v)=>v?`<span class="tag" title="${esc(areaName(v))} — open the area" onclick="event.stopPropagation();nav('area/${esc(v)}')">${esc(v)}</span>`:"—"},
-    {label:"PANEL", get:r=>r.rio_panel, cls:"mono",
-      html:(r,v)=>v?`<span class="tag" title="Open station ${esc(v)}" onclick="event.stopPropagation();nav('station/'+encodeURIComponent('${esc(v)}'))">${esc(v)}</span>`:"—"},
-    {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
-    // CH is the address AS DRAWN (%EW0 on ESD sheets, AI.1 on PCS) — the number a
-    // technician looks for on the panel. KIND is the normalised direction, so the two
-    // vocabularies are readable side by side instead of one hiding the other.
-    {label:"CH", get:r=>r.channel, cls:"mono",
-      html:(r,v)=>`<span title="Address as drawn${r._k?" · "+r._k:""}">${nz(v,"—")}</span>`},
-    {label:"KIND", get:r=>r._k||"?", cls:"mono",
-      html:r=>r._k?`<span class="chip dim" title="${r._k}${r.channel?" · as drawn: "+esc(r.channel):""}">${r._k}</span>${
-        r._fs?` <span class="chip esd" title="PROFIsafe fail-safe channel (ESD ${esc(r.signal_type||"F-DI/F-DO")}) — emergency stop / fire &amp; gas. Digital I/O; this is its safety rating.">F-SAFE</span>`:""}`
-        :`<span class="chip warn" title="Channel vocabulary not recognised — see SQL/042">?</span>`},
-    {label:"TAG", get:r=>r.tag, cls:"mono",
-      html:(r,v)=>r._a?`<span class="tag" onclick="event.stopPropagation();openInst('${esc(r._a)}')">${esc(v)}</span>`
-        :r._spare?`<span class="dim" title="Reserved / unused channel">spare</span>`
-        :`<span class="dim" title="Channel has no tag in the IO list">(no tag)</span>`},
-    {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
-    {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
-    {label:"RANGE", get:r=>r._rng, cls:"mono", blank:"—",
-      html:(r,v)=>v?`<span class="tag" title="From the ${IDX.valveRows&&IDX.valveRows.has(r._x.ref)?"actuated-valve":"instrument"} index${r._x.parent?" (via parent "+esc(r._x.parent)+")":""} — open the card" onclick="event.stopPropagation();openInst('${esc((r._x.parent||r._a||"").trim())}')">${esc(v)}</span>`
-        :`<span class="dim" title="${r._a?"No range recorded in the instrument index for this tag":"No index row — nothing to take a range from"}">—</span>`},
-    {label:"ALARMS", get:r=>r._almTxt,   // no nowrap: a device with 4 alarms should wrap, not widen the table
-      html:r=>alarmChips(r._alm)},
-    {label:"SYS", get:r=>sysOf(r)||"PCS", cls:"mono",
-      html:r=>systemBadge(r)||`<span class="dim">PCS</span>`},
-    {label:"X-CHECK", get:r=>r._x.txt,
-      html:r=>{
-        const find=["MISSING","JBDIFF","SIGDIFF"].includes(r._x.code);
-        return `<span class="chip ${r._x.cls}" ${find?`style="cursor:pointer" onclick="event.stopPropagation();nav('xcheck')"`:""} title="${esc(r._x.detail||"")}${find?" · click for the full cross-check report (EI40)":""}">${r._x.txt}</span>`;
-      }},
-    {label:"VERIFY", get:r=>r._a?(r._v?r._v.result:"UNVERIFIED"):"—",
-      html:r=>r._a?verChip("plant_io_list",r._a):`<span class="dim">—</span>`},
-    {label:"", get:()=>"", cls:"nowrap",
-      html:r=>r._a?`<button class="btn mini ok" onclick="event.stopPropagation();setVerify('plant_io_list','${esc(r._a)}','OK','${esc(r.rio_panel||"")}')">OK</button>
-        <button class="btn mini fail" onclick="event.stopPropagation();setVerify('plant_io_list','${esc(r._a)}','FAIL','${esc(r.rio_panel||"")}')">FAIL</button>
-        <button class="btn mini" onclick="event.stopPropagation();openCR('plant_io_list','${esc(r._a)}')" title="Raise a change request against this channel">CR</button>`
-        :`<span class="dim" title="${r._spare?"A spare channel shares the tag &quot;SPARE&quot; with every other spare — it has no identity of its own to verify or raise a change request against":"This channel has no tag, so there is nothing to verify against"}">—</span>`}
-  ], list, {sheet:"IO list"})}
+  ${dataTable("iolist","IO","IO channels", ioCols(), list, {sheet:"IO list"})}
   <div class="note">Everything underlined is clickable: <b>AREA</b> → the area · <b>PANEL</b> → the station (EI20) ·
   <b>TAG</b> / <b>RANGE</b> → the instrument card · <b>ALARMS</b> → the alarm card (EI30) · an <b>X-CHECK</b> finding → the
   cross-check report (<a href="#/xcheck" style="font-weight:700;color:var(--blue)">EI40</a>).<br>
