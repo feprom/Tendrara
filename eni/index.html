@@ -2828,14 +2828,19 @@ window.openInst=openInst; window.closeInst=closeInst;
 /* ── ITF instrument datasheet on the card ──────────────────────────────────────
    plant_instrument_datasheets / _fields (migration 025) hold the ITF
    datasheets (ISD02-ING-FR01 = PTs, matrix form; ISD02-ING-FR02 = control
-   valves, one-sheet-per-tag form; more families to come — see the
-   `instrument-datasheets` skill). Fetched per tag on demand via
+   valves, one-sheet-per-tag form; ISD02-ING-FR06 = LTs and ISD02-ING-FR03 =
+   self-regulating PCV/PDCV, both PDF-only matrix forms; more families to
+   come — see the `instrument-datasheets` skill). Fetched per tag on demand via
    v_instrument_datasheet; fields render in the FORM's own row order (seq),
    grouped into sections, so every datasheet reads the same way regardless of
    instrument family. Sections not listed in DSH_SECTIONS still render, after
    the known ones. Content is VERBATIM — `VTA` and source typos included:
    a mismatch with the index is a finding to raise as a CR, never to edit away. */
-const DSH_SECTIONS=["IDENTIFICATION","PROCESS","PIPE","BODY","BONNET","TRIM","ACTUATOR","POSITIONER","SOV","SWITCH","ACCESSORIES","MISC","CONSTRUCTION","SIGNAL","CALIBRATION","PROCUREMENT","NOTES","GENERAL"];
+/* 'ACCESORIES' (one S) is NOT a typo here — it is the FR03 form's own spelling,
+   kept verbatim in the data; FR03 also uses GENERAL as its FIRST form block
+   (identification), which renders last per this order — the card header already
+   carries that info. */
+const DSH_SECTIONS=["IDENTIFICATION","PROCESS","PIPE","BODY","BONNET","TRIM","ACTUATOR","ACTUATOR / PILOT","POSITIONER","SOV","SWITCH","ACCESSORIES","ACCESORIES","MISC","SERVICE","CONSTRUCTION","SIGNAL","CALIBRATION","PROCUREMENT","NOTES","GENERAL"];
 async function renderInstDatasheet(tag){
   const el=document.getElementById("instDshBox"); if(!el) return;
   let data,error;
@@ -2860,7 +2865,7 @@ async function renderInstDatasheet(tag){
     // hide the tag row only when it merely duplicates the card title — a tag cell
     // that DIFFERS (e.g. 'XV-3311 (Note 2)', or the LV-3550 sheet reading 'LV-3350')
     // is a finding worth showing
-    const rows=data.filter(f=>f.section===s && !((f.label==="TAG"||f.label==="Valve TAG No.") && f.value===tag));
+    const rows=data.filter(f=>f.section===s && !(["TAG","TAG No.","TAG Number","Valve TAG No."].includes(f.label) && f.value===tag));
     if(!rows.length) return "";
     const wide=v=>s==="NOTES"||String(v).length>58;
     return `<div class="k" style="font-size:10px;letter-spacing:.08em;color:var(--ink-soft);margin:10px 0 3px">${esc(s)}</div>
