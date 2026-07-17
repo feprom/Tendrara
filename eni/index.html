@@ -2826,14 +2826,16 @@ function closeInst(){ $("#instOvl").classList.remove("open"); }
 window.openInst=openInst; window.closeInst=closeInst;
 
 /* ── ITF instrument datasheet on the card ──────────────────────────────────────
-   plant_instrument_datasheets / _fields (migration 025) hold the ITF matrix
-   datasheets (ISD02-ING-FR01 = PTs; more families to come — see the
+   plant_instrument_datasheets / _fields (migration 025) hold the ITF
+   datasheets (ISD02-ING-FR01 = PTs, matrix form; ISD02-ING-FR02 = control
+   valves, one-sheet-per-tag form; more families to come — see the
    `instrument-datasheets` skill). Fetched per tag on demand via
    v_instrument_datasheet; fields render in the FORM's own row order (seq),
    grouped into sections, so every datasheet reads the same way regardless of
-   instrument family. Content is VERBATIM — `VTA` and source typos included:
+   instrument family. Sections not listed in DSH_SECTIONS still render, after
+   the known ones. Content is VERBATIM — `VTA` and source typos included:
    a mismatch with the index is a finding to raise as a CR, never to edit away. */
-const DSH_SECTIONS=["IDENTIFICATION","PROCESS","CONSTRUCTION","SIGNAL","CALIBRATION","PROCUREMENT","NOTES","GENERAL"];
+const DSH_SECTIONS=["IDENTIFICATION","PROCESS","PIPE","BODY","BONNET","TRIM","ACTUATOR","POSITIONER","SOV","SWITCH","ACCESSORIES","MISC","CONSTRUCTION","SIGNAL","CALIBRATION","PROCUREMENT","NOTES","GENERAL"];
 async function renderInstDatasheet(tag){
   const el=document.getElementById("instDshBox"); if(!el) return;
   let data,error;
@@ -2855,7 +2857,10 @@ async function renderInstDatasheet(tag){
       :`<span class="chip warn" title="Source workbook registered (EI80) but not uploaded to storage yet">SOURCE NOT UPLOADED</span>`}
   </div>`;
   h+=secs.map(s=>{
-    const rows=data.filter(f=>f.section===s && f.label!=="TAG");   // TAG duplicates the card title
+    // hide the tag row only when it merely duplicates the card title — a tag cell
+    // that DIFFERS (e.g. 'XV-3311 (Note 2)', or the LV-3550 sheet reading 'LV-3350')
+    // is a finding worth showing
+    const rows=data.filter(f=>f.section===s && !((f.label==="TAG"||f.label==="Valve TAG No.") && f.value===tag));
     if(!rows.length) return "";
     const wide=v=>s==="NOTES"||String(v).length>58;
     return `<div class="k" style="font-size:10px;letter-spacing:.08em;color:var(--ink-soft);margin:10px 0 3px">${esc(s)}</div>
