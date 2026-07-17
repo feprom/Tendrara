@@ -2415,28 +2415,43 @@ function renderUnattributed(c){
 /* ── global search results (EI70 / gsearch) ──────────────────── */
 function searchAll(q){
   const s=q.toLowerCase(); const out=[]; const seen=new Set();
-  const push=(kind,cls,tag,service,area,extra,click)=>{ out.push({kind,cls,tag,service,area,extra,click}); };
-  DB.inst.forEach(r=>{ const hay=((r.tag||"")+" "+(r.service||"")+" "+(r.instrument_type||"")+" "+(r.junction_box||"")+" "+(r.line_number||"")).toLowerCase();
-    if(hay.includes(s)){ seen.add((r.tag||"").trim()); push("INSTRUMENT","info",r.tag,r.service,r.unit,r.junction_box,`openInst('${esc((r.tag||"").trim())}')`);} });
+  // rank 0 = matched in TAG/ID, 1 = matched in service/description, 2 = matched ONLY in a
+  // secondary field (e.g. line number: "LG" is also a line-service code, not a tag prefix).
+  // out is sorted by rank so TAG matches come first; rank-2 rows carry a `mnote` label.
+  const push=(kind,cls,tag,service,area,extra,click,rank,mnote)=>{ out.push({kind,cls,tag,service,area,extra,click,rank:rank||0,mnote:mnote||""}); };
+  const rankOf=(tagL,svcL)=> tagL.includes(s)?0 : (svcL.includes(s)?1:2);
+  const secNote=(pairs)=>{ for(const p of pairs){ if((p[1]||"").toLowerCase().includes(s)) return p[0]+" "+p[1]; } return ""; };
+  DB.inst.forEach(r=>{ const tagL=(r.tag||"").toLowerCase(), svcL=(r.service||"").toLowerCase();
+    const hay=(tagL+" "+svcL+" "+(r.instrument_type||"")+" "+(r.junction_box||"")+" "+(r.line_number||"")).toLowerCase();
+    if(hay.includes(s)){ seen.add((r.tag||"").trim()); const rk=rankOf(tagL,svcL);
+      const mn=rk===2?secNote([["LINE",r.line_number],["TYPE",r.instrument_type],["JB",r.junction_box]]):"";
+      push("INSTRUMENT","info",r.tag,r.service,r.unit,r.junction_box,`openInst('${esc((r.tag||"").trim())}')`,rk,mn);} });
   DB.valves.forEach(r=>{ const t=(r.tag||"").trim(); if(seen.has(t)) return; // 47 TSVs exist in both indexes — show once
-    const hay=(t+" "+(r.service||"")+" "+(r.instrument_type||"")+" "+(r.junction_box||"")).toLowerCase();
-    if(hay.includes(s)){ seen.add(t); push("VALVE","crimson",r.tag,r.service,r.unit,r.junction_box,`openInst('${esc(t)}')`);} });
-  DB.io.forEach(r=>{ const t=(r.tag||"").trim();
-    const hay=(t+" "+(r.description||"")+" "+(r.rio_panel||"")+" "+(r.channel||"")).toLowerCase();
-    if(hay.includes(s) && !seen.has(t)){ seen.add(t||("ch"+r.id));
+    const tagL=t.toLowerCase(), svcL=(r.service||"").toLowerCase();
+    const hay=(tagL+" "+svcL+" "+(r.instrument_type||"")+" "+(r.junction_box||"")).toLowerCase();
+    if(hay.includes(s)){ seen.add(t); const rk=rankOf(tagL,svcL);
+      const mn=rk===2?secNote([["TYPE",r.instrument_type],["JB",r.junction_box]]):"";
+      push("VALVE","crimson",r.tag,r.service,r.unit,r.junction_box,`openInst('${esc(t)}')`,rk,mn);} });
+  DB.io.forEach(r=>{ const t=(r.tag||"").trim(); const tagL=t.toLowerCase(), dscL=(r.description||"").toLowerCase();
+    const hay=(tagL+" "+dscL+" "+(r.rio_panel||"")+" "+(r.channel||"")).toLowerCase();
+    if(hay.includes(s) && !seen.has(t)){ seen.add(t||("ch"+r.id)); const rk=rankOf(tagL,dscL);
+      const mn=rk===2?secNote([["PANEL",r.rio_panel],["CH",r.channel]]):"";
       push("IO CHANNEL","dim",r.tag||"(spare)",r.description,r.unit,(r.rio_panel||"")+" "+(r.channel||""),
-        t?`openInst('${esc(t)}')`:`nav('station/${encodeURIComponent(r.rio_panel||"")}')`);} });
-  DB.alarms.forEach(r=>{ const hay=((r.alarm_tag||"")+" "+(r.instrument_tag||"")+" "+(r.description||"")).toLowerCase();
-    if(hay.includes(s)) push("ALARM","warn",r.alarm_tag,r.description,r.area_code,r.instrument_tag,
-      `openAlarm('${esc((r.alarm_tag||"").trim())}')`);});
-  DB.equip.forEach(r=>{ const hay=((r.tag||"")+" "+(r.service||"")).toLowerCase();
-    if(hay.includes(s)) push("EQUIPMENT","ok",r.tag,r.service,r.area_code,r.skid_tag,`openEquip('${esc((r.tag||"").trim())}')`);});
+        t?`openInst('${esc(t)}')`:`nav('station/${encodeURIComponent(r.rio_panel||"")}')`,rk,mn);} });
+  DB.alarms.forEach(r=>{ const tagL=(r.alarm_tag||"").toLowerCase(), dscL=(r.description||"").toLowerCase();
+    const hay=(tagL+" "+(r.instrument_tag||"")+" "+dscL).toLowerCase();
+    if(hay.includes(s)){ const rk=rankOf(tagL,dscL); const mn=rk===2?secNote([["INSTR",r.instrument_tag]]):"";
+      push("ALARM","warn",r.alarm_tag,r.description,r.area_code,r.instrument_tag,
+      `openAlarm('${esc((r.alarm_tag||"").trim())}')`,rk,mn);}});
+  DB.equip.forEach(r=>{ const tagL=(r.tag||"").toLowerCase(), svcL=(r.service||"").toLowerCase();
+    if((tagL+" "+svcL).includes(s)) push("EQUIPMENT","ok",r.tag,r.service,r.area_code,r.skid_tag,`openEquip('${esc((r.tag||"").trim())}')`,rankOf(tagL,svcL),"");});
   IDX.stations.forEach(st=>{ if(st.panel.toLowerCase().includes(s))
-    push("STATION","info",st.panel,(st.jb&&st.jb.service)||"IO station",st.unit,st.rows.length+" ch",`nav('station/${encodeURIComponent(st.panel)}')`);});
-  DB.drawings.forEach(d=>{ const hay=((d.doc_no||"")+" "+(d.pid_no||"")+" "+(d.title||"")).toLowerCase();
+    push("STATION","info",st.panel,(st.jb&&st.jb.service)||"IO station",st.unit,st.rows.length+" ch",`nav('station/${encodeURIComponent(st.panel)}')`,0,"");});
+  DB.drawings.forEach(d=>{ const idL=((d.doc_no||"")+" "+(d.pid_no||"")).toLowerCase(), ttlL=(d.title||"").toLowerCase();
     const sp=dwgPath(d.doc_no);
-    if(hay.includes(s)) push("DRAWING","crimson",d.doc_no,d.title,d.area_code,d.pid_no,
-      sp?`openStorage('${esc(sp.bucket)}','${esc(sp.path)}')`:`nav('drawings')`);});
+    if((idL+" "+ttlL).includes(s)) push("DRAWING","crimson",d.doc_no,d.title,d.area_code,d.pid_no,
+      sp?`openStorage('${esc(sp.bucket)}','${esc(sp.path)}')`:`nav('drawings')`, idL.includes(s)?0:1,"");});
+  out.sort((a,b)=>a.rank-b.rank);   // TAG matches first; secondary-field (e.g. line-number) matches last
   return out;
 }
 function renderSearch(c,q){
@@ -2455,7 +2470,7 @@ function renderSearch(c,q){
   <tbody>${res.slice(0,MAX).map(r=>`<tr class="rowlink" onclick="${r.click}">
     <td><span class="chip ${r.cls}">${r.kind}</span></td>
     <td class="mono" style="font-weight:700;color:var(--blue)">${nz(r.tag)}</td>
-    <td class="dim">${nz(r.service)}</td>
+    <td class="dim">${nz(r.service)}${r.mnote?` <span class="chip dim" style="font-size:9px;vertical-align:middle" title="matched in this field, not the tag">↳ ${esc(r.mnote)}</span>`:""}</td>
     <td class="mono">${nz(r.area)}</td>
     <td class="mono dim">${nz(r.extra,"")}</td></tr>`).join("")}</tbody></table>
   ${res.length>MAX?`<div class="note">Showing first ${MAX} of ${res.length} — refine the search.</div>`:""}`
