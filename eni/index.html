@@ -455,10 +455,16 @@ function jbPages(drawing_file, jb_tag){
     .sort((a,b)=>(a.page||0)-(b.page||0));
   return pages.length ? {doc_no, pages} : null;
 }
-/* every page opens through a signed URL — no static hrefs */
+/* Page chips open the SOURCE PDF at that page — openDocPage() adds #page=N, the
+   same mechanism "Where to find this" uses. The per-sheet PNG renders are NO
+   LONGER exposed anywhere in the UI (they remain in storage for tooling only),
+   so chips render only when the source PDF is in storage: without it there is
+   nothing they could open. RENDER_PAGE registry rows are still read — but only
+   to know WHICH pages exist, never to link their images. */
 function pageLinks(pages){
+  if(!pages || !pages.length || !docSource(pages[0].doc_no)) return "";
   return pages.map(f=>
-    `<a onclick="openStorage('${esc(f.bucket)}','${esc(f.file_path)}')" title="${esc(f.file_name||"")}"
+    `<a onclick="openDocPage('${esc(f.doc_no)}',${f.page||0})" title="Open the PDF at page ${f.page!=null?f.page:"?"}"
       style="font-family:var(--mono);font-size:10.5px;color:var(--crimson);cursor:pointer;
       text-decoration:none;border:1px solid var(--crimson);border-radius:3px;padding:1px 7px;margin:2px 3px 0 0;display:inline-block"
       >P${f.page!=null?f.page:"?"} ⧉</a>`).join("");
@@ -721,8 +727,6 @@ async function renderDocRefs(tag, elOrId){
     <td style="white-space:nowrap">
       ${r.pdf_path?`<button ${OPENBTN} onclick="openStorage('${esc(r.pdf_bucket)}','${esc(r.pdf_path)}',${r.page||0})"
           title="Open the PDF straight at page ${r.page||1}">PDF${r.page?" p."+r.page:""} ⧉</button>`:""}
-      ${r.render_path?`<button class="btn mini" style="margin-left:4px"
-          onclick="openStorage('${esc(r.render_bucket)}','${esc(r.render_path)}')" title="Open the page render (image)">IMG ⧉</button>`:""}
     </td></tr>`;}).join("")}</tbody></table>`;
 }
 window.renderDocRefs=renderDocRefs;
@@ -1781,10 +1785,12 @@ function renderStation(c, panel){
       if(src) v+=` <button ${OPENBTN} style="margin-left:6px" onclick="openDocNo('${esc(doc_no)}')">PDF ⧉</button>`;
       else if(doc_no) v+=` <span class="chip warn">PDF NOT UPLOADED</span>`;
       if(doc_no) v+=` <button class="btn mini" style="margin-left:4px" onclick="nav('docs')" title="Document register / revisions">${esc(doc_no)}${rev&&rev.rev?" rev "+esc(rev.rev):""} ▸</button>`;
-      if(jp) v+=`<div style="margin-top:6px">${pageLinks(jp.pages)}</div>`;
-      else v+=`<div style="margin-top:5px"><span class="chip dim">no page renders</span></div>`;
+      // page chips open the source PDF at #page=N (openDocPage) — per-sheet PNGs
+      // are no longer referenced from the UI
+      const pl=jp?pageLinks(jp.pages):"";
+      if(pl) v+=`<div style="margin-top:6px">${pl}</div>`;
       const hdr = doc_no
-        ? `Drawing — ${jp?jp.pages.length+" pages in storage, click to open":"source PDF only"}`
+        ? `Drawing — ${pl?jp.pages.length+" pages — click to open the PDF at that page":"source PDF"}`
         : `Drawing — not matched to the document register`;
       return `<div class="jbcell" style="grid-column:1/-1"><div class="k">${hdr}</div><div class="v mono">${v}</div></div>`; })()}
     <div class="jbcell" style="grid-column:1/-1"><div class="k">Module layout</div><div class="v mono">${nz(jb.module_layout)}</div></div>
@@ -2706,7 +2712,7 @@ function renderDrawings(c){
     <td class="mono">${nz(cur&&cur.rev)}</td>
     <td>${src?`<button ${OPENBTN} onclick="openDocNo('${esc(r.doc_no)}')">OPEN ⧉</button>`:`<span class="chip warn">NOT UPLOADED</span>`}</td></tr>`;}).join("")}</tbody></table>
   <h2>JB / electrical drawings (IE24090)</h2>
-  <table class="data"><thead><tr><th>JB / PANEL</th><th>DRAWING</th><th>PAGES — CLICK TO OPEN</th></tr></thead>
+  <table class="data"><thead><tr><th>JB / PANEL</th><th>DRAWING</th><th>PAGES — OPEN THE PDF AT THAT PAGE</th></tr></thead>
   <tbody>${[...DB.jb].sort((a,b)=>(a.drawing_file||"").localeCompare(b.drawing_file||"")).map(j=>{
     const tag=(j.jb_tag||"").trim();
     const doc_no=jbDocNo(j.drawing_file, tag), jp=jbPages(j.drawing_file, tag);
@@ -2715,20 +2721,21 @@ function renderDrawings(c){
       <td class="tag" onclick="${IDX.stations.has(tag)?`nav('station/${encodeURIComponent(tag)}')`:""}">${esc(j.jb_tag)}</td>
       <td class="mono dim" style="font-size:10.5px">${nz(j.drawing_file)}
         ${src?`<button ${OPENBTN} style="margin-left:6px" onclick="openDocNo('${esc(doc_no)}')">PDF ⧉</button>`:""}</td>
-      <td>${jp?pageLinks(jp.pages):'<span class="chip dim">no page renders</span>'}</td></tr>`;}).join("")}
-  ${(()=>{ const jp=jbPages("ISD03","");
-    const n=(DB.docfiles||[]).filter(x=>x.doc_no==="ISD03-ING-PR01"&&x.role==="RENDER_PAGE");
+      <td>${(jp?pageLinks(jp.pages):"")||'<span class="chip dim">—</span>'}</td></tr>`;}).join("")}
+  ${(()=>{ const n=(DB.docfiles||[]).filter(x=>x.doc_no==="ISD03-ING-PR01"&&x.role==="RENDER_PAGE")
+      .sort((a,b)=>(a.page||0)-(b.page||0));
     const src=docSource("ISD03-ING-PR01");
     return (n.length||src)?`<tr><td class="mono" style="font-weight:700">PROFINET NETWORK</td>
       <td class="mono dim" style="font-size:10.5px">ISD03-ING-PR01 — PLC architecture
         ${src?`<button ${OPENBTN} style="margin-left:6px" onclick="openDocNo('ISD03-ING-PR01')">PDF ⧉</button>`:""}</td>
-      <td>${n.length?pageLinks(n):'<span class="chip dim">no page renders</span>'}</td></tr>`:""; })()}
+      <td>${pageLinks(n)||'<span class="chip dim">—</span>'}</td></tr>`:""; })()}
   </tbody></table>
   <div class="note">Files are served from <b>private</b> buckets via signed URLs — a copied link dies in
   ~2 minutes, and there is no anonymous access. NOT UPLOADED means the row is registered but its bytes
   are not in storage yet (run <span class="mono">tools/migrate-docs-to-storage.mjs</span>).
-  Page links now come from the document registry, not <span class="mono">doc-manifest.js</span> — they follow
-  the current revision. To find a specific tag <i>with its page</i>, open the tag and see
+  Page chips open the <b>source PDF</b> at that page (<span class="mono">#page=N</span>) — the per-sheet
+  PNG renders are no longer linked from the app. The page list follows the document registry, so it
+  tracks the current revision. To find a specific tag <i>with its page</i>, open the tag and see
   <b>“Where to find this”</b>.</div>`;
   const df=$("#dwgFilter"); if(df){ df.focus(); df.setSelectionRange(df.value.length,df.value.length); }
 }
@@ -2779,6 +2786,7 @@ function openInst(tag){
     h+=`<div class="empty">Tag not present in the instrument / valve index — IO channel data only.
     Raise a change request if this tag should be added.</div>`;
   }
+  h+=`<div id="instDshBox"></div>`;   // ITF datasheet — filled async by renderInstDatasheet()
   if(io.length){
     h+=`<h2 style="margin-top:16px">IO channel assignment</h2>
     <table class="data"><thead><tr><th>PANEL</th><th>SLOT</th><th>CH</th><th>SIGNAL</th><th>DESCRIPTION</th><th>STATUS</th></tr></thead>
@@ -2812,9 +2820,54 @@ function openInst(tag){
   $("#instOvl").classList.add("open");
   // the information ↔ document link: every place this tag appears, with the page
   hydrateDocRefs($("#instBody"));
+  renderInstDatasheet(tag);   // ITF datasheet (migration 025) — async, fills #instDshBox
 }
 function closeInst(){ $("#instOvl").classList.remove("open"); }
 window.openInst=openInst; window.closeInst=closeInst;
+
+/* ── ITF instrument datasheet on the card ──────────────────────────────────────
+   plant_instrument_datasheets / _fields (migration 025) hold the ITF matrix
+   datasheets (ISD02-ING-FR01 = PTs; more families to come — see the
+   `instrument-datasheets` skill). Fetched per tag on demand via
+   v_instrument_datasheet; fields render in the FORM's own row order (seq),
+   grouped into sections, so every datasheet reads the same way regardless of
+   instrument family. Content is VERBATIM — `VTA` and source typos included:
+   a mismatch with the index is a finding to raise as a CR, never to edit away. */
+const DSH_SECTIONS=["IDENTIFICATION","PROCESS","CONSTRUCTION","SIGNAL","CALIBRATION","PROCUREMENT","NOTES","GENERAL"];
+async function renderInstDatasheet(tag){
+  const el=document.getElementById("instDshBox"); if(!el) return;
+  let data,error;
+  try{ ({data,error}=await sb.from("v_instrument_datasheet").select("*").eq("tag",tag).order("seq")); }
+  catch(e){ error=e; }
+  if(error){ el.innerHTML=`<div class="dim">Datasheet lookup failed: ${esc(error.message||String(error))}</div>`; return; }
+  if(!data||!data.length){ el.innerHTML=""; return; }        // no datasheet digitized yet — say nothing
+  const doc=data[0].doc_no;                                  // one doc per card; guard against future multi-doc rows
+  data=data.filter(f=>f.doc_no===doc);
+  const d0=data[0];
+  const known=new Set(DSH_SECTIONS);
+  const secs=DSH_SECTIONS.concat([...new Set(data.map(f=>f.section))].filter(s=>!known.has(s)));
+  let h=`<h2 style="margin-top:16px">Datasheet — ${esc(d0.instrument_kind)} <span class="dim" style="font-weight:400">(ITF form)</span></h2>
+  <div class="toolrow" style="margin:4px 0 8px">
+    <span class="mono" style="font-size:11px;color:var(--ink-soft)">${esc(d0.doc_no)} rev ${nz(d0.rev,"—")}${d0.rev_date?" · "+esc(d0.rev_date):""} · vendor doc ${nz(d0.vendor_doc_no,"—")} · page ${d0.page!=null?d0.page:"—"}</span>
+    <span class="spacer"></span>
+    ${docSource(d0.doc_no)
+      ?`<button ${OPENBTN} onclick="openDocPage('${esc(d0.doc_no)}',${d0.page||0})">PDF${d0.page?" p."+d0.page:""} ⧉</button>`
+      :`<span class="chip warn" title="Source workbook registered (EI80) but not uploaded to storage yet">SOURCE NOT UPLOADED</span>`}
+  </div>`;
+  h+=secs.map(s=>{
+    const rows=data.filter(f=>f.section===s && f.label!=="TAG");   // TAG duplicates the card title
+    if(!rows.length) return "";
+    const wide=v=>s==="NOTES"||String(v).length>58;
+    return `<div class="k" style="font-size:10px;letter-spacing:.08em;color:var(--ink-soft);margin:10px 0 3px">${esc(s)}</div>
+    <div class="jbcard">${rows.map(f=>`<div class="jbcell"${wide(f.value)?' style="grid-column:1/-1"':""}>
+      <div class="k">${esc(f.label)}</div>
+      <div class="v mono">${esc(f.value)}${f.unit?' <span class="dim">'+esc(f.unit)+"</span>":""}</div></div>`).join("")}</div>`;
+  }).join("");
+  h+=`<div class="note">Transcribed <b>verbatim</b> from ${esc(d0.doc_no)}, in the form's own field order —
+  <span class="mono">VTA</span> = Vendor To Advise. A value that disagrees with the instrument index is a
+  <b>finding</b>: raise a change request against the tag; never edit either side to make them match.</div>`;
+  el.innerHTML=h;
+}
 
 /* ── change request card ─────────────────────────────────────────
    The CR table clamps `reason` to two lines, but a good CR reason is a full
