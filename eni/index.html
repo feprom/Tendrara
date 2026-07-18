@@ -1694,7 +1694,7 @@ function exportAreaPdf(){
     const a=k.querySelector(".k"), b=k.querySelector(".v");
     return `<b>${esc(a?a.textContent:"")}</b> ${esc(b?b.textContent:"")}`; }).join(" &nbsp;·&nbsp; "):"";
   let body=`<h1>Area ${esc(String(code))} — ${esc(areaName(code))}</h1>${meta}`;
-  if(flowEl) body+=`<h3>PROCESS BLOCK — GENERATED FROM P&amp;ID CONNECTIVITY</h3>
+  if(flowEl) body+=`<h3>UNIT-FLOW DIAGRAM — GENERATED FROM PLANT_AREA_TRAINS + PLANT_PROCESS_LINKS (HMB ${esc(HMB_CASE)})</h3>
     <div class="prn-svg">${flowEl.outerHTML}</div>
     ${chipsTxt?`<div class="prn-chips">${chipsTxt}</div>`:""}`;
   AREA_EXPORT.tables.forEach(id=>{
@@ -2250,34 +2250,27 @@ function renderArea(c, code){
   if(eloads.length) facts+=fact("LOAD",eloads.length,"ELECTRICAL LOADS");
   if(ceR.length) facts+=fact("CE",ceObj.causes.length,"CAUSE & EFFECT");
 
-  // ── process topology (migrations 048/049) → tam-flow.js; legacy generator is the fallback ──
+  // ── process topology (migrations 048/049/050) → tam-flow.js unit-flow diagram.
+  //    ONE format per area (Mario 2026-07-18): the Manual §x.1 unit-summary + HMB cards.
+  //    Offline / topology-missing fallback: the legacy connector-generated block.
   const tf=(window.TamFlow&&DB.aflows&&DB.aflows.length)?TamFlow.fromViewer(DB):null;
   const tfOpts={case:HMB_CASE,onNavigate:"nav",onEquip:"openEquip"};
-  const plantMapBlock=tf?`
-  <h2 style="margin-top:20px">Plant map <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· generated from
-    plant_process_links — UNIT ${esc(String(code))} highlighted · HMB case ${hmbCaseSel()}</span></h2>
-  <div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${TamFlow.plantMap(tf,Object.assign({highlight:String(code)},tfOpts))}</div>`:"";
-  const flowSvg=tf?TamFlow.areaBlock(tf,code,tfOpts):areaFlowSvg(code, eq);
-  const flowBlock=flowSvg?`
+  const unitFlowBlock=tf?`
+  <h2 style="margin-top:20px">Unit-flow diagram <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· Manual §x.1 style ·
+    plant_area_trains + plant_process_links · HMB case ${hmbCaseSel()}</span></h2>
+  <div id="areaflow" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${TamFlow.unitSummary(tf,code,tfOpts)}</div>
+  ${TamFlow.hmbCards(tf,code,tfOpts)}`
+  :(()=>{const flowSvg=areaFlowSvg(code, eq); return flowSvg?`
   <h2 style="margin-top:20px">Process block <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· generated from
-    ${tf?`<span title="curated topology: area crossings + HMB streams + boundary instruments">plant_process_links / v_area_flows</span> · plant_streams (HMB) ·`
-        :`<span title="off-page connectors of this area's digitized P&IDs">plant_pid_connectors</span> ·`}
-    plant_equipment/plant_skids · plant_pid_lines — flows appear as their P&IDs are digitized (v_pid_coverage)</span></h2>
+    <span title="off-page connectors of this area's digitized P&IDs">plant_pid_connectors</span> ·
+    plant_equipment/plant_skids · plant_pid_lines</span></h2>
   <div id="areaflow" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${flowSvg}</div>
-  ${areaParamChips(code, inst, vlvs, mvs)}`:"";
-  const hasTrain=tf&&(DB.trains||[]).some(t=>String(t.area_code)===String(code));
-  const unitFlowBlock=hasTrain?`
-  <h2 style="margin-top:20px">Unit-flow diagram <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· Manual §3.1 style ·
-    plant_area_trains (equipment chain) + plant_process_links (inputs/outputs/control) · HMB ${esc(HMB_CASE)}</span></h2>
-  <div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${TamFlow.unitSummary(tf,code,tfOpts)}</div>
-  ${TamFlow.hmbCards(tf,code,tfOpts)}`:"";
+  ${areaParamChips(code, inst, vlvs, mvs)}`:"";})();
 
   c.innerHTML=`
   <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
   <h1>Area ${esc(code)} — ${esc(areaName(code))}</h1>
   <div class="facts">${facts}</div>
-  ${plantMapBlock}
-  ${flowBlock}
   ${unitFlowBlock}
   <div class="toolrow" style="margin-top:14px">
     <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">Each list — click a column to sort · type to filter · ▾ to collapse · ⭳ per-list Excel.</span>

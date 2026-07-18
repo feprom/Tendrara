@@ -65,6 +65,14 @@
     if (h.temperature_c != null) parts.push(n1(h.temperature_c) + " °C");
     return parts.join(" · ");
   }
+  /* pick the "main" flow of an area for a direction: plant main path first, then
+     by category priority (so loop/hub units like 340/360/370/410 still render) */
+  function pickMain(rows, dir) {
+    const pri = ["PRODUCT", "ENERGY", "REFRIGERANT", "CHEMICAL", "WATER"];
+    return rows.find(f => f.direction === dir && f.is_main) ||
+      pri.map(c => rows.find(f => f.direction === dir && f.category === c && f.hmb) ||
+                   rows.find(f => f.direction === dir && f.category === c)).find(Boolean);
+  }
   function arrowMarker(id, color) {
     return `<marker id="${id}" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="${color}"/></marker>`;
   }
@@ -351,8 +359,7 @@
       return `<svg viewBox="0 0 1000 60" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto"><text x="500" y="34" text-anchor="middle" font-family="${MONO}" font-size="10" fill="${SOFT}">UNIT ${esc(code)} — EQUIPMENT TRAIN NOT CURATED YET (plant_area_trains)</text></svg>`;
 
     const rows = (data.flows || []).filter(f => String(f.area_code) === code);
-    const mainIn = rows.find(f => f.direction === "IN" && f.is_main) || rows.find(f => f.direction === "IN" && f.category === "PRODUCT");
-    const mainOut = rows.find(f => f.direction === "OUT" && f.is_main) || rows.find(f => f.direction === "OUT" && f.category === "PRODUCT");
+    const mainIn = pickMain(rows, "IN"), mainOut = pickMain(rows, "OUT");
     const waters = rows.filter(f => f.direction === "OUT" && (f.category === "WATER"));
     const inChip = hmbChip(mainIn, kase), outChip = hmbChip(mainOut, kase);
 
@@ -454,8 +461,7 @@
     const kase = opts.case || "C1W";
     code = String(code);
     const rows = (data.flows || []).filter(f => String(f.area_code) === code);
-    const mainIn = rows.find(f => f.direction === "IN" && f.is_main) || rows.find(f => f.direction === "IN" && f.category === "PRODUCT" && f.hmb);
-    const mainOut = rows.find(f => f.direction === "OUT" && f.is_main) || rows.find(f => f.direction === "OUT" && f.category === "PRODUCT" && f.hmb);
+    const mainIn = pickMain(rows, "IN"), mainOut = pickMain(rows, "OUT");
     const en = (data.energy || []).filter(e => String(e.area_code) === code);
     const eNow = en.find(e => e.case_code === kase);
     const duties = en.filter(e => e.thermal_duty_kw != null).map(e => e.thermal_duty_kw);
@@ -490,8 +496,22 @@
       if (eNow && eNow.by_equipment) kv.push(["Equipment", esc(Object.keys(eNow.by_equipment).join(" · "))]);
       cards.push(card("#B26A00", "◈ ENERGY · U" + esc(code), "thermal / electric", kv));
     }
-    if (mainOut) cards.push(card("#1F8A4C", "▶ OUT · " + esc(mainOut.other_label || "") + (mainOut.stream_code ? " (" + mainOut.stream_code + ")" : ""),
+    if (mainOut) cards.push(card("#1F8A4C", "▶ OUT · " + esc(clip((mainOut.other_label || "").split("(")[0].trim(), 18)) + (mainOut.stream_code ? " (" + mainOut.stream_code + ")" : ""),
       (mainOut.control_tags || []).map(esc).join(" "), flowKv(mainOut)));
+    /* utility & energy feeds card: what the area CONSUMES (lines + duty, no HMB values on utilities) */
+    const feeds = rows.filter(f => f.direction === "IN" && (f.category === "UTILITY" || f.category === "ENERGY" || f.category === "CHEMICAL"));
+    if (feeds.length) {
+      const bySvc = new Map();
+      feeds.forEach(f => {
+        const k = f.service_code;
+        if (!bySvc.has(k)) bySvc.set(k, { name: f.service_name, n: 0, from: new Set(), meters: new Set() });
+        const s = bySvc.get(k); s.n++; if (f.other_label) s.from.add(f.other_label);
+        (f.meter_tags || []).forEach(m => s.meters.add(m));
+      });
+      const kv = [...bySvc.entries()].map(([k, s]) =>
+        [esc(s.name), esc(k + "×" + s.n + " · from " + [...s.from].map(x => String(x).split(" ")[0]).join(",") + ([...s.meters].length ? " · ◉" + [...s.meters].join(",") : ""))]);
+      cards.push(card("#4A4F57", "◈ UTILITIES & FEEDS · U" + esc(code), "consumption", kv));
+    }
     if (!cards.length) return "";
     return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">${cards.join("")}</div>`;
   }
