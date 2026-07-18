@@ -144,6 +144,19 @@
     const m = (data.valves || []).filter(v => !v.removed && /^(PSV|TSV|VSV)-/.test(v.tag || "") && _matches(v, tags));
     return groupAB([...new Set(m.map(v => v.tag))].sort()).slice(0, 3);
   }
+  /* flow-origin rule (mirrors v_instrument_flow_origin): which equipment does a
+     flow instrument measure the outlet of? Parsed from the index service text;
+     transmitters inherit their flow element's service via `equipment`. */
+  function flowOrigin(data, tag) {
+    const by = t => (data.instruments || []).find(i => (i.tag || "").trim() === t && !i.removed);
+    const i = by(tag);
+    if (!i) return null;
+    let svc = String(i.service || "").toUpperCase();
+    const fe = i.equipment ? by(String(i.equipment).trim()) : null;
+    if (fe && fe.service) svc = String(fe.service).toUpperCase() || svc;
+    const m = /FROM ([A-Z]{1,3}-[0-9]+[A-Z]?)/.exec(svc) || /^([A-Z]{1,3}-[0-9]+[A-Z]?) OUTLET/.exec(svc);
+    return m ? m[1] : null;
+  }
 
   /* ═════════════════════════════════════════════════════════════════════
      1 · PLANT MAP — all process areas, main path on the centre line
@@ -401,12 +414,19 @@
 
     const rows = (data.flows || []).filter(f => String(f.area_code) === code);
     const mainIn = pickMain(rows, "IN"), mainOut = pickMain(rows, "OUT");
-    const waters = rows.filter(f => f.direction === "OUT" && (f.category === "WATER"));
+    /* the train line is drawn in the MAIN PRODUCT's class colour (single source of
+       truth: plant_service_classes — no hardcoded "gas" fluid) */
+    const mainRef = mainOut || mainIn;
+    const mc = mainRef ? svcClass(data, mainRef.service_code).color : "#333";
+    const waters = rows.filter(f => f.direction === "OUT" && f !== mainOut &&
+      (f.category === "WATER" || ["WC", "DC"].includes(f.service_code)));
     const inChip = hmbChip(mainIn, kase), outChip = hmbChip(mainOut, kase);
+    /* every meter/control already allocated to a link of this area (drawn on lines, not in boxes) */
+    const linkMeterSet = new Set(rows.flatMap(f => [...(f.meter_tags || []), ...(f.control_tags || [])]));
 
     const W = 1000, H = 360;
     let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
-    const cols = ["#333", "#0B5CAD", "#1F8A4C", "#B26A00"];
+    const cols = ["#333", "#0B5CAD", "#1F8A4C", "#B26A00", mc];
     rows.forEach(r => cols.push(svcClass(data, r.service_code).color));
     s += markerDefs(cols);
 
@@ -428,20 +448,22 @@
     const my = y0 + 32;
 
     /* inlet arrow + optional inline element of step 1 */
-    s += `<line x1="66" y1="${my}" x2="${bx(0) - 2}" y2="${my}" stroke="#333" stroke-width="3" marker-end="${mref("#333")}"/>`;
+    s += `<line x1="66" y1="${my}" x2="${bx(0) - 2}" y2="${my}" stroke="${mc}" stroke-width="3" marker-end="${mref(mc)}"/>`;
     train.forEach((t, i) => {
       if (t.inline_element) {
         const dx = i === 0 ? (66 + bx(0)) / 2 : bx(i - 1) + bw + gap / 2;
         s += diamond(dx, my, t.inline_element, i === 0 ? "below" : "above");
       }
       const x = bx(i);
-      if (i > 0) s += `<line x1="${x - gap}" y1="${my}" x2="${x - 2}" y2="${my}" stroke="#333" stroke-width="3" marker-end="${mref("#333")}"/>`;
+      if (i > 0) s += `<line x1="${x - gap}" y1="${my}" x2="${x - 2}" y2="${my}" stroke="${mc}" stroke-width="3" marker-end="${mref(mc)}"/>`;
       s += `<rect x="${x}" y="${y0}" width="${bw}" height="${bh}" rx="5" fill="#fff" stroke="${CRIMSON}" stroke-width="1.6"/>
             <text x="${x + bw / 2}" y="${y0 + 22}" text-anchor="middle" font-family="${SANS}" font-size="14" font-weight="700" fill="${INK}">${esc(t.display_tag)}</text>`;
       const svc = (data.equipment || []).find(e => (t.equipment_tags || []).includes((e.tag || "").trim()));
       s += `<text x="${x + bw / 2}" y="${y0 + 35}" text-anchor="middle" font-family="${SANS}" font-size="7.4" fill="${SOFT}">${esc(clip(svc ? svc.service : "", 27))}</text>`;
-      /* key instruments of this equipment group — future live-value hooks (data-live-tags) */
-      const keyInst = equipKeyInstruments(data, t.equipment_tags || [], 6);
+      /* key instruments of this equipment group — future live-value hooks (data-live-tags).
+         Flow meters allocated to a LINK are drawn on their line, never inside the box. */
+      const keyInst = equipKeyInstruments(data, t.equipment_tags || [], 6)
+        .filter(tg => !linkMeterSet.has(tg));
       if (keyInst.length) {
         const rows2 = [keyInst.slice(0, 3), keyInst.slice(3, 6)].filter(a => a.length);
         rows2.forEach((rw, ri) => {
@@ -466,7 +488,9 @@
 
     /* outlet: control diamond + destination box */
     const xEnd = bx(n - 1) + bw;
-    s += `<line x1="${xEnd}" y1="${my}" x2="${W - 92}" y2="${my}" stroke="#333" stroke-width="3" marker-end="${mref("#333")}"/>`;
+    const outSt = mainOut ? svcClass(data, mainOut.service_code) : null;
+    const oc = outSt ? outSt.color : mc;
+    s += `<line x1="${xEnd}" y1="${my}" x2="${W - 92}" y2="${my}" stroke="${oc}" stroke-width="3" marker-end="${mref(oc)}"/>`;
     const ctrl = mainOut && (mainOut.control_tags || [])[0];
     if (ctrl) s += diamond((xEnd + W - 92) / 2, my, ctrl, "above");
     if (mainOut) {
@@ -477,21 +501,44 @@
         data-live-kind="hmb" data-stream="${esc(mainOut.stream_code || "")}" data-case="${esc(kase)}">${esc((mainOut.stream_code ? mainOut.stream_code + " · " : "") + outChip)}</text>`;
     }
 
-    /* bottom outputs: water / condensate */
-    waters.slice(0, 2).forEach((f, i) => {
-      const st = svcClass(data, f.service_code);
-      const x = i === 0 ? 150 : 768;
-      const chip = hmbChip(f, kase);
-      s += `<line x1="${x}" y1="${y0 + bh}" x2="${x}" y2="316" stroke="${st.color}" stroke-width="1.6" marker-end="${mref(st.color)}"/>
-            <text x="${x + 8}" y="300" font-family="${MONO}" font-size="8.5" fill="${st.color}">${esc(clip((f.description || f.service_name || "") + " → " + (f.other_area ? "U" + f.other_area : f.other_label), 42))}</text>`;
-      if (chip) s += `<text x="${x + 8}" y="310" font-family="${MONO}" font-size="7.2" fill="${st.color}"
-        data-live-kind="hmb" data-stream="${esc(f.stream_code || "")}" data-case="${esc(kase)}">${esc((f.stream_code ? f.stream_code + " · " : "") + chip)}</text>`;
-      const m = (f.meter_tags || [])[0];
-      if (m) s += `<text x="${x + 8}" y="288" font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(m)}">◉ ${esc(m)}</text>`;
+    /* boundary flow meters on the MAIN line itself */
+    const inM = mainIn && (mainIn.meter_tags || [])[0];
+    if (inM) s += `<text x="70" y="${my + 16}" font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(inM)}">◉ ${esc(inM)}</text>`;
+    const outM = mainOut && (mainOut.meter_tags || [])[0];
+    if (outM) s += `<text x="${xEnd + 6}" y="${my + 16}" font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(outM)}">◉ ${esc(outM)}</text>`;
+
+    /* bottom outputs — one drop PER METER, hanging from its ORIGIN equipment box
+       (rule of v_instrument_flow_origin: "WATER OUTLET FROM V-201" → the line
+       leaves V-201's box and carries FT-2011; V-202's water carries FT-2021) */
+    const drops = [];
+    waters.forEach(f => {
+      const meters = (f.meter_tags && f.meter_tags.length) ? f.meter_tags : [null];
+      meters.forEach(m => {
+        const org = m ? flowOrigin(data, m) : null;
+        const ti = org ? train.findIndex(t => (t.equipment_tags || []).includes(org)) : -1;
+        drops.push({ f, m, ti, org });
+      });
+    });
+    const perBox = new Map(); let fallbackSlot = 0;
+    drops.slice(0, 4).forEach(d => {
+      const st = svcClass(data, d.f.service_code);
+      const kIdx = perBox.get(d.ti) || 0; perBox.set(d.ti, kIdx + 1);
+      const x = d.ti >= 0 ? bx(d.ti) + bw / 2 + (kIdx ? (kIdx % 2 ? -18 : 18) * Math.ceil(kIdx / 2) : 0)
+                          : (150 + (fallbackSlot++) * 620);
+      const left = kIdx % 2 === 1;              // alternate label side for same-box drops
+      const anchor = left ? `text-anchor="end"` : "";
+      const tx = left ? x - 8 : x + 8;
+      const chip = hmbChip(d.f, kase);
+      const dest = d.f.other_area ? "U" + d.f.other_area : (d.f.other_label || "");
+      s += `<line x1="${x}" y1="${y0 + bh}" x2="${x}" y2="316" stroke="${st.color}" stroke-width="1.6" marker-end="${mref(st.color)}"/>`;
+      if (d.m) s += `<text x="${tx}" y="288" ${anchor} font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(d.m)}">◉ ${esc(d.m)}</text>`;
+      s += `<text x="${tx}" y="299" ${anchor} font-family="${MONO}" font-size="8" fill="${st.color}">${esc(clip((d.org ? d.org + " " : "") + (st.name || "").toLowerCase() + " → " + dest, 34))}</text>`;
+      if (chip) s += `<text x="${tx}" y="309" ${anchor} font-family="${MONO}" font-size="7.2" fill="${st.color}"
+        data-live-kind="hmb" data-stream="${esc(d.f.stream_code || "")}" data-case="${esc(kase)}">${esc((d.f.stream_code ? d.f.stream_code + " · " : "") + chip)}</text>`;
     });
 
-    /* legend from categories present */
-    const cats = [["gas", "#333"], ...new Map(rows.map(r => {
+    /* legend — ONLY fluids from plant_service_classes (no hardcoded entries) */
+    const cats = [...new Map(rows.map(r => {
       const st = svcClass(data, r.service_code);
       return [st.name.toLowerCase(), st.color];
     })).entries()].slice(0, 6);
