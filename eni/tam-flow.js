@@ -120,6 +120,14 @@
       <text x="${x}" y="${ly}" text-anchor="middle" font-family="${MONO}" font-size="7.4"
         font-weight="${esd ? 700 : 400}" fill="${esd ? "#8A6D00" : "#333"}" data-live-kind="valve" data-tag="${esc(String(label).split(" ")[0])}">${esc(label)}</text>`;
   }
+  /* instrument TAP: dot on the pipe + leader + tag — unambiguous line association */
+  function tap(x, y, tag, below, color) {
+    const c = color || "#0B5CAD";
+    const ly = below ? y + 18 : y - 12;
+    return `<circle cx="${x}" cy="${y}" r="2.4" fill="${c}" stroke="#fff" stroke-width="0.6"/>` +
+      `<line x1="${x}" y1="${y + (below ? 3 : -3)}" x2="${x}" y2="${ly + (below ? -7 : 3)}" stroke="${c}" stroke-width="0.7"/>` +
+      `<text x="${x}" y="${ly}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${c}" data-live-kind="inst" data-tag="${esc(tag)}">${esc(tag)}</text>`;
+  }
   /* group PSV-2001A + PSV-2001B → PSV-2001A/B */
   function groupAB(tags) {
     const by = new Map();
@@ -490,12 +498,15 @@
       if (chips.length) segChips.push([k, chips]);
     }
     segChips.forEach(([k, chips]) => {
-      if (k === n) return;                     // last-segment chips join the outlet line label
-      const cxSeg = k === 0 ? (66 + bx(0)) / 2 : bx(k - 1) + bw + gap / 2;
-      const below = !(train[k] && k === 0 && train[0].inline_element);   // k=0 diamond labels below → chip above
-      const y = below ? my + 16 : my - 30;
-      s += `<text x="${cxSeg}" y="${y}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="#0B5CAD"
-        data-live-kind="inst" data-live-tags="${esc(chips.join(","))}">${esc(chips.join(" · "))}</text>`;
+      if (k === n) return;                     // last-segment chips join the outlet line
+      const x1 = k === 0 ? 72 : bx(k - 1) + bw + 6, x2 = k === 0 ? bx(0) - 8 : bx(k) - 8;
+      const hasDia = k === 0 ? !!(train[0] && train[0].inline_element) : !!(train[k] && train[k].inline_element);
+      const cxSeg = (x1 + x2) / 2;
+      chips.forEach((tag, ci) => {
+        let fx = x1 + (x2 - x1) * (ci + 1) / (chips.length + 1);
+        if (hasDia && Math.abs(fx - cxSeg) < 15) fx += (fx <= cxSeg ? -17 : 17);   // clear the valve diamond
+        s += tap(fx, my, tag, true);           // dot ON the line, tag below with leader
+      });
     });
     const lastSegChips = (segChips.find(([k]) => k === n) || [null, []])[1];
     train.forEach((t, i) => {
@@ -542,11 +553,15 @@
                 data-live-kind="duty" data-tag="${esc(mr.equipment_tag)}">${esc(mst.name)} · Q ${esc(n1(mr.duty_kw))} kW (${esc(kase)}) · ${esc(n1(mr.design_delta_kw))} design</text>
               <text x="${cxm - 20}" y="${y0 - 22}" text-anchor="end" font-family="${MONO}" font-size="6.6" fill="${mst.color}"
                 data-live-kind="hmb" data-stream="${esc(mr.supply_stream || "")}" data-field="temperature_c">${esc((mr.supply_stream ? mr.supply_stream + " · " : "") + n1(mr.supply_temp_c) + " °C")}</text>
-              <text x="${cxm - 20}" y="${y0 - 12}" text-anchor="end" font-family="${MONO}" font-size="6.2" fill="#0B5CAD"
+              ${(mr.supply_tags || []).length ? `<circle cx="${cxm - 16}" cy="${y0 - 15}" r="2.2" fill="#0B5CAD" stroke="#fff" stroke-width="0.5"/>
+                <line x1="${cxm - 18}" y1="${y0 - 15}" x2="${cxm - 21}" y2="${y0 - 15}" stroke="#0B5CAD" stroke-width="0.7"/>` : ""}
+              <text x="${cxm - 22}" y="${y0 - 12}" text-anchor="end" font-family="${MONO}" font-size="6.2" fill="#0B5CAD"
                 data-live-kind="inst" data-live-tags="${esc((mr.supply_tags || []).join(","))}">${esc(groupAB(mr.supply_tags || []).join(" · "))}</text>
               <text x="${cxm + 20}" y="${y0 - 22}" font-family="${MONO}" font-size="6.6" fill="${mst.color}"
                 data-live-kind="hmb" data-stream="${esc(mr.return_stream || "")}" data-field="temperature_c">${esc((mr.return_stream ? mr.return_stream + " · " : "") + n1(mr.return_temp_c) + " °C")}</text>
-              <text x="${cxm + 20}" y="${y0 - 12}" font-family="${MONO}" font-size="6.2" fill="#0B5CAD"
+              ${(mr.return_tags || []).length ? `<circle cx="${cxm + 16}" cy="${y0 - 15}" r="2.2" fill="#0B5CAD" stroke="#fff" stroke-width="0.5"/>
+                <line x1="${cxm + 18}" y1="${y0 - 15}" x2="${cxm + 21}" y2="${y0 - 15}" stroke="#0B5CAD" stroke-width="0.7"/>` : ""}
+              <text x="${cxm + 22}" y="${y0 - 12}" font-family="${MONO}" font-size="6.2" fill="#0B5CAD"
                 data-live-kind="inst" data-live-tags="${esc((mr.return_tags || []).join(","))}">${esc(groupAB(mr.return_tags || []).join(" · "))}</text>`;
       }
       /* medium instruments fallback (no curated media row yet) + non-medium aux notes */
@@ -579,13 +594,13 @@
         data-live-kind="hmb" data-stream="${esc(mainOut.stream_code || "")}" data-case="${esc(kase)}">${esc((mainOut.stream_code ? mainOut.stream_code + " · " : "") + outChip)}</text>`;
     }
 
-    /* boundary flow meters on the MAIN line itself */
+    /* boundary flow meters + last-segment instruments as taps ON the main line */
     const inM = mainIn && (mainIn.meter_tags || [])[0];
-    if (inM) s += `<text x="70" y="${my + 16}" font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(inM)}">◉ ${esc(inM)}</text>`;
+    if (inM) s += tap(84, my, inM, true);
     const outM = mainOut && (mainOut.meter_tags || [])[0];
-    const outLine = [...(outM ? ["◉ " + outM] : []), ...lastSegChips];
-    if (outLine.length) s += `<text x="${xEnd + 6}" y="${my + 16}" font-family="${MONO}" font-size="7.2" fill="#0B5CAD"
-      data-live-kind="inst" data-live-tags="${esc([outM, ...lastSegChips].filter(Boolean).join(","))}">${esc(outLine.join("  "))}</text>`;
+    [...(outM ? [outM] : []), ...lastSegChips].forEach((tag, i) => {
+      s += tap(xEnd + 16 + i * 40, my, tag, true);
+    });
 
     /* bottom outputs — one drop PER METER, hanging from its ORIGIN equipment box
        (rule of v_instrument_flow_origin: "WATER OUTLET FROM V-201" → the line
@@ -611,7 +626,9 @@
       const chip = hmbChip(d.f, kase);
       const dest = d.f.other_area ? "U" + d.f.other_area : (d.f.other_label || "");
       s += `<line x1="${x}" y1="${y0 + bh}" x2="${x}" y2="316" stroke="${st.color}" stroke-width="1.6" marker-end="${mref(st.color)}"/>`;
-      if (d.m) s += `<text x="${tx}" y="288" ${anchor} font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(d.m)}">◉ ${esc(d.m)}</text>`;
+      if (d.m) s += `<circle cx="${x}" cy="285" r="2.2" fill="#0B5CAD" stroke="#fff" stroke-width="0.5"/>
+        <line x1="${x + (left ? -3 : 3)}" y1="285" x2="${tx + (left ? 2 : -2)}" y2="285" stroke="#0B5CAD" stroke-width="0.7"/>
+        <text x="${tx}" y="288" ${anchor} font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(d.m)}">${esc(d.m)}</text>`;
       s += `<text x="${tx}" y="299" ${anchor} font-family="${MONO}" font-size="8" fill="${st.color}">${esc(clip((d.org ? d.org + " " : "") + (st.name || "").toLowerCase() + " → " + dest, 34))}</text>`;
       if (chip) s += `<text x="${tx}" y="309" ${anchor} font-family="${MONO}" font-size="7.2" fill="${st.color}"
         data-live-kind="hmb" data-stream="${esc(d.f.stream_code || "")}" data-case="${esc(kase)}">${esc((d.f.stream_code ? d.f.stream_code + " · " : "") + chip)}</text>`;
