@@ -157,6 +157,23 @@
     const m = /FROM ([A-Z]{1,3}-[0-9]+[A-Z]?)/.exec(svc) || /^([A-Z]{1,3}-[0-9]+[A-Z]?) OUTLET/.exec(svc);
     return m ? m[1] : null;
   }
+  /* port association (053): T/P instruments whose service names the equipment AND the
+     port — "E-201 OUTLET TEMPERATURE", "V-202 GAS OUTLET TEMPERATURE" → drawn on the
+     equipment's inlet/outlet line segment, not inside the box. */
+  function portInstruments(data, tags) {
+    const res = { INLET: [], OUTLET: [] };
+    (data.instruments || []).forEach(i => {
+      if (i.removed || !/^(TT|TE|TG|TI|TIC|PT|PG|PI|PIC|PDT)-/.test(i.tag || "")) return;
+      const svc = String(i.service || "").toUpperCase();
+      const org = (/FROM ([A-Z]{1,3}-[0-9]+[A-Z]?)/.exec(svc) || /^([A-Z]{1,3}-[0-9]+[A-Z]?) /.exec(svc) || [])[1];
+      if (!org || !tags.includes(org)) return;
+      const port = /INLET/.test(svc) ? "INLET" : /OUTLET/.test(svc) ? "OUTLET" : null;
+      if (port) res[port].push(i.tag);
+    });
+    res.INLET = [...new Set(res.INLET)].slice(0, 3);
+    res.OUTLET = [...new Set(res.OUTLET)].slice(0, 3);
+    return res;
+  }
 
   /* ═════════════════════════════════════════════════════════════════════
      1 · PLANT MAP — all process areas, main path on the centre line
@@ -449,6 +466,24 @@
 
     /* inlet arrow + optional inline element of step 1 */
     s += `<line x1="66" y1="${my}" x2="${bx(0) - 2}" y2="${my}" stroke="${mc}" stroke-width="3" marker-end="${mref(mc)}"/>`;
+    /* segment chips: outlet instruments of box i + inlet instruments of box i+1 share
+       the same line segment (V-202 outlet ≡ E-201 inlet). Collected per segment k. */
+    const ports = train.map(t => portInstruments(data, t.equipment_tags || []));
+    const placedPortTags = new Set(ports.flatMap(p => [...p.INLET, ...p.OUTLET]));
+    const segChips = [];                       // k = 0..n  (before box k / after box k-1)
+    for (let k = 0; k <= n; k++) {
+      const chips = [...(k > 0 ? ports[k - 1].OUTLET : []), ...(k < n ? ports[k].INLET : [])];
+      if (chips.length) segChips.push([k, chips]);
+    }
+    segChips.forEach(([k, chips]) => {
+      if (k === n) return;                     // last-segment chips join the outlet line label
+      const cxSeg = k === 0 ? (66 + bx(0)) / 2 : bx(k - 1) + bw + gap / 2;
+      const below = !(train[k] && k === 0 && train[0].inline_element);   // k=0 diamond labels below → chip above
+      const y = below ? my + 16 : my - 30;
+      s += `<text x="${cxSeg}" y="${y}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="#0B5CAD"
+        data-live-kind="inst" data-live-tags="${esc(chips.join(","))}">${esc(chips.join(" · "))}</text>`;
+    });
+    const lastSegChips = (segChips.find(([k]) => k === n) || [null, []])[1];
     train.forEach((t, i) => {
       if (t.inline_element) {
         const dx = i === 0 ? (66 + bx(0)) / 2 : bx(i - 1) + bw + gap / 2;
@@ -463,7 +498,7 @@
       /* key instruments of this equipment group — future live-value hooks (data-live-tags).
          Flow meters allocated to a LINK are drawn on their line, never inside the box. */
       const keyInst = equipKeyInstruments(data, t.equipment_tags || [], 6)
-        .filter(tg => !linkMeterSet.has(tg));
+        .filter(tg => !linkMeterSet.has(tg) && !placedPortTags.has(tg));
       if (keyInst.length) {
         const rows2 = [keyInst.slice(0, 3), keyInst.slice(3, 6)].filter(a => a.length);
         rows2.forEach((rw, ri) => {
@@ -505,7 +540,9 @@
     const inM = mainIn && (mainIn.meter_tags || [])[0];
     if (inM) s += `<text x="70" y="${my + 16}" font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(inM)}">◉ ${esc(inM)}</text>`;
     const outM = mainOut && (mainOut.meter_tags || [])[0];
-    if (outM) s += `<text x="${xEnd + 6}" y="${my + 16}" font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(outM)}">◉ ${esc(outM)}</text>`;
+    const outLine = [...(outM ? ["◉ " + outM] : []), ...lastSegChips];
+    if (outLine.length) s += `<text x="${xEnd + 6}" y="${my + 16}" font-family="${MONO}" font-size="7.2" fill="#0B5CAD"
+      data-live-kind="inst" data-live-tags="${esc([outM, ...lastSegChips].filter(Boolean).join(","))}">${esc(outLine.join("  "))}</text>`;
 
     /* bottom outputs — one drop PER METER, hanging from its ORIGIN equipment box
        (rule of v_instrument_flow_origin: "WATER OUTLET FROM V-201" → the line
