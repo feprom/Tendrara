@@ -663,7 +663,11 @@ window.assetClick=assetClick;
 
 /* ── drag / placement mode ───────────────────────────────────── */
 async function savePos(kind,tag,fields){
-  const row=Object.assign({scope:"plant",object_kind:kind,object_tag:tag,updated_by:SESSION?SESSION.name:"?",updated_at:new Date().toISOString()},fields);
+  // Attribution is by eni_users.id; the name rides along as a display snapshot.
+  // A null id means a non-account writer (migration/script), not "unknown".
+  const row=Object.assign({scope:"plant",object_kind:kind,object_tag:tag,
+    updated_by:SESSION?SESSION.name:"?", updated_by_id:(SESSION&&SESSION.id)||null,
+    updated_at:new Date().toISOString()},fields);
   const {data,error}=await sb.from("plant_asset_positions")
     .upsert(row,{onConflict:"scope,object_kind,object_tag"}).select();
   if(error){status("✗ save: "+error.message,"err");return;}
