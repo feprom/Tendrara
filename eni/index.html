@@ -437,6 +437,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/supabase-config.js"></script>
 <script src="doc-manifest.js"></script>
+<script src="tam-flow.js"></script>
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
@@ -447,7 +448,8 @@
    ════════════════════════════════════════════════════════════════ */
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[], atypes:[]};
+const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[], atypes:[],
+  svcClasses:[], plinks:[], aflows:[], trains:[], aenergy:[]};   // process topology (migrations 048/049) — read by tam-flow.js
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), alarmByTag:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
              dwgByPid:new Map(), dwgByDoc:new Map()};
@@ -799,7 +801,7 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
@@ -827,9 +829,13 @@ async function boot(){
       // skid registry. Loaded fetchOpt so a missing table never kills boot.
       fetchOpt("plant_manual_valves"), fetchOpt("plant_pid_connectors"),
       fetchOpt("plant_pid_lines"), fetchOpt("plant_skids","tag"),
-      fetchOpt("plant_asset_types","id")
+      fetchOpt("plant_asset_types","id"),
+      // ── process topology layer (migrations 048/049) — feeds tam-flow.js ──
+      fetchOpt("plant_service_classes","sort_order"), fetchOpt("v_plant_block"),
+      fetchOpt("v_area_flows"), fetchOpt("plant_area_trains","seq"),
+      fetchOpt("v_area_energy")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -1955,7 +1961,23 @@ function lineSvc(ref){
   const m=/(?:"|”)\s*-\s*([A-Z]{1,3})\b/.exec(ref) || /(?:^|-)([A-Z]{2,3})-\d/.exec(ref);
   return m?m[1]:"";
 }
-function svcStyle(s){ return SVC_STYLE[s]||{c:"#4A4F57",w:1.5,d:"",n:s||"LINE"}; }
+function svcStyle(s){
+  // service classes live in the DB since migration 048 (plant_service_classes);
+  // the hardcoded SVC_STYLE above stays only as an offline fallback.
+  if(DB.svcClasses&&DB.svcClasses.length){
+    if(!IDX.svcByCode||IDX.svcByCode.size!==DB.svcClasses.length)
+      IDX.svcByCode=new Map(DB.svcClasses.map(c=>[c.service_code,c]));
+    const c=IDX.svcByCode.get(s);
+    if(c) return {c:c.color,w:+c.stroke_width||1.5,d:c.dash||"",n:c.name};
+  }
+  return SVC_STYLE[s]||{c:"#4A4F57",w:1.5,d:"",n:s||"LINE"};
+}
+let HMB_CASE="C1W";                       // operating case shown on tam-flow diagrams
+function setHmbCase(v){ HMB_CASE=v; route(); }
+function hmbCaseSel(){
+  return `<select onchange="setHmbCase(this.value)" style="font:600 10px Consolas,monospace;border:1px solid var(--line);border-radius:4px;padding:1px 4px">`+
+    ["C1W","C1S","C2W","C2S"].map(k=>`<option${k===HMB_CASE?" selected":""}>${k}</option>`).join("")+`</select>`;
+}
 // nominal pipe size "1-1/2\"" → inches (for the min–max size chip)
 function sizeIn(s){
   if(!s) return null; s=String(s).replace(/["”\s]/g,"");
@@ -2228,19 +2250,35 @@ function renderArea(c, code){
   if(eloads.length) facts+=fact("LOAD",eloads.length,"ELECTRICAL LOADS");
   if(ceR.length) facts+=fact("CE",ceObj.causes.length,"CAUSE & EFFECT");
 
-  const flowSvg=areaFlowSvg(code, eq);
+  // ── process topology (migrations 048/049) → tam-flow.js; legacy generator is the fallback ──
+  const tf=(window.TamFlow&&DB.aflows&&DB.aflows.length)?TamFlow.fromViewer(DB):null;
+  const tfOpts={case:HMB_CASE,onNavigate:"nav",onEquip:"openEquip"};
+  const plantMapBlock=tf?`
+  <h2 style="margin-top:20px">Plant map <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· generated from
+    plant_process_links — UNIT ${esc(String(code))} highlighted · HMB case ${hmbCaseSel()}</span></h2>
+  <div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${TamFlow.plantMap(tf,Object.assign({highlight:String(code)},tfOpts))}</div>`:"";
+  const flowSvg=tf?TamFlow.areaBlock(tf,code,tfOpts):areaFlowSvg(code, eq);
   const flowBlock=flowSvg?`
   <h2 style="margin-top:20px">Process block <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· generated from
-    <span title="off-page connectors of this area's digitized P&IDs">plant_pid_connectors</span> ·
+    ${tf?`<span title="curated topology: area crossings + HMB streams + boundary instruments">plant_process_links / v_area_flows</span> · plant_streams (HMB) ·`
+        :`<span title="off-page connectors of this area's digitized P&IDs">plant_pid_connectors</span> ·`}
     plant_equipment/plant_skids · plant_pid_lines — flows appear as their P&IDs are digitized (v_pid_coverage)</span></h2>
   <div id="areaflow" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${flowSvg}</div>
   ${areaParamChips(code, inst, vlvs, mvs)}`:"";
+  const hasTrain=tf&&(DB.trains||[]).some(t=>String(t.area_code)===String(code));
+  const unitFlowBlock=hasTrain?`
+  <h2 style="margin-top:20px">Unit-flow diagram <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· Manual §3.1 style ·
+    plant_area_trains (equipment chain) + plant_process_links (inputs/outputs/control) · HMB ${esc(HMB_CASE)}</span></h2>
+  <div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${TamFlow.unitSummary(tf,code,tfOpts)}</div>
+  ${TamFlow.hmbCards(tf,code,tfOpts)}`:"";
 
   c.innerHTML=`
   <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
   <h1>Area ${esc(code)} — ${esc(areaName(code))}</h1>
   <div class="facts">${facts}</div>
+  ${plantMapBlock}
   ${flowBlock}
+  ${unitFlowBlock}
   <div class="toolrow" style="margin-top:14px">
     <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">Each list — click a column to sort · type to filter · ▾ to collapse · ⭳ per-list Excel.</span>
     <span class="spacer"></span>
