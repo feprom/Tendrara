@@ -295,6 +295,47 @@
     letter-spacing:.04em;color:var(--ink-soft);}
   .pv-legend span{display:inline-flex;align-items:center;gap:5px;}
   .pv-legend svg{width:13px;height:13px;color:var(--blue);}
+
+  /* ── printable area report (exportAreaPdf) ─────────────────────
+     #printroot is filled on demand and only exists for the print engine:
+     on screen it stays hidden; in print it is the ONLY thing shown.     */
+  #printroot{display:none;}
+  @media print{
+    @page{size:A4;margin:9mm 11mm 12mm 11mm;}
+    body{display:block!important;height:auto!important;overflow:visible!important;background:#fff!important;}
+    body.printing>*:not(#printroot){display:none!important;}
+    body.printing #printroot{display:block!important;font-family:var(--sans);color:var(--ink);}
+    /* the whole report lives in ONE table whose <thead> repeats the
+       Technical America title block on every printed page */
+    #printroot table.prn-doc{width:100%;border-collapse:collapse;}
+    #printroot table.prn-doc>thead td{padding:0 0 2mm;}
+    #printroot .prn-head{display:flex;align-items:center;justify-content:space-between;gap:14px;
+      border-bottom:2.5px solid var(--crimson);padding-bottom:2mm;background:#fff;}
+    #printroot .prn-head img{height:10mm;}
+    #printroot .prn-head .ttl{text-align:center;flex:1;}
+    #printroot .prn-head .ttl .l1{font-size:11.5px;font-weight:700;letter-spacing:.14em;color:var(--crimson);}
+    #printroot .prn-head .ttl .l2{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:var(--ink-soft);margin-top:1mm;}
+    #printroot .prn-head .doc{font-family:var(--mono);font-size:8px;text-align:right;color:var(--ink-soft);line-height:1.5;}
+    #printroot .prn-foot{border-top:1px solid var(--line-strong);margin-top:4mm;
+      padding-top:1.2mm;font-family:var(--mono);font-size:7.2px;color:var(--ink-soft);
+      display:flex;justify-content:space-between;}
+    #printroot h1{font-size:17px;margin:0 0 2mm;}
+    #printroot h3{font-size:11px;letter-spacing:.06em;margin:5mm 0 1.6mm;color:var(--ink);
+      border-left:3px solid var(--crimson);padding-left:6px;page-break-after:avoid;}
+    #printroot .prn-meta{width:100%;border-collapse:collapse;font-size:8.5px;margin-bottom:3mm;}
+    #printroot .prn-meta td{border:1px solid var(--line-strong);padding:1.4mm 2mm;}
+    #printroot .prn-meta td.k{font-family:var(--mono);font-size:7.2px;letter-spacing:.08em;color:var(--ink-soft);width:16%;}
+    #printroot table.prn{width:100%;border-collapse:collapse;font-size:7.6px;}
+    #printroot table.prn th{background:#F0F2F5;border:.6px solid var(--line-strong);padding:1mm 1.4mm;text-align:left;
+      font-family:var(--mono);font-size:6.8px;letter-spacing:.05em;}
+    #printroot table.prn td{border:.6px solid var(--line);padding:.8mm 1.4mm;vertical-align:top;}
+    #printroot table.prn tr{page-break-inside:avoid;}
+    #printroot .prn-svg{border:1px solid var(--line);border-radius:2mm;padding:2mm;page-break-inside:avoid;}
+    #printroot .prn-svg svg{width:100%;height:auto;}
+    #printroot .prn-chips{font-family:var(--mono);font-size:7.6px;margin:1.6mm 0 0;}
+    #printroot .prn-chips b{color:var(--crimson);}
+    #printroot .pb{page-break-before:always;}
+  }
 </style>
 </head>
 <body>
@@ -406,7 +447,7 @@
    ════════════════════════════════════════════════════════════════ */
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[]};
+const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[]};
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), alarmByTag:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
              dwgByPid:new Map(), dwgByDoc:new Map()};
@@ -749,13 +790,16 @@ async function fetchAll(table, order){
   }
   return rows;
 }
+// Optional-tolerant fetch: a missing/renamed table degrades to an empty list
+// (console warning) instead of killing the whole boot.
+function fetchOpt(table, order){ return fetchAll(table, order).catch(e=>{ console.warn("optional table "+table+": "+e.message); return []; }); }
 
 /* ── boot ────────────────────────────────────────────────────── */
 async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
@@ -776,9 +820,15 @@ async function boot(){
         .order("page").then(r=>r.data||[]),
       // one feed of every user action (CR / review / verification / doc revision /
       // asset doc), already resolved to a user name. ~350 rows. Feeds EI43.
-      fetchAll("v_user_activity")
+      fetchAll("v_user_activity"),
+      // ── area-detail extras (EI10) ──────────────────────────────
+      // Stage-2 manual valves, P&ID off-page connectivity (feeds the generated
+      // area process diagram), Stage-1 line list (service/size chips) and the
+      // skid registry. Loaded fetchOpt so a missing table never kills boot.
+      fetchOpt("plant_manual_valves"), fetchOpt("plant_pid_connectors"),
+      fetchOpt("plant_pid_lines"), fetchOpt("plant_skids","tag")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -798,6 +848,7 @@ function buildIndexes(){
   DB.areas.forEach(a=>IDX.areaByCode.set(String(a.area_code),a));
   DB.inst=DB.inst.filter(r=>r.removed!==true);
   DB.valves=DB.valves.filter(r=>r.removed!==true);
+  DB.mvalves=DB.mvalves.filter(r=>r.removed!==true);
   DB.inst.forEach(r=>{ if(r.tag) IDX.instByTag.set(r.tag.trim(),r); });
   DB.valves.forEach(r=>{ if(r.tag) IDX.valveByTag.set(r.tag.trim(),r); });
   // A shared field device carries ONE index row per control system. E.g. FT-3301 is a
@@ -1565,6 +1616,72 @@ function exportAreaXlsx(){
 }
 window.exportAreaXlsx=exportAreaXlsx;
 
+/* ── printable technical report of the open area (⎙ → save as PDF) ──
+   Renders every list of the area (same TBL data the screen shows) into
+   #printroot with a repeating Technical America / Superintendencia de
+   Ingeniería title-block header, then hands off to the browser's print
+   dialog — "Save as PDF" produces the deliverable. */
+function exportAreaPdf(){
+  if(!AREA_EXPORT){ status("✗ Open an area first","err"); return; }
+  const code=AREA_EXPORT.code, today=new Date().toISOString().slice(0,10);
+  const head=`
+    <div class="prn-head">
+      <img src="/images/logoTA.png" onerror="this.style.display='none'">
+      <div class="ttl">
+        <div class="l1">TECHNICAL AMERICA · SUPERINTENDENCIA DE INGENIERÍA</div>
+        <div class="l2">TENDRARA MICRO-LNG PLANT — AREA TECHNICAL REPORT · E&amp;I NAVIGATOR TX EI10</div>
+      </div>
+      <div class="doc">DOC. TX-EI10-A${esc(String(code))}<br>REV ${esc(today)}<br>AREA ${esc(String(code))}</div>
+    </div>`;
+  const foot=`
+    <div class="prn-foot">
+      <span>TECHNICAL AMERICA INC — SUPERINTENDENCIA DE INGENIERÍA · INTERNAL TOOL</span>
+      <span>Generated ${esc(today)} · by ${esc(getUser())} · source: Tendrara plant database (live)</span>
+    </div>`;
+  const meta=`<table class="prn-meta"><tbody>
+    <tr><td class="k">PROJECT</td><td>TENDRARA MICRO-LNG PLANT — SOUND ENERGY / MANAENERGY (MOROCCO)</td>
+        <td class="k">EPC</td><td>ITALFLUID GEOENERGY</td></tr>
+    <tr><td class="k">AREA / UNIT</td><td><b>${esc(String(code))} — ${esc(areaName(code))}</b></td>
+        <td class="k">DATE</td><td>${esc(today)}</td></tr>
+    <tr><td class="k">PREPARED BY</td><td>${esc(getUser())}</td>
+        <td class="k">SOURCE</td><td>Plant database — P&amp;ID + electrical/IO digitization (contents reflect current digitization coverage)</td></tr>
+  </tbody></table>`;
+  // process block — reuse the generated SVG exactly as rendered on screen
+  const flowEl=document.querySelector("#areaflow svg");
+  const chipsEl=document.querySelector("#areaflow + .dtsummary");
+  const chipsTxt=chipsEl?[...chipsEl.querySelectorAll(".kv")].map(k=>{
+    const a=k.querySelector(".k"), b=k.querySelector(".v");
+    return `<b>${esc(a?a.textContent:"")}</b> ${esc(b?b.textContent:"")}`; }).join(" &nbsp;·&nbsp; "):"";
+  let body=`<h1>Area ${esc(String(code))} — ${esc(areaName(code))}</h1>${meta}`;
+  if(flowEl) body+=`<h3>PROCESS BLOCK — GENERATED FROM P&amp;ID CONNECTIVITY</h3>
+    <div class="prn-svg">${flowEl.outerHTML}</div>
+    ${chipsTxt?`<div class="prn-chips">${chipsTxt}</div>`:""}`;
+  AREA_EXPORT.tables.forEach(id=>{
+    const t=TBL.get(id); if(!t||!t.rows.length) return;
+    const cols=t.cols.filter(cl=>cl.label);
+    body+=`<h3>${esc(t.title.toUpperCase())} (${t.rows.length})</h3>
+      <table class="prn"><thead><tr>${cols.map(cl=>`<th>${esc(cl.label)}</th>`).join("")}</tr></thead><tbody>${
+      t.rows.map(r=>`<tr>${cols.map(cl=>{ const v=cl.get(r); return `<td>${esc(v==null?"":String(v))}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+  });
+  if(AREA_EXPORT.ce&&AREA_EXPORT.ce.causes.length){
+    const eff=AREA_EXPORT.ce.effects, cs=AREA_EXPORT.ce.causes;
+    body+=`<h3>CAUSE &amp; EFFECT MATRIX (${cs.length} × ${eff.length})</h3>
+      <table class="prn"><thead><tr><th>CAUSE</th><th>INSTRUMENT</th><th>TYPE</th><th>SET POINT</th><th>DESCRIPTION</th>${
+      eff.map(e=>`<th>${esc(e.tag)}</th>`).join("")}</tr></thead><tbody>${
+      cs.map(cx=>`<tr><td><b>${esc(cx.tag)}</b></td><td>${esc(cx.ins)}</td><td>${esc(cx.ty)}</td><td>${esc(cx.sp)}</td><td>${esc(cx.ds)}</td>${
+        eff.map(e=>`<td style="text-align:center">${cx.eff.indexOf(e.tag)>=0?"●":""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  }
+  const pr=$("#printroot");
+  pr.innerHTML=`<table class="prn-doc"><thead><tr><td>${head}</td></tr></thead>
+    <tbody><tr><td>${body}${foot}</td></tr></tbody></table>`;
+  document.body.classList.add("printing");
+  const done=()=>{ document.body.classList.remove("printing"); pr.innerHTML=""; window.removeEventListener("afterprint",done); };
+  window.addEventListener("afterprint",done);
+  status("⎙ Print dialog — choose “Save as PDF”","ok");
+  setTimeout(()=>window.print(),60);
+}
+window.exportAreaPdf=exportAreaPdf;
+
 /* ══ cause & effect matrix (module-101 style) ════════════════════ */
 function ceBuild(ceRows, ceEff){
   const map=new Map();
@@ -1602,6 +1719,170 @@ function ceCol(eff, on){
   document.querySelectorAll('#cemat th.eff[data-eff="'+q+'"]').forEach(th=>th.classList.toggle("effhi",!!on));
 }
 window.ceCol=ceCol;
+
+/* ══ area process block — GENERATED, not hand-written ═══════════════
+   Everything in this diagram is derived mathematically from the database:
+   - what ENTERS / LEAVES the area  → plant_pid_connectors (off-page arrows on
+     the digitized P&IDs), destination area resolved through plant_pid_drawings.
+   - the skid layout                → plant_equipment grouped by skid_tag,
+     descriptions from plant_skids.
+   - the line services / sizes      → parsed from the connector line_ref and
+     the Stage-1 line list (plant_pid_lines).
+   No curated text: if a P&ID has not been digitized yet its flows simply do
+   not appear (coverage = v_pid_coverage). */
+const SVC_STYLE={
+  NG:{c:"#C8102E",w:2.6,d:"",n:"NATURAL GAS / LNG"}, FG:{c:"#C8102E",w:2,d:"",n:"FUEL GAS"},
+  FL:{c:"#4A4F57",w:1.6,d:"5 4",n:"FLARE / VENT"},  V:{c:"#4A4F57",w:1.4,d:"5 4",n:"VENT"},
+  HO:{c:"#B26A00",w:1.8,d:"",n:"HOT OIL"},
+  NH:{c:"#0B5CAD",w:1.8,d:"",n:"AMMONIA"}, NH3:{c:"#0B5CAD",w:1.8,d:"",n:"AMMONIA"},
+  AM:{c:"#0B5CAD",w:1.8,d:"",n:"AMINE"},   MR:{c:"#1F8A4C",w:1.8,d:"",n:"MIXED REFRIGERANT"},
+  BG:{c:"#1F8A4C",w:1.8,d:"",n:"BOG / FLASH GAS"},
+  IA:{c:"#0E7490",w:1.4,d:"",n:"INSTRUMENT AIR"}, N:{c:"#0E7490",w:1.4,d:"",n:"NITROGEN"},
+  PW:{c:"#0E7490",w:1.4,d:"",n:"PROCESS WATER"}, WC:{c:"#0E7490",w:1.4,d:"",n:"WATER / CONDENSATE"},
+  RW:{c:"#0E7490",w:1.4,d:"",n:"RAW WATER"},
+  CD:{c:"#4A4F57",w:1.4,d:"",n:"CLOSED DRAIN"}, OD:{c:"#4A4F57",w:1.4,d:"",n:"OPEN DRAIN"}};
+function lineSvc(ref){
+  if(!ref) return "";
+  const m=/(?:"|”)\s*-\s*([A-Z]{1,3})\b/.exec(ref) || /(?:^|-)([A-Z]{2,3})-\d/.exec(ref);
+  return m?m[1]:"";
+}
+function svcStyle(s){ return SVC_STYLE[s]||{c:"#4A4F57",w:1.5,d:"",n:s||"LINE"}; }
+// nominal pipe size "1-1/2\"" → inches (for the min–max size chip)
+function sizeIn(s){
+  if(!s) return null; s=String(s).replace(/["”\s]/g,"");
+  let m=/^(\d+)-(\d+)\/(\d+)$/.exec(s); if(m) return +m[1]+(+m[2]/+m[3]);
+  m=/^(\d+)\/(\d+)$/.exec(s); if(m) return +m[1]/+m[2];
+  m=/^(\d+(?:\.\d+)?)$/.exec(s); if(m) return +m[1];
+  return null;
+}
+function areaFlowGroups(code){
+  const groups=new Map();   // dir|otherArea → {dir, area, count, svcs:Map, descs:[]}
+  DB.conns.filter(cn=>String(cn.area_code)===String(code)).forEach(cn=>{
+    const dir=(cn.direction||"").toLowerCase()==="in"?"in":"out";
+    const d=IDX.dwgByDoc.get((cn.ref_doc||"").trim());
+    const other=d&&d.area_code?String(d.area_code):"?";
+    if(other===String(code)) return;                    // intra-area sheet jump
+    const k=dir+"|"+other;
+    if(!groups.has(k)) groups.set(k,{dir, area:other, count:0, svcs:new Map(), descs:[], refs:new Set()});
+    const g=groups.get(k); g.count++;
+    if(other==="?"&&cn.ref_doc) g.refs.add(cn.ref_doc.trim());
+    const s=lineSvc(cn.line_ref); if(s) g.svcs.set(s,(g.svcs.get(s)||0)+1);
+    if(cn.description&&g.descs.length<6) g.descs.push(cn.description);
+  });
+  const arr=[...groups.values()].map(g=>{
+    g.top=[...g.svcs.entries()].sort((a,b)=>b[1]-a[1]);
+    return g;
+  }).sort((a,b)=>b.count-a.count);
+  return {ins:arr.filter(g=>g.dir==="in"), outs:arr.filter(g=>g.dir==="out")};
+}
+function areaSkidGroups(code, eq){
+  const by=new Map();
+  eq.forEach(r=>{ const k=(r.skid_tag||"").trim();
+    if(!by.has(k)) by.set(k,[]); by.get(k).push(r); });
+  const skidDesc=t=>{ const s=DB.skids.find(x=>(x.tag||"").trim()===t); return s?(s.description||""):""; };
+  return [...by.entries()]
+    .sort((a,b)=>(a[0]===""?1:b[0]===""?-1:a[0].localeCompare(b[0])))
+    .map(([t,rows])=>({tag:t||null, desc:t?skidDesc(t):"LOOSE / FIELD EQUIPMENT", rows:rows.sort((x,y)=>String(x.tag).localeCompare(String(y.tag)))}));
+}
+function areaFlowSvg(code, eq){
+  const {ins,outs}=areaFlowGroups(code);
+  const skids=areaSkidGroups(code, eq);
+  if(!ins.length&&!outs.length&&!skids.length) return "";
+  const W=1000, GX=[8,250], CX=300, CW=400, OX=752;
+  // center box geometry — skid tags flow in 3 columns of monospace text
+  const MAXTAGS=9;
+  const skidH=s=>{ const shown=Math.min(s.rows.length,MAXTAGS), rows=Math.ceil(shown/3)+(s.rows.length>MAXTAGS?1:0); return 26+rows*12+6; };
+  const cInner=skids.reduce((n,s)=>n+skidH(s)+8,0);
+  const cH=Math.max(88, 40+cInner+6);
+  const GH=34, GGAP=10;
+  const colH=n=>n*(GH+GGAP);
+  const H=Math.max(cH, colH(ins.length), colH(outs.length))+56;
+  const cTop=28+Math.max(0,(H-56-cH)/2);
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
+  // ── center: the area, its skids, its equipment (generated) ──
+  s+=`<g><rect x="${CX}" y="${cTop}" width="${CW}" height="${cH}" rx="8" fill="#fff" stroke="#C9CED4" stroke-width="1.6"/>
+    <rect x="${CX}" y="${cTop}" width="4" height="${cH}" rx="2" fill="${areaGroup(code)==='P'?'#C8102E':'#0B5CAD'}" opacity=".85"/>
+    <text x="${CX+14}" y="${cTop+20}" font-family="Consolas,monospace" font-size="15" font-weight="700" fill="#C8102E">${esc(String(code))}</text>
+    <text x="${CX+14}" y="${cTop+32}" font-family="Segoe UI,Arial" font-size="8" font-weight="700" fill="#15171A">${esc(clip(areaName(code),52))}</text>`;
+  let sy=cTop+40;
+  skids.forEach(sk=>{
+    const h=skidH(sk), shown=sk.rows.slice(0,MAXTAGS);
+    s+=`<g><rect x="${CX+12}" y="${sy}" width="${CW-24}" height="${h}" rx="5" fill="#F7F8FA" stroke="#E2E5E9"/>
+      <text x="${CX+20}" y="${sy+13}" font-family="Consolas,monospace" font-size="9.5" font-weight="700" fill="${sk.tag?'#0B5CAD':'#4A4F57'}">${esc(sk.tag||"LOOSE")}</text>
+      <text x="${CX+20}" y="${sy+22}" font-family="Segoe UI,Arial" font-size="6.8" fill="#4A4F57">${esc(clip(sk.desc||"",64))}</text>`;
+    shown.forEach((r,i)=>{
+      const col=i%3, row=Math.floor(i/3);
+      s+=`<text x="${CX+20+col*((CW-44)/3)}" y="${sy+35+row*12}" font-family="Consolas,monospace" font-size="8.4" fill="#0B5CAD" style="cursor:pointer" onclick="openEquip('${esc((r.tag||"").trim())}')"><title>${esc(r.service||"")}</title>${esc(clip(r.tag||"",16))}</text>`;
+    });
+    if(sk.rows.length>MAXTAGS)
+      s+=`<text x="${CX+20}" y="${sy+35+Math.ceil(MAXTAGS/3)*12}" font-family="Consolas,monospace" font-size="7.6" fill="#4A4F57">+${sk.rows.length-MAXTAGS} more…</text>`;
+    s+="</g>"; sy+=h+8;
+  });
+  s+="</g>";
+  // ── flows: one arrow per neighbouring area, from the off-page connectors ──
+  const drawGroup=(g,i,side,n)=>{
+    const yg=28+i*(GH+GGAP)+GH/2;
+    const ye=cTop+((i+0.5)*cH/Math.max(1,n));
+    const st=svcStyle(g.top.length?g.top[0][0]:"");
+    const bx=side==="in"?GX[0]:OX, tx=bx+8;
+    const nameTxt=g.area==="?"?("REF "+clip([...g.refs][0]||"—",14)):esc(clip(areaName(g.area),30));
+    const clickable=g.area!=="?";
+    const svcTxt=g.top.slice(0,3).map(([k,v])=>k+"×"+v).join(" · ")||"—";
+    const tip=(g.descs[0]||"")+(g.descs.length>1?" (+"+(g.descs.length-1)+" more)":"");
+    let o=`<g ${clickable?`style="cursor:pointer" onclick="nav('area/${esc(g.area)}')"`:""}>
+      <title>${esc(tip||("Off-page connectors "+(side==="in"?"from":"to")+" area "+g.area))}</title>
+      <rect x="${bx}" y="${yg-GH/2}" width="240" height="${GH}" rx="5" fill="#fff" stroke="#C9CED4"/>
+      <rect x="${bx}" y="${yg-GH/2}" width="3" height="${GH}" rx="1.5" fill="${st.c}"/>
+      <text x="${tx}" y="${yg-4}" font-family="Consolas,monospace" font-size="9.5" font-weight="700" fill="#C8102E">${g.area==="?"?"⚠":esc(g.area)}</text>
+      <text x="${tx+30}" y="${yg-4}" font-family="Segoe UI,Arial" font-size="7" font-weight="700" fill="#15171A">${nameTxt}</text>
+      <text x="${tx}" y="${yg+9}" font-family="Consolas,monospace" font-size="7.2" fill="#4A4F57">${g.count} line${g.count>1?"s":""} · ${esc(svcTxt)}</text></g>`;
+    const mid=side==="in"?(GX[1]+CX)/2:(OX-4+CX+CW)/2;
+    const x1=side==="in"?GX[1]-2:CX+CW, x2=side==="in"?CX-2:OX-4;
+    o+=`<polyline points="${x1},${side==="in"?yg:ye} ${mid},${side==="in"?yg:ye} ${mid},${side==="in"?ye:yg} ${x2},${side==="in"?ye:yg}" fill="none"
+      stroke="${st.c}" stroke-width="${st.w}" ${st.d?`stroke-dasharray="${st.d}"`:""} marker-end="url(#af-${st.c.replace('#','')})"/>`;
+    return o;
+  };
+  // one arrow marker per colour actually used
+  const cols=new Set([...ins,...outs].map(g=>svcStyle(g.top.length?g.top[0][0]:"").c));
+  s+=`<defs>${[...cols].map(c=>`<marker id="af-${c.replace('#','')}" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="${c}"/></marker>`).join("")}</defs>`;
+  ins.forEach((g,i)=>s+=drawGroup(g,i,"in",ins.length));
+  outs.forEach((g,i)=>s+=drawGroup(g,i,"out",outs.length));
+  if(!ins.length) s+=`<text x="${GX[0]}" y="${cTop+cH/2}" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">NO INBOUND CONNECTORS DIGITIZED</text>`;
+  if(!outs.length) s+=`<text x="${OX}" y="${cTop+cH/2}" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">NO OUTBOUND CONNECTORS DIGITIZED</text>`;
+  s+=`<text x="${GX[0]}" y="16" font-family="Consolas,monospace" font-size="8.5" letter-spacing=".12em" fill="#4A4F57">IN — FROM AREA</text>
+      <text x="${OX}" y="16" font-family="Consolas,monospace" font-size="8.5" letter-spacing=".12em" fill="#4A4F57">OUT — TO AREA</text></svg>`;
+  return s;
+}
+function prefixCounts(rows, getTag){
+  const m=new Map();
+  rows.forEach(r=>{ const t=(getTag(r)||"").trim(); if(!t) return;
+    const p=t.split(/[-\s.]/)[0].replace(/[0-9]+$/,""); if(!p) return;
+    m.set(p,(m.get(p)||0)+1); });
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]);
+}
+function areaParamChips(code, inst, vlvs, mvs){
+  const kv=(k,v,tot)=>`<span class="kv${tot?" tot":""}"><span class="k">${esc(k)}</span><span class="v">${esc(String(v))}</span></span>`;
+  let h="";
+  const ip=prefixCounts(inst,r=>r.tag);
+  if(ip.length) h+=kv("INSTRUMENTS", ip.slice(0,8).map(([k,v])=>k+"×"+v).join("  ")+(ip.length>8?"  +"+ip.slice(8).reduce((n,x)=>n+x[1],0):""));
+  const vp=prefixCounts(vlvs,r=>r.tag);
+  if(vp.length) h+=kv("ACTUATED", vp.map(([k,v])=>k+"×"+v).join("  "));
+  if(mvs.length){
+    const mc=new Map(); mvs.forEach(r=>{ const k=r.valve_class||"?"; mc.set(k,(mc.get(k)||0)+1); });
+    h+=kv("MANUAL", [...mc.entries()].map(([k,v])=>k+"×"+v).join("  "));
+  }
+  const lines=DB.plines.filter(l=>String(l.area_code)===String(code));
+  if(lines.length){
+    const sc=new Map(); let mn=null,mx=null;
+    lines.forEach(l=>{ const k=l.service_code||"?"; sc.set(k,(sc.get(k)||0)+1);
+      const z=sizeIn(l.size); if(z!=null){ mn=mn==null?z:Math.min(mn,z); mx=mx==null?z:Math.max(mx,z); } });
+    h+=kv("LINES", [...sc.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"×"+v).join("  "));
+    const fr=z=>{ if(z==null) return "?"; const w=Math.floor(z), f=z-w, F={0:"",0.25:"¼",0.5:"½",0.75:"¾"}[+f.toFixed(2)];
+      return F!=null?((w||F==="")?w:"")+F+"\"":z+"\""; };
+    if(mn!=null) h+=kv("SIZE RANGE", fr(mn)+" – "+fr(mx));
+  }
+  return h?`<div class="dtsummary" style="margin-top:8px">${h}</div>`:"";
+}
 
 function renderArea(c, code){
   const a=IDX.areaByCode.get(String(code));
@@ -1656,6 +1937,23 @@ function renderArea(c, code){
       {label:"JB", get:r=>r.junction_box, cls:"mono dim"}
     ], vlvs, {rowClick:r=>`openInst('${esc((r.tag||"").trim())}')`, sheet:"Valves"}):"";
 
+  // Stage-2 manual valves (HV/MV/HR/CK) — sits right below the actuated list.
+  const mvs=DB.mvalves.filter(r=>String(r.area_code)===String(code))
+    .sort((a,b)=>String(a.tag).localeCompare(String(b.tag),undefined,{numeric:true}));
+  const mvTbl = mvs.length?dataTable("mvlv","VLV","Manual valves — Stage-2",[
+      {label:"TAG", get:r=>r.tag, cls:"tag", html:(r,v)=>`<b class="mono" style="color:var(--blue)">${esc(v||"—")}</b>`},
+      {label:"CLASS", get:r=>r.valve_class, html:(r,v)=>`<span class="chip ${v==="CHECK"?"info":"dim"}">${nz(v,"—")}</span>`},
+      {label:"TYPE", get:r=>r.valve_type, cls:"dim"},
+      {label:"SIZE", get:r=>r.size, cls:"mono", r:true},
+      {label:"REDUCER", get:r=>r.reducer, cls:"mono dim"},
+      {label:"RATING", get:r=>r.rating, cls:"mono dim"},
+      {label:"NORMALLY", get:r=>r.normally, html:(r,v)=>v?`<span class="chip ${/LC|CSC/i.test(v)?"crimson":/LO|CSO/i.test(v)?"info":"dim"}" title="LO/LC = locked open/closed · CSO/CSC = car-seal open/closed">${esc(v)}</span>`:'<span class="dim">—</span>'},
+      {label:"LINE", get:r=>r.line_number, cls:"mono dim"},
+      {label:"SERVICE / LOCATION", get:r=>r.service, cls:"dim"},
+      {label:"P&ID", get:r=>r.drawing_doc_no, cls:"mono dim"}
+    ], mvs, {sheet:"Manual valves"})
+    :`<div class="empty" style="margin-top:16px">No manual valves digitized for this area yet — Stage-2 (HV/MV/HR/CK) pending for its P&IDs. See <span class="mono">v_pid_coverage.stage2_done</span>.</div>`;
+
   const stTbl = stationRows.length?dataTable("stations","ST","Stations — RIO panels / JB",[
       {label:"PANEL / JB", get:r=>r.panel, cls:"mono", html:(r,v)=>r.orphan?`<span class="dim">${esc(v)}</span> <span class="chip dim">REGISTRY</span>`:`<b style="color:var(--blue)">${esc(v)}</b>`},
       {label:"RIO NODE", get:r=>r.rio, cls:"mono", html:(r,v)=>v?esc(v):'<span class="dim">—</span>'},
@@ -1665,6 +1963,16 @@ function renderArea(c, code){
       {label:"CH", get:r=>r.ch, num:true, r:true, cls:"mono"},
       {label:"FIELD-VERIFIED", get:r=>r.pct, num:true, html:(r,v)=>r.orphan?'<span class="dim">no IO channels</span>':`<div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1;min-width:60px"><i style="width:${v}%"></i></div><span class="mono">${v}%</span></div>`}
     ], stationRows, {rowClick:r=>r.nav?`nav('station/${encodeURIComponent(r.nav)}')`:null, sheet:"Stations"}):"";
+
+  // Detailed IO list of the whole area — the SAME shared format as EI20/EI25
+  // (ioDeriveRows + ioCols; never fork a second IO-table layout). Rows come
+  // from the area's stations so panel↔area mapping matches the station list.
+  const ioRows=ioDeriveRows(st.flatMap(sn=>sn.rows).sort((a,b)=>
+    String(a.rio_panel||"").localeCompare(String(b.rio_panel||""))
+    ||String(a.slot||"").localeCompare(String(b.slot||""),undefined,{numeric:true})
+    ||(a.ch_num||0)-(b.ch_num||0)));
+  const ioTbl=ioRows.length?dataTable("area-io","IO","IO channels — area "+code, ioCols(), ioRows,
+    {sheet:"IO area "+code, collapsed:ioRows.length>400}):"";
 
   const mccTbl = mcc.length?dataTable("mcc","MCC","Remote MCC / motors",[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v)}</b>`},
@@ -1701,26 +2009,38 @@ function renderArea(c, code){
 
   const ceObj = ceR.length?ceBuild(ceR, ceEff):null;
   // export order follows the operating-manual section order
-  const ids=["eq","inst","vlv","stations","mcc","eload","alm"].filter(id=>TBL.has(id));
+  const ids=["eq","inst","vlv","mvlv","stations","area-io","mcc","eload","alm"].filter(id=>TBL.has(id));
   AREA_EXPORT={code, tables:ids, ce:ceObj};
 
   let facts=fact("EQ",eq.length,"EQUIPMENT")+fact("INST",inst.length,"INSTRUMENTS")+fact("VLV",vlvs.length,"ACTUATED VALVES")
+    +fact("VLV",mvs.length,"MANUAL VALVES")
     +fact("ST",st.length,"IO STATIONS")+fact("IO",ioCh,"IO CHANNELS")+fact("ALM",alm.length,"ALARMS");
   if(mcc.length) facts+=fact("MCC",mcc.length,"MCC MOTORS");
   if(eloads.length) facts+=fact("LOAD",eloads.length,"ELECTRICAL LOADS");
   if(ceR.length) facts+=fact("CE",ceObj.causes.length,"CAUSE & EFFECT");
 
+  const flowSvg=areaFlowSvg(code, eq);
+  const flowBlock=flowSvg?`
+  <h2 style="margin-top:20px">Process block <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· generated from
+    <span title="off-page connectors of this area's digitized P&IDs">plant_pid_connectors</span> ·
+    plant_equipment/plant_skids · plant_pid_lines — flows appear as their P&IDs are digitized (v_pid_coverage)</span></h2>
+  <div id="areaflow" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${flowSvg}</div>
+  ${areaParamChips(code, inst, vlvs, mvs)}`:"";
+
   c.innerHTML=`
   <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
   <h1>Area ${esc(code)} — ${esc(areaName(code))}</h1>
   <div class="facts">${facts}</div>
+  ${flowBlock}
   <div class="toolrow" style="margin-top:14px">
     <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">Each list — click a column to sort · type to filter · ▾ to collapse · ⭳ per-list Excel.</span>
     <span class="spacer"></span>
+    <button class="btn" onclick="exportAreaPdf()" title="Printable technical report of this area (Technical America header) — use the browser dialog to save as PDF">⎙ PDF report</button>
     <button class="btn primary" onclick="exportAreaXlsx()">⭳ Export all to Excel</button>
   </div>
-  ${eqTbl}${instTbl}${vlvTbl}
+  ${eqTbl}${instTbl}${vlvTbl}${mvTbl}
   ${stTbl||`<div class="empty" style="margin-top:16px">No IO stations or RIO nodes mapped to this area yet.</div>`}
+  ${ioTbl}
   ${mccTbl}${eloadTbl}${almTbl}
   <h2 style="margin-top:22px">Cause &amp; effect matrix${ceObj?` <span class="mono" style="font-size:12px;color:var(--ink-soft);font-weight:400">· ${ceObj.causes.length} causes × ${ceObj.effects.length} effects</span>
     <button class="btn mini" style="float:right" onclick="dtCeExport()" title="Export matrix to Excel">⭳ Excel</button>`:""}</h2>
@@ -3117,5 +3437,6 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeInst(); clo
 
 boot();
 </script>
+<div id="printroot"></div>
 </body>
 </html>
