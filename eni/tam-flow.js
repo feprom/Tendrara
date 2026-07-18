@@ -89,19 +89,60 @@
       if (error) { console.warn("tam-flow: " + t + ": " + error.message); return []; }
       return data || [];
     };
-    const [areas, classes, links, flows, energy, trains, equipment, skids] = await Promise.all([
+    const [areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves] = await Promise.all([
       all("plant_areas", "area_code"), all("plant_service_classes", "sort_order"),
       all("v_plant_block"), all("v_area_flows"), all("v_area_energy"),
-      all("plant_area_trains", "seq"), all("plant_equipment", "tag"), all("plant_skids", "tag")
+      all("plant_area_trains", "seq"), all("plant_equipment", "tag"), all("plant_skids", "tag"),
+      all("plant_instruments", "tag"), all("plant_valves", "tag")
     ]);
-    return indexData({ areas, classes, links, flows, energy, trains, equipment, skids });
+    return indexData({ areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves });
   }
   function fromViewer(DB) {
     return indexData({
       areas: DB.areas || [], classes: DB.svcClasses || [], links: DB.plinks || [],
       flows: DB.aflows || [], energy: DB.aenergy || [], trains: DB.trains || [],
-      equipment: DB.equip || [], skids: DB.skids || []
+      equipment: DB.equip || [], skids: DB.skids || [],
+      instruments: DB.inst || [], valves: DB.valves || []
     });
+  }
+
+  /* ── ESD / safety symbology ─────────────────────────────────────────────
+     ESD-actuated valves (SDV/BDV/XV/UV…) draw as SMALL YELLOW diamonds;
+     process control valves (FV/PV/LV/TV/PCV…) stay white. */
+  const ESD_YELLOW = "#F7C600";
+  const isEsd = s => /^(SDV|BDV|XV|XEV|UV|SDEV|BDEV|ESD)/.test(String(s || "").trim());
+  function diamond(x, y, label, labelPos) {   // labelPos: 'above' | 'below'
+    const esd = isEsd(label);
+    const r = esd ? 6 : 8;                     // ESD diamonds smaller
+    const ly = labelPos === "below" ? y + r + 22 : y - r - 12;   // breathing room from the arrow
+    return `<rect x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}" transform="rotate(45 ${x} ${y})"
+      fill="${esd ? ESD_YELLOW : "#fff"}" stroke="${esd ? "#8A6D00" : "#333"}" stroke-width="1.4"/>
+      <text x="${x}" y="${ly}" text-anchor="middle" font-family="${MONO}" font-size="7.4"
+        font-weight="${esd ? 700 : 400}" fill="${esd ? "#8A6D00" : "#333"}" data-live-kind="valve" data-tag="${esc(String(label).split(" ")[0])}">${esc(label)}</text>`;
+  }
+  /* group PSV-2001A + PSV-2001B → PSV-2001A/B */
+  function groupAB(tags) {
+    const by = new Map();
+    (tags || []).forEach(t => {
+      const m = /^(.*?)([A-D])$/.exec(t);
+      const k = m ? m[1] : t;
+      if (!by.has(k)) by.set(k, []);
+      if (m) by.get(k).push(m[2]);
+    });
+    return [...by.entries()].map(([k, sfx]) => sfx.length ? k + sfx.sort().join("/") : k);
+  }
+  /* key instruments / safety valves of an equipment group (index `equipment` field + service text) */
+  const _matches = (r, tags) =>
+    (r.equipment && tags.includes(String(r.equipment).trim())) ||
+    (r.service && tags.some(t => String(r.service).toUpperCase().includes(t.toUpperCase())));
+  function equipKeyInstruments(data, tags, max) {
+    const KEY = /^(PT|PDT|TT|LT|LIT|FT|AT)-/;
+    const m = (data.instruments || []).filter(i => !i.removed && KEY.test(i.tag || "") && _matches(i, tags));
+    return [...new Set(m.map(i => i.tag))].sort().slice(0, max || 6);
+  }
+  function equipSafetyValves(data, tags) {
+    const m = (data.valves || []).filter(v => !v.removed && /^(PSV|TSV|VSV)-/.test(v.tag || "") && _matches(v, tags));
+    return groupAB([...new Set(m.map(v => v.tag))].sort()).slice(0, 3);
   }
 
   /* ═════════════════════════════════════════════════════════════════════
@@ -376,7 +417,8 @@
     /* feed in */
     const inLabel = mainIn ? (mainIn.other_label || "") : "";
     s += `<text x="6" y="176" font-family="${MONO}" font-size="9" fill="#333">${esc(clip(inLabel.split("(")[0] || "FEED", 12))}</text>`;
-    if (inChip) s += `<text x="6" y="188" font-family="${MONO}" font-size="7.4" fill="#666">${esc(clip(inChip, 20))}</text>
+    if (inChip) s += `<text x="6" y="188" font-family="${MONO}" font-size="7.4" fill="#666"
+                        data-live-kind="hmb" data-stream="${esc(mainIn.stream_code || "")}" data-case="${esc(kase)}">${esc(clip(inChip, 20))}</text>
                       <text x="6" y="198" font-family="${MONO}" font-size="7.4" fill="#666">${esc(mainIn && mainIn.stream_code ? "HMB " + mainIn.stream_code + " · " + kase : "")}</text>`;
 
     /* train geometry */
@@ -390,16 +432,28 @@
     train.forEach((t, i) => {
       if (t.inline_element) {
         const dx = i === 0 ? (66 + bx(0)) / 2 : bx(i - 1) + bw + gap / 2;
-        const ly = i === 0 ? my + 26 : my - 14;   // first element labelled BELOW the line (module style)
-        s += `<rect x="${dx - 8}" y="${my - 8}" width="16" height="16" transform="rotate(45 ${dx} ${my})" fill="#fff" stroke="#333" stroke-width="1.5"/>
-              <text x="${dx}" y="${ly}" text-anchor="middle" font-family="${MONO}" font-size="7.6" fill="#333">${esc(t.inline_element)}</text>`;
+        s += diamond(dx, my, t.inline_element, i === 0 ? "below" : "above");
       }
       const x = bx(i);
       if (i > 0) s += `<line x1="${x - gap}" y1="${my}" x2="${x - 2}" y2="${my}" stroke="#333" stroke-width="3" marker-end="${mref("#333")}"/>`;
       s += `<rect x="${x}" y="${y0}" width="${bw}" height="${bh}" rx="5" fill="#fff" stroke="${CRIMSON}" stroke-width="1.6"/>
-            <text x="${x + bw / 2}" y="${y0 + 26}" text-anchor="middle" font-family="${SANS}" font-size="15" font-weight="700" fill="${INK}">${esc(t.display_tag)}</text>`;
+            <text x="${x + bw / 2}" y="${y0 + 22}" text-anchor="middle" font-family="${SANS}" font-size="14" font-weight="700" fill="${INK}">${esc(t.display_tag)}</text>`;
       const svc = (data.equipment || []).find(e => (t.equipment_tags || []).includes((e.tag || "").trim()));
-      s += `<text x="${x + bw / 2}" y="${y0 + 41}" text-anchor="middle" font-family="${SANS}" font-size="7.6" fill="${SOFT}">${esc(clip(svc ? svc.service : "", 26))}</text>`;
+      s += `<text x="${x + bw / 2}" y="${y0 + 35}" text-anchor="middle" font-family="${SANS}" font-size="7.4" fill="${SOFT}">${esc(clip(svc ? svc.service : "", 27))}</text>`;
+      /* key instruments of this equipment group — future live-value hooks (data-live-tags) */
+      const keyInst = equipKeyInstruments(data, t.equipment_tags || [], 6);
+      if (keyInst.length) {
+        const rows2 = [keyInst.slice(0, 3), keyInst.slice(3, 6)].filter(a => a.length);
+        rows2.forEach((rw, ri) => {
+          s += `<text x="${x + bw / 2}" y="${y0 + 47 + ri * 9}" text-anchor="middle" font-family="${MONO}" font-size="6.4" fill="#0B5CAD"
+            data-live-kind="inst" data-live-tags="${esc(rw.join(","))}">${esc(rw.join(" · "))}</text>`;
+        });
+      }
+      /* safety valves above the box, right corner (yellow — relief/ESD family) */
+      const psvs = equipSafetyValves(data, t.equipment_tags || []);
+      if (psvs.length)
+        s += `<text x="${x + 2}" y="${y0 - 5}" font-family="${MONO}" font-size="6.8" font-weight="700" fill="#8A6D00"
+          data-live-kind="psv" data-live-tags="${esc(psvs.join(","))}">⌃ ${esc(psvs.join(" · "))}</text>`;
       if (t.caption) s += `<text x="${x + bw / 2}" y="${y0 + bh + 19}" text-anchor="middle" font-family="${MONO}" font-size="7.6" fill="${CRIMSON}">${esc(t.caption)}</text>`;
       if (t.aux_note) {
         const up = !/blowdown|flare|drain/i.test(t.aux_note);
@@ -414,16 +468,13 @@
     const xEnd = bx(n - 1) + bw;
     s += `<line x1="${xEnd}" y1="${my}" x2="${W - 92}" y2="${my}" stroke="#333" stroke-width="3" marker-end="${mref("#333")}"/>`;
     const ctrl = mainOut && (mainOut.control_tags || [])[0];
-    if (ctrl) {
-      const dx = (xEnd + W - 92) / 2;
-      s += `<rect x="${dx - 8}" y="${my - 8}" width="16" height="16" transform="rotate(45 ${dx} ${my})" fill="#fff" stroke="#333" stroke-width="1.5"/>
-            <text x="${dx}" y="${my - 14}" text-anchor="middle" font-family="${MONO}" font-size="7.6" fill="#333">${esc(ctrl)}</text>`;
-    }
+    if (ctrl) s += diamond((xEnd + W - 92) / 2, my, ctrl, "above");
     if (mainOut) {
       s += `<rect x="${W - 90}" y="${my - 21}" width="82" height="42" rx="5" fill="#FBE9EC" stroke="${CRIMSON}" stroke-width="1.5"/>
             <text x="${W - 49}" y="${my - 2}" text-anchor="middle" font-family="${SANS}" font-size="12" font-weight="700" fill="${CRIMSON}">${esc(mainOut.other_area ? "U" + mainOut.other_area : clip(mainOut.other_label, 9))}</text>
             <text x="${W - 49}" y="${my + 11}" text-anchor="middle" font-family="${SANS}" font-size="7" fill="${SOFT}">${esc(clip(mainOut.other_area_name || "", 14))}</text>`;
-      if (outChip) s += `<text x="${W - 100}" y="${my - 32}" text-anchor="end" font-family="${MONO}" font-size="7.6" fill="#333">${esc((mainOut.stream_code ? mainOut.stream_code + " · " : "") + outChip)}</text>`;
+      if (outChip) s += `<text x="${W - 8}" y="${my + 32}" text-anchor="end" font-family="${MONO}" font-size="7.6" fill="#333"
+        data-live-kind="hmb" data-stream="${esc(mainOut.stream_code || "")}" data-case="${esc(kase)}">${esc((mainOut.stream_code ? mainOut.stream_code + " · " : "") + outChip)}</text>`;
     }
 
     /* bottom outputs: water / condensate */
@@ -433,9 +484,10 @@
       const chip = hmbChip(f, kase);
       s += `<line x1="${x}" y1="${y0 + bh}" x2="${x}" y2="316" stroke="${st.color}" stroke-width="1.6" marker-end="${mref(st.color)}"/>
             <text x="${x + 8}" y="300" font-family="${MONO}" font-size="8.5" fill="${st.color}">${esc(clip((f.description || f.service_name || "") + " → " + (f.other_area ? "U" + f.other_area : f.other_label), 42))}</text>`;
-      if (chip) s += `<text x="${x + 8}" y="310" font-family="${MONO}" font-size="7.2" fill="${st.color}">${esc((f.stream_code ? f.stream_code + " · " : "") + chip)}</text>`;
+      if (chip) s += `<text x="${x + 8}" y="310" font-family="${MONO}" font-size="7.2" fill="${st.color}"
+        data-live-kind="hmb" data-stream="${esc(f.stream_code || "")}" data-case="${esc(kase)}">${esc((f.stream_code ? f.stream_code + " · " : "") + chip)}</text>`;
       const m = (f.meter_tags || [])[0];
-      if (m) s += `<text x="${x + 8}" y="288" font-family="${MONO}" font-size="7.2" fill="#0B5CAD">◉ ${esc(m)}</text>`;
+      if (m) s += `<text x="${x + 8}" y="288" font-family="${MONO}" font-size="7.2" fill="#0B5CAD" data-live-kind="meter" data-tag="${esc(m)}">◉ ${esc(m)}</text>`;
     });
 
     /* legend from categories present */
@@ -479,10 +531,12 @@
     const flowKv = f => {
       const h = f && f.hmb && (f.hmb[kase] || f.hmb.ALL);
       if (!h) return [["No HMB stream curated", "—"]];
+      // each value carries live-binding hooks: swap textContent when SCADA/live data arrives
+      const live = (field, txt) => `<span data-live-kind="hmb" data-stream="${esc(f.stream_code || "")}" data-field="${field}" data-case="${esc(kase)}">${txt}</span>`;
       const kv = [];
-      kv.push(["Flow", (h.std_gas_flow_mmscfd >= 0.05 ? n1(h.std_gas_flow_mmscfd) + " MMSCFD · " : "") + n0(h.mass_flow_kg_h) + " kg/h"]);
-      kv.push(["Pressure", n1(h.pressure_barg) + " barg"]);
-      kv.push(["Temperature", n1(h.temperature_c) + " °C"]);
+      kv.push(["Flow", live("flow", (h.std_gas_flow_mmscfd >= 0.05 ? n1(h.std_gas_flow_mmscfd) + " MMSCFD · " : "") + n0(h.mass_flow_kg_h) + " kg/h")]);
+      kv.push(["Pressure", live("pressure_barg", n1(h.pressure_barg) + " barg")]);
+      kv.push(["Temperature", live("temperature_c", n1(h.temperature_c) + " °C")]);
       return kv;
     };
     const cards = [];
