@@ -437,7 +437,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/supabase-config.js"></script>
 <script src="doc-manifest.js"></script>
-<script src="tam-flow.js"></script>
+<script src="tam-flow.js?v=1.5"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
@@ -449,7 +449,7 @@
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[], atypes:[],
-  svcClasses:[], plinks:[], aflows:[], trains:[], aenergy:[]};   // process topology (migrations 048/049) — read by tam-flow.js
+  svcClasses:[], plinks:[], aflows:[], trains:[], aenergy:[], xmedia:[]};   // process topology (048/049/055) — read by tam-flow.js
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), alarmByTag:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
              dwgByPid:new Map(), dwgByDoc:new Map()};
@@ -801,7 +801,7 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
@@ -833,9 +833,9 @@ async function boot(){
       // ── process topology layer (migrations 048/049) — feeds tam-flow.js ──
       fetchOpt("plant_service_classes","sort_order"), fetchOpt("v_plant_block"),
       fetchOpt("v_area_flows"), fetchOpt("plant_area_trains","seq"),
-      fetchOpt("v_area_energy")
+      fetchOpt("v_area_energy"), fetchOpt("v_exchanger_media")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia});
     buildIndexes();
     buildTree();
     buildDatalist();

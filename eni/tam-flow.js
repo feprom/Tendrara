@@ -89,20 +89,20 @@
       if (error) { console.warn("tam-flow: " + t + ": " + error.message); return []; }
       return data || [];
     };
-    const [areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves] = await Promise.all([
+    const [areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves, media] = await Promise.all([
       all("plant_areas", "area_code"), all("plant_service_classes", "sort_order"),
       all("v_plant_block"), all("v_area_flows"), all("v_area_energy"),
       all("plant_area_trains", "seq"), all("plant_equipment", "tag"), all("plant_skids", "tag"),
-      all("plant_instruments", "tag"), all("plant_valves", "tag")
+      all("plant_instruments", "tag"), all("plant_valves", "tag"), all("v_exchanger_media")
     ]);
-    return indexData({ areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves });
+    return indexData({ areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves, media });
   }
   function fromViewer(DB) {
     return indexData({
       areas: DB.areas || [], classes: DB.svcClasses || [], links: DB.plinks || [],
       flows: DB.aflows || [], energy: DB.aenergy || [], trains: DB.trains || [],
       equipment: DB.equip || [], skids: DB.skids || [],
-      instruments: DB.inst || [], valves: DB.valves || []
+      instruments: DB.inst || [], valves: DB.valves || [], media: DB.xmedia || []
     });
   }
 
@@ -135,10 +135,23 @@
   const _matches = (r, tags) =>
     (r.equipment && tags.includes(String(r.equipment).trim())) ||
     (r.service && tags.some(t => String(r.service).toUpperCase().includes(t.toUpperCase())));
-  function equipKeyInstruments(data, tags, max) {
+  const MEDIUM_RX = /HOT OIL|AMMONIA|NH3|STEAM|LUBE OIL/;   // heating/cooling media
+  function equipKeyInstruments(data, tags, max, unit) {
     const KEY = /^(PT|PDT|TT|LT|LIT|FT|AT)-/;
-    const m = (data.instruments || []).filter(i => !i.removed && KEY.test(i.tag || "") && _matches(i, tags));
+    const m = (data.instruments || []).filter(i => !i.removed && KEY.test(i.tag || "") && _matches(i, tags)
+      && (unit == null || i.unit == null || String(i.unit) === String(unit))   // same unit only
+      && !MEDIUM_RX.test(String(i.service || "").toUpperCase()));        // media go to the utility line
     return [...new Set(m.map(i => i.tag))].sort().slice(0, max || 6);
+  }
+  /* instruments measuring the MEDIUM that feeds this equipment ("HOT OIL TO E-201…") —
+     drawn beside the utility (aux) arrow of the destination box. */
+  function mediumInstruments(data, tags) {
+    const m = (data.instruments || []).filter(i => {
+      if (i.removed || !/^(TT|TE|TG|TI|TIC|PT|PG|PI|PIC|PDT|FT|FE)-/.test(i.tag || "")) return false;
+      const svc = String(i.service || "").toUpperCase();
+      return MEDIUM_RX.test(svc) && tags.some(t => svc.includes(t.toUpperCase()));
+    });
+    return [...new Set(m.map(i => i.tag))].sort().slice(0, 4);
   }
   function equipSafetyValves(data, tags) {
     const m = (data.valves || []).filter(v => !v.removed && /^(PSV|TSV|VSV)-/.test(v.tag || "") && _matches(v, tags));
@@ -165,6 +178,7 @@
     (data.instruments || []).forEach(i => {
       if (i.removed || !/^(TT|TE|TG|TI|TIC|PT|PG|PI|PIC|PDT)-/.test(i.tag || "")) return;
       const svc = String(i.service || "").toUpperCase();
+      if (MEDIUM_RX.test(svc)) return;         // medium instruments live on the utility line
       const org = (/FROM ([A-Z]{1,3}-[0-9]+[A-Z]?)/.exec(svc) || /^([A-Z]{1,3}-[0-9]+[A-Z]?) /.exec(svc) || [])[1];
       if (!org || !tags.includes(org)) return;
       const port = /INLET/.test(svc) ? "INLET" : /OUTLET/.test(svc) ? "OUTLET" : null;
@@ -497,7 +511,7 @@
       s += `<text x="${x + bw / 2}" y="${y0 + 35}" text-anchor="middle" font-family="${SANS}" font-size="7.4" fill="${SOFT}">${esc(clip(svc ? svc.service : "", 27))}</text>`;
       /* key instruments of this equipment group — future live-value hooks (data-live-tags).
          Flow meters allocated to a LINK are drawn on their line, never inside the box. */
-      const keyInst = equipKeyInstruments(data, t.equipment_tags || [], 6)
+      const keyInst = equipKeyInstruments(data, t.equipment_tags || [], 6, code)
         .filter(tg => !linkMeterSet.has(tg) && !placedPortTags.has(tg));
       if (keyInst.length) {
         const rows2 = [keyInst.slice(0, 3), keyInst.slice(3, 6)].filter(a => a.length);
@@ -512,13 +526,42 @@
         s += `<text x="${x + 2}" y="${y0 - 5}" font-family="${MONO}" font-size="6.8" font-weight="700" fill="#8A6D00"
           data-live-kind="psv" data-live-tags="${esc(psvs.join(","))}">⌃ ${esc(psvs.join(" · "))}</text>`;
       if (t.caption) s += `<text x="${x + bw / 2}" y="${y0 + bh + 19}" text-anchor="middle" font-family="${MONO}" font-size="7.6" fill="${CRIMSON}">${esc(t.caption)}</text>`;
-      if (t.aux_note) {
+      /* ── exchanger media: medium IN (conditions) + medium OUT (conditions) ──
+         One pattern for EVERY exchanger (plant_equipment_media / v_exchanger_media):
+         supply arrow down, return arrow up, design conditions on each, duty chip.
+         Live SCADA replaces the design values through the data-live hooks and the
+         efficiency = duty / m·Δh comes from the same pair of lines. */
+      const med = (data.media || []).filter(mm => (t.equipment_tags || []).includes(mm.equipment_tag)
+        && (!mm.case_code || mm.case_code === kase));
+      if (med.length) {
+        const mr = med[0], mst = svcClass(data, mr.service_code);
+        const cxm = x + bw / 2;
+        s += `<line x1="${cxm - 16}" y1="${y0 - 28}" x2="${cxm - 16}" y2="${y0 - 2}" stroke="${mst.color}" stroke-width="1.8" marker-end="${mref(mst.color)}"/>
+              <line x1="${cxm + 16}" y1="${y0 - 2}"  x2="${cxm + 16}" y2="${y0 - 28}" stroke="${mst.color}" stroke-width="1.8" marker-end="${mref(mst.color)}"/>
+              <text x="${cxm}" y="${y0 - 38}" text-anchor="middle" font-family="${MONO}" font-size="7.4" font-weight="700" fill="${mst.color}"
+                data-live-kind="duty" data-tag="${esc(mr.equipment_tag)}">${esc(mst.name)} · Q ${esc(n1(mr.duty_kw))} kW (${esc(kase)}) · ${esc(n1(mr.design_delta_kw))} design</text>
+              <text x="${cxm - 20}" y="${y0 - 22}" text-anchor="end" font-family="${MONO}" font-size="6.6" fill="${mst.color}"
+                data-live-kind="hmb" data-stream="${esc(mr.supply_stream || "")}" data-field="temperature_c">${esc((mr.supply_stream ? mr.supply_stream + " · " : "") + n1(mr.supply_temp_c) + " °C")}</text>
+              <text x="${cxm - 20}" y="${y0 - 12}" text-anchor="end" font-family="${MONO}" font-size="6.2" fill="#0B5CAD"
+                data-live-kind="inst" data-live-tags="${esc((mr.supply_tags || []).join(","))}">${esc(groupAB(mr.supply_tags || []).join(" · "))}</text>
+              <text x="${cxm + 20}" y="${y0 - 22}" font-family="${MONO}" font-size="6.6" fill="${mst.color}"
+                data-live-kind="hmb" data-stream="${esc(mr.return_stream || "")}" data-field="temperature_c">${esc((mr.return_stream ? mr.return_stream + " · " : "") + n1(mr.return_temp_c) + " °C")}</text>
+              <text x="${cxm + 20}" y="${y0 - 12}" font-family="${MONO}" font-size="6.2" fill="#0B5CAD"
+                data-live-kind="inst" data-live-tags="${esc((mr.return_tags || []).join(","))}">${esc(groupAB(mr.return_tags || []).join(" · "))}</text>`;
+      }
+      /* medium instruments fallback (no curated media row yet) + non-medium aux notes */
+      const medInst = med.length ? [] : mediumInstruments(data, t.equipment_tags || []);
+      const auxIsMedium = t.aux_note && /hot oil|nh3|ammonia|kW/i.test(t.aux_note);
+      if (t.aux_note && !(med.length && auxIsMedium)) {
         const up = !/blowdown|flare|drain/i.test(t.aux_note);
-        const ay = up ? y0 - 33 : y0 - 33;   /* aux always drawn above; colour hints purpose */
+        const ay = y0 - 33;
         const col = /hot oil|kW/i.test(t.aux_note) ? "#B26A00" : /inhibitor|chem/i.test(t.aux_note) ? "#7A3FB3" : "#B26A00";
         s += `<line x1="${x + bw / 2}" y1="${ay + 8}" x2="${x + bw / 2}" y2="${y0 - 2}" stroke="${col}" stroke-width="1.5" marker-end="${mref(up ? col : col)}"/>
               <text x="${x + bw / 2}" y="${ay + 2}" text-anchor="middle" font-family="${MONO}" font-size="7.6" fill="${col}">${esc(t.aux_note)}</text>`;
       }
+      if (medInst.length)
+        s += `<text x="${x + bw / 2 + 6}" y="${y0 - 14}" font-family="${MONO}" font-size="6.4" fill="#B26A00"
+          data-live-kind="inst" data-live-tags="${esc(medInst.join(","))}">${esc(medInst.join(" · "))}</text>`;
     });
 
     /* outlet: control diamond + destination box */
