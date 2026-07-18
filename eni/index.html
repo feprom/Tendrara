@@ -350,7 +350,7 @@
 <div class="cmdbar">
   <div class="tcode">
     <label>TX</label>
-    <input id="tcode" placeholder="EI00 · EI25 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI25 IO list · EI30 alarms · EI40 cross-check · EI41 missing set points · EI42 spare capacity · EI43 unattributed records · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · DOC <doc_no> · TAG <tag> · SEARCH <text>">
+    <input id="tcode" placeholder="EI00 · EI25 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI25 IO list · EI30 alarms · EI40 cross-check · EI41 missing set points · EI42 spare capacity · EI43 unattributed records · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · EI90 engineering reports · DOC <doc_no> · TAG <tag> · SEARCH <text>">
   </div>
   <div class="crumbs" id="crumbs">…</div>
   <div class="gsearch"><input id="gsearch" placeholder="⌕ search all — e.g. 3333, suction, S221" list="taglist"><datalist id="taglist"></datalist></div>
@@ -447,7 +447,7 @@
    ════════════════════════════════════════════════════════════════ */
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[]};
+const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[], atypes:[]};
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), alarmByTag:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
              dwgByPid:new Map(), dwgByDoc:new Map()};
@@ -799,7 +799,7 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
@@ -826,9 +826,10 @@ async function boot(){
       // area process diagram), Stage-1 line list (service/size chips) and the
       // skid registry. Loaded fetchOpt so a missing table never kills boot.
       fetchOpt("plant_manual_valves"), fetchOpt("plant_pid_connectors"),
-      fetchOpt("plant_pid_lines"), fetchOpt("plant_skids","tag")
+      fetchOpt("plant_pid_lines"), fetchOpt("plant_skids","tag"),
+      fetchOpt("plant_asset_types","id")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -920,6 +921,8 @@ function route(){
   else if(v==="comm") ROUTE={view:"comm"};
   else if(v==="drawings") ROUTE={view:"drawings"};
   else if(v==="docs") ROUTE={view:"docs"};
+  else if(v==="reports") ROUTE={view:"reports"};
+  else if(v==="report" && rest[0]) ROUTE={view:"report", rpt:rest[0]};
   else if(v==="search") ROUTE={view:"search", q:rest.join("/")||""};
   else ROUTE={view:"home"};
   render();
@@ -950,6 +953,7 @@ function buildTree(){
   html+=`<div class="thead" style="margin-top:6px">PROCESS UNITS</div>`+PROC_ORDER.map(areaNode).join("");
   html+=`<div class="thead" style="margin-top:6px">UTILITIES &amp; OFFSITES</div>`+UTIL_ORDER.map(areaNode).join("");
   html+=`<div class="thead" style="margin-top:12px">REPORTS</div>
+  <div class="tnode ${ROUTE.view==='reports'||ROUTE.view==='report'?'sel':''}" onclick="nav('reports')"><span class="tw">▤</span><span class="code">EI90</span><span class="lbl">Engineering reports</span><span class="cnt">${RPTS.length}</span></div>
   <div class="tnode ${ROUTE.view==='iolist'?'sel':''}" onclick="nav('iolist')"><span class="tw">▤</span><span class="code">EI25</span><span class="lbl">IO list</span><span class="cnt">${DB.io.length}</span></div>
   <div class="tnode ${ROUTE.view==='alarms'?'sel':''}" onclick="nav('alarms')"><span class="tw">▤</span><span class="code">EI30</span><span class="lbl">Alarm register</span><span class="cnt">${DB.alarms.length}</span></div>
   <div class="tnode ${ROUTE.view==='cr'?'sel':''}" onclick="nav('cr')"><span class="tw">▤</span><span class="code">EI50</span><span class="lbl">Change requests</span><span class="cnt">${DB.crs.length}</span></div>
@@ -992,6 +996,8 @@ function render(){
   else if(ROUTE.view==="comm") renderComm(c);
   else if(ROUTE.view==="drawings") renderDrawings(c);
   else if(ROUTE.view==="docs") renderDocs(c);
+  else if(ROUTE.view==="reports") renderReports(c);
+  else if(ROUTE.view==="report") renderReport(c, ROUTE.rpt);
   else if(ROUTE.view==="search") renderSearch(c, ROUTE.q);
   crumbs();
   hydrateDocImages(c);   // swap any data-sp placeholders for signed URLs
@@ -1088,6 +1094,9 @@ function crumbs(){
   if(ROUTE.view==="comm") h+=` › <b>COMMISSIONING</b>`;
   if(ROUTE.view==="drawings") h+=` › <b>DRAWINGS &amp; DOCUMENTS</b>`;
   if(ROUTE.view==="docs") h+=` › <b>DOCUMENT CONTROL</b>`;
+  if(ROUTE.view==="reports") h+=` › <b>ENGINEERING REPORTS</b>`;
+  if(ROUTE.view==="report"){ const rp=rptGet(ROUTE.rpt);
+    h+=` › <a onclick="nav('reports')">ENGINEERING REPORTS</a> › <b>${esc(rp?rp.title.toUpperCase():ROUTE.rpt)}</b>`; }
   if(ROUTE.view==="search") h+=` › <b>SEARCH “${esc(ROUTE.q||"")}”</b>`;
   $("#crumbs").innerHTML=h;
 }
@@ -1621,23 +1630,49 @@ window.exportAreaXlsx=exportAreaXlsx;
    #printroot with a repeating Technical America / Superintendencia de
    Ingeniería title-block header, then hands off to the browser's print
    dialog — "Save as PDF" produces the deliverable. */
-function exportAreaPdf(){
-  if(!AREA_EXPORT){ status("✗ Open an area first","err"); return; }
-  const code=AREA_EXPORT.code, today=new Date().toISOString().slice(0,10);
-  const head=`
+// shared Technical America / Engineering title block + footer + print handoff
+function prnHead(docNo, subtitle, ref){
+  const today=new Date().toISOString().slice(0,10);
+  return `
     <div class="prn-head">
       <img src="/images/logoTA.png" onerror="this.style.display='none'">
       <div class="ttl">
-        <div class="l1">TECHNICAL AMERICA · SUPERINTENDENCIA DE INGENIERÍA</div>
-        <div class="l2">TENDRARA MICRO-LNG PLANT — AREA TECHNICAL REPORT · E&amp;I NAVIGATOR TX EI10</div>
+        <div class="l1">TECHNICAL AMERICA · ENGINEERING</div>
+        <div class="l2">${esc(subtitle)}</div>
       </div>
-      <div class="doc">DOC. TX-EI10-A${esc(String(code))}<br>REV ${esc(today)}<br>AREA ${esc(String(code))}</div>
+      <div class="doc">DOC. ${esc(docNo)}<br>REV ${esc(today)}<br>${esc(ref||"")}</div>
     </div>`;
-  const foot=`
+}
+function prnFoot(){
+  const today=new Date().toISOString().slice(0,10);
+  return `
     <div class="prn-foot">
-      <span>TECHNICAL AMERICA INC — SUPERINTENDENCIA DE INGENIERÍA · INTERNAL TOOL</span>
+      <span>TECHNICAL AMERICA INC — ENGINEERING · INTERNAL TOOL</span>
       <span>Generated ${esc(today)} · by ${esc(getUser())} · source: Tendrara plant database (live)</span>
     </div>`;
+}
+function prnShow(head, body){
+  const pr=$("#printroot");
+  pr.innerHTML=`<table class="prn-doc"><thead><tr><td>${head}</td></tr></thead>
+    <tbody><tr><td>${body}${prnFoot()}</td></tr></tbody></table>`;
+  document.body.classList.add("printing");
+  const done=()=>{ document.body.classList.remove("printing"); pr.innerHTML=""; window.removeEventListener("afterprint",done); };
+  window.addEventListener("afterprint",done);
+  status("⎙ Print dialog — choose “Save as PDF”","ok");
+  setTimeout(()=>window.print(),60);
+}
+function prnTable(title, cols, rows){
+  return `<h3>${esc(title.toUpperCase())} (${rows.length})</h3>
+    <table class="prn"><thead><tr>${cols.map(cl=>`<th>${esc(cl.label)}</th>`).join("")}</tr></thead><tbody>${
+    rows.map(r=>`<tr>${cols.map(cl=>{ const v=cl.get(r); return `<td>${esc(v==null?"":String(v))}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+function exportAreaPdf(){
+  if(!AREA_EXPORT){ status("✗ Open an area first","err"); return; }
+  const code=AREA_EXPORT.code, today=new Date().toISOString().slice(0,10);
+  const head=prnHead("TX-EI10-A"+String(code),
+    "TENDRARA MICRO-LNG PLANT — AREA TECHNICAL REPORT · E&I NAVIGATOR TX EI10",
+    "AREA "+String(code));
   const meta=`<table class="prn-meta"><tbody>
     <tr><td class="k">PROJECT</td><td>TENDRARA MICRO-LNG PLANT — SOUND ENERGY / MANAENERGY (MOROCCO)</td>
         <td class="k">EPC</td><td>ITALFLUID GEOENERGY</td></tr>
@@ -1658,10 +1693,7 @@ function exportAreaPdf(){
     ${chipsTxt?`<div class="prn-chips">${chipsTxt}</div>`:""}`;
   AREA_EXPORT.tables.forEach(id=>{
     const t=TBL.get(id); if(!t||!t.rows.length) return;
-    const cols=t.cols.filter(cl=>cl.label);
-    body+=`<h3>${esc(t.title.toUpperCase())} (${t.rows.length})</h3>
-      <table class="prn"><thead><tr>${cols.map(cl=>`<th>${esc(cl.label)}</th>`).join("")}</tr></thead><tbody>${
-      t.rows.map(r=>`<tr>${cols.map(cl=>{ const v=cl.get(r); return `<td>${esc(v==null?"":String(v))}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+    body+=prnTable(t.title, t.cols.filter(cl=>cl.label), t.rows);
   });
   if(AREA_EXPORT.ce&&AREA_EXPORT.ce.causes.length){
     const eff=AREA_EXPORT.ce.effects, cs=AREA_EXPORT.ce.causes;
@@ -1671,16 +1703,193 @@ function exportAreaPdf(){
       cs.map(cx=>`<tr><td><b>${esc(cx.tag)}</b></td><td>${esc(cx.ins)}</td><td>${esc(cx.ty)}</td><td>${esc(cx.sp)}</td><td>${esc(cx.ds)}</td>${
         eff.map(e=>`<td style="text-align:center">${cx.eff.indexOf(e.tag)>=0?"●":""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   }
-  const pr=$("#printroot");
-  pr.innerHTML=`<table class="prn-doc"><thead><tr><td>${head}</td></tr></thead>
-    <tbody><tr><td>${body}${foot}</td></tr></tbody></table>`;
-  document.body.classList.add("printing");
-  const done=()=>{ document.body.classList.remove("printing"); pr.innerHTML=""; window.removeEventListener("afterprint",done); };
-  window.addEventListener("afterprint",done);
-  status("⎙ Print dialog — choose “Save as PDF”","ok");
-  setTimeout(()=>window.print(),60);
+  prnShow(head, body);
 }
 window.exportAreaPdf=exportAreaPdf;
+
+/* ══ TX EI90 — standard engineering reports (plant-wide) ═══════════════
+   One registry drives the report index view, the per-report table view,
+   the Excel export (via dataTable) and the ⎙ PDF (via prnHead/prnTable).
+   Every report reads the SAME live tables the rest of the viewer uses. */
+function rptAreaCol(get){ return {label:"AREA", get, cls:"mono dim",
+  html:(r,v)=>v&&IDX.areaByCode.has(String(v))?`<span class="tag" onclick="event.stopPropagation();nav('area/${esc(String(v))}')">${esc(String(v))}</span>`:nz(v,"—")}; }
+function atypeName(id){ const a=(DB.atypes||[]).find(x=>x.id===id); return a?(a.type||a.description||""):""; }
+const RPTS=[
+  {id:"equipment", no:"01", title:"Equipment List", src:()=>[...DB.equip].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+    cols:()=>[
+      {label:"TAG", get:r=>r.tag, cls:"tag"},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"TYPE", get:r=>atypeName(r.asset_type), cls:"dim"},
+      rptAreaCol(r=>r.area_code),
+      {label:"SKID", get:r=>r.skid_tag, cls:"mono"}],
+    click:r=>`openEquip('${esc((r.tag||"").trim())}')`},
+  {id:"valves", no:"02", title:"Valve List — Actuated", src:()=>[...DB.valves].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+    cols:()=>[
+      {label:"TAG", get:r=>r.tag, cls:"tag"},
+      {label:"TYPE", get:r=>r.instrument_type, cls:"dim"},
+      rptAreaCol(r=>r.unit),
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
+      {label:"JB", get:r=>r.junction_box, cls:"mono dim"},
+      {label:"P&ID", get:r=>r.tam_pid, cls:"mono dim"}],
+    click:r=>`openInst('${esc((r.tag||"").trim())}')`},
+  {id:"manual-valves", no:"03", title:"Manual Valve List", src:()=>[...DB.mvalves].sort((a,b)=>String(a.tag).localeCompare(String(b.tag),undefined,{numeric:true})),
+    cols:()=>[
+      {label:"TAG", get:r=>r.tag, cls:"tag", html:(r,v)=>`<b class="mono" style="color:var(--blue)">${esc(v||"—")}</b>`},
+      {label:"CLASS", get:r=>r.valve_class, html:(r,v)=>`<span class="chip ${v==="CHECK"?"info":"dim"}">${nz(v,"—")}</span>`},
+      {label:"TYPE", get:r=>r.valve_type, cls:"dim"},
+      {label:"SIZE", get:r=>r.size, cls:"mono", r:true},
+      {label:"RATING", get:r=>r.rating, cls:"mono dim"},
+      {label:"NORMALLY", get:r=>r.normally, html:(r,v)=>v?`<span class="chip ${/LC|CSC/i.test(v)?"crimson":/LO|CSO/i.test(v)?"info":"dim"}">${esc(v)}</span>`:'<span class="dim">—</span>'},
+      {label:"LINE", get:r=>r.line_number, cls:"mono dim"},
+      {label:"SERVICE / LOCATION", get:r=>r.service, cls:"dim"},
+      rptAreaCol(r=>r.area_code),
+      {label:"P&ID", get:r=>r.drawing_doc_no, cls:"mono dim"}]},
+  {id:"lines", no:"04", title:"Line List", src:()=>[...DB.plines].sort((a,b)=>String(a.line_number).localeCompare(String(b.line_number),undefined,{numeric:true})),
+    cols:()=>[
+      {label:"LINE NUMBER", get:r=>r.line_number, cls:"mono", html:(r,v)=>`<b>${esc(v||"—")}</b>`},
+      {label:"SIZE", get:r=>r.size, cls:"mono", r:true},
+      {label:"SERVICE", get:r=>r.service_code, cls:"mono"},
+      {label:"SPEC", get:r=>r.spec_code, cls:"mono dim"},
+      {label:"INSULATION", get:r=>r.insulation, cls:"mono dim"},
+      {label:"FROM", get:r=>r.from_ref, cls:"dim"},
+      {label:"TO", get:r=>r.to_ref, cls:"dim"},
+      rptAreaCol(r=>r.area_code),
+      {label:"P&ID", get:r=>r.drawing_doc_no, cls:"mono dim"}]},
+  {id:"instruments", no:"05", title:"Instrument Index", src:()=>[...DB.inst].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+    cols:()=>[
+      {label:"TAG", get:r=>r.tag, cls:"tag"},
+      {label:"TYPE", get:r=>r.instrument_type, cls:"dim"},
+      rptAreaCol(r=>r.unit),
+      {label:"SYSTEM", get:r=>r.system||"", cls:"mono", html:(r,v)=>v?systemBadge({system:v}):'<span class="dim">—</span>'},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"SIGNAL", get:r=>r.signal_type, cls:"mono"},
+      {label:"JB", get:r=>r.junction_box, cls:"mono dim"},
+      {label:"RANGE", get:r=>((r.range||"")+(r.units?" "+r.units:"")).trim(), cls:"mono dim"},
+      {label:"P&ID", get:r=>r.tam_pid, cls:"mono dim"}],
+    click:r=>`openInst('${esc((r.tag||"").trim())}')`},
+  {id:"io", no:"06", title:"IO List", src:()=>ioDeriveRows([...DB.io].sort((a,b)=>
+      String(a.rio_panel||"").localeCompare(String(b.rio_panel||""))
+      ||String(a.slot||"").localeCompare(String(b.slot||""),undefined,{numeric:true})
+      ||(a.ch_num||0)-(b.ch_num||0))),
+    cols:()=>ioCols()},
+  {id:"alarms", no:"07", title:"Alarm List", src:()=>[...DB.alarms].sort((a,b)=>String(a.alarm_tag).localeCompare(String(b.alarm_tag))),
+    cols:()=>[
+      {label:"ALARM TAG", get:r=>r.alarm_tag, cls:"tag"},
+      {label:"INSTRUMENT", get:r=>r.instrument_tag, cls:"mono"},
+      {label:"TYPE", get:r=>r.type, html:(r,v)=>`<span class="chip ${v==="PSD"||v==="ESD"?"crimson":"info"}">${nz(v,"—")}</span>`},
+      {label:"SET POINT", get:r=>r.set_point, cls:"mono", html:(r,v)=>v?esc(v):'<span class="chip warn">NOT SET</span>'},
+      rptAreaCol(r=>r.area_code),
+      {label:"DESCRIPTION", get:r=>r.description, cls:"dim"}]},
+  {id:"motors", no:"08", title:"Motor List — Remote MCC", src:()=>[...DB.mcc].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+    cols:()=>[
+      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v||"—")}</b>`},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      rptAreaCol(r=>r.area_code),
+      {label:"FAIL POSITION", get:r=>r.fail_position, html:(r,v)=>`<span class="chip ${/close/i.test(v||"")?"crimson":"dim"}">${nz(v,"—")}</span>`},
+      {label:"RIO PANEL", get:r=>r.rio_panel, cls:"mono"},
+      {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
+      {label:"POWER", get:r=>r.power_rating, cls:"mono", r:true}]},
+  {id:"loads", no:"09", title:"Electrical Load List", src:()=>[...DB.eloads].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+    cols:()=>[
+      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v||"—")}</b>`},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      rptAreaCol(r=>r.unit_tag),
+      {label:"STARTING", get:r=>r.starting_type, cls:"dim"},
+      {label:"690 V kW", get:r=>r.v690_kw, num:true, r:true, cls:"mono"},
+      {label:"400 V kW", get:r=>r.v400_kw, num:true, r:true, cls:"mono"},
+      {label:"230 V kW", get:r=>r.v230_kw, num:true, r:true, cls:"mono"},
+      {label:"INSTALLED kW", get:r=>r.power_rating_kw, num:true, r:true, cls:"mono"}]},
+  {id:"skids", no:"10", title:"Skid List", src:()=>[...DB.skids].sort((a,b)=>String(a.tag).localeCompare(String(b.tag)))
+      .map(s=>Object.assign({}, s, {eq_count:DB.equip.filter(e=>(e.skid_tag||"").trim()===(s.tag||"").trim()).length})),
+    cols:()=>[
+      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--blue)">${esc(v||"—")}</b>`},
+      {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
+      rptAreaCol(r=>r.area_code),
+      {label:"EQUIPMENT", get:r=>r.eq_count, num:true, r:true, cls:"mono"}]},
+  {id:"panels", no:"11", title:"Panel / Junction Box List", src:()=>[...IDX.stations.values()]
+      .map(s=>({panel:s.panel, unit:s.unit, ch:s.rows.length,
+        service:(s.jb&&s.jb.service)||"", ex:(s.jb&&s.jb.ex_rating)||"", sys:stationSys(s)||""}))
+      .sort((a,b)=>String(a.panel).localeCompare(String(b.panel))),
+    cols:()=>[
+      {label:"PANEL / JB", get:r=>r.panel, cls:"mono", html:(r,v)=>`<b style="color:var(--blue)">${esc(v||"—")}</b>`},
+      rptAreaCol(r=>r.unit),
+      {label:"SYSTEM", get:r=>r.sys, cls:"mono", html:(r,v)=>v?systemBadge({system:v}):'<span class="dim">—</span>'},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"EX RATING", get:r=>r.ex, cls:"mono"},
+      {label:"CHANNELS", get:r=>r.ch, num:true, r:true, cls:"mono"}],
+    click:r=>`nav('station/${encodeURIComponent(r.panel)}')`},
+  {id:"drawings", no:"12", title:"Drawing List — P&ID", src:()=>[...DB.drawings].sort((a,b)=>String(a.doc_no).localeCompare(String(b.doc_no))),
+    cols:()=>[
+      {label:"DOC NO", get:r=>r.doc_no, cls:"mono", html:(r,v)=>`<b>${esc(v||"—")}</b>`},
+      {label:"P&ID NO", get:r=>r.pid_no, cls:"mono dim"},
+      rptAreaCol(r=>r.area_code),
+      {label:"TITLE", get:r=>r.title, cls:"dim"},
+      {label:"STATUS", get:r=>r.status, cls:"mono dim"}]}
+];
+function rptGet(id){ return RPTS.find(r=>r.id===id); }
+function renderReports(c){
+  TBL.clear();
+  const rows=RPTS.map(rp=>({rp, n:rp.src().length}));
+  c.innerHTML=`
+  <div class="kicker">TX EI90 <span class="sub">· ENGINEERING REPORTS</span></div>
+  <h1>Engineering reports</h1>
+  <div class="toolrow" style="margin-top:8px"><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">
+    Standard plant-wide engineering lists, generated live from the database. Open a report to filter/sort, export it to Excel, or print it as a PDF with the Technical America Engineering title block.</span></div>
+  <table class="data" style="margin-top:12px"><thead><tr><th>DOC</th><th>REPORT</th><th>ROWS</th><th></th></tr></thead><tbody>${
+    rows.map(({rp,n})=>`<tr class="rowlink" onclick="nav('report/${rp.id}')">
+      <td class="mono" style="color:var(--crimson);font-weight:700">TX-RPT-${rp.no}</td>
+      <td><b>${esc(rp.title)}</b></td>
+      <td class="mono r">${n}</td>
+      <td class="nowrap" style="text-align:right">
+        <button class="btn mini" onclick="event.stopPropagation();exportReportXlsx('${rp.id}')" title="Export to Excel">⭳ Excel</button>
+        <button class="btn mini" onclick="event.stopPropagation();exportReportPdf('${rp.id}')" title="Print / save as PDF">⎙ PDF</button>
+      </td></tr>`).join("")}</tbody></table>`;
+}
+function renderReport(c, id){
+  const rp=rptGet(id);
+  if(!rp){ c.innerHTML=`<div class="empty">Unknown report “${esc(id)}”.</div>`; return; }
+  TBL.clear();
+  const rows=rp.src();
+  c.innerHTML=`
+  <div class="kicker"><span style="color:var(--blue);cursor:pointer" onclick="nav('reports')">TX EI90</span> <span class="sub">· ENGINEERING REPORT · TX-RPT-${rp.no}</span></div>
+  <h1>${esc(rp.title)}</h1>
+  <div class="toolrow" style="margin-top:10px">
+    <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${rows.length} rows · live from the plant database · click a column to sort · type to filter.</span>
+    <span class="spacer"></span>
+    <button class="btn primary" onclick="exportReportPdf('${rp.id}')">⎙ PDF report</button>
+  </div>
+  ${rows.length?dataTable("rpt-"+rp.id, "IO", rp.title, rp.cols(), rows, {sheet:rp.title, rowClick:rp.click||null})
+    :`<div class="empty" style="margin-top:14px">No rows yet — this list fills up as the source drawings are digitized.</div>`}`;
+}
+function exportReportXlsx(id){
+  const rp=rptGet(id); if(!rp) return;
+  if(typeof XLSX==="undefined"){ status("✗ Excel library not loaded","err"); return; }
+  const cols=rp.cols().filter(cl=>cl.label), rows=rp.src();
+  const aoa=[cols.map(cl=>cl.label)].concat(rows.map(r=>cols.map(cl=>{ const v=cl.get(r); return v==null?"":String(v); })));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetName(rp.title));
+  XLSX.writeFile(wb, ("TAM_RPT_"+rp.no+"_"+rp.title).replace(/[^\w-]+/g,"_")+".xlsx");
+  status("✓ Exported "+rp.title+" to Excel","ok");
+}
+function exportReportPdf(id){
+  const rp=rptGet(id); if(!rp) return;
+  const today=new Date().toISOString().slice(0,10);
+  const rows=rp.src(), cols=rp.cols().filter(cl=>cl.label);
+  const head=prnHead("TX-RPT-"+rp.no,
+    "TENDRARA MICRO-LNG PLANT — ENGINEERING REPORT · E&I NAVIGATOR TX EI90",
+    rp.title.toUpperCase());
+  const meta=`<table class="prn-meta"><tbody>
+    <tr><td class="k">PROJECT</td><td>TENDRARA MICRO-LNG PLANT — SOUND ENERGY / MANAENERGY (MOROCCO)</td>
+        <td class="k">EPC</td><td>ITALFLUID GEOENERGY</td></tr>
+    <tr><td class="k">DOCUMENT</td><td><b>TX-RPT-${rp.no} — ${esc(rp.title)}</b></td>
+        <td class="k">DATE</td><td>${esc(today)}</td></tr>
+    <tr><td class="k">PREPARED BY</td><td>${esc(getUser())}</td>
+        <td class="k">SOURCE</td><td>Plant database — contents reflect current digitization coverage (${rows.length} rows)</td></tr>
+  </tbody></table>`;
+  prnShow(head, `<h1>${esc(rp.title)}</h1>${meta}${prnTable(rp.title, cols, rows)}`);
+}
+window.exportReportXlsx=exportReportXlsx; window.exportReportPdf=exportReportPdf;
 
 /* ══ cause & effect matrix (module-101 style) ════════════════════ */
 function ceBuild(ceRows, ceEff){
@@ -3420,6 +3629,7 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="EI60") nav("comm");
   else if(cmd==="EI70") nav("drawings");
   else if(cmd==="EI80") nav("docs");
+  else if(cmd==="EI90") nav(a?("report/"+a.toLowerCase()):"reports");
   else if(cmd==="DOC"&&a) openDocNo(a);
   else if(cmd==="TAG"&&a) openInst(a);
   else if((cmd==="SEARCH"||cmd==="FIND")&&a) nav("search/"+encodeURIComponent(a));
