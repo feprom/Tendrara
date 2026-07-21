@@ -1907,12 +1907,13 @@ const RPTS=[
       {label:"STATUS", get:r=>r.status, cls:"mono dim"}]},
   {id:"motords", no:"13", title:"Motor Datasheets — full list",
     src:()=>DB.dsheets.filter(d=>d.specs&&d.specs.motor_class)
-      .map(d=>({tag:d.tag, service:d.service, area:d.area_code, cls:d.specs.motor_class,
+      .map(d=>({tag:d.tag, motor:d.specs.motor_tag||"", service:d.service, area:d.area_code, cls:d.specs.motor_class,
         kw:d.specs.rated_power_kw, v:d.specs.voltage_v||d.specs.supply_bus_v, start:d.specs.starting_method}))
-      .sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+      .sort((a,b)=>String(a.motor||a.tag).localeCompare(String(b.motor||b.tag))),
     click:r=>`openMotor('${esc((r.tag||"").trim())}')`,
     cols:()=>[
-      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--blue)">${esc(v||"—")}</b>`},
+      {label:"MOTOR TAG", get:r=>r.motor, cls:"mono", html:(r,v)=>`<b style="color:var(--crimson)">${esc(v||"—")}</b>`},
+      {label:"DRIVES (EQUIP)", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--blue)">${esc(v||"—")}</b>`},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       rptAreaCol(r=>r.area),
       {label:"CLASS", get:r=>r.cls, cls:"dim"},
@@ -3093,9 +3094,11 @@ function searchAll(q){
       `openAlarm('${esc((r.alarm_tag||"").trim())}')`,rk,mn);}});
   DB.equip.forEach(r=>{ const tagL=(r.tag||"").toLowerCase(), svcL=(r.service||"").toLowerCase();
     if((tagL+" "+svcL).includes(s)) push("EQUIPMENT","ok",r.tag,r.service,r.area_code,r.skid_tag,`openEquip('${esc((r.tag||"").trim())}')`,rankOf(tagL,svcL),"");});
-  IDX.motorByTag.forEach(m=>{ const r=m.row; const tagL=(r.tag||"").toLowerCase(), svcL=(r.service||"").toLowerCase();
-    if((tagL+" "+svcL).includes(s)) push("MOTOR","info",r.tag,r.service, m.src==="load"?r.unit_tag:r.area_code, m.src==="load"?r.skid_tag:r.rio_panel,
-      `openMotor('${esc((r.tag||"").trim())}')`, rankOf(tagL,svcL),"");});
+  IDX.motorByTag.forEach(m=>{ const r=m.row; const ds=IDX.dsByTag.get((r.tag||"").trim());
+    const mtag=(ds&&ds.specs&&ds.specs.motor_tag)||""; const tagL=(r.tag||"").toLowerCase(), svcL=(r.service||"").toLowerCase(), mtagL=mtag.toLowerCase();
+    if((tagL+" "+mtagL+" "+svcL).includes(s)) push("MOTOR","info", mtag||r.tag, r.service, m.src==="load"?r.unit_tag:r.area_code,
+      mtag&&mtag!==r.tag?("drives "+r.tag):(m.src==="load"?r.skid_tag:r.rio_panel),
+      `openMotor('${esc((r.tag||"").trim())}')`, (tagL.includes(s)||mtagL.includes(s))?0:(svcL.includes(s)?1:2),"");});
   IDX.stations.forEach(st=>{ if(st.panel.toLowerCase().includes(s))
     push("STATION","info",st.panel,(st.jb&&st.jb.service)||"IO station",st.unit,st.rows.length+" ch",`nav('station/${encodeURIComponent(st.panel)}')`,0,"");});
   DB.drawings.forEach(d=>{ const idL=((d.doc_no||"")+" "+(d.pid_no||"")).toLowerCase(), ttlL=(d.title||"").toLowerCase();
@@ -3699,7 +3702,8 @@ function openMotor(mtag){
   const kw=v=>{ const n=parseFloat(v); return (!n||isNaN(n))?"—":n.toFixed(1)+" kW"; };
   const areaCode=m.src==="load"?r.unit_tag:r.area_code;
   const area=IDX.areaByCode.get(String(areaCode));
-  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(mtag)}</span> — motor`;
+  const mt=ds&&ds.specs&&ds.specs.motor_tag;
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(mt||mtag)}</span> — motor${mt&&mt!==mtag?` <span class="dim" style="font-weight:400">(drives ${esc(mtag)})</span>`:""}`;
   let h=`<div class="kicker">MOTOR <span class="sub">· ${m.src==="load"?"plant_electrical_loads":"plant_mcc_motors"}</span></div>`;
   if(m.src==="load"){
     const bus=r.v690_active?["690 V",r.v690_kw,r.v690_a]:r.v400_active?["400 V",r.v400_kw,r.v400_a]:r.v230_active?["230 V",r.v230_kw,r.v230_a]:[(r.voltage||"—")+" V",null,null];
@@ -3733,7 +3737,8 @@ function openMotor(mtag){
     if(ds.manufacturer) rows.push(["Manufacturer", ds.manufacturer]);
     if(ds.model) rows.push(["Model", ds.model]);
     const sp=ds.specs||{};
-    const order=[["rated_power_kw","Rated power (kW)"],["voltage_v","Voltage (V)"],["voltage_config","Voltage (Δ/Y)"],
+    const order=[["motor_tag","Motor tag"],["driven_equipment_tag","Driven equipment"],
+      ["rated_power_kw","Rated power (kW)"],["voltage_v","Voltage (V)"],["voltage_config","Voltage (Δ/Y)"],
       ["frequency_hz","Frequency (Hz)"],["phases","Phases"],["poles","Poles"],
       ["starting_method","Starting method"],["cos_phi","cos φ"],["load_factor","Load factor"],
       ["duty_role","Duty role"],["absorbed_power_kw","Absorbed power (kW)"],["line_current_a","Line current (A)"],
