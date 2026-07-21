@@ -147,6 +147,12 @@
   td.tag:hover, span.tag:hover{text-decoration:underline;}
   td.dim{color:var(--ink-soft);}
   .r{text-align:right;}
+  /* right-aligned numeric columns: the header must share the data's right edge.
+     table.data th sets text-align:left with higher specificity than .r, so a
+     header-specific rule is required or numeric headers drift left of their values. */
+  table.data th.r{text-align:right;}
+  /* keep digits column-aligned (tabular figures) so decimals line up down a column */
+  table.data td.mono, table.data th.r{font-variant-numeric:tabular-nums;}
 
   .chip{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;
     padding:2px 8px;border-radius:10px;border:1px solid;white-space:nowrap;}
