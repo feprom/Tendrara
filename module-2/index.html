@@ -38,11 +38,6 @@
   .stage{position:relative;flex:1;overflow:hidden;}
   .slide{position:absolute;inset:0;padding:30px 44px;overflow:auto;opacity:0;visibility:hidden;transition:opacity .22s ease;}
   .slide.active{opacity:1;visibility:visible;}
-  .pres{position:absolute;top:16px;right:28px;font-family:var(--mono);font-size:10px;font-weight:700;
-    letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;border:1.5px solid;z-index:4;}
-  .pres.mm{color:var(--crimson);border-color:var(--crimson);background:#FBE9EC;}
-  .pres.zr{color:var(--blue);border-color:var(--blue);background:#EAF3FB;}
-  .cover3d .pres.mm{color:#fff;border-color:#ff6478;background:rgba(200,16,46,.55);}
   .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
     color:var(--crimson);font-weight:700;margin-bottom:9px;}
   .kicker .sub{color:var(--ink-soft);font-weight:400;}
@@ -299,6 +294,25 @@
   .lightbox .lbhint{color:#9a9ea5;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:4px;text-align:center;flex:none;}
   .lightbox .lbclose{position:fixed;top:16px;right:20px;color:#fff;font-size:20px;background:rgba(255,255,255,.14);
     border:none;width:38px;height:38px;border-radius:8px;cursor:pointer;z-index:121;}
+
+  /* print / export-to-PDF: every slide becomes its own page, chrome (nav buttons, progress bar, lightbox) hidden */
+  @media print{
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    @page{size:1040px 720px;margin:0;}
+    html,body{background:#fff !important;display:block !important;min-height:0 !important;padding:0 !important;width:1040px;}
+    .deck{width:1040px !important;max-width:none !important;height:auto !important;border:none !important;
+      box-shadow:none !important;border-radius:0 !important;display:block !important;}
+    .navbar,.progress,.lightbox{display:none !important;}
+    .brandbar{position:fixed;top:0;left:0;width:1040px;background:#fff;z-index:5;}
+    .accent{position:fixed;top:77px;left:0;width:1040px;z-index:5;}
+    .stage{position:static !important;overflow:visible !important;height:auto !important;flex:none !important;}
+    /* padding-top (not a .stage margin) so the offset for the fixed header repeats on every printed page */
+    .slide{position:static !important;opacity:1 !important;visibility:visible !important;display:block !important;
+      width:1040px;min-height:630px;box-sizing:border-box;overflow:visible !important;
+      padding:114px 44px 30px !important;page-break-after:always;break-after:page;}
+    .slide:last-child{page-break-after:auto;break-after:auto;}
+    .slide.inter{display:flex !important;height:auto !important;min-height:576px;}
+  }
 </style>
 </head>
 <body>
@@ -1416,6 +1430,7 @@
     <div class="navmid">
       <button class="nav" id="present">⧉ Presenter view</button>
       <button class="nav" id="fs">⛶ Fullscreen</button>
+      <button class="nav" id="printpdf">🖨 Print / Export PDF</button>
     </div>
     <div class="navbtns">
       <button class="nav" id="prev">‹ Prev</button>
@@ -1432,6 +1447,7 @@
   const cur=document.getElementById('cur'), bar=document.getElementById('bar'),
         prev=document.getElementById('prev'), next=document.getElementById('next'),
         present=document.getElementById('present'), fs=document.getElementById('fs'),
+        printpdf=document.getElementById('printpdf'),
         deckEl=document.querySelector('.deck');
   document.getElementById('total').textContent=String(slides.length).padStart(2,'0');
 
@@ -1476,6 +1492,7 @@
     else { (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
   }
   fs.onclick=toggleFs;
+  printpdf.onclick=()=>window.print();
 
   // ---- Fullscreen auto-fit: the deck is a 1040x720 canvas scaled uniformly to the screen ----
   // (Fullscreen goes on <html>: the Fullscreen spec forces transform:none / width:100% !important
@@ -1674,17 +1691,6 @@
 <\/script></body></html>`;
   }
 
-
-  // visible presenter chip on every slide (MDs/006): Mario = crimson, ITF = blue
-  slides.forEach(s=>{
-    const p=s.dataset.presenter;
-    if(!p || p==='—') return;
-    const el=document.createElement('span');
-    el.className='pres ' + (p==='Mario' ? 'mm' : (p==='ITF' ? 'zr' : 'mm'));
-    el.textContent='▸ ' + p;
-    if(p==='Both'){ el.className='pres mm'; el.textContent='▸ Mario + ITF'; }
-    s.appendChild(el);
-  });
 
   show(0);
 </script>
