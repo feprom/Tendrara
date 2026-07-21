@@ -289,12 +289,16 @@
   .cehint b{color:var(--crimson);}
   /* global image lightbox */
   .lightbox{position:fixed;inset:0;background:rgba(8,9,11,.92);display:none;align-items:center;justify-content:center;
-    flex-direction:column;z-index:120;padding:26px;cursor:zoom-out;}
+    flex-direction:column;z-index:120;padding:26px;overflow:auto;}
   .lightbox.on{display:flex;}
-  .lightbox img{max-width:96vw;max-height:88vh;border-radius:6px;box-shadow:0 20px 70px rgba(0,0,0,.6);background:#fff;}
-  .lightbox .lbcap{color:#e6e7e9;font-family:var(--mono);font-size:11px;margin-top:12px;text-align:center;max-width:80vw;}
+  .lightbox img{max-width:96vw;max-height:88vh;border-radius:6px;box-shadow:0 20px 70px rgba(0,0,0,.6);background:#fff;cursor:zoom-in;}
+  .lightbox.zoomed{align-items:flex-start;justify-content:flex-start;cursor:default;}
+  .lightbox.zoomed img{max-width:none;max-height:none;width:auto;height:auto;border-radius:2px;cursor:zoom-out;margin:0 auto;}
+  .lightbox .lbcap{color:#e6e7e9;font-family:var(--mono);font-size:11px;margin-top:12px;text-align:center;max-width:80vw;flex:none;}
+  .lightbox.zoomed .lbcap{max-width:none;width:100%;}
+  .lightbox .lbhint{color:#9a9ea5;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:4px;text-align:center;flex:none;}
   .lightbox .lbclose{position:fixed;top:16px;right:20px;color:#fff;font-size:20px;background:rgba(255,255,255,.14);
-    border:none;width:38px;height:38px;border-radius:8px;cursor:pointer;}
+    border:none;width:38px;height:38px;border-radius:8px;cursor:pointer;z-index:121;}
 </style>
 </head>
 <body>
@@ -786,15 +790,22 @@
         <div class="note" style="margin-top:0;border-top:none;">
           <b style="color:var(--crimson);">Cardinal rule 1:</b> “LNG pool fires are neither controlled nor extinguished by water — water <b>increases</b> the vapour formation and burning rate.” (SAF02-ING-FR01)<br><br>
           <b style="color:var(--crimson);">Cardinal rule 2:</b> a <b>jet fire</b> is answered by <b>isolation + depressurization</b> (ESD), not by extinguishing — monitors only cool the neighbours.<br><br>
-          Your role: know where hydrants, monitors and extinguishers are — and <b>keep them accessible</b>. Fighting plant fires is the ERT’s job.</div>
-      </div>
-      <div class="fig" style="margin-top:4px;">
-        <a href="/images/SAF07-PR02-safety-eq-highres.png" target="_blank"><img src="/images/SAF07-PR02-safety-eq.png" alt="Site safety equipment layout — SAF07-ING-PR02 Rev.11 (click for high-resolution)" style="max-height:55px;"></a>
-        <div class="cap">Safety equipment layout — hydrants, monitors, foam gens., extinguishers, eyewash/shower (SAF07-ING-PR02) — click to enlarge</div>
+          Your role: know where hydrants, monitors and extinguishers are — and <b>keep them accessible</b>. Fighting plant fires is the ERT’s job. Safety equipment layout (SAF07-ING-PR02) — full GA next slide.</div>
       </div>
     </section>
 
-    <!-- B1-8b FF SYSTEM GA · ITF · 3 -->
+    <!-- B1-8b SAFETY EQUIPMENT GA · ITF · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="ITF"
+      data-notes='["This is the safety equipment general-arrangement drawing referenced on the previous slide — hydrants, monitors, foam generators, extinguishers, eyewash stations and showers, drawn to scale.","Legend panel: type-of-fire / suitable-extinguisher chart top right; eyewash, infirmary, wind sock, emergency spillage kit, life belt, emergency shower, alarm beacon, speaker and alarm push button symbols.","Same equipment counts as the previous slide — this is simply where they physically sit on the plot.","Current revision SAF07-ING-PR02 Rev.11."]'>
+      <div class="kicker">Block 1 · Safety equipment general arrangement <span class="sub">— SAF07-ING-PR02 Rev.11</span></div>
+      <h2>Where the safety equipment sits</h2>
+      <div class="fig" style="margin-top:2px;">
+        <a href="/images/SAF07-PR02-safety-eq-highres.png" target="_blank"><img src="/images/SAF07-PR02-safety-eq-highres.png" alt="Site safety equipment layout — SAF07-ING-PR02 Rev.11 (high-resolution, click to zoom in on details)" style="max-height:398px;max-width:100%;width:auto;"></a>
+      </div>
+      <div class="note" style="font-size:11px;">Legend: eyewash · infirmary · wind sock · emergency spillage kit · life belt · emergency shower · alarm beacon · speaker · alarm push button · fire-extinguisher selection chart (top right). Click to enlarge. Source: SAF07-ING-PR02.</div>
+    </section>
+
+    <!-- B1-8c FF SYSTEM GA · ITF · 3 -->
     <section class="slide" data-min="3" data-block="Block 1" data-presenter="ITF"
       data-notes='["This is the firewater system general-arrangement drawing — the ring main, hydrants, monitors and foam generators from the previous slide, drawn to scale.","Legend: underground PEHD header 8\" (ring main) with aboveground carbon-steel branch piping 6\"/4\"/2\"; hydrants (6\", HY-XX); fire monitors (FM-XX) and combined monitor+foam units (FMF-XX); foam generators (GF-XX, 15 m3/h each) around the LNG tank bund and impoundment pit; deluge valves (DV-XX); the 1 m3 foam-concentrate bladder tank (T-01).","Same facts as the previous slide — 330 m3/h design demand, 13 hydrants, 5 monitors, 8 foam generators — this is simply where they physically sit.","Current revision SAF02-ING-PR01 Rev.5 (02-Dec-2024)."]'>
       <div class="kicker">Block 1 · Firefighting general arrangement <span class="sub">— SAF02-ING-PR01 Rev.5</span></div>
@@ -855,7 +866,7 @@
             <tr><td class="k"><svg viewBox="0 0 60 16" width="46" height="12" style="vertical-align:middle;margin-right:6px;"><rect x="1" y="5" width="12" height="6" rx="2" fill="#C8102E"/><rect x="17" y="5" width="12" height="6" rx="2" fill="#C8102E"/><rect x="33" y="5" width="12" height="6" rx="2" fill="#C8102E"/><rect x="49" y="5" width="10" height="6" rx="2" fill="#C8102E"/></svg>interrupted ×2</td><td class="v"><b>Gas leak</b></td></tr>
             <tr><td class="k">“Attention, Attention…”</td><td class="v">PA announcement — listen &amp; follow</td></tr>
           </table>
-          <div class="note">⚠ Instructor note: HSE-08 states the two patterns inconsistently in two sections — this is the §9 convention. <b>Confirm at your site induction.</b> Injuries, spills, road accidents, missing person = <b>no siren</b> — report directly to Field Manager / HSE.</div>
+          <div class="note">⚠ Instructor note: HSE-08 states the two patterns inconsistently in two sections — this is the §9 convention. <b>Confirm at your site induction.</b> Injuries, spills, road accidents, missing person = <b>no siren</b> — report directly to Field Manager / HSE. Emergency exits &amp; muster points (SAF07-ING-PR01) — full GA next slide.</div>
         </div>
         <div>
           <div class="flow">
@@ -873,10 +884,17 @@
         <div class="fact"><div class="n">≤25 m</div><div class="l">to a manual push button, all 4 areas</div></div>
         <div class="fact"><div class="n">4 + 2</div><div class="l">muster points + windsocks</div></div>
       </div>
-      <div class="fig" style="margin-top:6px;">
-        <a href="/images/SAF07-PR01-exits-highres.png" target="_blank"><img src="/images/SAF07-PR01-exits.png" alt="Emergency exits &amp; muster point layout — SAF07-ING-PR01 Rev.7 (click for high-resolution)" style="max-height:80px;"></a>
-        <div class="cap">Emergency exits &amp; muster points (SAF07-ING-PR01) — click to enlarge</div>
+    </section>
+
+    <!-- B1-10b EMERGENCY EXITS GA · ITF · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="ITF"
+      data-notes='["This is the emergency exits and muster point general-arrangement drawing referenced on the previous slide, drawn to scale.","Legend: muster point, no-access zone, emergency exit indication, and the temporary position marker for auxiliary installation.","Four muster points about 20 m outside the fence, as counted on the previous slide — this is simply where they physically sit and how the exit routes run.","Current revision SAF07-ING-PR01 Rev.7."]'>
+      <div class="kicker">Block 1 · Emergency exits general arrangement <span class="sub">— SAF07-ING-PR01 Rev.7</span></div>
+      <h2>Exits &amp; muster points — where they sit</h2>
+      <div class="fig" style="margin-top:2px;">
+        <a href="/images/SAF07-PR01-exits-highres.png" target="_blank"><img src="/images/SAF07-PR01-exits-highres.png" alt="Emergency exits &amp; muster point layout — SAF07-ING-PR01 Rev.7 (high-resolution, click to zoom in on details)" style="max-height:418px;max-width:100%;width:auto;"></a>
       </div>
+      <div class="note" style="font-size:11px;">Legend: muster point · no-access zone · emergency exit indication · temporary position for auxiliary installation. Click to enlarge. Source: SAF07-ING-PR01.</div>
     </section>
 
     <!-- B1-11 HAZARDOUS AREAS · Mario · 6 -->
@@ -1670,20 +1688,22 @@
 
   show(0);
 </script>
-<div class="lightbox" id="lightbox"><button class="lbclose" aria-label="close">✕</button><img id="lbimg" src="" alt=""><div class="lbcap" id="lbcap"></div></div>
+<div class="lightbox" id="lightbox"><button class="lbclose" aria-label="close">✕</button><img id="lbimg" src="" alt=""><div class="lbcap" id="lbcap"></div><div class="lbhint" id="lbhint">Click image to zoom to full resolution · scroll to pan · click again to fit</div></div>
 <script>
-  // global image lightbox — click any image in the deck to enlarge
+  // global image lightbox — click any image in the deck to enlarge, click again to zoom to full pixel resolution
   (function(){
     var lb=document.getElementById('lightbox'); if(!lb) return;
-    var lbimg=document.getElementById('lbimg'), lbcap=document.getElementById('lbcap');
-    function show(im){ lbimg.src=im.currentSrc||im.src; lbimg.alt=im.alt||''; lbcap.textContent=im.alt||''; lb.classList.add('on'); }
-    function hide(){ lb.classList.remove('on'); lbimg.removeAttribute('src'); }
+    var lbimg=document.getElementById('lbimg'), lbcap=document.getElementById('lbcap'), lbclose=lb.querySelector('.lbclose');
+    function show(im){ lbimg.src=im.currentSrc||im.src; lbimg.alt=im.alt||''; lbcap.textContent=im.alt||''; lb.classList.add('on'); lb.classList.remove('zoomed'); lb.scrollTop=0; lb.scrollLeft=0; }
+    function hide(){ lb.classList.remove('on','zoomed'); lbimg.removeAttribute('src'); }
     var stage=document.getElementById('stage')||document.querySelector('.stage');
     if(stage){ stage.addEventListener('click',function(e){
       var im=e.target;
       if(im && im.tagName==='IMG'){ e.preventDefault(); e.stopPropagation(); show(im); }
     }); }
-    lb.addEventListener('click',hide);
+    lbimg.addEventListener('click',function(e){ e.stopPropagation(); lb.classList.toggle('zoomed'); if(lb.classList.contains('zoomed')){ lb.scrollTop=0; lb.scrollLeft=0; } });
+    lbclose.addEventListener('click',function(e){ e.stopPropagation(); hide(); });
+    lb.addEventListener('click',function(e){ if(e.target===lb) hide(); });
     document.addEventListener('keydown',function(e){ if(e.key==='Escape') hide(); });
   })();
 </script>
