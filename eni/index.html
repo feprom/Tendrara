@@ -2294,14 +2294,8 @@ function renderArea(c, code){
   const ioTbl=ioRows.length?dataTable("area-io","IO","IO channels — area "+code, ioCols(), ioRows,
     {sheet:"IO area "+code, collapsed:ioRows.length>400}):"";
 
-  const mccTbl = mcc.length?dataTable("mcc","MCC","Remote MCC / motors",[
-      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v)}</b>`},
-      {label:"SERVICE", get:r=>r.service, cls:"dim"},
-      {label:"FAIL POSITION", get:r=>r.fail_position, html:(r,v)=>`<span class="chip ${/close/i.test(v||"")?"crimson":"dim"}">${nz(v,"—")}</span>`},
-      {label:"RIO PANEL", get:r=>r.rio_panel, cls:"mono"},
-      {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
-      {label:"POWER", get:r=>r.power_rating, cls:"mono", r:true}
-    ], mcc, {sheet:"MCC motors"}):"";
+  // Motors table (all area motors: load-list motors + remote-MCC) is built below,
+  // after fmtKw is defined — see motorTbl.
 
   // electrical loads — per-voltage kW columns (right-aligned) + area totals per voltage
   const fmtKw=v=>{ const n=parseFloat(v); return (!n||isNaN(n))?"":n.toFixed(1); };
@@ -2310,7 +2304,7 @@ function renderArea(c, code){
   const kwChip=(k,val,tot)=>`<span class="kv${tot?" tot":""}"><span class="k">${k}</span><span class="v">${val.toFixed(1)} kW</span></span>`;
   const eloadSummary=eloads.length?`${kwChip("690 V",kw690)}${kwChip("400 V",kw400)}${kwChip("230 V",kw230)}${kwChip("INSTALLED Σ",kwInst,true)}`:"";
   const eloadTbl = eloads.length?dataTable("eload","LOAD","Electrical loads",[
-      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v)}</b>`},
+      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>{const d=IDX.dsByTag.get((v||"").trim()); return (d&&d.specs&&d.specs.motor_class)?`<span class="tag" style="font-weight:700" onclick="event.stopPropagation();openMotor('${esc((v||"").trim())}')">${esc(v)}</span>`:`<b>${esc(v)}</b>`;}},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       {label:"STARTING", get:r=>r.starting_type, cls:"dim"},
       {label:"690 V kW", get:r=>r.v690_kw, num:true, r:true, cls:"mono", html:(r,v)=>fmtKw(v)},
@@ -2318,6 +2312,39 @@ function renderArea(c, code){
       {label:"230 V kW", get:r=>r.v230_kw, num:true, r:true, cls:"mono", html:(r,v)=>fmtKw(v)},
       {label:"INSTALLED kW", get:r=>r.power_rating_kw, num:true, r:true, cls:"mono", html:(r,v)=>`<b>${fmtKw(v)}</b>`}
     ], eloads, {sheet:"Electrical loads", summary:eloadSummary}):"";
+
+  // ── Motors — every motor in the area (load-list motors that carry a motor datasheet
+  //    + remote-MCC motors), each row a link to the motor card, with location + electrical data.
+  const acur=v=>{ const n=parseFloat(v); return (!n||isNaN(n))?"":n.toFixed(1); };
+  const motorRows=[];
+  eloads.forEach(l=>{ const ds=IDX.dsByTag.get((l.tag||"").trim());
+    if(!ds||!ds.specs||!ds.specs.motor_class) return;              // only loads that are motors
+    const a=l.v690_active?l.v690_a:l.v400_active?l.v400_a:l.v230_active?l.v230_a:null;
+    motorRows.push({motor:ds.specs.motor_tag||("M"+l.tag), equip:l.tag, service:l.service,
+      starting:l.starting_type, loc:ds.specs.mcc_cubicle||"", v:l.voltage, kw:l.power_rating_kw,
+      a:a, cosphi:l.cos_phi, open:(l.tag||"").trim()}); });
+  mcc.forEach(m=>{ const ds=IDX.dsByTag.get((m.tag||"").trim()); const sp=(ds&&ds.specs)||{};
+    motorRows.push({motor:m.tag, equip:sp.driven_equipment_tag||"", service:m.service,
+      starting:sp.starting_method||"DOL", loc:(m.rio_panel||"")+(m.slot?(" / "+m.slot):""),
+      v:sp.voltage_v||"", kw:m.power_rating, a:sp.rated_current_a||null, cosphi:sp.cos_phi||null,
+      open:(m.tag||"").trim()}); });
+  motorRows.sort((a,b)=>String(a.motor).localeCompare(String(b.motor),undefined,{numeric:true}));
+  const srcOf=r=>{ const d=IDX.dsByTag.get(r.open); return (d&&d.source)||""; };
+  const nMcc=motorRows.filter(r=>srcOf(r).indexOf("Remote MCC")>=0).length;
+  const motorSummary=motorRows.length?`<span class="kv tot"><span class="k">MOTORS Σ</span><span class="v">${motorRows.length}</span></span>`
+    +`<span class="kv"><span class="k">LOAD-LIST</span><span class="v">${motorRows.length-nMcc}</span></span>`
+    +`<span class="kv"><span class="k">REMOTE MCC</span><span class="v">${nMcc}</span></span>`:"";
+  const motorTbl = motorRows.length?dataTable("motors","MOT","Motors",[
+      {label:"MOTOR TAG", get:r=>r.motor, cls:"tag", html:(r,v)=>`<b style="color:var(--crimson)">${esc(v||"—")}</b>`},
+      {label:"DRIVES", get:r=>r.equip, cls:"mono", html:(r,v)=>v?`<span style="color:var(--blue)">${esc(v)}</span>`:'<span class="dim">—</span>'},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"STARTING", get:r=>r.starting, cls:"dim"},
+      {label:"LOCATION", get:r=>r.loc, cls:"mono dim", html:(r,v)=>v?esc(v):'<span class="dim">—</span>'},
+      {label:"V", get:r=>r.v, num:true, r:true, cls:"mono"},
+      {label:"kW", get:r=>r.kw, num:true, r:true, cls:"mono", html:(r,v)=>fmtKw(v)},
+      {label:"A", get:r=>r.a, num:true, r:true, cls:"mono", html:(r,v)=>acur(v)},
+      {label:"cos φ", get:r=>r.cosphi, num:true, r:true, cls:"mono"}
+    ], motorRows, {rowClick:r=>`openMotor('${esc(r.open)}')`, sheet:"Motors", summary:motorSummary}):"";
 
   const almTbl = alm.length?dataTable("alm","ALM","Alarms",[
       {label:"ALARM TAG", get:r=>r.alarm_tag, cls:"tag"},
@@ -2329,13 +2356,13 @@ function renderArea(c, code){
 
   const ceObj = ceR.length?ceBuild(ceR, ceEff):null;
   // export order follows the operating-manual section order
-  const ids=["eq","inst","vlv","mvlv","stations","area-io","mcc","eload","alm"].filter(id=>TBL.has(id));
+  const ids=["eq","inst","vlv","mvlv","stations","area-io","motors","eload","alm"].filter(id=>TBL.has(id));
   AREA_EXPORT={code, tables:ids, ce:ceObj};
 
   let facts=fact("EQ",eq.length,"EQUIPMENT")+fact("INST",inst.length,"INSTRUMENTS")+fact("VLV",vlvs.length,"ACTUATED VALVES")
     +fact("VLV",mvs.length,"MANUAL VALVES")
     +fact("ST",st.length,"IO STATIONS")+fact("IO",ioCh,"IO CHANNELS")+fact("ALM",alm.length,"ALARMS");
-  if(mcc.length) facts+=fact("MCC",mcc.length,"MCC MOTORS");
+  if(motorRows.length) facts+=fact("MOT",motorRows.length,"MOTORS");
   if(eloads.length) facts+=fact("LOAD",eloads.length,"ELECTRICAL LOADS");
   if(ceR.length) facts+=fact("CE",ceObj.causes.length,"CAUSE & EFFECT");
 
@@ -2370,7 +2397,7 @@ function renderArea(c, code){
   ${eqTbl}${instTbl}${vlvTbl}${mvTbl}
   ${stTbl||`<div class="empty" style="margin-top:16px">No IO stations or RIO nodes mapped to this area yet.</div>`}
   ${ioTbl}
-  ${mccTbl}${eloadTbl}${almTbl}
+  ${motorTbl}${eloadTbl}${almTbl}
   <h2 style="margin-top:22px">Cause &amp; effect matrix${ceObj?` <span class="mono" style="font-size:12px;color:var(--ink-soft);font-weight:400">· ${ceObj.causes.length} causes × ${ceObj.effects.length} effects</span>
     <button class="btn mini" style="float:right" onclick="dtCeExport()" title="Export matrix to Excel">⭳ Excel</button>`:""}</h2>
   ${ceObj?ceMatrixHTML(ceObj):`<div class="empty">No cause &amp; effect matrix digitized for this unit yet. Currently only <b>Unit 200 — LNG Plant Inlet</b> has a signed C&amp;E matrix (SAF12) loaded in the database.</div>`}`;
