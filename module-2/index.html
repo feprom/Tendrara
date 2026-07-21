@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Module 002 — Facility Operation, Safety &amp; Emergency</title>
+<title>Module 002 — Plant Safety, Emergency &amp; the ITF HSE System</title>
 <style>
   :root{
     --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
@@ -68,7 +68,7 @@
   .fact .n{font-size:24px;font-weight:700;color:var(--crimson);font-family:var(--mono);line-height:1;}
   .fact .l{font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.35;}
   .slide.cover3d{display:flex;flex-direction:column;color:#fff;
-    background:linear-gradient(180deg,rgba(11,13,15,.80),rgba(11,13,15,.55) 45%,rgba(11,13,15,.82)),url('/images/tendrara_hm_tci.png') center/cover no-repeat;}
+    background:linear-gradient(180deg,rgba(11,13,15,.80),rgba(11,13,15,.55) 45%,rgba(11,13,15,.82)),url('/images/3D_200-bw.png') center/cover no-repeat;}
   .slide.cover3d h1{color:#fff;}
   .slide.cover3d .kicker{color:#ff6478;}
   .slide.cover3d .kicker .sub{color:#c9ccd1;}
@@ -87,6 +87,27 @@
   .step .t{font-size:13px;}
   .step .t b{color:var(--ink);}
 
+  /* ===== Visual-upgrade components (added MDs/017, §3b) ===== */
+  .icards{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;}
+  .icard{flex:1;min-width:104px;border:1px solid var(--line-strong);border-top:3px solid var(--crimson);
+    border-radius:6px;padding:11px 8px 9px;background:var(--bg-soft);text-align:center;}
+  .icard svg{width:30px;height:30px;display:block;margin:0 auto 6px;}
+  .icard .nm{font-size:12px;font-weight:700;line-height:1.2;}
+  .icard .sub{font-family:var(--mono);font-size:9.5px;color:var(--ink-soft);letter-spacing:.03em;margin-top:3px;text-transform:uppercase;}
+  .icard.c-blue{border-top-color:var(--blue);}
+  .icard.c-amber{border-top-color:var(--amber);}
+  .icard.c-ok{border-top-color:var(--ok);}
+  .icard.c-ink{border-top-color:var(--ink-soft);}
+  .icard.c-blue .sub{color:var(--blue);}
+  .icard.c-amber .sub{color:var(--amber);}
+  .icard.c-ok .sub{color:var(--ok);}
+  .rulegrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;}
+  .rulechip{border:1px solid var(--line-strong);border-radius:6px;padding:7px 8px;background:var(--bg-soft);display:flex;gap:8px;align-items:flex-start;}
+  .rulechip .rn{font-family:var(--mono);font-weight:700;font-size:13px;color:#fff;background:var(--crimson);
+    width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;font-size:10.5px;}
+  .rulechip .rt{font-size:11px;line-height:1.3;}
+  .rulechip .rt b{display:block;font-size:11.5px;}
+
   .note{margin-top:14px;font-size:11.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:9px;line-height:1.5;}
   .fig{margin-top:8px;text-align:center;}
   .fig a{display:inline-block;text-decoration:none;}
@@ -94,6 +115,20 @@
   .fig .cap{font-family:var(--mono);font-size:10px;color:var(--ink-soft);margin-top:6px;letter-spacing:.04em;}
   .figrow{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:center;}
   .figrow ul.points li{font-size:13px;}
+  .team{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap;}
+  .person{flex:1;min-width:220px;border:1px solid var(--line-strong);border-radius:8px;padding:18px 20px;background:var(--bg-soft);}
+  .person .av{width:48px;height:48px;border-radius:50%;background:var(--crimson);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;margin-bottom:12px;font-family:var(--mono);}
+  .person .av.zr{background:var(--blue);}
+  .person .nm{font-size:20px;font-weight:700;}
+  .person .rl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--crimson);margin-top:3px;}
+  .person .rl.zr{color:var(--blue);}
+  .person .org{font-size:13px;color:var(--ink-soft);margin-top:6px;}
+  .zagenda{display:flex;flex-direction:column;gap:11px;margin-top:12px;}
+  .zag{display:flex;align-items:center;gap:16px;}
+  .zag .n{width:44px;height:44px;border-radius:50%;background:#2b2e33;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;font-family:Georgia,'Times New Roman',serif;flex:none;}
+  .zag.red .n{background:var(--crimson);}
+  .zag b{display:block;font-size:15.5px;}
+  .zag span{font-size:12.5px;color:var(--ink-soft);}
   .carousel{position:relative;height:322px;margin-top:8px;}
   .carousel .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .55s;pointer-events:none;}
   .carousel .cimg.active{opacity:1;pointer-events:auto;}
@@ -138,6 +173,128 @@
     .slide{padding:22px 20px;} h1{font-size:22px;} h2{font-size:19px;}
     .grid2{grid-template-columns:1fr;} .brandbar{padding:11px 16px;}
   }
+
+  /* ===== Area-introduction components (map+HMB · physical) ===== */
+  .mapwrap{border:1px solid var(--line);border-radius:8px;background:var(--bg-soft);padding:7px 10px 3px;}
+  .mapwrap .lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);padding:0 2px 2px;display:flex;justify-content:space-between;}
+  .mapwrap .lbl .you{color:var(--crimson);font-weight:700;}
+  .hmb{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:11px;align-items:stretch;}
+  .hcard{border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:#fff;position:relative;}
+  .hcard .hh{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#fff;padding:5px 10px;display:flex;justify-content:space-between;}
+  .hcard.in .hh{background:var(--blue);}
+  .hcard.mid .hh{background:var(--amber);}
+  .hcard.out .hh{background:var(--ok);}
+  .hcard .hb{padding:7px 10px;}
+  .hval{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2.5px 0;border-bottom:1px dashed var(--line);line-height:1.3;}
+  .hval:last-child{border-bottom:none;}
+  .hval .k{color:var(--ink-soft);} .hval .v{font-family:var(--mono);color:var(--ink);font-weight:600;text-align:right;}
+  .hstrip{display:flex;gap:9px;margin-top:9px;flex-wrap:wrap;}
+  .pill{flex:1;min-width:190px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg-soft);padding:7px 12px;font-size:11px;line-height:1.4;}
+  .pill b{color:var(--crimson);font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px;}
+  .pill .big{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);}
+  .routing{margin-top:8px;font-size:10.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:6px;}
+  .routing b{color:var(--ink);}
+  .p2cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:11px;}
+  .hcard.arloc .hh{background:#2b2e33;} .hcard.eqc .hh{background:var(--crimson);}
+  .hcard.ioc .hh{background:var(--blue);} .hcard.enc .hh{background:var(--amber);}
+  .hcard.iso .hh{background:#C8102E;} .hcard.bdw .hh{background:#B26A00;}
+  .hcard.rel .hh{background:#7A3FB3;} .hcard.ctl .hh{background:#0B5CAD;}
+  .vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;}
+  .mgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px;}
+  .doclink{color:var(--crimson);font-weight:700;text-decoration:none;}
+  .doclink:hover{text-decoration:underline;}
+  .docstat{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.04em;}
+  .docstat.on{background:#E7F5EC;color:#1F8A4C;} .docstat.off{background:#F0F1F3;color:#8a9099;}
+  .doccat{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
+  .carea{position:relative;border-radius:10px;overflow:hidden;background:#fff;border:1px solid var(--line-strong);}
+  .carea .cimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .8s ease;pointer-events:none;}
+  .carea .cimg.on{opacity:1;pointer-events:auto;}
+  .carea .cimg img{max-width:100%;max-height:100%;object-fit:contain;}
+  .carea .cbadge{position:absolute;top:11px;left:12px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(200,16,46,.85);padding:4px 10px;border-radius:20px;}
+  .carea .cdots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:3;}
+  .carea .cdots b{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.22);cursor:pointer;display:block;transition:.12s;}
+  .carea .cdots b.on{background:var(--crimson);transform:scale(1.15);}
+  /* equipment datasheet */
+  .eqdetail{display:grid;grid-template-columns:1.05fr 1.15fr;gap:14px;height:calc(100% - 58px);}
+  .eqfig{border:1px solid var(--line-strong);border-radius:8px;background:#fff;padding:6px;display:flex;flex-direction:column;min-height:0;}
+  .eqfig .imgbox{position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;}
+  .eqfig img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;}
+  .eqfig .eqc-img{position:absolute;inset:0;margin:auto;opacity:0;transition:opacity .5s;pointer-events:none;}
+  .eqfig .eqc-img.on{opacity:1;pointer-events:auto;}
+  .eqfig .eqc-count{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:9px;color:var(--ink-soft);background:rgba(255,255,255,.85);padding:2px 7px;border-radius:10px;z-index:3;}
+  .eqfig .eqc-dots{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:3;}
+  .eqfig .eqc-dots b{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.22);cursor:pointer;display:block;}
+  .eqfig .eqc-dots b.on{background:var(--crimson);}
+  .eqfig .cap{font-family:var(--mono);font-size:9.5px;color:var(--ink-soft);text-align:center;padding:6px 4px 2px;flex:none;}
+  .stage img{cursor:zoom-in;}
+  .eqcol{display:flex;flex-direction:column;min-height:0;}
+  .eqcard{border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0;flex:1;}
+  .eqcard .hd{background:var(--crimson);color:#fff;padding:8px 13px;flex:none;}
+  .eqcard .hd .tag{font-family:var(--mono);font-size:19px;font-weight:700;line-height:1;}
+  .eqcard .hd .ty{font-size:10.5px;opacity:.92;margin-top:2px;}
+  .eqcard .bd{padding:7px 13px;overflow:auto;}
+  .eqspecs{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
+  .eqspecs .er{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px dashed var(--line);line-height:1.3;}
+  .eqspecs .er .k{color:var(--ink-soft);} .eqspecs .er .v{font-family:var(--mono);color:var(--ink);font-weight:600;text-align:right;}
+  .eqthumbs{display:flex;gap:6px;margin-top:9px;flex:none;}
+  .eqthumbs button{flex:1;font-family:var(--mono);font-size:10px;font-weight:700;border:1.5px solid var(--line-strong);background:#fff;color:var(--ink-soft);border-radius:6px;padding:6px 3px;cursor:pointer;transition:.12s;}
+  .eqthumbs button:hover{border-color:var(--crimson);color:var(--crimson);}
+  .eqthumbs button.on{background:var(--crimson);border-color:var(--crimson);color:#fff;}
+  /* technological-objects tiles + details modal */
+  .objgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-top:11px;}
+  .objtile{border:1px solid var(--line-strong);border-top:3px solid var(--acc,#C8102E);border-radius:10px;background:#fff;
+    padding:10px 6px;text-align:center;cursor:pointer;transition:.14s;font-family:inherit;display:flex;flex-direction:column;align-items:center;}
+  .objtile:hover{border-color:var(--acc,#C8102E);box-shadow:0 5px 16px rgba(0,0,0,.10);transform:translateY(-2px);}
+  .objtile .ic{width:32px;height:32px;border-radius:9px;background:var(--bg-soft);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--acc,#C8102E);}
+  .objtile .n{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--acc,#C8102E);line-height:1;margin-top:7px;}
+  .objtile .l{font-size:10px;font-weight:700;color:var(--ink);margin-top:3px;line-height:1.2;}
+  .objmodal{position:fixed;inset:0;background:rgba(15,17,20,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:24px;}
+  .objmodal.on{display:flex;}
+  .objbox{background:#fff;border-radius:12px;width:min(960px,95vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .objhd{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--crimson);color:#fff;flex:none;}
+  .objhd span{font-size:15px;font-weight:700;}
+  .objhd button{background:rgba(255,255,255,.16);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;}
+  .objtblwrap{overflow:auto;}
+  .objtbl{width:100%;border-collapse:collapse;font-size:12px;}
+  .objtbl th{position:sticky;top:0;background:#fff;font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:9px 14px;border-bottom:2px solid var(--line-strong);}
+  .objtbl td{padding:7px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .objtbl td.tg{font-family:var(--mono);font-weight:700;color:var(--crimson);white-space:nowrap;}
+  .objtbl td.ty{font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
+  .objtbl tr:hover td{background:var(--bg-soft);}
+  .objempty{padding:26px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
+  .objfoot{flex:none;padding:8px 18px;font-family:var(--mono);font-size:9px;color:var(--ink-soft);border-top:1px solid var(--line);}
+  /* cause & effect matrix */
+  .cewrap{padding:14px 16px;}
+  .cematrix{border-collapse:collapse;font-size:11px;margin:0 auto;}
+  .cematrix th,.cematrix td{border:1px solid var(--line-strong);padding:5px 8px;}
+  .cematrix thead th{background:var(--bg-soft);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;}
+  .cematrix th.eff{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;height:104px;text-align:left;font-weight:700;color:var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:.03em;}
+  .cematrix td.tg{font-family:var(--mono);font-weight:700;color:var(--crimson);white-space:nowrap;}
+  .cematrix td.ins{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
+  .cematrix td.ds{font-size:10.5px;color:var(--ink);max-width:230px;}
+  .cematrix td.mk{text-align:center;font-weight:700;color:var(--crimson);font-size:15px;background:#FBE9EC;}
+  .cematrix td.sp{font-family:var(--mono);font-size:10px;color:var(--ink-soft);white-space:nowrap;}
+  .cebadge{font-family:var(--mono);font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;}
+  .cebadge.psd{background:#FBE9EC;color:#C8102E;} .cebadge.lsd{background:#FFF3E0;color:#B26A00;}
+  .celegend{margin-top:13px;font-size:11px;color:var(--ink-soft);line-height:1.55;}
+  .celegend b{color:var(--ink);} .celegend .cetag{font-family:var(--mono);color:var(--crimson);font-weight:700;}
+  .celegend .row{margin:2px 0;}
+  /* interactive cause & effect (on-slide) */
+  .cematrix tbody tr.hi td{background:#FBE9EC;}
+  .cematrix thead th.effhi{background:#C8102E;color:#fff;}
+  .cematrix td.mkhi{background:#C8102E;color:#fff;}
+  .cematrix tbody tr,.cematrix thead th.eff{cursor:pointer;}
+  .cematrix tbody tr.dim{opacity:.35;}
+  .cehint{font-size:11px;color:var(--ink-soft);margin-top:8px;}
+  .cehint b{color:var(--crimson);}
+  /* global image lightbox */
+  .lightbox{position:fixed;inset:0;background:rgba(8,9,11,.92);display:none;align-items:center;justify-content:center;
+    flex-direction:column;z-index:120;padding:26px;cursor:zoom-out;}
+  .lightbox.on{display:flex;}
+  .lightbox img{max-width:96vw;max-height:88vh;border-radius:6px;box-shadow:0 20px 70px rgba(0,0,0,.6);background:#fff;}
+  .lightbox .lbcap{color:#e6e7e9;font-family:var(--mono);font-size:11px;margin-top:12px;text-align:center;max-width:80vw;}
+  .lightbox .lbclose{position:fixed;top:16px;right:20px;color:#fff;font-size:20px;background:rgba(255,255,255,.14);
+    border:none;width:38px;height:38px;border-radius:8px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -158,453 +315,1055 @@
 
   <div class="stage" id="stage">
 
+
     <!-- 1 COVER · Mario · 2 -->
     <section class="slide cover3d" data-min="2" data-block="Module open" data-presenter="Mario"
-      data-notes='["Welcome back — Module 002 of 18, second and last Fundamentals module.","Today: how the facility is operated day to day, and what protects it — and you — when something goes wrong.","Everything today is plant-specific: this is YOUR plant, not generic LNG theory.","Housekeeping: same 4-hour format, breaks at 1:45 and 3:00, exam at the end."]'>
+      data-notes='["Welcome to Module 002 — the safety fundamentals module: how the Tendrara plant protects you, and how you protect yourself.","Everything today comes from the plant safety engineering documents (SAF01, SAF05, SAF02, SAF11) and the ITF HSE management system (HSE-01 to HSE-32).","Most of you are entering an LNG plant for the first time — this module is the foundation for every unit module that follows.","Same 4-hour format: breaks at 1:45 and 3:00, exam at the end."]'>
       <div class="kicker">Module 002 · Fundamentals <span class="sub">— 18-module program</span></div>
-      <h1>Facility Operation,<br>Safety &amp; Emergency</h1>
-      <p class="lead">Tendrara Micro LNG Facilities — operator training program.</p>
+      <h1>Plant Safety &amp; Emergency —<br>the Tendrara Micro LNG Facility</h1>
+      <p class="lead">How the plant is engineered to protect you, and the ITF HSE rules you work under —
+        for workers, technicians and engineers entering an LNG plant for the first time.</p>
       <div class="facts params">
-        <div class="fact"><div class="n">I1–I4</div><div class="l">shutdown levels ESD·PSD·LSD·ASD</div></div>
-        <div class="fact"><div class="n">2,000</div><div class="l">l/min per firewater monitor @ 7 barg</div></div>
-        <div class="fact"><div class="n">AFFF 3 %</div><div class="l">foam concentrate — 55 min for LNG tank</div></div>
-        <div class="fact"><div class="n">≥ 2</div><div class="l">evacuation routes from every location</div></div>
+        <div class="fact"><div class="n">−163.5 °C</div><div class="l">LNG temperature — the cryogenic hazard</div></div>
+        <div class="fact"><div class="n">5 / 20 %LEL</div><div class="l">gas detection: warning / confirmed-gas action</div></div>
+        <div class="fact"><div class="n">330 m³/h</div><div class="l">firewater design demand · 660 m³ / 2 h storage</div></div>
+        <div class="fact"><div class="n">10</div><div class="l">ITF HSE Golden Rules — non-negotiable for everyone</div></div>
       </div>
-      <div class="owner">Client: <b>ManaEnergy</b></div>
+      <div class="owner">Client: <b>ManaEnergy</b> · Sources: <b>SAF01 · SAF05 · SAF02 · SAF11 · ITF HSE-01…32</b></div>
+    </section>
+
+    <!-- 1b PROGRAM · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
+      data-notes='["18 four-hour modules, live online, 08 Jul – 17 Aug 2026.","2 Fundamentals modules + 16 Operation modules unit by unit — Module 002 is the second fundamentals module.","Every module: objectives → content → Q&A → exam & evaluation. Safety-first, technician-focused.","Remind the group: what you learn today is applied in every unit module that follows."]'>
+      <div class="kicker">Welcome · The program</div>
+      <h2>About this training program</h2>
+      <p class="lead">A technical program for LNG plant personnel, built around the <b>Tendrara Micro LNG</b>
+        facility — from gas fundamentals to unit-by-unit operation and the control room.</p>
+      <div class="facts" style="margin-top:6px;">
+        <div class="fact"><div class="n">18</div><div class="l">modules total</div></div>
+        <div class="fact"><div class="n">4 h</div><div class="l">per module · live online</div></div>
+        <div class="fact"><div class="n">~72 h</div><div class="l">total training</div></div>
+        <div class="fact"><div class="n">Jul–Aug</div><div class="l">2026 delivery window</div></div>
+      </div>
+      <ul class="points" style="margin-top:12px;">
+        <li><b>2 Fundamentals</b> modules + <b>16 Operation</b> modules (unit-by-unit &amp; control room).</li>
+        <li>Each module: <b>objectives → content → Q&amp;A → exam &amp; evaluation.</b> <b>Safety-first, technician-focused.</b></li>
+      </ul>
+    </section>
+
+    <!-- 1c INSTRUCTORS · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
+      data-notes='["Each presenter introduces himself — about one minute each.","1 · MARIO — plant, process & operations lead: engineering background and your role in the Tendrara project (engineering, documents, commissioning) — why you know this plant.","2 · ITF — the Italfluid HSE organization: owner of the HSE management system applied on site — permits, procedures, emergency response. Block 2 is presented from the ITF side.","Common closing (Mario): Technical America is the technology vendor and training provider; questions welcome at any slide — the exam only covers what we present."]'>
+      <div class="kicker">Your presenters</div>
+      <h2>Meet the team</h2>
+      <div class="team">
+        <div class="person"><div class="av">MM</div><div class="nm">Mario Mendizabal</div><div class="rl">Instructor — Plant &amp; Operations</div><div class="org">The Tendrara facility · engineered safety barriers, process &amp; plant systems — Block 1</div></div>
+        <div class="person"><div class="av zr">ITF</div><div class="nm">ITF — Italfluid</div><div class="rl zr">HSE Management System</div><div class="org">Contractor &amp; HSE system owner · permits, procedures, induction &amp; emergency response — Block 2</div></div>
+      </div>
+      <div class="note">Technical America — technology vendor &amp; training provider.
+        <b style="color:var(--crimson);">Mario</b> — plant &amp; engineered safety · <b style="color:var(--blue);">ITF</b> — the HSE system you work under.</div>
+    </section>
+
+    <!-- 1d ROADMAP · Mario · 2 -->
+    <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
+      data-notes='["18 modules: 2 Fundamentals + 16 Operation, 08 Jul – 17 Aug 2026.","Today is Module 002 — safety fundamentals: the engineered barriers and the ITF HSE system.","From Module 101 the program goes unit by unit — and every unit module leans on what we set today.","Point out module 113 (Flare, F&G, Drain, Fire) — the deep technical dive into the systems introduced today."]'>
+      <div class="kicker">Roadmap · 18 modules · 4 h each</div>
+      <h2>Program roadmap</h2>
+      <div class="grid2" style="gap:10px 22px;">
+        <table class="data" style="font-size:12px;">
+          <tr><th colspan="2" style="color:var(--crimson);">Fundamentals</th></tr>
+          <tr><td class="k">001</td><td>Intro to LNG &amp; Tendrara facility</td></tr>
+          <tr style="background:#FBE9EC;"><td class="k" style="color:var(--crimson);">002 ▸</td><td><b>Plant Safety &amp; Emergency</b> <span class="muted">(today)</span></td></tr>
+          <tr><th colspan="2" style="color:var(--crimson);">Operation — unit by unit</th></tr>
+          <tr><td class="k">101</td><td>U200 Inlet &amp; 530 Water treatment</td></tr>
+          <tr><td class="k">102</td><td>U330/310 Sweetening &amp; Dehydration</td></tr>
+          <tr><td class="k">103</td><td>U340 Refrigeration</td></tr>
+          <tr><td class="k">104</td><td>U350 Liquefaction I</td></tr>
+          <tr><td class="k">105</td><td>U350 Liquefaction II</td></tr>
+          <tr><td class="k">106</td><td>U360 Flash/BOG &amp; U370 Vaporizer</td></tr>
+          <tr><td class="k">107</td><td>U220 Storage &amp; Dispensing</td></tr>
+        </table>
+        <table class="data" style="font-size:12px;">
+          <tr><th colspan="2" style="color:var(--crimson);">Operation (cont.)</th></tr>
+          <tr><td class="k">108</td><td>U500/600 Air &amp; N₂ + U540 Water</td></tr>
+          <tr><td class="k">109</td><td>U410 Hot oil</td></tr>
+          <tr><td class="k">110</td><td>U430 Analyzers</td></tr>
+          <tr><td class="k">111</td><td>U480/490 Power Gen I</td></tr>
+          <tr><td class="k">112</td><td>U480/490 Power Gen II</td></tr>
+          <tr><td class="k">113</td><td>U230/700/550/730 Flare, F&amp;G, Drain, Fire</td></tr>
+          <tr><td class="k">114</td><td>Control Room / Console I (PCS, HMI)</td></tr>
+          <tr><td class="k">115</td><td>Control Room / Console II</td></tr>
+          <tr><td class="k">116</td><td>Plant start-stop &amp; LNG truck loading</td></tr>
+        </table>
+      </div>
     </section>
 
     <!-- 2 SCOPE / OBJECTIVES / AGENDA · Mario · 5 -->
     <section class="slide" data-min="5" data-block="Module open" data-presenter="Mario"
-      data-notes='["Scope per the TAM-158 schedule: facility operation, access & workflow; emergency systems; safety & emergency plan; vapor cloud, foam & fire control.","Objectives = the exam blueprint; read them out.","Block 1 is mostly Mario (operating the plant + emergency systems); Block 2 is mostly Zibac (LNG emergencies: spill, foam, fire).","Same 4-hour skeleton — breaks at 1:45 and 3:00."]'>
+      data-notes='["Scope: safety of the Tendrara plant, both layers — Block 1 the engineered barriers (how the plant protects you), Block 2 the ITF HSE system (how you protect yourself).","Objectives are the exam blueprint — read them out.","This is a high-level module for people entering an LNG plant for the first time: concepts and rules, not valve-by-valve detail.","Same 4-hour skeleton — breaks at 1:45 and 3:00."]'>
       <div class="kicker">Scope · Objectives · Agenda</div>
       <h2>What Module 002 covers</h2>
       <div class="grid2">
         <div>
           <p class="lead" style="margin:0 0 6px;font-weight:600;color:var(--ink);">Objectives — by the end you can:</p>
-          <ul class="points">
-            <li>Describe how the <b>Tendrara facility is operated</b>: philosophy, workflow, rounds &amp; logs.</li>
-            <li>Apply the <b>site access rules</b> and identify hazardous (ATEX) areas.</li>
-            <li>Describe the <b>emergency systems</b>: ESD, shutdown hierarchy I1–I4, F&amp;G, alarms.</li>
-            <li>Explain the <b>safety &amp; emergency plan</b>: escape, evacuation, muster.</li>
-            <li>Explain <b>LNG vapor-cloud behaviour</b> and spill scenarios.</li>
-            <li>Describe <b>expansion foam &amp; fire control</b> — what to use, and what never to use.</li>
+          <ul class="points" style="font-size:13px;">
+            <li>Name the <b>hazards of an LNG plant</b> — cryogenic, flammable gas, pressure, ammonia — and where they live at Tendrara.</li>
+            <li>Explain the <b>layers of protection</b> and the shutdown hierarchy <b>ESD · PSD · LSD · ASD</b>.</li>
+            <li>State what the <b>F&amp;G system</b> does at 5 % / 20 % LEL, 30 / 250 ppm NH₃ and on confirmed fire.</li>
+            <li>Describe the <b>firefighting resources</b> and the cardinal rule for LNG fires.</li>
+            <li><b>Respond to an alarm</b>: stop work, exit, muster upwind, T-card count.</li>
+            <li>Apply the <b>10 ITF Golden Rules</b> and use <b>Stop Work Authority</b>.</li>
+            <li>Know when a <b>Permit to Work</b> is required — 5 permit types — and the basics of <b>LOTO</b> and <b>confined space</b>.</li>
+            <li><b>Report</b>: emergencies, near misses and unsafe conditions.</li>
           </ul>
         </div>
         <div>
           <table class="timeline">
-            <tr><td class="seg">Block 1 — content</td><td class="dur">1:45</td><td class="cum">1:45</td></tr>
-            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">2:00</td></tr>
-            <tr><td class="seg">Block 2 — content</td><td class="dur">1:00</td><td class="cum">3:00</td></tr>
-            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">3:15</td></tr>
-            <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum">3:30</td></tr>
-            <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:00</td></tr>
-            <tr class="tot"><td class="seg">Module total</td><td class="dur">4:00</td><td class="cum"></td></tr>
+            <tr><td class="seg">Block 1 — how the plant protects you</td><td class="dur">1:51</td><td class="cum">1:51</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">2:06</td></tr>
+            <tr><td class="seg">Block 2 — how you protect yourself</td><td class="dur">1:00</td><td class="cum">3:06</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">3:21</td></tr>
+            <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum">3:36</td></tr>
+            <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:06</td></tr>
+            <tr class="tot"><td class="seg">Module total</td><td class="dur">4:06</td><td class="cum"></td></tr>
           </table>
-          <div class="note" style="margin-top:10px;">Presenters: <b style="color:var(--crimson);">Mario — operation &amp; plant systems (~1:42)</b> ·
-            <b style="color:var(--blue);">Zibac — LNG emergencies &amp; fire control (~1:03)</b>.</div>
+          <div class="note" style="margin-top:10px;">Scope note: unit-level trips and cause &amp; effect grids are covered per unit in Modules 101–116; F&amp;G, flare and firefighting equipment detail in <b>Module 113</b>. Block 1 runs 6 min over the standard 1:45 to include the two new GA-drawing slides (F&amp;G and firefighting layouts) — module total 4:06.</div>
         </div>
       </div>
     </section>
 
-    <!-- 3 RECAP M001 · Zibac · 5 -->
-    <section class="slide" data-min="5" data-block="Module open" data-presenter="Zibac"
-      data-notes='["Quick-fire recap — ask the group, do not lecture.","What temperature is LNG? (−162 °C). Flammable range? (5–15 %). Why can you not smell a leak? (not odorized).","What happens to cold vapour? (heavier than air below ≈ −110 °C, hugs the ground).","Never put water on an LNG pool. These five facts drive everything in today module."]'>
-      <div class="kicker">Warm-up · From Module 001</div>
-      <h2>Five facts you must still know</h2>
-      <ul class="points">
-        <li>LNG is natural gas held liquid at <b>≈ −162 °C by temperature, not pressure</b> — volume ÷ 600.</li>
-        <li>Vapour burns only between <b>5–15 %</b> in air; the liquid itself does not burn.</li>
-        <li>Cold vapour (&lt; ≈ −110 °C) is <b>heavier than air</b> — it pools low and drifts with the wind.</li>
-        <li>Plant gas is <b>NOT odorized</b> — leak detection is by <b>instruments, never smell</b>.</li>
-        <li><b>Never water on an LNG pool</b> — it accelerates vaporization.</li>
-      </ul>
-      <div class="note">Today we turn these facts into plant systems and emergency response at Tendrara.</div>
-    </section>
-
-    <!-- 4 OPERATION OVERVIEW · Mario · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
-      data-notes='["How the plant actually runs: designed for continuous, highly automated operation under the PCS.","Operators supervise, adjust and verify — the PCS holds the process at set points; the independent ESD system protects it.","Normal cycle: start-up → continuous operation & monitoring → field rounds → truck loading → (rare) shutdown.","Fuel-gas autobalance: flash/BOG is fully consumed as fuel or recycled — no routine flaring; condensate from V-201 fuels the hot-oil burners.","Black start capability: diesel generators bring the plant back from dead bus; gas engines carry normal load.","Modes to name now (detail in later modules): black start, normal start-up, normal operation, normal shutdown, emergency shutdown.","OWN EXPERIENCE (Mario): describe a normal operating day from your own experience — what a good shift looks like and what usually breaks the routine."]'>
-      <div class="kicker">Operation · Overview</div>
-      <h2>How Tendrara is operated</h2>
-      <div class="grid2">
-        <ul class="points">
-          <li><b>Continuous, highly automated</b> operation — the PCS holds the process at set points.</li>
-          <li>Operators <b>supervise, adjust, verify</b> — console + field rounds.</li>
-          <li>Independent <b>ESD system</b> protects the plant regardless of the PCS.</li>
-          <li><b>Fuel-gas autobalance:</b> flash/BOG fully used as fuel or recycled — <b>no routine flaring</b>.</li>
-        </ul>
-        <div>
-          <p class="lead" style="margin:0 0 4px;font-weight:600;color:var(--ink);">Operating modes</p>
-          <ul class="points">
-            <li><b>Black start</b> — diesel generators from dead bus.</li>
-            <li><b>Normal start-up</b> → <b>normal operation</b> (design point).</li>
-            <li><b>Normal shutdown</b> — planned, sequenced.</li>
-            <li><b>Emergency shutdown</b> — automatic, this module.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="note">Daily reality: monitor the console, walk the rounds, complete checkpoints (CK), load trucks, keep the logs — next slides.</div>
-    </section>
-
-    <!-- 5 ACCESS & HAZARDOUS AREAS · Mario · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Site access: remote fenced site; only trained, authorized personnel; emergency-vehicle circulation designed into the layout.","Hazardous area classification (SAF01 §4.1): zones where explosive gas atmospheres can occur — equipment there must be Ex/ATEX rated.","Rule: no phones, no non-Ex tools or electronics inside classified areas; no polyester clothing; grounding/bonding for transfers.","PPE on site: hard hat, safety glasses, flame-resistant clothing, boots; add cryogenic PPE and personal CH4 detector for LNG work.","Field electrical: Class/zone-rated only; mobile HMI tablets on site are ATEX-rated.","Access to any confined or gas-suspect space: atmosphere test first — trust the detector."]'>
-      <div class="kicker">Operation · Access</div>
-      <h2>Plant access &amp; hazardous (ATEX) areas</h2>
-      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
-        <div class="grid2" style="gap:8px 18px;">
-          <ul class="points">
-            <li><b>Authorized, trained personnel only</b> — fenced remote site, controlled access.</li>
-            <li><b>Hazardous area classification</b> (SAF01): zones with possible explosive atmospheres → <b>Ex/ATEX-rated equipment only</b>.</li>
-            <li><b>No phones / non-Ex electronics</b> inside classified areas; non-sparking tools.</li>
-          </ul>
-          <ul class="points">
-            <li><b>PPE on site:</b> hard hat, glasses, FR clothing, boots + <b>cryo PPE &amp; CH₄ detector</b> for LNG work.</li>
-            <li><b>Grounding &amp; bonding</b> for every transfer operation.</li>
-            <li><b>Confined/gas-suspect spaces:</b> atmosphere test before entry.</li>
-          </ul>
-        </div>
-        <div class="carousel" id="atexCarousel" data-interval="4000">
-          <a class="cimg active" href="/images/EX-logo.png" target="_blank"><img src="/images/EX-logo.png" alt="Ex / ATEX marking"></a>
-          <a class="cimg" href="/images/tendrara_areas.png" target="_blank"><img src="/images/tendrara_areas.png" alt="Plant areas"></a>
-          <div class="ccap">Auto-rotating · click to enlarge</div>
-          <div class="cdots"><b class="active"></b><b></b></div>
-        </div>
-      </div>
-      <div class="note">Layout provides circulation and turning radii for the largest emergency-service vehicles (SAF01 §9.1).</div>
-    </section>
-
-    <!-- 6 OPERATING WORKFLOW · Mario · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
-      data-notes='["The Operating Manual writes procedures as sequenced steps tagged CK / OC / SC — learn this language today.","CK = operator checkpoint (verify in field or on HMI); OC = operator command; SC = system (automatic) command.","Typical operator workload: console monitoring, field rounds with checkpoints, hydrate watch on the inlet, TSA bed cycles in dehydration, amine unit checks, fuel-gas balance, truck loading.","Alarm handling: every alarm has a defined response — acknowledge, diagnose, act; HH/LL levels trip PSD/LSD automatically.","Logs: daily & periodic operational logs and event records (time-stamped in the PCS) — traceability is mandatory; logs are covered in depth in Module 115.","Shift handover: state of the plant, active alarms, ongoing work — never skip it."]'>
-      <div class="kicker">Operation · Workflow</div>
-      <h2>Operating workflow — rounds, CK &amp; logs</h2>
-      <div class="grid2">
-        <div>
-          <table class="data" style="font-size:13px;">
-            <tr><th>Tag</th><th>Meaning</th></tr>
-            <tr><td class="k" style="color:var(--crimson);">CK</td><td>Operator <b>checkpoint</b> — verify in field / on HMI</td></tr>
-            <tr><td class="k" style="color:var(--crimson);">OC</td><td>Operator <b>command</b> (field or PCS)</td></tr>
-            <tr><td class="k" style="color:var(--crimson);">SC</td><td><b>System command</b> — automatic (PCS or ESD)</td></tr>
-          </table>
-          <ul class="points" style="margin-top:10px;">
-            <li><b>Alarm handling:</b> acknowledge → diagnose → act; <b>HH/LL trips act automatically</b> (PSD/LSD).</li>
-            <li><b>Shift handover:</b> plant state, active alarms, ongoing work.</li>
-          </ul>
-        </div>
-        <ul class="points">
-          <li><b>Console monitoring</b> — trends, set points, alarm summary.</li>
-          <li><b>Field rounds</b> with checkpoints: leaks, noise, vibration, icing, levels.</li>
-          <li><b>Recurring duties:</b> inlet hydrate watch · TSA bed cycles (U310) · amine unit checks (U330) · fuel-gas balance · truck loading.</li>
-          <li><b>Logs:</b> daily &amp; periodic operational logs; PCS time-stamped events — full traceability (→ Module 115).</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- 7 PCS & HMI · Mario · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Two segregated layers: PCS runs normal operation; a separate S7-1500F safety PLC runs ESD (next slides).","Backbone: PROFINET IO — dual redundant fiber-optic rings (MRP, recovery < 200 ms); ET 200SP remote I/O on every skid.","Supervision: SIMATIC WinCC SCADA, High-Performance HMI faceplates; control-room stations + ATEX mobile tablets.","Carousel: PLC/network architecture and two live HMI screens — U350 liquefaction and U220 storage/loading.","Operators must know the HMI Philosophy (21044-AU-HMI-00002) before operating."]'>
-      <div class="kicker">Operation · Control room</div>
-      <h2>Control system (PCS) &amp; HMI</h2>
-      <div class="figrow" style="grid-template-columns:1.35fr 1fr;">
-        <ul class="points">
-          <li><b>PCS</b> (normal operation) + independent <b>ESD</b> S7-1500F safety PLC.</li>
-          <li><b>PROFINET IO</b> — dual redundant fiber rings (<b>MRP, &lt; 200 ms</b>), ET 200SP remote I/O per skid.</li>
-          <li><b>SIMATIC WinCC</b> SCADA · High-Performance HMI · control-room stations + <b>ATEX mobile tablets</b>.</li>
-          <li>Time-stamped event logging → operator response &amp; traceability.</li>
-        </ul>
-        <div class="carousel" id="pcsCarousel" data-interval="4000">
-          <a class="cimg active" href="/images/PLC-architecture.png" target="_blank"><img src="/images/PLC-architecture.png" alt="PLC / network architecture"></a>
-          <a class="cimg" href="/images/13-HMI-350=2.png" target="_blank"><img src="/images/13-HMI-350=2.png" alt="HMI Unit 350"></a>
-          <a class="cimg" href="/images/27-HMI-220=2.png" target="_blank"><img src="/images/27-HMI-220=2.png" alt="HMI Unit 220"></a>
-          <div class="ccap">Auto-rotating · click to enlarge</div>
-          <div class="cdots"><b class="active"></b><b></b><b></b></div>
-        </div>
-      </div>
-      <div class="note">Reference: HMI Philosophy 21044-AU-HMI-00002. Control room detail → Modules 114–115.</div>
-    </section>
-
-    <!-- 8 ELECTRICAL · Mario · 8 -->
+    <!-- B1-1 HAZARDS · Mario · 8 -->
     <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Island mode — the plant powers itself, independent of any grid.","7 × Jenbacher gas engines (1,807 kW each) for normal duty; 2 × diesel (1,280 kW each) for emergency, black start and backup.","~15.21 MW installed at cos φ 0.8; generation & distribution at 690 V, TN-C.","Main LV panel: 4 busbar sections, 3 motorized synchronizable tie breakers, 85 kA; max 4 gas engines in parallel per energized busbar.","On ESD: main generation shuts down and the emergency diesels start, feeding the emergency panel — remember this for the shutdown slides.","ELD11 single-line is the primary electrical reference for any isolation."]'>
-      <div class="kicker">Operation · Electrical</div>
-      <h2>Electrical &amp; power generation</h2>
-      <div class="figrow" style="grid-template-columns:1fr 1.25fr;">
-        <ul class="points">
-          <li><b>Island mode</b> — autonomous on-site power, no external grid.</li>
-          <li><b>7 × Jenbacher</b> gas engines @ 1,807 kW + <b>2 × diesel</b> @ 1,280 kW (emergency / black start / backup).</li>
-          <li><b>~15.21 MW</b> installed (cos φ 0.8) · <b>690 V</b>, TN-C · 4 busbar sections · 85 kA.</li>
-          <li><b>On ESD:</b> main generation trips → <b>emergency diesels start</b> → emergency panel users.</li>
+      data-notes='["Start from what is different about LNG: the same gas you know, but at minus 163.5 C — cold enough to burn skin and embrittle carbon steel.","One litre of LNG becomes about 600 litres of gas — a small spill makes a big flammable cloud.","Methane burns only inside its flammability range; the FERA models the fire types listed here — jet fire, pool fire, flash fire.","Ammonia is the refrigerant of Unit 340: toxic at low concentration — 6 dedicated detectors, eye-level mounted.","CO2 from the amine unit and nitrogen are asphyxiants — the confined-space rules in Block 2 exist because of them.","Feed arrives at 45 to 55 barg: stored pressure energy on top of everything else.","Message: none of these hazards is exotic — each one has a barrier designed against it, and that is the rest of Block 1."]'>
+      <div class="kicker">Block 1 · Hazards <span class="sub">— what makes an LNG plant different</span></div>
+      <h2>The hazards we design against</h2>
+      <div class="icards" style="margin-top:2px;">
+        <div class="icard"><svg viewBox="0 0 32 32"><path d="M16,3 L18,9 L16,7 L14,9 Z M16,29 L18,23 L16,25 L14,23 Z M3,16 L9,14 L7,16 L9,18 Z M29,16 L23,14 L25,16 L23,18 Z M7,7 L11,11 L9,10 L10,12 Z M25,25 L21,21 L23,22 L22,20 Z M25,7 L21,11 L23,10 L22,12 Z M7,25 L11,21 L9,22 L10,20 Z" fill="#0B5CAD" stroke="#0B5CAD" stroke-width=".6" stroke-linejoin="round"/><line x1="16" y1="4" x2="16" y2="28" stroke="#0B5CAD" stroke-width="1.4"/><line x1="4" y1="16" x2="28" y2="16" stroke="#0B5CAD" stroke-width="1.4"/><line x1="7" y1="7" x2="25" y2="25" stroke="#0B5CAD" stroke-width="1.4"/><line x1="25" y1="7" x2="7" y2="25" stroke="#0B5CAD" stroke-width="1.4"/></svg>
+          <div class="nm">Cryogenic</div><div class="sub">−163.5 °C</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><path d="M16,3 Q10,12 14,18 Q11,15 12,22 Q13,27 18,27 Q24,27 24,20 Q24,14 19,10 Q20,14 17,14 Q18,8 16,3 Z" fill="none" stroke="#C8102E" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <div class="nm">Flammable gas</div><div class="sub">600:1 expansion</div></div>
+        <div class="icard c-amber"><svg viewBox="0 0 32 32"><path d="M6,26 A10,10 0 0 1 26,26 Z" fill="none" stroke="#B26A00" stroke-width="1.7"/><line x1="16" y1="26" x2="16" y2="15" stroke="#B26A00" stroke-width="1.8"/><line x1="16" y1="26" x2="22" y2="19" stroke="#B26A00" stroke-width="1.8"/><circle cx="16" cy="26" r="2" fill="#B26A00"/></svg>
+          <div class="nm">Pressure</div><div class="sub">45–55 barg feed</div></div>
+        <div class="icard c-blue"><svg viewBox="0 0 32 32"><path d="M13,4 h6 v7 l6,15 h-18 l6,-15 z" fill="none" stroke="#0B5CAD" stroke-width="1.6" stroke-linejoin="round"/><line x1="10" y1="20" x2="22" y2="20" stroke="#0B5CAD" stroke-width="1.4"/></svg>
+          <div class="nm">Ammonia NH₃</div><div class="sub">toxic · U340</div></div>
+        <div class="icard c-ink"><svg viewBox="0 0 32 32"><path d="M9,20 a5,5 0 0 1 0,-10 a7,7 0 0 1 13,-2 a5,5 0 0 1 1,12 z" fill="none" stroke="#4A4F57" stroke-width="1.6"/></svg>
+          <div class="nm">Asphyxiants</div><div class="sub">CO₂ · N₂</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="none" stroke="#C8102E" stroke-width="1.7"/><line x1="16" y1="2" x2="16" y2="7" stroke="#C8102E" stroke-width="1.7"/><line x1="16" y1="25" x2="16" y2="30" stroke="#C8102E" stroke-width="1.7"/><line x1="2" y1="16" x2="7" y2="16" stroke="#C8102E" stroke-width="1.7"/><line x1="25" y1="16" x2="30" y2="16" stroke="#C8102E" stroke-width="1.7"/><line x1="5.5" y1="5.5" x2="9" y2="9" stroke="#C8102E" stroke-width="1.7"/><line x1="23" y1="23" x2="26.5" y2="26.5" stroke="#C8102E" stroke-width="1.7"/><line x1="26.5" y1="5.5" x2="23" y2="9" stroke="#C8102E" stroke-width="1.7"/><line x1="9" y1="23" x2="5.5" y2="26.5" stroke="#C8102E" stroke-width="1.7"/></svg>
+          <div class="nm">Desert site</div><div class="sub">heat · remoteness</div></div>
+      </div>
+      <div class="grid2">
+        <ul class="points" style="font-size:13px;">
+          <li><b>Cryogenic LNG at −163.5 °C</b> — cold burns, embrittlement of ordinary steel; trapped LNG expands as it warms.</li>
+          <li><b>Flammable gas</b> — 1 volume of LNG ≈ <b>600 volumes of gas</b>; leaks can ignite as <b>jet fire</b>, spills as <b>pool fire</b>, clouds as <b>flash fire</b>.</li>
+          <li><b>Pressure</b> — feed gas arrives at <b>45–55 barg</b>; stored energy in every isolated section.</li>
+          <li><b>Ammonia (NH₃)</b> — Unit 340 refrigerant: <b>toxic</b>, flammable at high concentration.</li>
+          <li><b>Asphyxiants</b> — CO₂ (amine unit vent), N₂ — displace oxygen in confined and low spaces.</li>
+          <li><b>Desert site</b> — heat, sand storms, remoteness (nearest hospitals: Bouarfa / Oujda).</li>
         </ul>
-        <div class="fig"><a href="/images/ELD11-electrical.png" target="_blank"><img src="/images/ELD11-electrical.png" alt="Electrical single-line ELD11"></a>
-          <div class="cap">ELD11-ING-PR01 — single-line (click to enlarge)</div></div>
+        <div>
+          <div class="facts" style="margin-top:2px;">
+            <div class="fact"><div class="n">−163.5 °C</div><div class="l">LNG — cold burns &amp; embrittlement</div></div>
+            <div class="fact"><div class="n">600 : 1</div><div class="l">gas : liquid expansion on vaporization</div></div>
+          </div>
+          <div class="facts">
+            <div class="fact"><div class="n">45–55 barg</div><div class="l">feed gas arrival pressure</div></div>
+            <div class="fact"><div class="n">6,200 m³</div><div class="l">LNG storage tank — largest inventory on site</div></div>
+          </div>
+          <div class="note">Every hazard on this list is matched by a designed barrier — that is what the rest of Block&nbsp;1 walks through, layer by layer. Sources: FERA (SAF02-ING-FR03), SAF01, HSE-12 induction.</div>
+        </div>
       </div>
     </section>
 
-    <!-- 9 TRUCK LOADING · Mario · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
-      data-notes='["The most frequent hands-on operation: LNG out by road tanker from loading skids S-221/S-222 (redundant), pumps P-221A/B & P-222A/B.","Dead-man philosophy: loading requires operator PRESENCE in the bay to initiate and continue transfer.","Pre-checks (CK): truck positioned, parking brake engaged; grounding cable connected and permissive active; vapor-return & liquid hoses secure.","Truck cooldown first: automatic precool sequence (pump at reduced speed, ~12 m³/h) until lines and truck are at cryogenic temperature; LNG used is metered and recorded for invoicing.","Then loading under continuous supervision with ramped flow; analyzers monitor LNG quality; totalizers record the transfer.","The bay has its own abandon shutdown (ASD) — covered in the shutdown hierarchy.","OWN EXPERIENCE (Mario): if you have witnessed loadings, tell what surprises people the first time — the frost, the noise, the pace of the checklist."]'>
-      <div class="kicker">Operation · Product out</div>
-      <h2>LNG truck loading</h2>
-      <div class="flow">
-        <div class="step"><span class="u">1 · CHECK</span><span class="t"><b>CK:</b> truck positioned + parking brake · <b>grounding cable + permissive</b> · hoses connected &amp; secure</span></div>
-        <div class="step"><span class="u">2 · COOL</span><span class="t"><b>Automatic precool</b> at reduced flow (~12 m³/h) until truck &amp; lines are cryogenic — LNG metered for invoicing</span></div>
-        <div class="step"><span class="u">3 · LOAD</span><span class="t">Ramped flow under <b>continuous operator supervision</b> — <b>dead-man philosophy</b>: presence required to start &amp; continue</span></div>
-        <div class="step"><span class="u">4 · CLOSE</span><span class="t">Stop pump, drain &amp; disconnect, totalizers + analyzer record saved to the database</span></div>
-      </div>
-      <ul class="points" style="margin-top:10px;">
-        <li>Redundant skids <b>S-221 / S-222</b> · pumps <b>P-221A/B, P-222A/B</b> · vacuum-insulated transfer lines.</li>
-        <li>The loading bay has a dedicated <b>Abandon Shutdown (ASD)</b> → shutdown hierarchy, next.</li>
-      </ul>
-    </section>
-
-    <!-- 10 LAYERS OF PROTECTION · Mario · 7 -->
+    <!-- B1-2 ZONES · Mario · 7 -->
     <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
-      data-notes='["Frame everything that follows: protection is LAYERED — if one layer fails, the next catches the event.","Layer 1: PCS control & alarms keep the process at set point. Layer 2: automatic shutdowns (LSD/PSD/ESD/ASD). Layer 3: relief & depressurization — PSVs and BDVs to flare.","Layer 4: passive protection — spacing, impoundment basins, drainage. Layer 5: active fire protection — F&G detection, firewater, foam. Layer 6: escape & evacuation.","Per SAF01 (Process Safety & Isolation Philosophy, Italfluid) and API RP 14C.","Block 1 covers layers 1–3 + detection; Block 2 covers spill behaviour, foam, fire control and evacuation."]'>
-      <div class="kicker">Emergency systems · The framework</div>
-      <h2>Layers of protection</h2>
-      <div class="flow">
-        <div class="step"><span class="u">LAYER 1</span><span class="t"><b>PCS control &amp; alarms</b> — keep the process at set point</span></div>
-        <div class="step"><span class="u">LAYER 2</span><span class="t"><b>Automatic shutdowns</b> — LSD · PSD · ESD · ASD (independent of PCS)</span></div>
-        <div class="step"><span class="u">LAYER 3</span><span class="t"><b>Relief &amp; depressurization</b> — PSVs &amp; BDVs route to flare</span></div>
-        <div class="step"><span class="u">LAYER 4</span><span class="t"><b>Passive protection</b> — spacing · LNG impoundment basins · drainage</span></div>
-        <div class="step"><span class="u">LAYER 5</span><span class="t"><b>Active fire protection</b> — F&amp;G detection · firewater · foam · extinguishers</span></div>
-        <div class="step"><span class="u">LAYER 6</span><span class="t"><b>Escape &amp; evacuation</b> — alarms · routes · muster</span></div>
+      data-notes='["The plant is cut into three emergency-isolatable zones, bounded by fail-close SDVs.","Zone 1 gas treatment: from plant inlet SDV-2001 to dehydration outlet SDV-3560 — units 200, 330, 310.","Zone 2 liquefaction: SDV-3560 to the LNG tank valves SDV-2201/2202 and BOG inlet XV-3601 — units 350, 340, 360.","Zone 3 is the LNG tank and loading bay — with its own dedicated shutdown level, ASD.","On top of that the plot is divided into fire zones per unit — each with its own detection.","Why you care: in an emergency each zone isolates and depressurizes separately — know which zone you are standing in."]'>
+      <div class="kicker">Block 1 · Isolation <span class="sub">— the plant cut into safe pieces</span></div>
+      <h2>Three emergency-isolatable zones</h2>
+      <div class="mapwrap" style="margin-top:2px;">
+        <div class="lbl"><span>Plant one-line — three emergency-isolatable zones</span><span class="you">◆ = fail-CLOSE SDV boundary · ▽ = fail-OPEN BDV to flare</span></div>
+        <svg viewBox="0 0 1000 190" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <defs>
+            <marker id="z7-ah" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4A4F57"/></marker>
+            <marker id="z7-ahb" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#B26A00"/></marker>
+          </defs>
+          <text x="2" y="72" font-family="Consolas,monospace" font-size="9" fill="#4A4F57">FEED</text>
+          <line x1="8" y1="82" x2="42" y2="82" stroke="#4A4F57" stroke-width="2.5" marker-end="url(#z7-ah)"/>
+          <path d="M42,74 L54,82 L42,90 L30,82 Z" fill="#fff" stroke="#C8102E" stroke-width="1.8"/>
+          <text x="42" y="103" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#C8102E">SDV-2001</text>
+
+          <rect x="62" y="46" width="270" height="72" rx="6" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <path d="M62,58 h270 v-6 a6,6 0 0 0 -6,-6 h-258 a6,6 0 0 0 -6,6 z" fill="#C8102E"/>
+          <text x="197" y="61" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10.5" fill="#fff">ZONE 1 · GAS TREATMENT</text>
+          <text x="197" y="86" text-anchor="middle" font-family="Segoe UI,Arial" font-size="10" fill="#15171A">U200 inlet · U330 sweetening · U310 dehydration</text>
+          <text x="197" y="105" text-anchor="middle" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">SDV-2001 → SDV-3560</text>
+
+          <line x1="332" y1="82" x2="360" y2="82" stroke="#4A4F57" stroke-width="2.5" marker-end="url(#z7-ah)"/>
+          <path d="M360,74 L372,82 L360,90 L348,82 Z" fill="#fff" stroke="#C8102E" stroke-width="1.8"/>
+          <text x="360" y="103" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#C8102E">SDV-3560</text>
+          <line x1="372" y1="82" x2="400" y2="82" stroke="#4A4F57" stroke-width="2.5" marker-end="url(#z7-ah)"/>
+
+          <rect x="400" y="46" width="270" height="72" rx="6" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <path d="M400,58 h270 v-6 a6,6 0 0 0 -6,-6 h-258 a6,6 0 0 0 -6,6 z" fill="#0B5CAD"/>
+          <text x="535" y="61" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10.5" fill="#fff">ZONE 2 · LIQUEFACTION</text>
+          <text x="535" y="86" text-anchor="middle" font-family="Segoe UI,Arial" font-size="10" fill="#15171A">U350 cold box · U340 NH₃ refrig. · U360 BOG</text>
+          <text x="535" y="105" text-anchor="middle" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">+ BOG inlet XV-3601 · SDV-3560 → SDV-2201/2202</text>
+
+          <line x1="670" y1="82" x2="696" y2="82" stroke="#4A4F57" stroke-width="2.5" marker-end="url(#z7-ah)"/>
+          <path d="M696,74 L708,82 L696,90 L684,82 Z" fill="#fff" stroke="#C8102E" stroke-width="1.8"/>
+          <text x="696" y="103" text-anchor="middle" font-family="Consolas,monospace" font-size="7.5" fill="#C8102E">SDV-2201/2202</text>
+          <line x1="708" y1="82" x2="734" y2="82" stroke="#4A4F57" stroke-width="2.5" marker-end="url(#z7-ah)"/>
+
+          <rect x="734" y="46" width="200" height="72" rx="6" fill="#fff" stroke="#C9CED4" stroke-width="1.4"/>
+          <path d="M734,58 h200 v-6 a6,6 0 0 0 -6,-6 h-188 a6,6 0 0 0 -6,6 z" fill="#2b2e33"/>
+          <text x="834" y="61" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10.5" fill="#fff">ZONE 3 · TANK &amp; LOADING</text>
+          <text x="834" y="86" text-anchor="middle" font-family="Segoe UI,Arial" font-size="10" fill="#15171A">LNG tank + truck loading bay</text>
+          <text x="834" y="105" text-anchor="middle" font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57">own dedicated shutdown level: ASD (I4)</text>
+
+          <line x1="934" y1="82" x2="962" y2="82" stroke="#4A4F57" stroke-width="2.5" marker-end="url(#z7-ah)"/>
+          <text x="966" y="79" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">LNG</text>
+          <text x="966" y="90" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">trucks</text>
+
+          <line x1="197" y1="118" x2="197" y2="148" stroke="#B26A00" stroke-width="1.8" stroke-dasharray="3,2" marker-end="url(#z7-ahb)"/>
+          <line x1="535" y1="118" x2="535" y2="148" stroke="#B26A00" stroke-width="1.8" stroke-dasharray="3,2" marker-end="url(#z7-ahb)"/>
+          <line x1="834" y1="118" x2="834" y2="148" stroke="#B26A00" stroke-width="1.8" stroke-dasharray="3,2" marker-end="url(#z7-ahb)"/>
+          <rect x="80" y="152" width="840" height="28" rx="5" fill="#FFF7EC" stroke="#B26A00" stroke-width="1.2"/>
+          <text x="500" y="171" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="9.5" fill="#B26A00">BDVs (fail OPEN) blow each zone down to flare — 4 flares → 1 common burn pit</text>
+        </svg>
       </div>
-      <div class="note">Source: SAF01-ING-FR01 Rev.2 — Process Safety &amp; Isolation Philosophy · API RP 14C · NFPA 59A / EN 1473.</div>
+      <div class="grid2" style="margin-top:12px;">
+        <div>
+          <table class="data" style="font-size:12px;">
+            <tr><th>Boundary valve</th><th>Type · action</th></tr>
+            <tr><td class="k">SDV — shutdown valve</td><td class="v">on–off, pneumatic, <b>fail CLOSE</b> — cuts the zone</td></tr>
+            <tr><td class="k">BDV — blowdown valve</td><td class="v">on–off + restriction orifice, <b>fail OPEN</b> — empties the zone to flare</td></tr>
+          </table>
+        </div>
+        <div class="note" style="margin-top:0;border-top:none;">Fire zones per unit: 200 inlet · 220 LNG storage/loading · 230 flare &amp; burn pit · 310 · 330 · 340 · 350 · 360 · 370 · 410 hot oil · 480 power · 500 air · 530/540 water · 600 N₂ · 730 firefighting · 900 cabins.<br>Source: SAF01-ING-FR01 §5.2/6.2.</div>
+      </div>
     </section>
 
-    <!-- 11 ESD SYSTEM · Mario · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
-      data-notes='["The ESD is a dedicated, independent safety layer — fully separate from the PCS, per API RP 14C.","Siemens S7-1500F fail-safe PLC in the control room; ET 200SP remote I/O near protected units over PROFINET.","Inputs: ESD pushbuttons (in the plant AND along escape ways), fire & gas detectors, critical transmitters, valve feedback.","Certified fail-safe logic executes the Cause & Effect Matrix (SAF12-ING-FR01): isolation, depressurization, shutdown.","The ESD→PCS link is informational only — no safety function depends on the PCS.","Manual activation matters: anyone can hit an ESD button on the way out — that is why they line the escape routes."]'>
-      <div class="kicker">Emergency systems · ESD</div>
-      <h2>Emergency Shutdown System (ESD)</h2>
-      <div class="figrow" style="grid-template-columns:1.5fr 1fr;">
-        <div class="grid2" style="gap:8px 18px;">
-          <ul class="points">
-            <li><b>Independent safety layer</b> — fully separate from the PCS (API RP 14C).</li>
-            <li><b>Siemens S7-1500F</b> fail-safe PLC · <b>ET 200SP</b> remote I/O over PROFINET.</li>
-            <li>Inputs: <b>ESD pushbuttons</b> (plant + <b>along escape ways</b>), F&amp;G detectors, critical transmitters, valve feedback.</li>
-          </ul>
-          <ul class="points">
-            <li>Fail-safe logic executes the <b>Cause &amp; Effect Matrix</b> (SAF12-ING-FR01): isolation · depressurization · shutdown.</li>
-            <li><b>ESD→PCS link is informational only.</b></li>
-            <li>Anyone can activate ESD manually on the way out.</li>
-          </ul>
-        </div>
-        <div class="carousel" id="esdCarousel" data-interval="4000">
-          <a class="cimg active" href="/images/ESD.png" target="_blank"><img src="/images/ESD.png" alt="ESD architecture"></a>
-          <div class="ccap">Click to enlarge</div>
-          <div class="cdots"><b class="active"></b></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 12 SHUTDOWN HIERARCHY · Mario · 9 -->
+    <!-- B1-3 LAYERS + HIERARCHY · Mario · 9 -->
     <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
-      data-notes='["The four intervention levels from SAF01 §6 — memorize the table.","I1 ESD: manual (pushbuttons, incl. escape ways) or automatic (fire detection in process areas/loading bay, LNG spill detection in tank area). Effects: close plant inlet & outlets, depressurize, main power generation trips → emergency diesels start.","I2 PSD: gas detection in process areas, process parameters out of set point (PAHH/LAHH/TAHH…), flare pilot loss, power plant or hot-oil/refrigeration shutdowns, instrument-air low, smoke in cabins. Effects: close process inlet/outlets — some units may keep running.","I3 LSD: package-level — ammonia unit, MR unit, BOG unit 360, LNG pump skids, hot oil, power gen; local pushbuttons or package logic (e.g. LAHH-3111, LALL-3103, PAHH-2201).","I4 ASD: loading-bay abandon shutdown — gas detection or LNG spill (low-temperature probe) closes all XV valves on both loading pumps; no impact on the rest of the process.","Escalation logic: LSD isolates a package, PSD stops the process, ESD shuts down and depressurizes the whole plant."]'>
-      <div class="kicker">Emergency systems · Hierarchy</div>
-      <h2>Shutdown hierarchy — I1 to I4</h2>
-      <table class="data" style="font-size:12px;">
-        <tr><th>Level</th><th>Name</th><th>Activated by</th><th>Effect</th></tr>
-        <tr><td class="k" style="color:var(--crimson);">I1 · ESD</td><td>Emergency Shutdown</td><td class="v">Pushbuttons (plant + escape ways) · fire detection · LNG spill detection (tank area)</td><td class="v"><b>Close plant inlet &amp; outlets · depressurize · main power trips → emergency diesels</b></td></tr>
-        <tr><td class="k">I2 · PSD</td><td>Process Shutdown</td><td class="v">Gas detection · PAHH/LAHH/TAHH… · flare pilot loss · instrument-air low · smoke in cabins</td><td class="v">Close process inlet/outlets — some units may keep running</td></tr>
-        <tr><td class="k">I3 · LSD</td><td>Local Shutdown</td><td class="v">Local pushbuttons · package logic (NH₃, MR, BOG U360, LNG pumps, hot oil, power gen)</td><td class="v">Isolate/stop the affected package only</td></tr>
-        <tr><td class="k">I4 · ASD</td><td>Loading-bay Abandon</td><td class="v">Bay gas detection · LNG spill (low-temp probe) · local pushbuttons</td><td class="v">Close all loading-pump XV valves — no impact on the process</td></tr>
+      data-notes='["Core concept of process safety: layers of protection — no single barrier is trusted alone.","Layer 1: the PCS pre-alarm (PAH) tells the operator to act. Layer 2: the trip level (PAHH) acts automatically — PSD. Layer 3: if automation is not enough, the mechanical PSV opens. Beyond that: ESD depressurizes the whole zone.","Then the shutdown ladder, top down: I1 ESD — closes plant inlet/outlets, depressurizes, drops main power to emergency generators. I2 PSD — closes process inlets/outlets, some units keep running. I3 LSD — one package only. I4 ASD — loading bay only, closes the LNG pump valves.","Key architecture fact, quote it: ESD, PSD and ASD sit in one integrated system fully independent of the PCS, per API RP 14C.","Critical HAZOP loops get fail-safe SIL 2 shutdown valves.","What trips ESD: pushbuttons along escape ways, fire detection in process areas, LNG spill detection at the tank."]'>
+      <div class="kicker">Block 1 · Layers of protection <span class="sub">— nobody trusts a single barrier</span></div>
+      <h2>Alarm → trip → relief → shutdown: the hierarchy</h2>
+      <div class="p2cards" style="margin-top:4px;">
+        <div class="hcard ctl"><div class="hh"><span>1 · PCS pre-alarm</span><span>PAH…</span></div><div class="hb">
+          <div class="hval"><span class="k">Who acts</span><span class="v">operator</span></div>
+          <div class="hval"><span class="k">Buzzer</span><span class="v">high-freq</span></div></div></div>
+        <div class="hcard iso"><div class="hh"><span>2 · Trip → PSD</span><span>PAHH…</span></div><div class="hb">
+          <div class="hval"><span class="k">Who acts</span><span class="v">automatic</span></div>
+          <div class="hval"><span class="k">Buzzer</span><span class="v">low-freq</span></div></div></div>
+        <div class="hcard rel"><div class="hh"><span>3 · Relief PSV</span><span>mechanical</span></div><div class="hb">
+          <div class="hval"><span class="k">Who acts</span><span class="v">spring vs pressure</span></div>
+          <div class="hval"><span class="k">Needs power?</span><span class="v">no</span></div></div></div>
+        <div class="hcard bdw"><div class="hh"><span>4 · ESD + blowdown</span><span>ultimate</span></div><div class="hb">
+          <div class="hval"><span class="k">Who acts</span><span class="v">auto / pushbutton</span></div>
+          <div class="hval"><span class="k">Effect</span><span class="v">isolate + empty</span></div></div></div>
+      </div>
+      <div class="mapwrap" style="margin:8px 0 2px;">
+        <div class="lbl"><span>Shutdown hierarchy — decreasing scope</span><span class="you">I1 = whole plant → I4 = one package</span></div>
+        <svg viewBox="0 0 1000 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <rect x="40" y="4" width="920" height="22" rx="4" fill="#C8102E"/>
+          <text x="56" y="19" font-family="Consolas,monospace" font-weight="700" font-size="10.5" fill="#fff">I1 · ESD</text>
+          <text x="500" y="19" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9.5" fill="#fff">whole plant — close inlet/outlet · depressurize · emergency power</text>
+          <rect x="150" y="30" width="700" height="22" rx="4" fill="#DB4E63"/>
+          <text x="166" y="45" font-family="Consolas,monospace" font-weight="700" font-size="10.5" fill="#fff">I2 · PSD</text>
+          <text x="540" y="45" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9.5" fill="#fff">process — close process inlets/outlets, some units keep running</text>
+          <rect x="260" y="56" width="480" height="22" rx="4" fill="#EE93A1"/>
+          <text x="276" y="71" font-family="Consolas,monospace" font-weight="700" font-size="10.5" fill="#5a1420">I3 · LSD</text>
+          <text x="560" y="71" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9.5" fill="#5a1420">local — one package only</text>
+          <rect x="370" y="82" width="260" height="22" rx="4" fill="#FBE9EC"/>
+          <text x="386" y="97" font-family="Consolas,monospace" font-weight="700" font-size="10.5" fill="#8a1626">I4 · ASD</text>
+          <text x="600" y="97" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9.5" fill="#8a1626">loading bay only</text>
+        </svg>
+      </div>
+      <table class="data" style="font-size:12px;margin-top:4px;">
+        <tr><th>Level</th><th>Name</th><th>Typical activation</th><th>Effect</th></tr>
+        <tr><td class="k" style="color:var(--crimson);">I1 · ESD</td><td>Emergency Shut Down</td><td class="v">pushbuttons on escape ways · fire detection · LNG spill detection</td><td class="v">close plant inlet &amp; outlets · <b>depressurize</b> · main power → emergency diesels</td></tr>
+        <tr><td class="k">I2 · PSD</td><td>Process Shut Down</td><td class="v">confirmed gas / NH₃ · process trips (LAHH, PAHH, TAHH…) · air failure</td><td class="v">close process inlets/outlets — some units may keep running</td></tr>
+        <tr><td class="k">I3 · LSD</td><td>Local Shut Down</td><td class="v">package trips (hot oil, NH₃ unit, BOG, pumps…)</td><td class="v">stops the single package only</td></tr>
+        <tr><td class="k">I4 · ASD</td><td>Loading-bay Abandon SD</td><td class="v">loading-bay gas · LNG spill (temperature probes) · local pushbuttons</td><td class="v">closes LNG pump valves — no impact on the process</td></tr>
       </table>
-      <div class="note">All levels execute the <b>Cause &amp; Effect Matrix</b> (SAF12-ING-FR01). ESD/PSD/ASD run in one integrated system, fully independent from the PCS.</div>
+      <div class="note">“Emergency shut down levels (ESD, PSD and ASD) are done within one integrated system which is <b>fully independent from the process control system (PCS)</b>, as per API RP 14C.” — SAF01. Critical loops: fail-safe <b>SIL 2</b> SDVs.</div>
     </section>
 
-    <!-- 13 F&G DETECTION · Zibac · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["Handover to Zibac. Detection is the trigger for everything automatic — walk the detector map (SAF01 §6.3).","Gas zone 1: inlet (SDV-2001) to dehydration (SDV-3560) — CH4 detectors over units 200/310/330.","Gas zone 2: cold box to LNG separator (SDV-2201/2202) — units 221/350/370.","Loading bay: CH4 + fire detectors + low-temperature spill probes → ASD or ESD per scenario (Block 2 detail).","Gas engines (U480): CH4 + fire detection → alarm to control cabin, plant ESD, CO2 extinguishers, emergency black start.","Cabins (MCC, control room, offices): smoke detectors voting 2 of 2 → plant ESD (process cabins) + CO2 extinguishers.","IR flame detectors cover compressors, pumps, vessels & valves in the process area; final positions set during construction."]'>
-      <div class="kicker">Emergency systems · Detection</div>
-      <h2>Fire &amp; Gas detection</h2>
-      <table class="data" style="font-size:12.5px;">
-        <tr><th>Area</th><th>Detection</th><th>Automatic action</th></tr>
-        <tr><td class="k">Gas zone 1 — inlet→dehydration<br><span class="muted">(SDV-2001 → SDV-3560)</span></td><td class="v">CH₄ detectors (U200 · 310 · 330)</td><td class="v">PSD on confirmed gas</td></tr>
-        <tr><td class="k">Gas zone 2 — cold box→LNG sep.<br><span class="muted">(SDV-3560 → SDV-2201/2202)</span></td><td class="v">CH₄ detectors (U221 · 350 · 370)</td><td class="v">PSD on confirmed gas</td></tr>
-        <tr><td class="k">Process area (equipment)</td><td class="v"><b>IR flame detectors</b> — compressors, pumps, vessels, valves</td><td class="v">ESD on fire</td></tr>
-        <tr><td class="k">Loading bay (S-221/S-222)</td><td class="v">CH₄ + fire + <b>low-temperature spill probes</b></td><td class="v">ASD / ESD per scenario (Block 2)</td></tr>
-        <tr><td class="k">Gas engines (U480)</td><td class="v">CH₄ + fire detection</td><td class="v">Alarm → plant ESD · CO₂ · <b>black start</b></td></tr>
-        <tr><td class="k">Cabins (MCC · control · offices)</td><td class="v">Smoke detectors, <b>2 of 2 voting</b></td><td class="v">Alarm → plant ESD (process cabins) + CO₂</td></tr>
-      </table>
-      <div class="note">Detection = the automatic trigger of the shutdown hierarchy. Unit 700 (F&amp;G) is detailed in Module 113.</div>
+    <!-- B1-4 ESD & BLOWDOWN · Mario · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
+      data-notes='["Why depressurize? In a fire the gas-side vessel wall weakens; a PSV limits pressure but cannot remove the inventory — only blowdown does. Quote SAF05: a relief valve cannot provide depressurizing.","The target, from API 521: 6.9 barg or half the design pressure, whichever is lower, within 15 minutes.","BDVs are emergency valves — they must fail OPEN; all BDVs of a fire zone open simultaneously.","No liquid blowdown anywhere: liquid inventory is kept deliberately — it slows the heating of a vessel in a fire.","The ammonia and mixed-refrigerant loops have PSVs but no BDVs — closed loops per ASHRAE 15 / EN 378.","Four flares to one common burn pit: hot, cold, ammonia, plus the client wells-area flare. Pit is south — the wind blows from the north — and at least 100 m from process and cabins.","Field consequence: during blowdown expect noise and flare radiation — this is the system working, not failing."]'>
+      <div class="kicker">Block 1 · ESD &amp; depressurization <span class="sub">— remove the energy, remove the fuel</span></div>
+      <h2>Blowdown: the plant empties itself to flare</h2>
+      <div class="mapwrap" style="margin-bottom:6px;">
+        <div class="lbl"><span>Blowdown sequence</span><span class="you">BDVs fail OPEN · simultaneous per fire zone</span></div>
+        <svg viewBox="0 0 1000 104" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <line x1="90" y1="36" x2="910" y2="36" stroke="#C9CED4" stroke-width="3"/>
+          <g font-family="Consolas,monospace" font-weight="700" font-size="13">
+            <circle cx="90" cy="36" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="90" y="41" text-anchor="middle" fill="#C8102E">1</text>
+            <circle cx="363" cy="36" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="363" y="41" text-anchor="middle" fill="#C8102E">2</text>
+            <circle cx="636" cy="36" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="636" y="41" text-anchor="middle" fill="#C8102E">3</text>
+            <circle cx="910" cy="36" r="20" fill="#B26A00" stroke="#B26A00" stroke-width="2"/><text x="910" y="41" text-anchor="middle" fill="#fff">4</text>
+          </g>
+          <g font-family="Segoe UI,Arial" font-size="10.5" fill="#15171A" text-anchor="middle">
+            <text x="90" y="70">Fire / gas detected</text>
+            <text x="363" y="70">BDVs open (fail OPEN)</text>
+            <text x="636" y="70">Zone depressurizes</text>
+            <text x="910" y="70" font-weight="700" fill="#B26A00">To flare / burn pit</text>
+          </g>
+          <g font-family="Consolas,monospace" font-size="8" fill="#4A4F57" text-anchor="middle">
+            <text x="363" y="86">simultaneous, per fire zone</text>
+            <text x="636" y="86">6.9 barg / 50% DP in 15 min</text>
+            <text x="910" y="86">4 flares → 1 pit ≥100 m</text>
+          </g>
+        </svg>
+      </div>
+      <div class="grid2">
+        <ul class="points" style="font-size:13px;">
+          <li>In a fire, a PSV limits pressure but <b>only depressurization removes the inventory</b> and saves the vessel.</li>
+          <li>Target: <b>6.9 barg or 50 % of design pressure</b> — whichever is lower — <b>in 15 minutes</b> (API 521).</li>
+          <li><b>BDVs fail OPEN</b>; all BDVs in a fire zone open <b>simultaneously</b>; rate set by a restriction orifice.</li>
+          <li><b>No liquid blowdown</b> — liquid inventory keeps vessel walls cool in a fire.</li>
+          <li>NH₃ &amp; mixed-refrigerant loops: <b>PSV only, no BDV</b> (closed loops — ASHRAE 15 / EN 378).</li>
+          <li>Blowdown gas gets very cold — downstream piping is rated for it; solid CO₂ formation is checked.</li>
+        </ul>
+        <div>
+          <div class="facts" style="margin-top:2px;">
+            <div class="fact"><div class="n">15 min</div><div class="l">to 6.9 barg / 50 % DP — emergency depressurization</div></div>
+            <div class="fact"><div class="n">4</div><div class="l">flares → one common burn pit (hot · cold · NH₃ · wells)</div></div>
+          </div>
+          <div class="facts">
+            <div class="fact"><div class="n">≥100 m</div><div class="l">burn pit distance from process &amp; cabins — placed south, downwind</div></div>
+            <div class="fact"><div class="n">100 %</div><div class="l">flare sized for full-facility simultaneous blowdown</div></div>
+          </div>
+          <div class="note">“Blowdown valves (BDVs) are considered to be emergency valves, therefore <b>must fail open</b>.” — SAF05-ING-FR01 (21044-PR-RBP-00001).</div>
+        </div>
+      </div>
     </section>
 
-    <!-- 14 ALARM SYSTEM · Zibac · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Zibac"
-      data-notes='["When something trips, the plant TELLS you — learn the sounds.","General audible alarm: siren above the control-room roof, managed by the PCS, powered from UPS batteries — it works even in a blackout.","Differentiated tones: PSD, ESD, Forced Evacuation and Gas Leakage each sound different.","PSD: pitched intermittent sound until the parameter is restored and manually reset on the PCS.","Forced evacuation: LOW tone, intermittent — that sound means one thing: leave, now, to the muster point.","ESD also has a pneumatic siren on panel 100-CP-001 — continuous pitched tone, manually silenced by the operator once conditions are restored.","Drill the group: which sound means evacuate?"]'>
-      <div class="kicker">Emergency systems · Alarms</div>
-      <h2>General alarm system — know the sounds</h2>
-      <ul class="points">
-        <li><b>Siren above the control-room roof</b>, managed by the PCS, <b>UPS-powered</b> — works in a blackout.</li>
-        <li><b>Differentiated tones</b> for: <b>PSD · ESD · Forced Evacuation · Gas Leakage</b>.</li>
-        <li><b>PSD:</b> pitched, intermittent — until the parameter is restored &amp; manually reset on the PCS.</li>
-        <li><b>Forced Evacuation:</b> <b>low tone, intermittent</b> — means <b>leave now</b> to the muster point.</li>
-        <li><b>ESD:</b> additional <b>pneumatic siren</b> on panel 100-CP-001 — continuous pitched tone, silenced manually once conditions are restored.</li>
-      </ul>
-      <div class="note">Exam favourite: the low intermittent tone = forced evacuation. If in doubt — evacuate.</div>
+    <!-- B1-5 RELIEF · Mario · 6 -->
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
+      data-notes='["The PSV is the last barrier that needs no power, no signal, no operator — a spring against pressure.","Set at the design pressure (MAWP); allowed accumulation 110% single valve, 116% multiple, 120% fire case.","Where production cannot stop, valves are spared duty/standby with locked inlet valves arranged so it is impossible to isolate both relief valves at the same time.","Cryogenic specialty: every place LNG can be trapped between two valves gets a thermal relief valve — warming LNG expands enormously.","The LNG tank is fragile: it can rupture from overpressure OR vacuum — 2 x 100% pilot PSVs plus a pressure build-up coil against vacuum.","Field rule that follows: never close a locked-open valve under a PSV — that lock is a barrier."]'>
+      <div class="kicker">Block 1 · Relief <span class="sub">— the barrier that needs no power</span></div>
+      <h2>PSVs &amp; thermal relief — mechanical, always ready</h2>
+      <div class="icards" style="margin-top:2px;">
+        <div class="icard"><svg viewBox="0 0 32 32"><rect x="12" y="4" width="8" height="9" fill="none" stroke="#C8102E" stroke-width="1.7"/><path d="M10,13 L22,13 L18,26 L14,26 Z" fill="none" stroke="#C8102E" stroke-width="1.7" stroke-linejoin="round"/><line x1="16" y1="6" x2="16" y2="11" stroke="#C8102E" stroke-width="1.4"/></svg>
+          <div class="nm">PSV</div><div class="sub">set at MAWP</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><circle cx="12" cy="23" r="5.5" fill="none" stroke="#C8102E" stroke-width="1.7"/><rect x="10" y="4" width="4" height="15" rx="2" fill="none" stroke="#C8102E" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="18" stroke="#C8102E" stroke-width="2.2"/></svg>
+          <div class="nm">TSV</div><div class="sub">every trapped line</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><rect x="9" y="15" width="14" height="12" rx="2" fill="none" stroke="#C8102E" stroke-width="1.7"/><path d="M12,15 v-3 a4,4 0 0 1 8,0 v3" fill="none" stroke="#C8102E" stroke-width="1.7"/></svg>
+          <div class="nm">Locked valve</div><div class="sub">LO/LC · car seal</div></div>
+        <div class="icard c-blue"><svg viewBox="0 0 32 32"><rect x="8" y="10" width="16" height="18" rx="2" fill="none" stroke="#0B5CAD" stroke-width="1.7"/><path d="M12,6 L16,1 L20,6" fill="none" stroke="#0B5CAD" stroke-width="1.7"/><path d="M12,24 L16,29 L20,24" fill="none" stroke="#0B5CAD" stroke-width="1.7"/></svg>
+          <div class="nm">LNG tank</div><div class="sub">2×100% + vacuum coil</div></div>
+      </div>
+      <div class="grid2">
+        <ul class="points" style="font-size:13px;">
+          <li>PSV set at <b>MAWP</b>; accumulation limits <b>110 / 116 / 120 %</b> (single · multiple · fire case).</li>
+          <li>Duty/standby PSVs with <b>locked inlet valves</b> — arranged so both can <b>never</b> be isolated at once.</li>
+          <li><b>TSVs on every cryogenic line</b> where LNG can be trapped — warming liquid must have a way out.</li>
+          <li>LNG tank: rupture risk from overpressure <b>and vacuum</b> — 2×100 % pilot PSVs + pressure build-up coil.</li>
+          <li>Every relief installation has a <b>1&Prime; locked-closed bypass</b> for manual depressurization.</li>
+        </ul>
+        <div>
+          <div class="facts" style="margin-top:2px;">
+            <div class="fact"><div class="n">MAWP</div><div class="l">PSV set pressure — the design limit itself</div></div>
+            <div class="fact"><div class="n">2×100 %</div><div class="l">pilot PSVs on the LNG tank (NFPA 59A sizing)</div></div>
+          </div>
+          <div class="note" style="margin-top:12px;">“A pressure relief valve <b>cannot provide depressurizing</b>; it will merely limit the pressure rise to a given value under emergency conditions.” — SAF05.<br><br>
+          Field rule: <b>locked valves (LO/LC) and car seals are barriers</b> — never operate one without an isolation certificate.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B1-6 F&G · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
+      data-notes='["The F&G system is the plant sense organs, living in the safety PLC — independent of the PCS, positions mapped on the control-room SCADA.","49 gas detectors: 43 infrared point detectors for methane, 6 electrochemical for ammonia mounted at eye level near the Unit 340 leak points.","13 triple-IR flame detectors watch flanges, pumps and vessels; they self-check for dirty lenses every minute.","Thresholds to memorize: 5% LEL warning on one detector; 20% LEL confirmed on two — executive action. Ammonia 30 ppm warning, 250 ppm shutdown.","One flame detector in alarm = confirmed fire: plant ESD, fire brigade, and in the tank area the deluge/foam valve opens automatically.","Smoke detectors in every cabin in pairs — 2oo2 trips plant ESD.","Fiber-optic DTS cold detection follows the LNG path — a spill announces itself by temperature.","Manual call points everywhere — max 61 m travel; the fire tone is different from the gas tone.","Voting exists to avoid false trips — but a single detector already means: leave, report, wait."]'>
+      <div class="kicker">Block 1 · Fire &amp; gas detection <span class="sub">— the plant’s sense organs</span></div>
+      <h2>F&amp;G: detect early, vote, act automatically</h2>
+      <div class="facts" style="margin-top:2px;">
+        <div class="fact"><div class="n">49</div><div class="l">gas detectors — 43 IR methane + 6 NH₃ (eye level, U340)</div></div>
+        <div class="fact"><div class="n">13</div><div class="l">triple-IR flame detectors — self-checking</div></div>
+        <div class="fact"><div class="n">2oo2</div><div class="l">smoke detectors per cabin → plant ESD</div></div>
+        <div class="fact"><div class="n">DTS</div><div class="l">fiber-optic cold detection along the LNG path</div></div>
+      </div>
+      <div class="mapwrap" style="padding:8px 14px 4px;margin:7px 0 2px;">
+        <div class="lbl"><span>Flammable gas — % LEL</span><span class="you">warning 1ooN · executive action 2ooN</span></div>
+        <svg viewBox="0 0 1000 66" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <rect x="40" y="10" width="920" height="22" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.2"/>
+          <rect x="224" y="10" width="184" height="22" fill="#FFF3E0"/>
+          <rect x="776" y="10" width="184" height="22" fill="#FBE9EC"/>
+          <rect x="40" y="10" width="920" height="22" rx="4" fill="none" stroke="#C9CED4" stroke-width="1.2"/>
+          <g font-family="Consolas,monospace" font-size="9.5" fill="#4A4F57" text-anchor="middle">
+            <line x1="224" y1="7" x2="224" y2="36" stroke="#8a9099" stroke-width="1"/><text x="224" y="48">5%</text>
+            <line x1="776" y1="7" x2="776" y2="36" stroke="#8a9099" stroke-width="1"/><text x="776" y="48">20%</text>
+          </g>
+          <text x="316" y="25" text-anchor="middle" font-family="Segoe UI,Arial" font-weight="700" font-size="9.5" fill="#B26A00">5% warning (1ooN)</text>
+          <text x="868" y="25" text-anchor="middle" font-family="Segoe UI,Arial" font-weight="700" font-size="9.5" fill="#C8102E">20% executive (2ooN)</text>
+        </svg>
+      </div>
+      <table class="data" style="font-size:12.5px;margin-top:2px;">
+        <tr><th>Detection</th><th>Warning</th><th>Confirmed → executive action</th></tr>
+        <tr><td class="k">Flammable gas (%LEL)</td><td class="v">5 % LEL · 1ooN · alarm only</td><td class="v"><b>20 % LEL · 2ooN</b> → shutdown actions</td></tr>
+        <tr><td class="k">Ammonia NH₃</td><td class="v">30 ppm · 1ooN</td><td class="v"><b>250 ppm · 2ooN</b> → shutdown</td></tr>
+        <tr><td class="k">Flame</td><td class="v">—</td><td class="v"><b>1ooN</b> → plant <b>ESD</b> · fire brigade · tank-area <b>deluge</b></td></tr>
+        <tr><td class="k">Smoke (cabins)</td><td class="v">1oo2</td><td class="v"><b>2oo2</b> → plant ESD</td></tr>
+        <tr><td class="k">LNG spill (DTS / T-probes)</td><td class="v">—</td><td class="v">foam deluge valve · <b>ASD</b> at loading bay</td></tr>
+      </table>
+      <div class="note">Manual call points: red, Ex-rated, max <b>61 m</b> travel (NFPA 72) — fire tone ≠ gas tone. F&amp;G logic in the fail-safe safety PLC, independent of the PCS. Sources: SAF11-ING-FR01/FR02.</div>
+      <div class="fig" style="margin-top:4px;">
+        <a href="/images/SAF11-FG-layout-rev6.png" target="_blank"><img src="/images/SAF11-FG-layout-rev6.png" alt="Site F&amp;G detector layout — SAF11-ING-PR01 Rev.6" style="max-height:40px;"></a>
+        <div class="cap">Site F&amp;G detector layout (SAF11-ING-PR01 Rev.6) — click to enlarge · full GA next slide</div>
+      </div>
+    </section>
+
+    <!-- B1-6b F&G GA · Mario · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Mario"
+      data-notes='["This is the general-arrangement drawing behind the numbers on the previous slide — where the gas, flame, smoke and DTS elements actually sit in the plant.","Point out the legend: point flammable-gas detectors, multispectrum flame detectors (300 m radius field of view per location), smoke detectors (roof level only), and the distributed-temperature-sensing (DTS) fibre route.","Current revision: SAF11-ING-PR01 Rev.6, superseding the Rev.1 drawing referenced earlier in the corpus — layout only, the thresholds and counts taught on the previous slide are unchanged.","No new numbers to memorize here — this slide is a map, not a quiz."]'>
+      <div class="kicker">Block 1 · F&amp;G general arrangement <span class="sub">— SAF11-ING-PR01 Rev.6</span></div>
+      <h2>Where every detector actually sits</h2>
+      <div class="fig" style="margin-top:2px;">
+        <a href="/images/SAF11-FG-layout-rev6.png" target="_blank"><img src="/images/SAF11-FG-layout-rev6.png" alt="F&amp;G general arrangement — SAF11-ING-PR01 Rev.6" style="max-height:400px;"></a>
+      </div>
+      <div class="note">Legend on the drawing: <b>point flammable-gas detector</b> · <b>multispectrum flame detector</b> (300 m radius field of view, per specific-location requirement) · <b>smoke detector</b> (roof level only) · <b>distributed temperature sensing (DTS)</b> fibre run. Current revision <b>Rev.6</b> (11-Dec-2025) — supersedes the Rev.1 drawing. Click to enlarge. Source: SAF11-ING-PR01.</div>
+    </section>
+
+    <!-- B1-7 FERA · Mario · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
+      data-notes='["The FERA is the study that asks: if the plant leaks, what happens? Leak frequencies from industry data, consequences modelled in PHAST.","Reassuring result 1: about 83% of predicted releases are small — 5 mm class; only about 1% are full-bore ruptures.","Reassuring result 2: explosion overpressure damage thresholds are never reached — the plot is open and methane is lighter than air.","The one scenario that can escalate: a MEDIUM gas leak in the gas-treatment section IS-01G — a jet fire exceeding 37.5 kW/m2 on structures for more than 10 minutes.","Pool fires — LNG tank, inlet separators, hot oil, MR liquid — are credible at all sizes; that is why the foam systems exist.","Vulnerability numbers: 12.5 kW/m2 damages buildings, 37.5 kW/m2 damages steel and valves.","Flash fire: seconds long, no structural damage — but lethal to a person inside the cloud. Distance is your protection.","Why you care: every small leak you report kills the statistics that feed this study."]'>
+      <div class="kicker">Block 1 · FERA <span class="sub">— fire &amp; explosion risk assessment (SAF02-ING-FR03)</span></div>
+      <h2>What the risk study says about this plant</h2>
+      <div class="icards" style="margin-top:2px;">
+        <div class="icard"><svg viewBox="0 0 32 32"><path d="M16,4 Q11,14 15,19 Q12,17 13,23 Q14,28 18,28 Q23,28 23,22 Q23,17 19,13 Q20,17 17,17 Q18,10 16,4 Z" fill="none" stroke="#C8102E" stroke-width="1.5" stroke-linejoin="round"/><path d="M2,17 L10,17 M2,17 L7,14 M2,17 L7,20" fill="none" stroke="#C8102E" stroke-width="1.5"/></svg>
+          <div class="nm">Jet fire</div><div class="sub">IS-01G worst case</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><path d="M12,9 Q9,15 12,18 Q10,16 11,21 Q12,25 15,25 Q19,25 19,20 Q19,16 16,13 Q17,16 14,16 Q15,11 12,9 Z" fill="none" stroke="#C8102E" stroke-width="1.4" stroke-linejoin="round"/><path d="M4,27 Q8,24 12,27 Q16,24 20,27 Q24,24 28,27" fill="none" stroke="#C8102E" stroke-width="1.6"/></svg>
+          <div class="nm">Pool fire</div><div class="sub">bund · separators</div></div>
+        <div class="icard c-amber"><svg viewBox="0 0 32 32"><path d="M8,18 a6,6 0 0 1 2,-11 a7,7 0 0 1 13,3 a5,5 0 0 1 -1,10 z" fill="none" stroke="#B26A00" stroke-width="1.6"/><path d="M14,18 L12,24 L16,22 L14,28" fill="none" stroke="#B26A00" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <div class="nm">Flash fire</div><div class="sub">seconds · lethal in cloud</div></div>
+        <div class="icard c-ink"><svg viewBox="0 0 32 32"><path d="M16,4 L19,13 L28,13 L20,19 L23,28 L16,22 L9,28 L12,19 L4,13 L13,13 Z" fill="none" stroke="#4A4F57" stroke-width="1.3" stroke-linejoin="round"/><line x1="4" y1="4" x2="28" y2="28" stroke="#4A4F57" stroke-width="1.4"/></svg>
+          <div class="nm">VCE</div><div class="sub">not in scenario set</div></div>
+      </div>
+      <div class="grid2">
+        <ul class="points" style="font-size:13px;">
+          <li><b>~83 % of predicted leaks are small</b> (5 mm class); only ~1 % full-bore ruptures.</li>
+          <li><b>Explosion (VCE) damage thresholds are never reached</b> — open plot, low-reactivity gas, lighter than air.</li>
+          <li>Worst credible escalation: <b>medium (25 mm) jet fire in the gas-treatment section (IS-01G)</b> — &gt;37.5 kW/m² on structures for &gt;10 min.</li>
+          <li><b>Pool fires are credible at all sizes</b> — LNG tank bund, inlet separators, hot oil, MR liquid → fixed foam systems.</li>
+          <li><b>Flash fire</b>: seconds long, no structural damage — <b>lethal inside the cloud</b>. Distance = protection.</li>
+        </ul>
+        <div>
+          <table class="data" style="font-size:12.5px;">
+            <tr><th>Radiation level</th><th>Damages</th></tr>
+            <tr><td class="k">4 kW/m²</td><td class="v">outermost mapped contour</td></tr>
+            <tr><td class="k">12.5 kW/m²</td><td class="v">steel-frame buildings</td></tr>
+            <tr><td class="k">37.5 kW/m²</td><td class="v">steel structures · piperacks · ESD/BDV valves</td></tr>
+          </table>
+          <div class="note">Scenario set: jet fire · pool fire · flash fire · VCE · dispersion. BLEVE is <b>not part of the assessed scenario set</b>. Method: IOGP leak data · event trees · PHAST consequence models.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B1-8 FIREFIGHTING · ITF · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="ITF"
+      data-notes='["ITF presents: the active firefighting layer, designed from the FERA scenarios.","Design demand 330 m3/h — the governing scenario is a jet fire at the liquefaction section; storage 660 m3 gives two hours at full demand.","Underground ring main, 8 inch — supply survives a broken section; 13 dry-barrel pillar hydrants, each with a hose cabinet.","Two diesel main pumps plus a jockey keep the ring pressurized: first pump starts itself at 4 barg falling, second at 3 barg. Manual start is at the field panel only — not from the control room.","Five trailer-mounted monitors, two of them foam-capable.","The LNG tank bund has 8 fixed high-expansion foam generators fed by a bladder tank — automatic on spill or fire detection.","Cardinal rules, quote them: LNG pool fires are neither controlled nor extinguished by water — water increases vaporization and the burning rate. And a jet fire is answered by isolation and depressurization, not by trying to put it out.","For trainees: your job with this equipment is to know where it is and keep it accessible — fighting a plant fire is the ERT role, not yours."]'>
+      <div class="kicker">Block 1 · Firefighting <span class="sub">— designed from the FERA scenarios</span></div>
+      <h2>Firewater, foam &amp; the cardinal LNG rules</h2>
+      <div class="facts" style="margin-top:2px;">
+        <div class="fact"><div class="n">330 m³/h</div><div class="l">design firewater demand (governing FERA scenario)</div></div>
+        <div class="fact"><div class="n">660 m³</div><div class="l">storage — 2 hours at design demand (TK-731)</div></div>
+        <div class="fact"><div class="n">13</div><div class="l">pillar hydrants on the 8&Prime; underground ring main</div></div>
+        <div class="fact"><div class="n">5</div><div class="l">trailer monitors — 2 foam-capable (AFFF 1 %)</div></div>
+      </div>
+      <div class="icards" style="margin-top:10px;">
+        <div class="icard"><svg viewBox="0 0 32 32"><rect x="12" y="10" width="8" height="16" rx="2" fill="none" stroke="#C8102E" stroke-width="1.7"/><rect x="9" y="7" width="14" height="4" rx="1.5" fill="none" stroke="#C8102E" stroke-width="1.7"/><circle cx="8" cy="16" r="2" fill="none" stroke="#C8102E" stroke-width="1.5"/><circle cx="24" cy="16" r="2" fill="none" stroke="#C8102E" stroke-width="1.5"/><rect x="13" y="26" width="6" height="3" fill="none" stroke="#C8102E" stroke-width="1.5"/></svg>
+          <div class="nm">Hydrants</div><div class="sub">13 · ring main</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><line x1="16" y1="30" x2="16" y2="16" stroke="#C8102E" stroke-width="1.7"/><line x1="8" y1="30" x2="16" y2="16" stroke="#C8102E" stroke-width="1.7"/><line x1="24" y1="30" x2="16" y2="16" stroke="#C8102E" stroke-width="1.7"/><rect x="10" y="10" width="12" height="7" rx="2" fill="none" stroke="#C8102E" stroke-width="1.7"/><line x1="22" y1="13" x2="29" y2="10" stroke="#C8102E" stroke-width="1.7"/></svg>
+          <div class="nm">Monitors</div><div class="sub">5 · 2 foam-capable</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><path d="M9,26 L13,10 L19,10 L23,26 Z" fill="none" stroke="#C8102E" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="6" r="1.5" fill="none" stroke="#C8102E" stroke-width="1.2"/><circle cx="16" cy="4" r="1.5" fill="none" stroke="#C8102E" stroke-width="1.2"/><circle cx="20" cy="6" r="1.5" fill="none" stroke="#C8102E" stroke-width="1.2"/></svg>
+          <div class="nm">HE foam gens.</div><div class="sub">8 · LNG bund</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><rect x="11" y="10" width="10" height="17" rx="3" fill="none" stroke="#C8102E" stroke-width="1.7"/><rect x="13" y="5" width="6" height="5" rx="1.5" fill="none" stroke="#C8102E" stroke-width="1.7"/><line x1="21" y1="13" x2="27" y2="9" stroke="#C8102E" stroke-width="1.7"/></svg>
+          <div class="nm">Extinguishers</div><div class="sub">CO₂ · 5/50 kg</div></div>
+      </div>
+      <div class="grid2" style="margin-top:8px;">
+        <ul class="points" style="font-size:13px;">
+          <li>Pumps: <b>2 diesel mains + jockey</b> · auto-start at <b>4 barg</b> falling ring pressure, 2nd at <b>3 barg</b> · manual start <b>at the field panel only</b>.</li>
+          <li>LNG tank bund: <b>8 fixed high-expansion foam generators</b> (FFF 3 %) fed by bladder tank — <b>automatic</b> on detection; impoundment pit: 1 generator.</li>
+          <li>Extinguishers: CO₂ at electrical rooms · 5 kg in cabins · 50 kg wheeled in process areas.</li>
+        </ul>
+        <div class="note" style="margin-top:0;border-top:none;">
+          <b style="color:var(--crimson);">Cardinal rule 1:</b> “LNG pool fires are neither controlled nor extinguished by water — water <b>increases</b> the vapour formation and burning rate.” (SAF02-ING-FR01)<br><br>
+          <b style="color:var(--crimson);">Cardinal rule 2:</b> a <b>jet fire</b> is answered by <b>isolation + depressurization</b> (ESD), not by extinguishing — monitors only cool the neighbours.<br><br>
+          Your role: know where hydrants, monitors and extinguishers are — and <b>keep them accessible</b>. Fighting plant fires is the ERT’s job.</div>
+      </div>
+      <div class="fig" style="margin-top:4px;">
+        <a href="/images/SAF07-PR02-safety-eq.png" target="_blank"><img src="/images/SAF07-PR02-safety-eq.png" alt="Site safety equipment layout — SAF07-ING-PR02 Rev.11" style="max-height:55px;"></a>
+        <div class="cap">Safety equipment layout — hydrants, monitors, foam gens., extinguishers, eyewash/shower (SAF07-ING-PR02) — click to enlarge</div>
+      </div>
+    </section>
+
+    <!-- B1-8b FF SYSTEM GA · ITF · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="ITF"
+      data-notes='["This is the firewater system general-arrangement drawing — the ring main, hydrants, monitors and foam generators from the previous slide, drawn to scale.","Legend: underground PEHD header 8\" (ring main) with aboveground carbon-steel branch piping 6\"/4\"/2\"; hydrants (6\", HY-XX); fire monitors (FM-XX) and combined monitor+foam units (FMF-XX); foam generators (GF-XX, 15 m3/h each) around the LNG tank bund and impoundment pit; deluge valves (DV-XX); the 1 m3 foam-concentrate bladder tank (T-01).","Same facts as the previous slide — 330 m3/h design demand, 13 hydrants, 5 monitors, 8 foam generators — this is simply where they physically sit.","Current revision SAF02-ING-PR01 Rev.5 (02-Dec-2024)."]'>
+      <div class="kicker">Block 1 · Firefighting general arrangement <span class="sub">— SAF02-ING-PR01 Rev.5</span></div>
+      <h2>Ring main, hydrants, monitors &amp; foam — where they sit</h2>
+      <div class="fig" style="margin-top:2px;">
+        <a href="/images/SAF02-FF-layout.png" target="_blank"><img src="/images/SAF02-FF-layout.png" alt="Fire-fighting system general arrangement — SAF02-ING-PR01 Rev.5" style="max-height:400px;"></a>
+      </div>
+      <div class="note">Legend on the drawing: <b>underground PEHD header 8&Prime;</b> (ring main) / aboveground CS branch 6&Prime;/4&Prime;/2&Prime; · <b>hydrant</b> 6&Prime; (HY-XX) · <b>fire monitor</b> (FM-XX) / <b>fire monitor &amp; foam</b> (FMF-XX) · <b>foam generator</b> (GF-XX, 15 m³/h) on the LNG bund · <b>deluge valve</b> (DV-XX) · <b>bladder tank</b> T-01 (1 m³). Click to enlarge. Source: SAF02-ING-PR01.</div>
+    </section>
+
+    <!-- B1-9 LNG STORAGE & SPILL · Mario · 7 -->
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
+      data-notes='["The tank is the largest inventory on site: 6,200 m3 geometric, about 10 days of production, single containment, atmospheric — max working pressure only 200 mbar.","Fragile both ways: overpressure AND vacuum can rupture it — 2x100% pilot PSVs, plus a pressure build-up coil against vacuum, plus hydraulic seals in the process design.","Every LNG area has impoundment per NFPA 59A: the bund holds 110% of the tank; gas and temperature detectors live inside it.","A detected spill automatically opens the foam deluge — foam separates LNG from air, suppresses the vapor cloud and knocks down radiation.","At the loading bay: low-temperature probes trigger ASD — the LNG pump valves close; an unignited spill has no impact on the process.","The response to a contained LNG spill is patience: secure, isolate, and wait for it to evaporate completely. Never put water on it.","Truck loading: at least 12 loadings a day, 40 m3 each — the highest-frequency LNG operation on site, human-error driven, hence its own shutdown level."]'>
+      <div class="kicker">Block 1 · LNG storage &amp; spill <span class="sub">— the largest inventory, the gentlest handling</span></div>
+      <h2>Tank, bund &amp; loading bay protection</h2>
+      <div class="icards" style="margin-top:2px;">
+        <div class="icard"><svg viewBox="0 0 32 32"><rect x="7" y="8" width="18" height="18" rx="9" fill="none" stroke="#C8102E" stroke-width="1.7"/><ellipse cx="16" cy="8" rx="9" ry="3" fill="none" stroke="#C8102E" stroke-width="1.7"/></svg>
+          <div class="nm">LNG tank</div><div class="sub">6,200 m³ · 200 mbar</div></div>
+        <div class="icard c-amber"><svg viewBox="0 0 32 32"><rect x="4" y="22" width="24" height="6" fill="none" stroke="#B26A00" stroke-width="1.7"/><rect x="10" y="10" width="12" height="14" rx="2" fill="none" stroke="#B26A00" stroke-width="1.4" stroke-dasharray="2,2"/></svg>
+          <div class="nm">Bund</div><div class="sub">110 % capacity</div></div>
+        <div class="icard c-blue"><svg viewBox="0 0 32 32"><path d="M16,4 C10,14 8,18 8,22 a8,8 0 0 0 16,0 C24,18 22,14 16,4 Z" fill="none" stroke="#0B5CAD" stroke-width="1.7"/></svg>
+          <div class="nm">Foam deluge</div><div class="sub">automatic on spill</div></div>
+        <div class="icard c-ok"><svg viewBox="0 0 32 32"><rect x="3" y="16" width="14" height="8" rx="1.5" fill="none" stroke="#1F8A4C" stroke-width="1.7"/><circle cx="7" cy="25" r="2" fill="none" stroke="#1F8A4C" stroke-width="1.4"/><circle cx="14" cy="25" r="2" fill="none" stroke="#1F8A4C" stroke-width="1.4"/><line x1="17" y1="18" x2="27" y2="10" stroke="#1F8A4C" stroke-width="1.7"/></svg>
+          <div class="nm">Loading bay</div><div class="sub">ASD on spill (I4)</div></div>
+      </div>
+      <div class="grid2">
+        <ul class="points" style="font-size:13px;">
+          <li>Atmospheric tank — max working pressure <b>200 mbar</b>: protected against <b>overpressure and vacuum</b> (2×100 % pilot PSVs + pressure build-up coil).</li>
+          <li>Bund holds <b>110 %</b> of the tank (NFPA 59A) — with gas + temperature detectors and <b>automatic foam</b>.</li>
+          <li>Loading bay: LNG spill → temperature probes → <b>ASD</b> closes the LNG pump valves; unignited spill = no process impact.</li>
+          <li>Contained spill response: secure · isolate · <b>let it evaporate completely</b> — never water onto LNG.</li>
+          <li>LNG pumps: seal-less, inside a cryostat — the most critical pumps on site.</li>
+        </ul>
+        <div>
+          <div class="facts" style="margin-top:2px;">
+            <div class="fact"><div class="n">6,200 m³</div><div class="l">LNG tank — ~10 days of production</div></div>
+            <div class="fact"><div class="n">110 %</div><div class="l">bund capacity vs tank (NFPA 59A)</div></div>
+          </div>
+          <div class="facts">
+            <div class="fact"><div class="n">200 mbar</div><div class="l">tank max working pressure — why vacuum matters</div></div>
+            <div class="fact"><div class="n">≥12 / day</div><div class="l">truck loadings · 40 m³ each — highest-frequency LNG operation</div></div>
+          </div>
+          <div class="note">Sources: SAF01 §5.3/5.5 · SAF05 §8 · FERA IS-06 · HSE-23.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B1-10 ALARMS & RESPONSE · ITF · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="ITF"
+      data-notes='["This is the slide everyone must remember perfectly — what you hear and what you do.","Two site alarm signals: fire/explosion = one continuous signal; gas leak = a twice-interrupted signal. Instructor note: HSE-08 is internally inconsistent on which is which — teach this convention and CONFIRM at the site induction.","PA announcements always start Attention, Attention.","Your response is always the same five steps: stop work — exit by the nearest safe route — muster UPWIND, watch the windsock — T-card count — wait for instructions.","Never run, never take personal risks, never go back for anything, never re-enter without the all-clear.","Four muster points about 20 m outside the fence; three guards bring the T-card boards; a person not accounted for is treated as missing.","Alarms sound at least 180 seconds, survive blackout on UPS for 15 minutes; manual push buttons within 25 m anywhere in the four plant areas.","Practice question: gas alarm and the windsock points at your muster point — what do you do? Go to the OTHER, upwind one."]'>
+      <div class="kicker">Block 1 · Alarms &amp; your response <span class="sub">— the five steps that never change</span></div>
+      <h2>When the siren sounds</h2>
+      <div class="grid2">
+        <div>
+          <table class="data" style="font-size:12.5px;">
+            <tr><th>Signal</th><th>Meaning</th></tr>
+            <tr><td class="k"><svg viewBox="0 0 60 16" width="46" height="12" style="vertical-align:middle;margin-right:6px;"><rect x="1" y="5" width="58" height="6" rx="2" fill="#C8102E"/></svg>continuous</td><td class="v"><b>Fire / explosion</b></td></tr>
+            <tr><td class="k"><svg viewBox="0 0 60 16" width="46" height="12" style="vertical-align:middle;margin-right:6px;"><rect x="1" y="5" width="12" height="6" rx="2" fill="#C8102E"/><rect x="17" y="5" width="12" height="6" rx="2" fill="#C8102E"/><rect x="33" y="5" width="12" height="6" rx="2" fill="#C8102E"/><rect x="49" y="5" width="10" height="6" rx="2" fill="#C8102E"/></svg>interrupted ×2</td><td class="v"><b>Gas leak</b></td></tr>
+            <tr><td class="k">“Attention, Attention…”</td><td class="v">PA announcement — listen &amp; follow</td></tr>
+          </table>
+          <div class="note">⚠ Instructor note: HSE-08 states the two patterns inconsistently in two sections — this is the §9 convention. <b>Confirm at your site induction.</b> Injuries, spills, road accidents, missing person = <b>no siren</b> — report directly to Field Manager / HSE.</div>
+        </div>
+        <div>
+          <div class="flow">
+            <div class="step"><span class="u">1 · STOP</span><span class="t"><b>Stop work</b> when the alarm sounds — make your workplace safe if instant</span></div>
+            <div class="step"><span class="u">2 · EXIT</span><span class="t">Nearest safe route — <b>walk, never run</b>, no personal risks</span></div>
+            <div class="step"><span class="u">3 · MUSTER</span><span class="t">Go <b>UPWIND</b> — watch the <b>windsock</b> · 4 muster points ~20 m outside the fence</span></div>
+            <div class="step"><span class="u">4 · COUNT</span><span class="t"><b>T-card</b> check with the counter — unaccounted = treated as missing</span></div>
+            <div class="step"><span class="u">5 · WAIT</span><span class="t">Stay calm · await instructions · <b>never re-enter without all-clear</b></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="facts" style="margin-top:10px;">
+        <div class="fact"><div class="n">≥180 s</div><div class="l">alarm duration · ≥15 dB above ambient</div></div>
+        <div class="fact"><div class="n">15 min</div><div class="l">alarm autonomy on UPS in blackout</div></div>
+        <div class="fact"><div class="n">≤25 m</div><div class="l">to a manual push button, all 4 areas</div></div>
+        <div class="fact"><div class="n">4 + 2</div><div class="l">muster points + windsocks</div></div>
+      </div>
+      <div class="fig" style="margin-top:6px;">
+        <a href="/images/SAF07-PR01-exits.png" target="_blank"><img src="/images/SAF07-PR01-exits.png" alt="Emergency exits &amp; muster point layout — SAF07-ING-PR01 Rev.7" style="max-height:80px;"></a>
+        <div class="cap">Emergency exits &amp; muster points (SAF07-ING-PR01) — click to enlarge</div>
+      </div>
+    </section>
+
+    <!-- B1-11 HAZARDOUS AREAS · Mario · 6 -->
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
+      data-notes='["Last engineered barrier: keeping ignition away from where gas could be.","The plant is classified per API RP 505 — Zone 2: flammable gas only under abnormal conditions. Zone 1 areas are where gas is likely in normal operation.","Everything electrical inside classified areas is Ex/ATEX rated — that is why you never bring your own electronics.","No mobile phones outside the offices, no cameras, only intrinsically safe radios in the restricted area.","Any ignition source in a risk area = HOT WORK = red permit — Block 2 covers the permit system.","Static is controlled by bonding and earthing; hot surfaces above 250 C get personal-protection barriers.","Smoking only in the designated area outside — zero tolerance inside."]'>
+      <div class="kicker">Block 1 · Ignition control <span class="sub">— hazardous areas keep fire and fuel apart</span></div>
+      <h2>Classified zones &amp; ignition sources</h2>
+      <div class="icards" style="margin-top:2px;">
+        <div class="icard"><svg viewBox="0 0 32 32"><path d="M16,3 L27,9 L27,23 L16,29 L5,23 L5,9 Z" fill="none" stroke="#C8102E" stroke-width="1.5" stroke-linejoin="round"/><text x="16" y="20" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#C8102E">Ex</text></svg>
+          <div class="nm">Zone 2 / Ex</div><div class="sub">API RP 505</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><rect x="11" y="4" width="10" height="24" rx="3" fill="none" stroke="#C8102E" stroke-width="1.7"/><line x1="4" y1="4" x2="28" y2="28" stroke="#C8102E" stroke-width="1.7"/></svg>
+          <div class="nm">No phones</div><div class="sub">offices only</div></div>
+        <div class="icard"><svg viewBox="0 0 32 32"><rect x="5" y="11" width="22" height="15" rx="3" fill="none" stroke="#C8102E" stroke-width="1.6"/><circle cx="16" cy="18" r="5" fill="none" stroke="#C8102E" stroke-width="1.4"/><rect x="12" y="7" width="8" height="4" fill="none" stroke="#C8102E" stroke-width="1.4"/><line x1="4" y1="4" x2="28" y2="28" stroke="#C8102E" stroke-width="1.7"/></svg>
+          <div class="nm">No cameras</div><div class="sub">restricted area</div></div>
+        <div class="icard c-amber"><svg viewBox="0 0 32 32"><circle cx="10" cy="10" r="4" fill="none" stroke="#B26A00" stroke-width="1.5"/><circle cx="22" cy="22" r="4" fill="none" stroke="#B26A00" stroke-width="1.5"/><line x1="13" y1="13" x2="19" y2="19" stroke="#B26A00" stroke-width="1.5"/><line x1="22" y1="26" x2="22" y2="30" stroke="#B26A00" stroke-width="1.5"/><line x1="18" y1="30" x2="26" y2="30" stroke="#B26A00" stroke-width="1.5"/></svg>
+          <div class="nm">Bonding &amp; earth</div><div class="sub">static control</div></div>
+        <div class="icard c-ink"><svg viewBox="0 0 32 32"><path d="M16,4 L28,26 L4,26 Z" fill="none" stroke="#4A4F57" stroke-width="1.5" stroke-linejoin="round"/><path d="M12,20 q2,-4 0,-6 q2,2 4,0 q-2,2 0,6" fill="none" stroke="#4A4F57" stroke-width="1.3"/></svg>
+          <div class="nm">Hot surfaces</div><div class="sub">&gt;250 °C</div></div>
+      </div>
+      <div class="grid2">
+        <ul class="points" style="font-size:13px;">
+          <li>Plant classified per <b>API RP 505</b> — <b>Zone 2</b>: gas present only in abnormal conditions; ATEX/Ex equipment mandatory inside.</li>
+          <li><b>No phones</b> outside site offices · <b>no cameras</b> · only <b>intrinsically safe radios</b> in the restricted area.</li>
+          <li>Any ignition source in a risk area = <b>hot work</b> → red permit (Block 2).</li>
+          <li>Static electricity: <b>bonding &amp; earthing</b> of conducting items — mandatory in transfer operations.</li>
+          <li>Hot surfaces &gt;250 °C: personal-protection mesh barriers; smoking <b>only</b> in the designated outside area.</li>
+        </ul>
+        <div>
+          <div class="facts" style="margin-top:2px;">
+            <div class="fact"><div class="n">Zone 2</div><div class="l">plant classification — abnormal-release basis (API RP 505)</div></div>
+            <div class="fact"><div class="n">Ex</div><div class="l">ATEX-rated equipment only in classified areas</div></div>
+          </div>
+          <div class="note" style="margin-top:12px;">The fire triangle on a plant scale: the process keeps the <b>fuel</b> in; hazardous-area discipline keeps the <b>ignition</b> out; F&amp;G + ESD act when either barrier is challenged.<br>Safety signs per BS 5378 — text in <b>French and Arabic</b>.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B1-12 RECAP · Both · 7 -->
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Both"
+      data-notes='["Recap Block 1 as one stack of barriers — walk it top to bottom and ask the group to name each layer before revealing.","Quiz: what is the difference between PSD and ESD? Which valves fail open, which fail close? What happens at 20% LEL? Why never water on an LNG fire?","Key message: the plant is designed to survive its own accidents — but every barrier assumes people respect locks, permits and zones.","Bridge to Block 2: after the break — the human layer: the rules, the permits, the emergency organization."]'>
+      <div class="kicker">Block 1 · Recap <span class="sub">— the barrier stack, top to bottom</span></div>
+      <h2>Eight layers between a hazard and you</h2>
+      <div class="mapwrap" style="margin-top:2px;">
+        <div class="lbl"><span>Barrier stack — hazard at the top, you at the bottom</span>
+          <span class="you">every layer assumes the one above it can fail</span></div>
+        <svg viewBox="0 0 1000 414" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <!-- hazard (compacted — MDs/021 distribution fix) -->
+          <path d="M500,3 L516,27 L484,27 Z" fill="#FBE9EC" stroke="#C8102E" stroke-width="1.5"/>
+          <line x1="500" y1="11" x2="500" y2="20" stroke="#C8102E" stroke-width="2.2"/>
+          <circle cx="500" cy="24" r="1.5" fill="#C8102E"/>
+          <text x="500" y="38" text-anchor="middle" font-family="Consolas,monospace" font-size="9.5" letter-spacing=".07em" fill="#4A4F57">HAZARD ENTERS THE PROCESS</text>
+          <path d="M494,44 L500,52 L506,44 Z" fill="#8a9099"/>
+
+          <!-- 8 barrier rows: top y = 56 + i*33 (h=30, gap=3) -->
+          <g font-family="Segoe UI,Arial" font-size="12.5" fill="#15171A">
+            <rect x="60" y="56" width="880" height="30" rx="5" fill="#F7F8FA" stroke="#C9CED4" stroke-width="1.1"/>
+            <rect x="68" y="59" width="100" height="24" rx="4" fill="#C8102E"/>
+            <text x="118" y="75" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#fff">DESIGN</text>
+            <text x="182" y="75">Materials, spacing, isolatable zones, hazardous-area classification</text>
+
+            <rect x="60" y="89" width="880" height="30" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.1"/>
+            <rect x="68" y="92" width="100" height="24" rx="4" fill="#C8102E"/>
+            <text x="118" y="108" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#fff">CONTROL</text>
+            <text x="182" y="108">PCS keeps the process inside the envelope — pre-alarms call the operator</text>
+
+            <rect x="60" y="122" width="880" height="30" rx="5" fill="#F7F8FA" stroke="#C9CED4" stroke-width="1.1"/>
+            <rect x="68" y="125" width="100" height="24" rx="4" fill="#C8102E"/>
+            <text x="118" y="141" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#fff">TRIP</text>
+            <text x="182" y="141">PSD / LSD — automatic shutdown on out-of-limit parameters</text>
+
+            <rect x="60" y="155" width="880" height="30" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.1"/>
+            <rect x="68" y="158" width="100" height="24" rx="4" fill="#C8102E"/>
+            <text x="118" y="174" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#fff">RELIEF</text>
+            <text x="182" y="174">PSV / TSV — mechanical, unpowered, always ready</text>
+
+            <rect x="60" y="188" width="880" height="30" rx="5" fill="#F7F8FA" stroke="#C9CED4" stroke-width="1.1"/>
+            <rect x="68" y="191" width="100" height="24" rx="4" fill="#C8102E"/>
+            <text x="118" y="207" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#fff">ESD</text>
+            <text x="182" y="207">Isolate the zone + blow down to flare — remove the inventory</text>
+
+            <rect x="60" y="221" width="880" height="30" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.1"/>
+            <rect x="68" y="224" width="100" height="24" rx="4" fill="#C8102E"/>
+            <text x="118" y="240" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#fff">DETECT</text>
+            <text x="182" y="240">F&amp;G: gas · flame · smoke · cold — votes, then acts by itself</text>
+
+            <rect x="60" y="254" width="880" height="30" rx="5" fill="#F7F8FA" stroke="#C9CED4" stroke-width="1.1"/>
+            <rect x="68" y="257" width="100" height="24" rx="4" fill="#C8102E"/>
+            <text x="118" y="273" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#fff">FIGHT</text>
+            <text x="182" y="273">Firewater ring, monitors, foam on the LNG bund — ERT deployed</text>
+
+            <rect x="60" y="287" width="880" height="30" rx="5" fill="#fff" stroke="#C9CED4" stroke-width="1.1"/>
+            <rect x="68" y="290" width="100" height="24" rx="4" fill="#C8102E"/>
+            <text x="118" y="306" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10" fill="#fff">RESPOND</text>
+            <text x="182" y="306">Alarm → stop, exit, muster upwind, count, wait</text>
+          </g>
+
+          <path d="M494,323 L500,331 L506,323 Z" fill="#8a9099"/>
+          <circle cx="500" cy="351" r="8" fill="#15171A"/>
+          <rect x="489" y="360" width="22" height="22" rx="6" fill="#15171A"/>
+          <text x="500" y="401" text-anchor="middle" font-family="Consolas,monospace" font-weight="700" font-size="10.5" letter-spacing=".03em" fill="#C8102E">YOU — RESPECT LOCKS, PERMITS, ZONES</text>
+        </svg>
+      </div>
+      <div class="note" style="margin-top:8px;padding-top:6px;">Every layer assumes the previous one can fail — and every layer assumes <b>you respect locks, permits and zones</b>. That is Block 2.</div>
     </section>
 
     <!-- BREAK 1 -->
     <section class="slide inter brk" data-min="15" data-block="Break" data-presenter="—"
-      data-notes='["15-minute break. Give the exact return time.","Block 2: emergency plan, spill & vapor cloud, foam and fire control."]'>
+      data-notes='["First 15-minute break at 1:45. Give the exact return time.","Block 2 after the break: the ITF HSE system — Golden Rules, permits, LOTO, confined space, emergency organization."]'>
       <div>
         <div class="big">☕ 15:00</div>
         <h2>Break</h2>
-        <p>15 minutes. Block 2: the emergency plan, LNG spills, foam &amp; fire control.</p>
+        <p>15 minutes. Block 2 follows — the ITF HSE system: your rules, your permits, your response.</p>
       </div>
     </section>
 
-    <!-- 15 SAFETY & EMERGENCY PLAN · Mario · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Mario"
-      data-notes='["The plan in one line: alarm sounds → stop work safely → follow your escape route → muster → account for everyone.","Escape: at least TWO evacuation routes from every location, oriented in different directions, never obstructed.","Cabins: antipanic doors opening in the escape direction, never lockable, self-illuminated signs.","Blackout case: control cabin, MCC and 2 other cabins stay lit from UPS; UPS also feeds 1 central lighting pole + 3 entrance-door emergency lights.","Personnel safeguards: safety showers & eye baths at hazardous-chemical areas; ESD pushbuttons line the escape ways.","Emergency vehicles: layout designed for their access & turning radii.","Assign now: who calls external services, who counts heads at muster — roles must be known BEFORE the alarm."]'>
-      <div class="kicker">Emergency plan</div>
-      <h2>Safety &amp; emergency plan — escape &amp; evacuation</h2>
-      <div class="grid2">
-        <ul class="points">
-          <li><b>≥ 2 evacuation routes</b> from every location, in <b>different directions</b>, never obstructed.</li>
-          <li>Cabins: <b>antipanic doors</b> opening toward escape, never lockable, <b>self-illuminated signs</b>.</li>
-          <li><b>ESD pushbuttons along the escape ways</b> — activate on your way out.</li>
+    <!-- B2-1 HSE SYSTEM & GOLDEN RULES · ITF · 8 -->
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="ITF"
+      data-notes='["Block 2 is the human layer — the ITF HSE management system, certified ISO 9001, 14001 and 45001.","Project goal, quote it: no harm to people, no accident, no damage to the environment — zero LTI.","The 10 Golden Rules are minimum, non-negotiable requirements for everyone on site including visitors.","Walk the list — each rule maps to a slide or a Block 1 barrier.","Stop Work Authority: any person has the RIGHT and the OBLIGATION to stop work on immediate danger — and no disciplinary action or retaliation for stopping work in good faith.","If a Golden Rule cannot be applied: stop the work and report — that IS the procedure.","STOP cards: observe, stop the job, highlight the risk, complete the card, submit — targets of 5 per week per organization."]'>
+      <div class="kicker">Block 2 · The ITF HSE system <span class="sub">— 10 rules, one authority everyone holds</span></div>
+      <h2>Golden Rules &amp; Stop Work Authority</h2>
+      <div class="rulegrid">
+        <div class="rulechip"><span class="rn">1</span><span class="rt"><b>Permit to Work</b>no work without a valid permit</span></div>
+        <div class="rulechip"><span class="rn">2</span><span class="rt"><b>Bypassing controls</b>only with authorization</span></div>
+        <div class="rulechip"><span class="rn">3</span><span class="rt"><b>Energy isolation</b>work only after LOTO</span></div>
+        <div class="rulechip"><span class="rn">4</span><span class="rt"><b>Working at height</b>harness above 2 m</span></div>
+        <div class="rulechip"><span class="rn">5</span><span class="rt"><b>Mechanical lifting</b>plan the lift, control the area</span></div>
+        <div class="rulechip"><span class="rn">6</span><span class="rt"><b>Confined space</b>verify isolation &amp; atmosphere</span></div>
+        <div class="rulechip"><span class="rn">7</span><span class="rt"><b>Driving</b>obey journey management</span></div>
+        <div class="rulechip"><span class="rn">8</span><span class="rt"><b>Line of fire</b>never under loads or moving parts</span></div>
+        <div class="rulechip"><span class="rn">9</span><span class="rt"><b>Chemicals</b>read the MSDS before use</span></div>
+        <div class="rulechip"><span class="rn">10</span><span class="rt"><b>Equipment integrity</b>never use damaged/uncertified gear</span></div>
+      </div>
+      <div class="note" style="border-top:2px solid var(--crimson);margin-top:12px;">
+        <b style="color:var(--crimson);">STOP WORK AUTHORITY —</b> “Any person has the <b>right and obligation</b> to stop work” on immediate danger — and “<b>no disciplinary action or retaliation</b> will be taken against anyone who stops work in good faith.” (HSE-12)
+        &nbsp;·&nbsp; System certified <b>ISO 9001 · 14001 · 45001</b> · Goal: <b>zero LTI — no harm to people</b>.</div>
+    </section>
+
+    <!-- B2-2 DAY ONE · ITF · 7 -->
+    <section class="slide" data-min="7" data-block="Block 2" data-presenter="ITF"
+      data-notes='["Nobody works without: site HSE induction, a valid medical fitness certificate, and the mandatory PPE.","Mandatory PPE at all times: helmet, safety shoes, coverall — flame-resistant where the area requires it — gloves, safety glasses. Task-specific gear on top, including cryogenic PPE for LNG service.","PPE standards are specified in HSE-32: EN 397 helmets replaced every 3 years, EN ISO 20345 footwear, EN 166 eyes, hearing protection mandatory from 80 dB.","Site rules: no smoking except the designated area, phones only in offices, no cameras, reverse parking, 10 km/h — 5 inside the site.","No rings or jewellery, long hair tied, no loose clothing near machines, clean-shaven for tight respirators.","Green Hand rules for newcomers: never work alone, buddy system, visible marking, no HSE-critical tasks, assessed after 6 months.","Housekeeping is a safety system: a tidy site removes fuel, trip hazards and blocked escape routes. Red bins = hazardous waste."]'>
+      <div class="kicker">Block 2 · Day one on site <span class="sub">— induction, PPE, site rules</span></div>
+      <h2>Before you touch anything</h2>
+      <div class="icards">
+        <div class="icard">
+          <svg viewBox="0 0 32 32"><path d="M4,24 Q4,10 16,10 Q28,10 28,24 Z" fill="none" stroke="#C8102E" stroke-width="1.8"/><rect x="2" y="23" width="28" height="4" rx="2" fill="none" stroke="#C8102E" stroke-width="1.8"/></svg>
+          <div class="nm">Helmet</div><div class="sub">EN 397 · 3 yr</div>
+        </div>
+        <div class="icard">
+          <svg viewBox="0 0 32 32"><path d="M9,6 h8 v14 h9 q4,0 4,4 v1 h-21 z" fill="none" stroke="#C8102E" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <div class="nm">Safety shoes</div><div class="sub">EN ISO 20345</div>
+        </div>
+        <div class="icard">
+          <svg viewBox="0 0 32 32"><path d="M11,4 L21,4 L21,8 L26,10 L26,16 L21,14 L21,20 L24,28 L18,28 L16,20 L14,20 L12,28 L6,28 L9,20 L9,14 L4,16 L4,10 L9,8 Z" fill="none" stroke="#C8102E" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          <div class="nm">Coverall</div><div class="sub">FR where required</div>
+        </div>
+        <div class="icard">
+          <svg viewBox="0 0 32 32"><path d="M9,14 Q9,8 14,8 L20,8 Q24,8 24,13 L24,24 Q24,27 21,27 L12,27 Q9,27 9,24 Z" fill="none" stroke="#C8102E" stroke-width="1.8"/><path d="M9,15 Q5,15 5,19 Q5,22 9,21" fill="none" stroke="#C8102E" stroke-width="1.8"/></svg>
+          <div class="nm">Gloves</div><div class="sub">task-rated</div>
+        </div>
+        <div class="icard">
+          <svg viewBox="0 0 32 32"><rect x="4" y="12" width="10" height="8" rx="3" fill="none" stroke="#C8102E" stroke-width="1.8"/><rect x="18" y="12" width="10" height="8" rx="3" fill="none" stroke="#C8102E" stroke-width="1.8"/><line x1="14" y1="15" x2="18" y2="15" stroke="#C8102E" stroke-width="1.8"/><line x1="4" y1="14" x2="1" y2="12" stroke="#C8102E" stroke-width="1.8"/><line x1="28" y1="14" x2="31" y2="12" stroke="#C8102E" stroke-width="1.8"/></svg>
+          <div class="nm">Safety glasses</div><div class="sub">EN 166</div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:6px;">
+        <ul class="points" style="font-size:13px;">
+          <li><b>Entry conditions</b>: site HSE induction + valid <b>medical fitness certificate</b> — no exceptions.</li>
+          <li><b>Mandatory, always</b> (icons above); <b>task PPE on top</b>: harness (&gt;2 m) · hearing (≥80 dB) · face shield · respiratory · <b>cryogenic PPE for LNG service</b>.</li>
+          <li><b>Site rules</b>: smoking only in the designated area · phones only in offices · no cameras · reverse parking · <b>10 km/h</b> (5 inside site).</li>
+          <li><b>Personal</b>: no rings/jewellery · hair tied · nothing loose near machines · clean-shaven for tight respirators.</li>
         </ul>
-        <ul class="points">
-          <li><b>Blackout:</b> control/MCC/2 cabins on <b>UPS lighting</b> + 1 central pole + 3 entrance lights.</li>
-          <li><b>Safety showers &amp; eye baths</b> in chemical-hazard areas.</li>
-          <li>Layout sized for <b>emergency-vehicle access</b> &amp; turning radii.</li>
-        </ul>
+        <div>
+          <div class="facts" style="margin-top:2px;">
+            <div class="fact"><div class="n">100 %</div><div class="l">induction before first shift — attendance signed</div></div>
+            <div class="fact"><div class="n">≥80 dB</div><div class="l">hearing protection mandatory</div></div>
+          </div>
+          <div class="note" style="margin-top:12px;"><b>Green Hand rules</b> (new workers): never alone · buddy (max 5 per buddy) · visible ID on helmet/vest · no HSE-critical roles · monthly one-to-one · assessed after <b>6-month</b> probation.<br><br>
+          Housekeeping = a safety barrier: fuel, trips and blocked escapes all start with an untidy site. <b>Red bins = hazardous waste.</b></div>
+        </div>
       </div>
-      <div class="flow" style="margin-top:12px;">
-        <div class="step"><span class="u">ON ALARM</span><span class="t"><b>Stop work safely → escape route → muster point → head count</b> — know your route and your role beforehand</span></div>
-      </div>
-      <div class="note">Source: SAF01 §9 (Escape &amp; Evacuation). Site emergency-response roles to be confirmed with the client HSE plan.</div>
     </section>
 
-    <!-- 16 SPILL & VAPOR CLOUD · Zibac · 9 -->
-    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["Bring Module 001 physics to the Tendrara layout.","A spill pools and boils; vapour is ~600× the liquid volume; the cold cloud hugs the ground and drifts downwind until it warms past ≈ −110 °C and lifts.","Tendrara containment: LNG spills in the tank & loading areas drain to the LNG IMPOUNDMENT basin (NFPA 59A concept) — away from equipment and people.","Detection: LOW-TEMPERATURE sensors in the impoundment/collection areas — cryogenic liquid arriving is detected by cold, not gas.","On detection: foam pourers + deluge activate on the impoundment; shutdown per the hierarchy (ASD/ESD).","Tank rollover: stratified layers can invert → sudden vapour release — prevented by density/level monitoring and mixing (unit module 107).","The white cloud is condensed moisture — the flammable envelope can extend beyond it; keep everyone upwind & uphill."]'>
-      <div class="kicker">LNG emergencies · Spill</div>
-      <h2>LNG spill &amp; vapor-cloud behaviour at Tendrara</h2>
-      <div class="flow">
-        <div class="step"><span class="u">SPILL</span><span class="t">LNG pools &amp; boils — vapour ≈ <b>600×</b> liquid volume; cold cloud <b>hugs the ground</b>, drifts downwind, lifts above ≈ <b>−110 °C</b></span></div>
-        <div class="step"><span class="u">CONTAIN</span><span class="t">Tank &amp; loading-area spills drain to the <b>LNG impoundment basin</b> (NFPA 59A) — away from equipment &amp; people</span></div>
-        <div class="step"><span class="u">DETECT</span><span class="t"><b>Low-temperature sensors</b> — cryogenic liquid is detected by <b>cold</b>, not gas</span></div>
-        <div class="step"><span class="u">ACT</span><span class="t"><b>Foam pourers + deluge</b> activate on the impoundment · shutdown per hierarchy (ASD/ESD)</span></div>
-      </div>
-      <ul class="points" style="margin-top:10px;">
-        <li><b>Rollover:</b> stratified tank layers can invert → sudden vapour release — prevented by monitoring &amp; mixing (→ Module 107).</li>
-        <li>The <b>visible white cloud ≠ flammable edge</b> — stay upwind, uphill, and out of the cloud.</li>
-      </ul>
-    </section>
-
-    <!-- 17 LOADING-BAY SCENARIOS · Zibac · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["The two design scenarios at the loading bay, straight from SAF01 §6.3 — this is exam material.","Scenario A — LNG spillover, NO ignition: CH4/low-temp detection → ASD I4 (no impact on the process). Spill collects in the LNG impoundment; foam pourer + deluge valve activated by the low-temperature sensors.","Scenario B — LNG spillover WITH fire: fire detection → full ESD + manual CO2 extinguisher intervention locally. Spill still collects in the impoundment with foam + deluge; emergency power generation black-starts.","Note the philosophy: same containment either way; ignition escalates the shutdown level from ASD to ESD.","Remind them of the dead-man philosophy — the operator is IN the bay, so personal escape comes first; the automatics do the isolation."]'>
-      <div class="kicker">LNG emergencies · Scenarios</div>
-      <h2>Loading-bay spill scenarios (SAF01)</h2>
-      <table class="data">
-        <tr><th>Scenario</th><th>Detection</th><th>Automatic response</th></tr>
-        <tr>
-          <td class="k">A · LNG spillover,<br>no ignition</td>
-          <td class="v">CH₄ detectors · low-temperature probes</td>
-          <td class="v"><b>ASD (I4)</b> — no impact on the process · spill collected in the <b>LNG impoundment</b> · <b>foam pourer + deluge</b> activated by low-temp sensors</td>
-        </tr>
-        <tr>
-          <td class="k">B · LNG spillover<br>with fire</td>
-          <td class="v">Fire detectors</td>
-          <td class="v"><b>Full ESD</b> + manual CO₂ extinguisher intervention · impoundment + foam + deluge as above · <b>emergency power black start</b></td>
-        </tr>
-      </table>
-      <ul class="points" style="margin-top:10px;">
-        <li>Same containment either way — <b>ignition escalates ASD → ESD</b>.</li>
-        <li>Operator in the bay (dead-man): <b>personal escape first</b> — the automatics handle isolation.</li>
-      </ul>
-    </section>
-
-    <!-- 18 FIREWATER · Zibac · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["Golden rule first: firewater at Tendrara is for COOLING exposures and making foam solution — never onto the LNG pool itself.","Monitors: fixed, generally on hydrants, adjustable nozzle up to 2,000 l/min at 7.0 barg; ≥15 m from protected equipment; 360° rotation, 80° elevation, ≥40 m horizontal reach.","Hose reels: along the pipe rack & near compressors every 50 m — 30 m of 1-inch hose, ~1,000 l/min at 7 barg.","Deluge valves: automatic or manual water / foam-water deluge in the LNG storage tank area and loading bay.","Process areas have NO deluge: on fire detection, operators direct the foam monitor at the burning unit and cool neighbours with water monitors & hydrants.","Design basis: one fire at a time; fire assumed contained in its fire area; spring-well filtered water."]'>
-      <div class="kicker">Fire control · Water</div>
-      <h2>Firewater system</h2>
-      <div class="facts">
-        <div class="fact"><div class="n">2,000</div><div class="l">l/min per fixed monitor @ 7.0 barg · ≥ 40 m reach · 360°/80°</div></div>
-        <div class="fact"><div class="n">50 m</div><div class="l">hose-reel spacing (pipe rack &amp; compressors) — 30 m of 1&quot; hose, ~1,000 l/min</div></div>
-        <div class="fact"><div class="n">≥ 15 m</div><div class="l">monitor stand-off from protected equipment</div></div>
-      </div>
-      <ul class="points" style="margin-top:12px;">
-        <li><b>Deluge (water / foam-water):</b> LNG storage tank area &amp; loading bay — automatic or manual.</li>
-        <li><b>Process areas — no deluge:</b> operators aim the <b>foam monitor</b> at the unit on fire and <b>cool surrounding units</b> with water monitors &amp; hydrants.</li>
-        <li>Design basis: <b>one fire at a time</b>, contained within its fire area.</li>
-        <li><b>Water is for cooling exposures &amp; foam-making — never onto the LNG pool.</b></li>
-      </ul>
-    </section>
-
-    <!-- 19 FOAM SYSTEMS · Zibac · 9 -->
-    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["Foam concentrate: AFFF mixed at 3% in water; premixed solution formed at local bladder-tank stations (pressure proportioning) with refilling nozzle, proportioner and delivery valves; central storage refillable from lorry tanks & barrels.","Autonomy: 55 minutes of foam for the LNG (fixed-roof) tank; 30 minutes per confined process fire area.","Application rates (NFPA-aligned): 10.0 l/min/m² fixed-roof tank · 10.2 l/min/m² vessels · 20.4 l/min/m² pumps.","Low-expansion foam controls burning liquid-hydrocarbon fires (flash point < 65 °C); on LNG impoundments, foam blankets the pool to CONTROL VAPORIZATION and radiation — it does not extinguish the pool.","Mobile: foam trailers with premixer connect to hydrants on one side and fire chambers on the other; monitor trailers.","Repeat the rule: foam ON the impoundment per design; never a straight water jet on LNG.","OWN EXPERIENCE (Zibac): if you have seen foam applied on a cryogenic spill or a drill, describe what it actually looks like and how fast it must happen."]'>
-      <div class="kicker">Fire control · Foam</div>
-      <h2>Foam systems — AFFF &amp; foam for LNG</h2>
+    <!-- B2-3 JSA & TBT · ITF · 6 -->
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="ITF"
+      data-notes='["Every job starts on paper: risk assessment before work is a policy commitment.","The JSA breaks the task into steps, finds the hazards per step, rates them Criticality = Probability x Severity, then adds controls until the residual risk is acceptable.","Probability A to E, severity 0 to 5 across four targets: people, assets, environment, reputation.","Controls follow the hierarchy: eliminate, substitute, engineer, signage/administrative, PPE — PPE is always LAST.","High priority risk = must be reduced ALARP before work; low = acceptable.","The toolbox talk is the last barrier before hands touch tools: 5-10 minutes at the workface, the JSA explained to every worker, signed on the TBT form.","JSA is required with every permit type — no JSA, no permit, no work."]'>
+      <div class="kicker">Block 2 · Think before you work <span class="sub">— JSA · hierarchy of controls · toolbox talk</span></div>
+      <h2>Risk on paper before risk in the field</h2>
       <div class="grid2">
         <div>
-          <div class="facts" style="margin-top:0;">
-            <div class="fact"><div class="n">AFFF 3 %</div><div class="l">concentrate in water · bladder-tank stations, pressure proportioning</div></div>
-            <div class="fact"><div class="n">55 / 30</div><div class="l">min autonomy — LNG tank / each process fire area</div></div>
+          <div class="flow">
+            <div class="step"><span class="u">JSA 1</span><span class="t">Break the job into <b>steps</b></span></div>
+            <div class="step"><span class="u">JSA 2</span><span class="t">Find the <b>hazards</b> of each step</span></div>
+            <div class="step"><span class="u">JSA 3</span><span class="t">Rate: <b>Criticality = Probability × Severity</b> (A–E × 0–5)</span></div>
+            <div class="step"><span class="u">JSA 4</span><span class="t">Add <b>controls</b> per step → residual risk acceptable</span></div>
+            <div class="step"><span class="u">JSA 5</span><span class="t"><b>Communicate</b> to every worker — the toolbox talk</span></div>
           </div>
-          <ul class="points" style="margin-top:10px;">
-            <li><b>Mobile:</b> foam trailers with premixer (hydrant ↔ fire chambers) + monitor trailers.</li>
-          </ul>
         </div>
         <div>
           <table class="data" style="font-size:12.5px;">
-            <tr><th>Application (low-expansion)</th><th>Rate</th></tr>
-            <tr><td class="k">Fixed-roof tank</td><td>10.0 l/min/m²</td></tr>
-            <tr><td class="k">Vessels</td><td>10.2 l/min/m²</td></tr>
-            <tr><td class="k">Pumps</td><td>20.4 l/min/m²</td></tr>
+            <tr><th>Hierarchy of controls</th><th>Example</th></tr>
+            <tr><td class="k">1 · Elimination</td><td class="v">do the job another way</td></tr>
+            <tr><td class="k">2 · Substitution</td><td class="v">safer product / method</td></tr>
+            <tr><td class="k">3 · Engineering</td><td class="v">guard, ventilation, barrier</td></tr>
+            <tr><td class="k">4 · Signage / administrative</td><td class="v">permit, procedure, signs</td></tr>
+            <tr><td class="k">5 · PPE — always last</td><td class="v">the barrier on your body</td></tr>
           </table>
+          <div class="note"><b>Toolbox talk</b>: 5–10 min at the workface, every day, before work — JSA explained, form signed. <b>JSA + TBT are required with all 5 permit types.</b> (HSE-02 · FR_HSE03)</div>
         </div>
       </div>
-      <div class="note"><b>On LNG impoundments, foam blankets the pool to control vaporization &amp; radiation — it does not "extinguish" the pool.</b>
-        Low-expansion foam extinguishes liquid-hydrocarbon fires (flash point &lt; 65 °C). Never a straight water jet on LNG.</div>
     </section>
 
-    <!-- 20 FIRE CONTROL & EXTINGUISHERS · Zibac · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Zibac"
-      data-notes='["Agent selection by target (SAF01 §7.2): low-expansion foam for liquid hydrocarbons; dry chemical powder (class B-C) for small gas fires; water spray to protect exposures; CO2 total flooding for unmanned enclosures; clean agent for manned ones.","Extinguisher inventory: portable 12 kg & 6 kg dry chemical, 5 kg & 3 kg CO2; wheeled 50 kg dry chemical & 30 kg CO2.","Placement rule: in process & utility units, max 15 m travel distance to a portable extinguisher — hung on pipe racks & access stairways; spares stored for immediate replacement.","Small gas fire: dry chemical knocks it down — but if you cannot isolate the gas source, DO NOT extinguish; let it burn controlled and cool exposures (re-ignition of an unburnt cloud is worse).","Cabin fires: CO2/clean agent + 2oo2 smoke detection from Block 1.","Everyone on site must know where their two nearest extinguishers and their escape route are."]'>
-      <div class="kicker">Fire control · Agents</div>
-      <h2>Fire control &amp; extinguishers</h2>
-      <div class="grid2">
-        <table class="data" style="font-size:12px;">
-          <tr><th>Target</th><th>Agent</th></tr>
-          <tr><td class="k">Liquid HC fires</td><td class="v">Low-expansion <b>foam</b> (flash pt &lt; 65 °C)</td></tr>
-          <tr><td class="k">Small gas fires</td><td class="v"><b>Dry chemical powder</b> (class B-C)</td></tr>
-          <tr><td class="k">Exposure protection</td><td class="v"><b>Water spray</b> (cooling only)</td></tr>
-          <tr><td class="k">Unmanned enclosures</td><td class="v"><b>CO₂ total flooding</b></td></tr>
-          <tr><td class="k">Manned enclosures</td><td class="v"><b>Clean agent</b></td></tr>
-        </table>
-        <ul class="points">
-          <li><b>Portables:</b> 12 / 6 kg dry chemical · 5 / 3 kg CO₂ · <b>Wheeled:</b> 50 kg DC · 30 kg CO₂.</li>
-          <li><b>≤ 15 m</b> travel distance to an extinguisher in process &amp; utility units; spares kept for immediate replacement.</li>
-          <li><b>Gas fire you cannot isolate → do not extinguish:</b> controlled burn + cool exposures beats an unburnt cloud.</li>
-        </ul>
+    <!-- B2-4 PTW · ITF · 9 -->
+    <section class="slide" data-min="9" data-block="Block 2" data-presenter="ITF"
+      data-notes='["Golden Rule number 1 gets its own slide: the permit system.","Five permit types — learn the colors: hot work red 24h, cold work blue 7 days, electrical yellow, working at height white, confined space green 24h.","Hot work is any actual or potential ignition source in a fire-risk area; on hydrocarbon equipment: positively isolate, depressurize, drain, purge, vent first.","Roles: the Permit Authorizer authorizes, the Performing Authority accepts and can STOP the work, the Isolating Authority makes the isolations, the Site Checker verifies.","Work starts only after three signatures: Permit Authorizer, Performing Authority, HSE Supervisor.","Three copies displayed: worksite, permit coordination room, permit authorizer.","Quote the instruction: the issue of a permit does not, by itself, make a job safe.","Trap question for the exam: a suspended permit remains LIVE until cancelled — isolations may still be active."]'>
+      <div class="kicker">Block 2 · Permit to Work <span class="sub">— Golden Rule #1 in practice</span></div>
+      <h2>Five permits, five colors — no permit, no work</h2>
+      <div class="icards">
+        <div class="icard">
+          <svg viewBox="0 0 32 32"><path d="M16,3 Q10,12 14,18 Q11,15 12,22 Q13,27 18,27 Q24,27 24,20 Q24,14 19,10 Q20,14 17,14 Q18,8 16,3 Z" fill="none" stroke="#C8102E" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <div class="nm">Hot work</div><div class="sub">red · 24 h</div>
+        </div>
+        <div class="icard c-blue">
+          <svg viewBox="0 0 32 32"><line x1="16" y1="4" x2="16" y2="28" stroke="#0B5CAD" stroke-width="1.8"/><line x1="5" y1="10" x2="27" y2="22" stroke="#0B5CAD" stroke-width="1.8"/><line x1="5" y1="22" x2="27" y2="10" stroke="#0B5CAD" stroke-width="1.8"/></svg>
+          <div class="nm">Cold work</div><div class="sub">blue · 7 days</div>
+        </div>
+        <div class="icard c-amber">
+          <svg viewBox="0 0 32 32"><path d="M18,3 L9,18 L15,18 L13,29 L24,14 L17,14 Z" fill="none" stroke="#B26A00" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <div class="nm">Electrical</div><div class="sub">yellow · fixed</div>
+        </div>
+        <div class="icard c-ink">
+          <svg viewBox="0 0 32 32"><line x1="10" y1="4" x2="10" y2="28" stroke="#4A4F57" stroke-width="1.8"/><line x1="22" y1="4" x2="22" y2="28" stroke="#4A4F57" stroke-width="1.8"/><line x1="10" y1="8" x2="22" y2="8" stroke="#4A4F57" stroke-width="1.8"/><line x1="10" y1="14" x2="22" y2="14" stroke="#4A4F57" stroke-width="1.8"/><line x1="10" y1="20" x2="22" y2="20" stroke="#4A4F57" stroke-width="1.8"/><line x1="10" y1="26" x2="22" y2="26" stroke="#4A4F57" stroke-width="1.8"/></svg>
+          <div class="nm">Height (&gt;2 m)</div><div class="sub">white · fixed</div>
+        </div>
+        <div class="icard c-ok">
+          <svg viewBox="0 0 32 32"><ellipse cx="16" cy="20" rx="12" ry="7" fill="none" stroke="#1F8A4C" stroke-width="1.8"/><circle cx="16" cy="10" r="5" fill="none" stroke="#1F8A4C" stroke-width="1.8"/><line x1="16" y1="15" x2="16" y2="13" stroke="#1F8A4C" stroke-width="1.8"/></svg>
+          <div class="nm">Confined space</div><div class="sub">green · 24 h</div>
+        </div>
       </div>
-      <div class="note">Layout &amp; specs: SAF02-ING-FR04 · SAF07-ING-PR02 (Safety Equipment Layout).</div>
+      <table class="data" style="font-size:12.5px;margin-top:6px;">
+        <tr><th>Permit</th><th>Color</th><th>Validity</th><th>Extension</th></tr>
+        <tr><td class="k" style="color:#C8102E;">■ Hot work</td><td class="v">red</td><td class="v"><b>24 h</b></td><td class="v">no (base welding area: 7 d)</td></tr>
+        <tr><td class="k" style="color:#0B5CAD;">■ Cold work</td><td class="v">blue</td><td class="v">7 consecutive days</td><td class="v">yes</td></tr>
+        <tr><td class="k" style="color:#B26A00;">■ Electrical</td><td class="v">yellow</td><td class="v">fixed before job</td><td class="v">no — new permit</td></tr>
+        <tr><td class="k">■ Working at height (&gt;2 m)</td><td class="v">white</td><td class="v">fixed before job</td><td class="v">no</td></tr>
+        <tr><td class="k" style="color:#1F8A4C;">■ Confined space</td><td class="v">green</td><td class="v"><b>24 h</b></td><td class="v">no — new permit</td></tr>
+      </table>
+      <div class="grid2" style="margin-top:7px;">
+        <ul class="points" style="font-size:12.5px;">
+          <li><b>3 signatures to start</b>: Permit Authorizer · Performing Authority · HSE Supervisor — <b>3 copies displayed</b> (worksite · permit room · authorizer).</li>
+          <li>Roles: <b>Performing Authority</b> can <b>stop the work</b>; <b>Isolating Authority</b> makes isolations; <b>Site Checker</b> verifies certificates.</li>
+          <li>Attachments: JSA + TBT for <b>all</b> permit types; certificates for isolation, excavation, vehicle entry, safety-system defeat.</li>
+        </ul>
+        <div class="note" style="margin-top:0;border-top:none;">“The issue of a permit does <b>not, by itself, make a job safe</b> — that can only be achieved by those preparing, supervising and carrying out the work.” (PTW Instruction rev.1)<br><br>
+        ⚠ Exam trap: “a <b>suspended permit remains live</b> until it is cancelled” — its isolations may still be active. Closed permits archived ≥5 years.</div>
+      </div>
     </section>
 
-    <!-- 21 KEY MESSAGES & RECAP · Mario · 10 -->
-    <section class="slide" data-min="10" data-block="Block 2" data-presenter="Mario"
-      data-notes='["Read slowly — exam blueprint. Ask quick recall questions between items.","1) The plant runs itself at set point; you supervise, verify (CK) and log. 2) Ex areas: rated equipment only, no phones, detector always.","3) Four shutdown levels: LSD package → PSD process → ESD plant+depressurize+diesels → ASD loading bay.","4) Detection triggers automatics: gas → PSD, fire → ESD, cold (low-temp probes) → foam+deluge.","5) Know the sounds: low intermittent tone = forced evacuation; ≥2 escape routes; ESD buttons on the way out.","6) LNG fire logic: never water on the pool; foam controls vaporization; dry chemical for gas fires; do not extinguish what you cannot isolate.","Preview Module 101 (Mon 13 Jul): Unit 200 inlet & 530 water treatment — the unit-by-unit phase begins."]'>
-      <div class="kicker">Take-home · Recap</div>
-      <h2>Key messages — Module 002</h2>
-      <ul class="points">
-        <li><b>1 ·</b> The PCS runs the plant at set point — operators <b>supervise, verify (CK) and log</b>; the ESD protects it independently.</li>
-        <li><b>2 ·</b> Hazardous areas: <b>Ex-rated equipment only, no phones, personal detector</b>, ground &amp; bond.</li>
-        <li><b>3 ·</b> Shutdown hierarchy: <b>LSD package → PSD process → ESD plant</b> (depressurize + emergency diesels) → <b>ASD</b> loading bay.</li>
-        <li><b>4 ·</b> Detection drives automatics: <b>gas → PSD · fire → ESD · cold → foam + deluge</b> on the impoundment.</li>
-        <li><b>5 ·</b> Alarms: <b>low intermittent tone = forced evacuation</b> · ≥ 2 escape routes · hit ESD buttons on the way out.</li>
-        <li><b>6 ·</b> Fire logic: <b>never water on an LNG pool</b> · foam controls vaporization · dry chemical for gas fires · <b>don't extinguish what you can't isolate</b>.</li>
-      </ul>
-      <div class="note">Next: <b>Module 101 — UNIT 200 LNG Plant Inlet &amp; 530 Process Water Treatment</b> (Mon 13 Jul) — the unit-by-unit phase begins.
-        <a class="btn-doc" href="/docs/SAF05-ING-FR01.pdf" target="_blank" style="margin-left:10px;">📄 SAF05-ING-FR01 (PDF)</a></div>
+    <!-- B2-5 LOTO · ITF · 6 -->
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="ITF"
+      data-notes='["LOTO controls every form of hazardous energy: electrical, mechanical, hydraulic, pneumatic, chemical, thermal, gravity.","Nine steps in strict order — read the flow: prepare, notify, shut down, isolate, lock and tag, release stored energy, VERIFY zero energy with a try-out and voltage absence test, earth, then authorize.","One lock one key — as many locks as there are teams; keys stay with the Isolating Authority.","Quote: tags are essentially warning devices — they do not provide the physical restraint of a lock.","Only the person who applied a device removes it; work on live systems is not allowed, low voltage under 1000 V only.","Major mechanical work needs double block and bleed, or valve plus spade.","Push buttons and selector switches are NOT energy-isolating devices.","Bypassing or defeating a safety system needs its own certificate with an ALARP risk assessment — Golden Rule 2."]'>
+      <div class="kicker">Block 2 · Energy isolation <span class="sub">— LOTO: Golden Rule #3</span></div>
+      <h2>Lock it, tag it, prove it dead</h2>
+      <div class="mapwrap" style="margin-bottom:4px;">
+        <div class="lbl"><span>Nine steps, strict order</span><span class="you">one key per lock · one lock per team</span></div>
+        <svg viewBox="0 0 1000 128" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <line x1="60" y1="42" x2="940" y2="42" stroke="#C9CED4" stroke-width="3"/>
+          <g font-family="Consolas,monospace" font-weight="700" font-size="14">
+            <circle cx="60" cy="42" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="60" y="47" text-anchor="middle" fill="#C8102E">1</text>
+            <circle cx="170" cy="42" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="170" y="47" text-anchor="middle" fill="#C8102E">2</text>
+            <circle cx="280" cy="42" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="280" y="47" text-anchor="middle" fill="#C8102E">3</text>
+            <circle cx="390" cy="42" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="390" y="47" text-anchor="middle" fill="#C8102E">4</text>
+            <circle cx="500" cy="42" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="500" y="47" text-anchor="middle" fill="#C8102E">5</text>
+            <circle cx="610" cy="42" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="610" y="47" text-anchor="middle" fill="#C8102E">6</text>
+            <circle cx="720" cy="42" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="720" y="47" text-anchor="middle" fill="#C8102E">7</text>
+            <circle cx="830" cy="42" r="20" fill="#fff" stroke="#C8102E" stroke-width="2"/><text x="830" y="47" text-anchor="middle" fill="#C8102E">8</text>
+            <circle cx="940" cy="42" r="20" fill="#C8102E" stroke="#C8102E" stroke-width="2"/><text x="940" y="47" text-anchor="middle" fill="#fff">9</text>
+          </g>
+          <g font-family="Segoe UI,Arial" font-size="10.5" fill="#15171A" text-anchor="middle">
+            <text x="60" y="76">Prepare</text>
+            <text x="170" y="76">Notify</text>
+            <text x="280" y="76">Shut down</text>
+            <text x="390" y="76">Isolate</text>
+            <text x="500" y="76">Lock &amp; tag</text>
+            <text x="610" y="76">Release</text>
+            <text x="720" y="76">Verify zero</text>
+            <text x="830" y="76">Earth</text>
+            <text x="940" y="76" font-weight="700" fill="#C8102E">Authorize</text>
+          </g>
+          <g font-family="Consolas,monospace" font-size="8.5" fill="#4A4F57" text-anchor="middle">
+            <text x="500" y="94">energy</text>
+            <text x="610" y="94">stored energy</text>
+            <text x="720" y="94">try-out + VAT</text>
+          </g>
+        </svg>
+      </div>
+      <div class="grid2">
+        <div>
+          <div class="note" style="margin-top:0;border-top:none;padding-top:0;">Steps 4–5 = <b>isolate every source</b>, then <b>lock + tag</b>. Steps 7–8 = <b>verify zero energy</b> (try-out + voltage-absence test), then <b>earth</b>. Step 9 = <b>authorize</b> — work starts only now, under the PTW.</div>
+        </div>
+        <div>
+          <ul class="points" style="font-size:12.5px;">
+            <li>Energy is more than electricity: <b>mechanical · hydraulic · pneumatic · chemical · thermal · gravity</b>.</li>
+            <li>“<b>Tags are warning devices</b> — they do not provide the physical restraint of a lock.”</li>
+            <li><b>Work on live systems is not allowed</b>; LOTO scope is LV &lt; 1000 V.</li>
+            <li>Major mechanical work: <b>double block &amp; bleed</b> (or valve + spade); actuated valves are <b>not</b> positive isolation.</li>
+            <li>Defeating a safety system = <b>Safety System Defeat Certificate</b> + ALARP assessment (Golden Rule #2).</li>
+          </ul>
+          <div class="note">Only the person who applied a lock removes it. Isolations + LOTO register go into shift handover. (HSE-29)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B2-6 CONFINED SPACE · ITF · 6 -->
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="ITF"
+      data-notes='["A confined space is anywhere enclosed enough to trap atmosphere: vessels, tanks, pits, excavations over 1.5 m with possible bad air — entry is when ANY body part crosses the opening.","First rule: do not enter — can the job be done from outside?","Entry needs the green permit AND the entry certificate, both signed, gas test done by a competent person with a calibrated detector.","Acceptance: oxygen 19 to 23 percent, flammables and toxics below 10 percent of LEL. Note: the confined-space instruction states the O2 window two conflicting ways (19-23% in one section, 18-23% in another) — we teach the most conservative; confirm the site ruling.","Quote: never trust your senses to determine if the air in a confined space is safe.","Never add oxygen to sweeten the air; never petrol engines inside; Ex lighting and non-sparking tools in flammable atmospheres.","An attendant stays at the entry the whole time; the rescue plan exists BEFORE anyone enters; rescue drills at least every 12 months.","In an LNG plant the invisible killers are nitrogen and CO2 — you cannot smell an oxygen-deficient atmosphere."]'>
+      <div class="kicker">Block 2 · Confined space <span class="sub">— Golden Rule #6: the air is guilty until proven safe</span></div>
+      <h2>Never trust your senses</h2>
+      <div class="mapwrap" style="padding:8px 14px 4px;margin-bottom:8px;">
+        <div class="lbl"><span>Oxygen — % by volume</span><span class="you">⚠ two conflicting windows in source — conservative reading shown</span></div>
+        <svg viewBox="0 0 1000 78" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <rect x="40" y="14" width="920" height="26" rx="4" fill="#fff" stroke="#C9CED4" stroke-width="1.2"/>
+          <rect x="40" y="14" width="184" height="26" fill="#FBE9EC"/>
+          <rect x="408" y="14" width="368" height="26" fill="#E7F4EC"/>
+          <rect x="40" y="14" width="920" height="26" rx="4" fill="none" stroke="#C9CED4" stroke-width="1.2"/>
+          <g font-family="Consolas,monospace" font-size="10" fill="#4A4F57" text-anchor="middle">
+            <line x1="224" y1="10" x2="224" y2="44" stroke="#8a9099" stroke-width="1"/><text x="224" y="58">17%</text>
+            <line x1="408" y1="10" x2="408" y2="44" stroke="#8a9099" stroke-width="1"/><text x="408" y="58">19%</text>
+            <line x1="776" y1="10" x2="776" y2="44" stroke="#8a9099" stroke-width="1"/><text x="776" y="58">23%</text>
+          </g>
+          <text x="132" y="31" text-anchor="middle" font-family="Segoe UI,Arial" font-weight="700" font-size="10.5" fill="#C8102E">&lt; 17% SCBA req'd</text>
+          <text x="592" y="31" text-anchor="middle" font-family="Segoe UI,Arial" font-weight="700" font-size="10.5" fill="#1F8A4C">19–23% acceptable</text>
+        </svg>
+      </div>
+      <div class="grid2">
+        <ul class="points" style="font-size:13px;">
+          <li><b>What counts</b>: vessels, tanks, pits, manholes, ducts — and excavations &gt;1.5 m with possible bad atmosphere. Entry = <b>any body part</b> crosses the opening.</li>
+          <li><b>First question: can you avoid entering?</b> Modify the space, work from outside.</li>
+          <li>Entry needs <b>green permit + entry certificate</b>, pre-entry <b>gas test</b> (calibrated detector, competent person), continuous monitoring.</li>
+          <li><b>Attendant at the entry at all times</b> — communication, evacuation, rescue call, headcount on exit.</li>
+          <li><b>Rescue plan before entry</b> — tripod &amp; winch, harness with retrieval line, SCBA; drills ≥ every 12 months.</li>
+        </ul>
+        <div>
+          <table class="data" style="font-size:12.5px;">
+            <tr><th>Atmosphere</th><th>Acceptance</th></tr>
+            <tr><td class="k">Oxygen</td><td class="v"><b>19 – 23 %</b> (most conservative of two conflicting windows in the source doc ⚠)</td></tr>
+            <tr><td class="k">Flammables · CO · H₂S</td><td class="v">&lt; <b>10 % of LEL</b></td></tr>
+            <tr><td class="k">SCBA required</td><td class="v">O₂ &lt; 17 % or above filter limits</td></tr>
+          </table>
+          <div class="note">“<b>Never trust your senses</b> to determine if the air in a confined space is safe.” · Never add O₂ to “sweeten” the air · never petrol engines inside · Ex lighting &amp; non-sparking tools. In an LNG plant the invisible hazards are <b>N₂ and CO₂</b>. (CS Instruction rev2)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B2-7 LIFTING / SIMOPS / LINE OF FIRE · ITF · 5 -->
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="ITF"
+      data-notes='["Three field disciplines in one slide.","Lifting: every lift has a lifting plan by a competent person; rigging safety factor at least 5 to 1; wind limit 8 m/s; two tag lines; and the absolute: nobody under or passing under the load, ever.","Color coding on lifting gear shows certification status — red-tagged gear is quarantined, never use it.","SIMOPS — simultaneous operations: when two activities can interact, a joint assessment, a SIMOPS matrix and daily coordination TBTs are required; first ask if the operations can simply be separated.","Line of fire is the habit that ties it together: before every task ask what moves, what falls, what releases — and stand where it cannot reach you.","If a problem appears during a lift: load back to origin, replan with the whole team, resume only on agreement."]'>
+      <div class="kicker">Block 2 · Lifting · SIMOPS · line of fire <span class="sub">— Golden Rules #5, #8</span></div>
+      <h2>Plan the lift, separate the work, stay out of the line</h2>
+      <div class="icards">
+        <div class="icard">
+          <svg viewBox="0 0 32 32"><path d="M16,3 L16,12" stroke="#C8102E" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M10,12 Q10,20 16,20 Q22,20 22,12" stroke="#C8102E" stroke-width="1.8" fill="none"/><rect x="9" y="22" width="14" height="7" rx="1.3" fill="none" stroke="#C8102E" stroke-width="1.6"/></svg>
+          <div class="nm">Lifting</div><div class="sub">≥5:1 · lifting plan</div>
+        </div>
+        <div class="icard c-blue">
+          <svg viewBox="0 0 32 32"><path d="M4,10 H24" stroke="#0B5CAD" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M24,10 L19,5 M24,10 L19,15" stroke="#0B5CAD" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M28,22 H8" stroke="#0B5CAD" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M8,22 L13,17 M8,22 L13,27" stroke="#0B5CAD" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div class="nm">SIMOPS</div><div class="sub">separate or assess</div>
+        </div>
+        <div class="icard c-amber">
+          <svg viewBox="0 0 32 32"><circle cx="16" cy="7" r="3.2" fill="none" stroke="#B26A00" stroke-width="1.6"/><path d="M16,11 L16,19 M16,14 L10,18 M16,14 L22,18 M16,19 L11,27 M16,19 L21,27" fill="none" stroke="#B26A00" stroke-width="1.6" stroke-linecap="round"/><path d="M2,23 L30,9" stroke="#B26A00" stroke-width="1.4" stroke-dasharray="2.5,2.5"/></svg>
+          <div class="nm">Line of fire</div><div class="sub">moves · falls · releases</div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:10px;">
+        <div>
+          <table class="data" style="font-size:12.5px;">
+            <tr><th>Lifting rule</th><th>Value</th></tr>
+            <tr><td class="k">Lifting plan</td><td class="v">every lift · competent person</td></tr>
+            <tr><td class="k">Rigging safety factor</td><td class="v"><b>≥ 5 : 1</b> (10:1 rot.-resistant rope)</td></tr>
+            <tr><td class="k">Max wind</td><td class="v"><b>8 m/s</b></td></tr>
+            <tr><td class="k">Tag lines</td><td class="v">2 — one per ground man</td></tr>
+            <tr><td class="k">Under the load</td><td class="v"><b>NOBODY — ever</b></td></tr>
+            <tr><td class="k">Gear color code</td><td class="v">current cycle only · <b>red = quarantined</b></td></tr>
+          </table>
+        </div>
+        <div>
+          <ul class="points" style="font-size:12.5px;">
+            <li><b>Daily coordination TBT is mandatory whenever SIMOPS applies.</b> <b>SIMOPS</b>: can the operations be <b>separated</b>? If not — joint risk assessment, <b>SIMOPS matrix</b>, one SIMOPS leader.</li>
+            <li>In restricted areas once gas is in: <b>H₂S/gas monitors</b> where required, intrinsically safe radios, no phones, no cameras.</li>
+            <li><b>Line of fire habit</b> — before every task: what <b>moves</b>? what <b>falls</b>? what <b>releases</b>? Stand where it cannot reach you.</li>
+            <li>Problem during a lift → load back to origin · replan with the whole team · resume only on agreement.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- B2-8 EMERGENCY ORG · ITF · 8 -->
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="ITF"
+      data-notes='["What stands behind the alarm you learned in Block 1.","Three tiers: Tier 1 handled by the field team — IMT led by the Field Manager as Incident Commander. Tier 2 brings the in-country organization — EMT. Tier 3 is corporate crisis — CMT led by the CEO.","The ERT is the first-intervention team: leader, firefighters, medical staff, isolation team, and the counter doing the T-card headcount.","Medical chain: site clinic with doctor and 4x4 ambulance 24/7 — then Hassan II Bouarfa or Al Irfan and CHU Oujda; expat serious cases stabilize then fly via Rabat.","At least 30 percent of the field workforce holds level-2 first-aid training — you may be asked to be one of them; firefighting training is separate and not held to the same quota.","MEDEVAC decisions belong primarily to the site doctor — a competent-person backup applies if the doctor is unavailable, and HSE Managers can authorize evacuation in extreme emergencies.","Spills: six kits along the process area — stop, contain, clean; eliminate ignition first; only trained people clean; everything goes in the spill log.","Drills: one scenario per month — take them seriously, they are the rehearsal for the worst day."]'>
+      <div class="kicker">Block 2 · Emergency organization <span class="sub">— who does what when it goes wrong</span></div>
+      <h2>Tiers, teams &amp; the medical chain</h2>
+      <div class="mapwrap" style="margin-bottom:10px;">
+        <div class="lbl"><span>Escalation, tier by tier</span><span class="you">who leads · what it takes</span></div>
+        <svg viewBox="0 0 1000 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+          <line x1="150" y1="38" x2="850" y2="38" stroke="#C9CED4" stroke-width="3"/>
+          <path d="M340,38 L322,32 L322,44 Z" fill="#C9CED4"/>
+          <path d="M690,38 L672,32 L672,44 Z" fill="#C9CED4"/>
+          <g font-family="Consolas,monospace" font-weight="700">
+            <circle cx="150" cy="38" r="16" fill="#fff" stroke="#1F8A4C" stroke-width="2"/><text x="150" y="43" text-anchor="middle" font-size="11" fill="#1F8A4C">T1</text>
+            <circle cx="500" cy="38" r="20" fill="#fff" stroke="#B26A00" stroke-width="2"/><text x="500" y="44" text-anchor="middle" font-size="13" fill="#B26A00">T2</text>
+            <circle cx="850" cy="38" r="24" fill="#C8102E" stroke="#C8102E" stroke-width="2"/><text x="850" y="45" text-anchor="middle" font-size="15" fill="#fff">T3</text>
+          </g>
+          <g font-family="Segoe UI,Arial" font-size="11" font-weight="700" fill="#15171A" text-anchor="middle">
+            <text x="150" y="76">TIER 1</text>
+            <text x="500" y="76">TIER 2</text>
+            <text x="850" y="76">TIER 3</text>
+          </g>
+          <g font-family="Consolas,monospace" font-size="9" fill="#4A4F57" text-anchor="middle">
+            <text x="150" y="90">IMT · Field Manager</text>
+            <text x="500" y="90">EMT · In-Country GM</text>
+            <text x="850" y="90">CMT · ITF CEO</text>
+          </g>
+          <g font-family="Segoe UI,Arial" font-size="9" fill="#8a9099" text-anchor="middle">
+            <text x="150" y="103">field resources suffice</text>
+            <text x="500" y="103">local office + offsite support</text>
+            <text x="850" y="103">major event · corporate crisis</text>
+          </g>
+        </svg>
+      </div>
+      <div class="grid2">
+        <div>
+          <ul class="points" style="font-size:12.5px;margin-top:0;">
+            <li><b>ERT</b> — first intervention: leader (HSE Supervisor) · firefighters · medical · isolation team · <b>counter</b> (T-card headcount).</li>
+            <li><b>Spills</b>: 6 kits in the process area — <b>stop · contain · clean</b>; kill ignition sources first; trained personnel only; log every spill.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="flow">
+            <div class="step"><span class="u">CLINIC</span><span class="t">Site clinic — doctor + nurse + <b>4×4 ambulance · 24/7</b></span></div>
+            <div class="step"><span class="u">LOCAL</span><span class="t"><b>Hassan II Bouarfa</b> · Clinique Al Irfan / <b>CHU Oujda</b></span></div>
+            <div class="step"><span class="u">EXPAT</span><span class="t">Stabilize → Clinique Cheikh Zaid Rabat → flight home</span></div>
+          </div>
+          <div class="facts" style="margin-top:10px;">
+            <div class="fact"><div class="n">≥30 %</div><div class="l">of field workforce trained level-2 first aid</div></div>
+            <div class="fact"><div class="n">1 / month</div><div class="l">emergency drill — a rehearsal, treat it as real</div></div>
+          </div>
+          <div class="note">MEDEVAC decisions (ambulance vs car, escort, destination) belong <b>primarily to the site doctor</b> — backup: a competent person in consultation with the medical assistance service, or HSE Manager authorization in extreme emergencies. (HSE-05 rev4 · HSE-08 · HSE-23)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B2-9 REPORTING · ITF · 5 -->
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="ITF"
+      data-notes='["Last content slide — the culture layer: a plant is only as safe as what its people report.","A near miss is free information: same causes as an accident, nobody hurt. The form FR_HSE66 allows anonymous reporting.","STOP cards: observe, stop the job if needed, recommend, submit — targets of 5 per week per organization; even visitors can raise one.","Accidents: report immediately to supervision and HSE; the initial accident report form is completed within 24 hours (for fire incidents specifically, the investigation itself is opened within 24 hours); root causes on the 6M model — man, machine, method, materials, environment, management.","Failure to report can jeopardize compensation claims — reporting protects YOU.","Close the loop with the two big messages of the day: the plant is built to protect you — and you are authorized, obliged and protected to stop any work that feels wrong.","Bridge to break, then Q&A and exam."]'>
+      <div class="kicker">Block 2 · Speak up <span class="sub">— reporting is a barrier too</span></div>
+      <h2>Near misses, STOP cards, accidents</h2>
+      <div class="icards">
+        <div class="icard c-blue">
+          <svg viewBox="0 0 32 32"><path d="M3,16 Q16,5 29,16 Q16,27 3,16 Z" fill="none" stroke="#0B5CAD" stroke-width="1.6" stroke-linejoin="round"/><circle cx="16" cy="16" r="5" fill="none" stroke="#0B5CAD" stroke-width="1.6"/></svg>
+          <div class="nm">Near miss</div><div class="sub">FR_HSE66 · anon ok</div>
+        </div>
+        <div class="icard c-amber">
+          <svg viewBox="0 0 32 32"><path d="M11,4 H21 L28,11 V21 L21,28 H11 L4,21 V11 Z" fill="none" stroke="#B26A00" stroke-width="1.6" stroke-linejoin="round"/><line x1="16" y1="10" x2="16" y2="18" stroke="#B26A00" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="22" r="1.3" fill="#B26A00"/></svg>
+          <div class="nm">STOP card</div><div class="sub">5 / week target</div>
+        </div>
+        <div class="icard">
+          <svg viewBox="0 0 32 32"><rect x="7" y="5" width="18" height="23" rx="2" fill="none" stroke="#C8102E" stroke-width="1.6"/><rect x="12" y="3" width="8" height="4" rx="1" fill="none" stroke="#C8102E" stroke-width="1.4"/><line x1="11" y1="14" x2="21" y2="14" stroke="#C8102E" stroke-width="1.4"/><line x1="11" y1="19" x2="21" y2="19" stroke="#C8102E" stroke-width="1.4"/><line x1="11" y1="24" x2="17" y2="24" stroke="#C8102E" stroke-width="1.4"/></svg>
+          <div class="nm">Accident</div><div class="sub">report ≤24 h</div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:10px;">
+        <ul class="points" style="font-size:13px;">
+          <li><b>Near miss = free information</b> — same causes as an accident, nobody hurt. Form <b>FR_HSE66</b>; reporting <b>may be anonymous</b>.</li>
+          <li><b>STOP card</b>: observe → stop the job → highlight &amp; recommend → submit. Target <b>5 / week</b> per organization — visitors included.</li>
+          <li><b>Accident</b>: report <b>immediately</b> → <b>initial report within 24 h</b> (fire incidents: investigation opened within 24 h) → root causes on the <b>6M</b> model (man · machine · method · materials · environment · management).</li>
+          <li>Not reporting can <b>jeopardize your compensation</b> — reporting protects you.</li>
+        </ul>
+        <div>
+          <div class="note" style="margin-top:0;border-top:none;font-size:12.5px;">
+            <b style="color:var(--crimson);">The two messages of Module 002:</b><br><br>
+            1 · The plant is <b>engineered to protect you</b> — layers from the PCS alarm to the foam on the bund. Respect the barriers: locks, permits, zones.<br><br>
+            2 · You are <b>authorized, obliged and protected</b> to stop any work that feels wrong — and every report you file makes the next shift safer.</div>
+        </div>
+      </div>
     </section>
 
     <!-- BREAK 2 -->
@@ -619,7 +1378,7 @@
 
     <!-- Q&A -->
     <section class="slide inter" data-min="15" data-block="Q&amp;A" data-presenter="Both"
-      data-notes='["Both instructors on. Seed questions if quiet: which tone means evacuate? what does ASD close? why no water on LNG?","Capture plant-specific questions for follow-up with engineering.","Keep to 15 minutes so the exam starts on time."]'>
+      data-notes='["Seed questions if quiet: what is the difference between PSD and ESD? Why do BDVs fail open and SDVs fail closed? What do you do at 20% LEL? Which permit for grinding near a flange — and why? Who can stop the work?","Capture site-specific questions (alarm convention, O2 window ruling, assembly point allocation) for follow-up with ITF HSE.","Keep to 15 minutes so the exam starts on time."]'>
       <div>
         <div class="big">?</div>
         <h2>Questions &amp; Answers</h2>
@@ -629,14 +1388,13 @@
 
     <!-- EXAM -->
     <section class="slide inter" data-min="30" data-block="Assessment" data-presenter="Both"
-      data-notes='["Open the module exam — objectives + key messages, incl. the shutdown hierarchy table and the alarm tones.","Then the module evaluation form.","Record attendance/results against each trainee reference (TND-…)."]'>
+      data-notes='["Open the module exam — objectives + key messages: hazards, ESD/PSD/LSD/ASD, F&G thresholds, alarm response, Golden Rules, permit types, LOTO, confined space, reporting.","Then the module evaluation form.","Record attendance/results against each trainee reference (TND-…)."]'>
       <div>
         <div class="big">30:00</div>
         <h2>Exam + Module Evaluation</h2>
         <p>Module 002 assessment covering the objectives and key messages, followed by the trainee evaluation form.</p>
       </div>
     </section>
-
   </div>
 
   <div class="navbar">
@@ -847,7 +1605,7 @@
     document.getElementById('blk').textContent=d.block;
     const pe=document.getElementById('pres');
     pe.textContent='▸ '+(d.presenter||'—');
-    pe.className='badge pr'+(d.presenter==='Zibac'?' zr':'');
+    pe.className='badge pr'+(d.presenter==='ITF'?' zr':'');
     document.getElementById('title').textContent=d.title;
     document.getElementById('times').innerHTML='This slide <b>'+d.min+' min</b> · runs <b>'+fmt(d.start)+'</b> → <b>'+fmt(d.end)+'</b> · of '+fmt(TOTAL);
     document.getElementById('notes').innerHTML=d.notes.length? d.notes.map(n=>'<li>'+n+'</li>').join('') : '<li style="color:#777">No notes.</li>';
@@ -902,21 +1660,36 @@
 <\/script></body></html>`;
   }
 
+
+  // visible presenter chip on every slide (MDs/006): Mario = crimson, ITF = blue
+  slides.forEach(s=>{
+    const p=s.dataset.presenter;
+    if(!p || p==='—') return;
+    const el=document.createElement('span');
+    el.className='pres ' + (p==='Mario' ? 'mm' : (p==='ITF' ? 'zr' : 'mm'));
+    el.textContent='▸ ' + p;
+    if(p==='Both'){ el.className='pres mm'; el.textContent='▸ Mario + ITF'; }
+    s.appendChild(el);
+  });
+
   show(0);
 </script>
+<div class="lightbox" id="lightbox"><button class="lbclose" aria-label="close">✕</button><img id="lbimg" src="" alt=""><div class="lbcap" id="lbcap"></div></div>
 <script>
-  document.querySelectorAll('.carousel').forEach(function(car){
-    var imgs=[].slice.call(car.querySelectorAll('.cimg'));
-    var dots=[].slice.call(car.querySelectorAll('.cdots b'));
-    if(imgs.length===0) return;
-    var ci=0, timer=null, interval=parseInt(car.dataset.interval||'4000',10);
-    function go(n){ci=(n+imgs.length)%imgs.length;
-      imgs.forEach(function(im,k){im.classList.toggle('active',k===ci);});
-      dots.forEach(function(d,k){d.classList.toggle('active',k===ci);});}
-    dots.forEach(function(d,k){d.onclick=function(){go(k);restart();};});
-    function restart(){clearInterval(timer);if(imgs.length>1){timer=setInterval(function(){go(ci+1);},interval);}}
-    restart();
-  });
+  // global image lightbox — click any image in the deck to enlarge
+  (function(){
+    var lb=document.getElementById('lightbox'); if(!lb) return;
+    var lbimg=document.getElementById('lbimg'), lbcap=document.getElementById('lbcap');
+    function show(im){ lbimg.src=im.currentSrc||im.src; lbimg.alt=im.alt||''; lbcap.textContent=im.alt||''; lb.classList.add('on'); }
+    function hide(){ lb.classList.remove('on'); lbimg.removeAttribute('src'); }
+    var stage=document.getElementById('stage')||document.querySelector('.stage');
+    if(stage){ stage.addEventListener('click',function(e){
+      var im=e.target;
+      if(im && im.tagName==='IMG'){ e.preventDefault(); e.stopPropagation(); show(im); }
+    }); }
+    lb.addEventListener('click',hide);
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape') hide(); });
+  })();
 </script>
 </body>
 </html>
