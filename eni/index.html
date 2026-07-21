@@ -83,6 +83,15 @@
   .fact .fbody{display:flex;flex-direction:column;min-width:0;}
   .fact .n{font-size:20px;font-weight:700;color:var(--crimson);font-family:var(--mono);line-height:1.05;}
   .fact .l{font-size:10px;color:var(--ink-soft);margin-top:3px;line-height:1.25;}
+  .fact.link{cursor:pointer;transition:border-color .12s,background .12s,transform .06s;}
+  .fact.link:hover{border-color:var(--crimson);background:var(--bg-soft);}
+  .fact.link:active{transform:translateY(1px);}
+  /* discipline section header — visually groups the area cards by engineering discipline */
+  .disc-h{display:flex;align-items:center;gap:9px;margin:30px 0 8px;padding:8px 13px;border-radius:7px;
+    background:var(--bg-soft);border:1px solid var(--line-strong);border-left:4px solid var(--crimson);
+    font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink);}
+  .disc-h svg{width:16px;height:16px;}
+  .disc-h .dc{font-family:var(--sans,inherit);font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:none;color:var(--ink-soft);margin-left:auto;}
 
   /* ── interactive data table (collapse / filter / sort / export) ── */
   .dt{border:1px solid var(--line);border-radius:7px;margin-top:16px;background:#fff;overflow:hidden;}
@@ -1370,6 +1379,10 @@ const PV_ICONS={
   MCC:'<rect x="2.4" y="4.6" width="8" height="6.8" rx="1"/><path d="M10.4 6.4h2.2a.6.6 0 0 1 .6.6v2a.6.6 0 0 1-.6.6h-2.2"/><path d="M4.5 8h3.8"/><path d="M6.4 6.1v3.8"/>',
   // electrical load — lightning bolt
   LOAD:'<path d="M8.8 2 L4.3 8.8 H7.4 L6.4 14 L11.6 6.6 H8.2 Z"/>',
+  // motor — round frame with winding "M" + shaft
+  MOT:'<circle cx="7.6" cy="8" r="4.9"/><path d="M5.5 10.1V5.9l2.1 2.5 2.1-2.5v4.2"/><line x1="12.5" y1="8" x2="14" y2="8"/>',
+  // discipline: mechanical — gear
+  MECH:'<circle cx="8" cy="8" r="2.1"/><path d="M8 1.6v1.7M8 12.7v1.7M14.4 8h-1.7M3.3 8H1.6M12.5 3.5l-1.2 1.2M4.7 11.3l-1.2 1.2M12.5 12.5l-1.2-1.2M4.7 4.7 3.5 3.5"/>',
   // cause & effect — 3×3 matrix grid
   CE:'<rect x="2.5" y="2.5" width="11" height="11" rx="1"/><line x1="6.2" y1="2.5" x2="6.2" y2="13.5"/><line x1="9.8" y1="2.5" x2="9.8" y2="13.5"/><line x1="2.5" y1="6.2" x2="13.5" y2="6.2"/><line x1="2.5" y1="9.8" x2="13.5" y2="9.8"/>',
   // RIO node — network node with links
@@ -1399,6 +1412,11 @@ function fact(kind,n,label,opts){
     <span class="ficon">${ICON(kind)}</span>
     <span class="fbody"><span class="n"${col}>${n}</span><span class="l">${esc(label)}</span></span>
   </div>`;
+}
+// discipline section header (Mechanical / Electrical / I&C) — visual grouping of area cards
+function discH(icon,color,title,sub){
+  return `<div class="disc-h" style="border-left-color:${color}">
+    <span style="color:${color};display:inline-flex">${ICON(icon)}</span>${title}${sub?`<span class="dc">${sub}</span>`:""}</div>`;
 }
 
 /* ── views ───────────────────────────────────────────────────── */
@@ -1532,6 +1550,7 @@ function renderHome(c){
     ${fact("IO",DB.io.length,"IO CHANNELS")}
     ${fact("INST",DB.inst.length,"INSTRUMENTS")}
     ${fact("VLV",DB.valves.length,"ACTUATED VALVES")}
+    ${fact("MOT",DB.dsheets.filter(d=>d.specs&&d.specs.motor_class).length,"MOTORS",{link:"nav('report/motords')"})}
     ${fact("ALM",DB.alarms.length,"ALARMS",{link:"nav('alarms')"})}
     ${fact("DWG",DB.drawings.length,"P&ID DRAWINGS",{link:"nav('drawings')"})}
     ${fact("VERIFY",Math.round(100*verified/Math.max(1,DB.io.length))+"%","IO FIELD-VERIFIED ("+verified+"/"+DB.io.length+")")}
@@ -2122,8 +2141,8 @@ function areaFlowSvg(code, eq){
   const cH=Math.max(88, 40+cInner+6);
   const GH=34, GGAP=10;
   const colH=n=>n*(GH+GGAP);
-  const H=Math.max(cH, colH(ins.length), colH(outs.length))+56;
-  const cTop=28+Math.max(0,(H-56-cH)/2);
+  const H=Math.max(cH, colH(ins.length), colH(outs.length))+40;
+  const cTop=28+Math.max(0,(H-40-cH)/2);
   let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
   // ── center: the area, its skids, its equipment (generated) ──
   s+=`<g><rect x="${CX}" y="${cTop}" width="${CW}" height="${cH}" rx="8" fill="#fff" stroke="#C9CED4" stroke-width="1.6"/>
@@ -2365,12 +2384,22 @@ function renderArea(c, code){
   const ids=["eq","inst","vlv","mvlv","stations","area-io","motors","eload","alm"].filter(id=>TBL.has(id));
   AREA_EXPORT={code, tables:ids, ce:ceObj};
 
-  let facts=fact("EQ",eq.length,"EQUIPMENT")+fact("INST",inst.length,"INSTRUMENTS")+fact("VLV",vlvs.length,"ACTUATED VALVES")
-    +fact("VLV",mvs.length,"MANUAL VALVES")
-    +fact("ST",st.length,"IO STATIONS")+fact("IO",ioCh,"IO CHANNELS")+fact("ALM",alm.length,"ALARMS");
-  if(motorRows.length) facts+=fact("MOT",motorRows.length,"MOTORS");
-  if(eloads.length) facts+=fact("LOAD",eloads.length,"ELECTRICAL LOADS");
-  if(ceR.length) facts+=fact("CE",ceObj.causes.length,"CAUSE & EFFECT");
+  // clickable summary chips → scroll to the matching section, grouped by discipline
+  const goto=id=>`document.getElementById('${id}')?.scrollIntoView({behavior:'smooth',block:'start'})`;
+  let facts="";
+  // Mechanical
+  if(eq.length)   facts+=fact("EQ",  eq.length,   "EQUIPMENT",      {link:goto("sec-eq")});
+  if(mvs.length)  facts+=fact("VLV", mvs.length,  "MANUAL VALVES",  {link:goto("sec-mvlv")});
+  // Electrical
+  if(motorRows.length) facts+=fact("MOT", motorRows.length, "MOTORS",          {link:goto("sec-motors")});
+  if(eloads.length)    facts+=fact("LOAD",eloads.length,    "ELECTRICAL LOADS",{link:goto("sec-eload")});
+  // Instrumentation & Control
+  if(inst.length) facts+=fact("INST",inst.length, "INSTRUMENTS",    {link:goto("sec-inst")});
+  if(vlvs.length) facts+=fact("VLV", vlvs.length, "ACTUATED VALVES",{link:goto("sec-vlv")});
+  facts+=fact("ST",  st.length,  "IO STATIONS",    {link:goto("sec-stations")});
+  facts+=fact("IO",  ioCh,       "IO CHANNELS",    {link:goto("sec-io")});
+  if(alm.length)  facts+=fact("ALM", alm.length,  "ALARMS",         {link:goto("sec-alm")});
+  if(ceR.length)  facts+=fact("CE",  ceObj.causes.length,"CAUSE & EFFECT",{link:goto("sec-ce")});
 
   // ── process topology (migrations 048/049/050) → tam-flow.js unit-flow diagram.
   //    ONE format per area (Mario 2026-07-18): the Manual §x.1 unit-summary + HMB cards.
@@ -2380,13 +2409,13 @@ function renderArea(c, code){
   const unitFlowBlock=tf?`
   <h2 style="margin-top:20px">Unit-flow diagram <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· Manual §x.1 style ·
     plant_area_trains + plant_process_links · HMB case ${hmbCaseSel()}</span></h2>
-  <div id="areaflow" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${TamFlow.unitSummary(tf,code,tfOpts)}</div>
+  <div id="areaflow" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;max-width:1080px;margin:6px 0 0">${TamFlow.unitSummary(tf,code,tfOpts)}</div>
   ${TamFlow.hmbCards(tf,code,tfOpts)}`
   :(()=>{const flowSvg=areaFlowSvg(code, eq); return flowSvg?`
   <h2 style="margin-top:20px">Process block <span class="mono" style="font-size:11px;color:var(--ink-soft);font-weight:400">· generated from
     <span title="off-page connectors of this area's digitized P&IDs">plant_pid_connectors</span> ·
     plant_equipment/plant_skids · plant_pid_lines</span></h2>
-  <div id="areaflow" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 8px">${flowSvg}</div>
+  <div id="areaflow" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;max-width:1080px;margin:6px 0 0">${flowSvg}</div>
   ${areaParamChips(code, inst, vlvs, mvs)}`:"";})();
 
   c.innerHTML=`
@@ -2400,13 +2429,22 @@ function renderArea(c, code){
     <button class="btn" onclick="exportAreaPdf()" title="Printable technical report of this area (Technical America header) — use the browser dialog to save as PDF">⎙ PDF report</button>
     <button class="btn primary" onclick="exportAreaXlsx()">⭳ Export all to Excel</button>
   </div>
-  ${eqTbl}${instTbl}${vlvTbl}${mvTbl}
-  ${stTbl||`<div class="empty" style="margin-top:16px">No IO stations or RIO nodes mapped to this area yet.</div>`}
-  ${ioTbl}
-  ${motorTbl}${eloadTbl}${almTbl}
+  ${discH("MECH","#0B5CAD","Mechanical","Equipment, packages & manual valves")}
+  <div id="sec-eq">${eqTbl}</div>
+  <div id="sec-mvlv">${mvTbl}</div>
+  ${(motorTbl||eloadTbl)?`${discH("LOAD","#C8102E","Electrical","Motors & electrical loads")}
+  <div id="sec-motors">${motorTbl}</div>
+  <div id="sec-eload">${eloadTbl}</div>`:""}
+  ${discH("INST","#0E8A6A","Instrumentation &amp; Control","Instruments, actuated valves, IO, alarms & C&amp;E")}
+  <div id="sec-inst">${instTbl}</div>
+  <div id="sec-vlv">${vlvTbl}</div>
+  <div id="sec-stations">${stTbl||`<div class="empty" style="margin-top:16px">No IO stations or RIO nodes mapped to this area yet.</div>`}</div>
+  <div id="sec-io">${ioTbl}</div>
+  <div id="sec-alm">${almTbl}</div>
+  <div id="sec-ce">
   <h2 style="margin-top:22px">Cause &amp; effect matrix${ceObj?` <span class="mono" style="font-size:12px;color:var(--ink-soft);font-weight:400">· ${ceObj.causes.length} causes × ${ceObj.effects.length} effects</span>
     <button class="btn mini" style="float:right" onclick="dtCeExport()" title="Export matrix to Excel">⭳ Excel</button>`:""}</h2>
-  ${ceObj?ceMatrixHTML(ceObj):`<div class="empty">No cause &amp; effect matrix digitized for this unit yet. Currently only <b>Unit 200 — LNG Plant Inlet</b> has a signed C&amp;E matrix (SAF12) loaded in the database.</div>`}`;
+  ${ceObj?ceMatrixHTML(ceObj):`<div class="empty">No cause &amp; effect matrix digitized for this unit yet. Currently only <b>Unit 200 — LNG Plant Inlet</b> has a signed C&amp;E matrix (SAF12) loaded in the database.</div>`}</div>`;
 }
 function dtCeExport(){
   if(!AREA_EXPORT||!AREA_EXPORT.ce) return;
