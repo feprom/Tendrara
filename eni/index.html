@@ -350,7 +350,7 @@
 <div class="cmdbar">
   <div class="tcode">
     <label>TX</label>
-    <input id="tcode" placeholder="EI00 · EI25 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI25 IO list · EI30 alarms · EI40 cross-check · EI41 missing set points · EI42 spare capacity · EI43 unattributed records · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · EI90 engineering reports · DOC <doc_no> · TAG <tag> · SEARCH <text>">
+    <input id="tcode" placeholder="EI00 · EI25 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI25 IO list · EI30 alarms · EI40 cross-check · EI41 missing set points · EI42 spare capacity · EI43 unattributed records · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · EI85 plant safety · EI90 engineering reports · DOC <doc_no> · TAG <tag> · SEARCH <text>">
   </div>
   <div class="crumbs" id="crumbs">…</div>
   <div class="gsearch"><input id="gsearch" placeholder="⌕ search all — e.g. 3333, suction, S221" list="taglist"><datalist id="taglist"></datalist></div>
@@ -801,7 +801,7 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
@@ -833,9 +833,12 @@ async function boot(){
       // ── process topology layer (migrations 048/049) — feeds tam-flow.js ──
       fetchOpt("plant_service_classes","sort_order"), fetchOpt("v_plant_block"),
       fetchOpt("v_area_flows"), fetchOpt("plant_area_trains","seq"),
-      fetchOpt("v_area_energy"), fetchOpt("v_exchanger_media")
+      fetchOpt("v_area_energy"), fetchOpt("v_exchanger_media"),
+      // ── plant safety information (EI85) — migrations 056/057 ──
+      fetchOpt("v_safety_doc_register"), fetchOpt("plant_safety_devices"),
+      fetchOpt("plant_safety_device_types","code")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -927,6 +930,7 @@ function route(){
   else if(v==="comm") ROUTE={view:"comm"};
   else if(v==="drawings") ROUTE={view:"drawings"};
   else if(v==="docs") ROUTE={view:"docs"};
+  else if(v==="safety") ROUTE={view:"safety"};
   else if(v==="reports") ROUTE={view:"reports"};
   else if(v==="report" && rest[0]) ROUTE={view:"report", rpt:rest[0]};
   else if(v==="search") ROUTE={view:"search", q:rest.join("/")||""};
@@ -964,6 +968,7 @@ function buildTree(){
   <div class="tnode ${ROUTE.view==='alarms'?'sel':''}" onclick="nav('alarms')"><span class="tw">▤</span><span class="code">EI30</span><span class="lbl">Alarm register</span><span class="cnt">${DB.alarms.length}</span></div>
   <div class="tnode ${ROUTE.view==='cr'?'sel':''}" onclick="nav('cr')"><span class="tw">▤</span><span class="code">EI50</span><span class="lbl">Change requests</span><span class="cnt">${DB.crs.length}</span></div>
   <div class="tnode ${ROUTE.view==='docs'?'sel':''}" onclick="nav('docs')"><span class="tw">▤</span><span class="code">EI80</span><span class="lbl">Documents</span><span class="cnt">${(DB.docs||[]).length}</span></div>
+  <div class="tnode ${ROUTE.view==='safety'?'sel':''}" onclick="nav('safety')"><span class="tw">▤</span><span class="code">EI85</span><span class="lbl">Plant safety</span><span class="cnt">${(DB.sdocs||[]).length}</span></div>
   <div class="tnode ${ROUTE.view==='comm'?'sel':''}" onclick="nav('comm')"><span class="tw">▤</span><span class="code">EI60</span><span class="lbl">Commissioning progress</span><span class="cnt">${DB.vers.filter(v=>v.result==="FAIL").length}✗</span></div>
   <div class="tnode ${ROUTE.view==='drawings'?'sel':''}" onclick="nav('drawings')"><span class="tw">▤</span><span class="code">EI70</span><span class="lbl">Drawings &amp; documents</span><span class="cnt">${DB.drawings.length}</span></div>`;
 
@@ -1002,6 +1007,7 @@ function render(){
   else if(ROUTE.view==="comm") renderComm(c);
   else if(ROUTE.view==="drawings") renderDrawings(c);
   else if(ROUTE.view==="docs") renderDocs(c);
+  else if(ROUTE.view==="safety") renderSafety(c);
   else if(ROUTE.view==="reports") renderReports(c);
   else if(ROUTE.view==="report") renderReport(c, ROUTE.rpt);
   else if(ROUTE.view==="search") renderSearch(c, ROUTE.q);
@@ -1100,6 +1106,7 @@ function crumbs(){
   if(ROUTE.view==="comm") h+=` › <b>COMMISSIONING</b>`;
   if(ROUTE.view==="drawings") h+=` › <b>DRAWINGS &amp; DOCUMENTS</b>`;
   if(ROUTE.view==="docs") h+=` › <b>DOCUMENT CONTROL</b>`;
+  if(ROUTE.view==="safety") h+=` › <b>PLANT SAFETY</b>`;
   if(ROUTE.view==="reports") h+=` › <b>ENGINEERING REPORTS</b>`;
   if(ROUTE.view==="report"){ const rp=rptGet(ROUTE.rpt);
     h+=` › <a onclick="nav('reports')">ENGINEERING REPORTS</a> › <b>${esc(rp?rp.title.toUpperCase():ROUTE.rpt)}</b>`; }
@@ -1712,6 +1719,59 @@ function exportAreaPdf(){
   prnShow(head, body);
 }
 window.exportAreaPdf=exportAreaPdf;
+
+/* ══ TX EI85 — plant safety information ════════════════════════════════
+   Two layers on one page, read-only:
+   * v_safety_doc_register (migration 057) — the ITF safety/HSE document
+     library (docs/ITF docs) interpreted from title blocks: project code,
+     ITF corporate code, kind, revision + date. FINDING notes are source
+     inconsistencies kept verbatim (fix via CR, never by editing the row).
+   * plant_safety_devices/_types (migration 056) — the physical safety
+     equipment digitized from the safety-plan drawings.
+   Full-text questions go through kb_search() (SEARCH <text> — the ITF corpus
+   is chunked into kb_chunks by tools/extract_itf_docs.py). */
+function renderSafety(c){
+  const docs=DB.sdocs||[], dev=DB.sdevices||[], types=DB.sdevtypes||[];
+  const tmap=new Map(types.map(t=>[t.code,t]));
+  const governing=docs.filter(d=>["manual","plan","procedure","instruction","policy"].includes(d.doc_kind));
+  const forms=docs.filter(d=>["form","checklist","certificate","register","template"].includes(d.doc_kind));
+  const findings=docs.filter(d=>(d.notes||"").startsWith("FINDING"));
+  const byType=new Map();
+  dev.forEach(d=>{ byType.set(d.device_type,(byType.get(d.device_type)||0)+1); });
+  const secOrder=s=>s==="FERA-FF"?"00":s==="F&G"?"01":s==="FORMS"?"99":String(s).replace("HSE-","");
+  const secs=[...new Set(docs.map(d=>d.hse_section||"—"))].sort((a,b)=>secOrder(a).localeCompare(secOrder(b),undefined,{numeric:true}));
+  const kindChip=k=>`<span class="mono" style="font-size:10px;border:1px solid var(--line-strong);padding:1px 5px;border-radius:3px">${esc(String(k).toUpperCase())}</span>`;
+  const rows=s=>docs.filter(d=>(d.hse_section||"—")===s)
+    .sort((a,b)=>String(a.doc_code||a.title).localeCompare(String(b.doc_code||b.title)))
+    .map(d=>`<tr>
+      <td class="mono">${esc(d.doc_code||"—")}${d.internal_code?`<div style="color:var(--ink-soft);font-size:10px">${esc(d.internal_code)}</div>`:""}</td>
+      <td>${esc(d.title)}${d.notes?`<div style="font-size:10px;color:${String(d.notes).startsWith("FINDING")?"var(--amber)":"var(--ink-soft)"}">${esc(d.notes)}</div>`:""}</td>
+      <td>${kindChip(d.doc_kind)}</td>
+      <td class="mono">${esc(d.revision||"—")}</td>
+      <td class="mono">${esc(d.rev_date||d.rev_date_raw||"—")}</td>
+      <td class="mono" style="text-align:right">${d.pages==null?"—":d.pages}</td>
+      <td class="mono" style="text-align:right">${d.reference_only?`<span style="color:var(--ink-soft)">ref-only</span>`:(d.chunks==null?0:d.chunks)}</td>
+    </tr>`).join("");
+  c.innerHTML=`
+  <div class="kicker">TX EI85 <span class="sub">· PLANT SAFETY INFORMATION · ITF LIBRARY + SAFETY PLAN</span></div>
+  <div class="facts">
+    <div class="fact"><div class="fbody"><div class="n">${docs.length}</div><div class="l">SAFETY DOCUMENTS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${governing.length}</div><div class="l">GOVERNING DOCS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${forms.length}</div><div class="l">FORMS &amp; REGISTERS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${dev.length}</div><div class="l">SAFETY DEVICES</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:${findings.length?"var(--amber)":"var(--ok)"}">${findings.length||"✓"}</div><div class="l">DOC-CODE FINDINGS</div></div></div>
+  </div>
+  ${dev.length?`<h3 style="margin:14px 0 4px">Physical safety devices <span class="sub" style="font-weight:400">· safety-plan drawings · migration 056</span></h3>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px">${[...byType.entries()].sort((a,b)=>b[1]-a[1]).map(([t,n])=>{
+    const ty=tmap.get(t);
+    return `<span class="mono" style="font-size:11px;border:1px solid var(--line-strong);padding:2px 7px;border-radius:3px" title="${esc(ty&&ty.description||"")}">${esc(t)} · ${n}</span>`;
+  }).join("")}</div>`:""}
+  <h3 style="margin:14px 0 4px">Safety document register <span class="sub" style="font-weight:400">· docs/ITF docs · title blocks interpreted · migration 057</span></h3>
+  <p style="font-size:11px;color:var(--ink-soft);margin:2px 0 8px">CHUNKS = full-text coverage in <span class="mono">kb_search()</span> (ref-only = drawing indexed without text). FINDING notes are source inconsistencies kept verbatim — raise a CR, never edit the register. Ask the corpus with <span class="mono">SEARCH &lt;text&gt;</span>.</p>
+  ${secs.map(s=>`<h4 class="mono" style="margin:12px 0 4px">${esc(s)}</h4>
+    <table class="data"><thead><tr><th>CODE</th><th>TITLE</th><th>KIND</th><th>REV</th><th>REV DATE</th><th>PAGES</th><th>CHUNKS</th></tr></thead>
+    <tbody>${rows(s)}</tbody></table>`).join("")}`;
+}
 
 /* ══ TX EI90 — standard engineering reports (plant-wide) ═══════════════
    One registry drives the report index view, the per-report table view,
@@ -3660,12 +3720,13 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="EI60") nav("comm");
   else if(cmd==="EI70") nav("drawings");
   else if(cmd==="EI80") nav("docs");
+  else if(cmd==="EI85") nav("safety");
   else if(cmd==="EI90") nav(a?("report/"+a.toLowerCase()):"reports");
   else if(cmd==="DOC"&&a) openDocNo(a);
   else if(cmd==="TAG"&&a) openInst(a);
   else if((cmd==="SEARCH"||cmd==="FIND")&&a) nav("search/"+encodeURIComponent(a));
   else if(IDX.areaByCode.has(cmd)) nav("area/"+cmd);
-  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI25, EI30, EI40, EI41, EI42, EI43, EI50, EI60, EI70, EI80, DOC <doc_no>, TAG <tag>, SEARCH <text>","err");
+  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI25, EI30, EI40, EI41, EI42, EI43, EI50, EI60, EI70, EI80, EI85, DOC <doc_no>, TAG <tag>, SEARCH <text>","err");
 });
 $("#gsearch").addEventListener("keydown", e=>{
   if(e.key!=="Enter") return;
