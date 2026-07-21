@@ -449,10 +449,10 @@
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[], atypes:[],
-  svcClasses:[], plinks:[], aflows:[], trains:[], aenergy:[], xmedia:[]};   // process topology (048/049/055) — read by tam-flow.js
+  svcClasses:[], plinks:[], aflows:[], trains:[], aenergy:[], xmedia:[], dsheets:[]};   // process topology (048/049/055) — read by tam-flow.js; dsheets = plant_equipment_datasheets
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), alarmByTag:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
-             dwgByPid:new Map(), dwgByDoc:new Map()};
+             dwgByPid:new Map(), dwgByDoc:new Map(), motorByTag:new Map(), dsByTag:new Map()};
 
 /* P&ID renders that exist on disk under /pid/<doc_no>/_full.png (40 of 47).
    Missing renders (legend sheet + 6 pending): open disabled, shown as PENDING. */
@@ -801,7 +801,7 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes,dsheets] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
@@ -836,9 +836,11 @@ async function boot(){
       fetchOpt("v_area_energy"), fetchOpt("v_exchanger_media"),
       // ── plant safety information (EI85) — migrations 056/057 ──
       fetchOpt("v_safety_doc_register"), fetchOpt("plant_safety_devices"),
-      fetchOpt("plant_safety_device_types","code")
+      fetchOpt("plant_safety_device_types","code"),
+      // equipment nameplate / datasheet data (incl. load-list-derived motor datasheets)
+      fetchOpt("plant_equipment_datasheets")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes,dsheets});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -905,11 +907,20 @@ function buildIndexes(){
   IDX.verByKey.clear();
   DB.vers.forEach(v=>IDX.verByKey.set(v.object_table+"|"+v.object_tag+"|"+v.check_kind, v));
   DB.drawings.forEach(d=>{ IDX.dwgByPid.set((d.pid_no||"").trim(), d); IDX.dwgByDoc.set((d.doc_no||"").trim(), d); });
+  // motors = electrical loads (load list) + remote-MCC motors, keyed by tag. Load list wins
+  // when a tag is in both (it carries the richer electrical record).
+  IDX.motorByTag.clear();
+  DB.mcc.forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.motorByTag.set(t,{tag:t, src:"mcc", row:r}); });
+  DB.eloads.forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.motorByTag.set(t,{tag:t, src:"load", row:r}); });
+  // equipment datasheets / nameplate data, keyed by tag (last row wins; motor datasheets are unique per tag)
+  IDX.dsByTag.clear();
+  DB.dsheets.forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.dsByTag.set(t,r); });
 }
 
 function buildDatalist(){
   const dl=$("#taglist"); const tags=new Set();
   IDX.instByTag.forEach((_,t)=>tags.add(t)); IDX.valveByTag.forEach((_,t)=>tags.add(t));
+  IDX.motorByTag.forEach((_,t)=>tags.add(t));
   dl.innerHTML=[...tags].sort().map(t=>`<option value="${esc(t)}">`).join("");
 }
 
@@ -1848,6 +1859,7 @@ const RPTS=[
       rptAreaCol(r=>r.area_code),
       {label:"DESCRIPTION", get:r=>r.description, cls:"dim"}]},
   {id:"motors", no:"08", title:"Motor List — Remote MCC", src:()=>[...DB.mcc].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+    click:r=>`openMotor('${esc((r.tag||"").trim())}')`,
     cols:()=>[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v||"—")}</b>`},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
@@ -1857,6 +1869,7 @@ const RPTS=[
       {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
       {label:"POWER", get:r=>r.power_rating, cls:"mono", r:true}]},
   {id:"loads", no:"09", title:"Electrical Load List", src:()=>[...DB.eloads].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+    click:r=>`openMotor('${esc((r.tag||"").trim())}')`,
     cols:()=>[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v||"—")}</b>`},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
@@ -1891,7 +1904,22 @@ const RPTS=[
       {label:"P&ID NO", get:r=>r.pid_no, cls:"mono dim"},
       rptAreaCol(r=>r.area_code),
       {label:"TITLE", get:r=>r.title, cls:"dim"},
-      {label:"STATUS", get:r=>r.status, cls:"mono dim"}]}
+      {label:"STATUS", get:r=>r.status, cls:"mono dim"}]},
+  {id:"motords", no:"13", title:"Motor Datasheets — full list",
+    src:()=>DB.dsheets.filter(d=>d.specs&&d.specs.motor_class)
+      .map(d=>({tag:d.tag, service:d.service, area:d.area_code, cls:d.specs.motor_class,
+        kw:d.specs.rated_power_kw, v:d.specs.voltage_v||d.specs.supply_bus_v, start:d.specs.starting_method}))
+      .sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+    click:r=>`openMotor('${esc((r.tag||"").trim())}')`,
+    cols:()=>[
+      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--blue)">${esc(v||"—")}</b>`},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      rptAreaCol(r=>r.area),
+      {label:"CLASS", get:r=>r.cls, cls:"dim"},
+      {label:"kW", get:r=>r.kw, num:true, r:true, cls:"mono"},
+      {label:"V", get:r=>r.v, num:true, r:true, cls:"mono"},
+      {label:"STARTING", get:r=>r.start, cls:"mono dim"},
+      {label:"DATASHEET", get:r=>"DS", cls:"mono", html:()=>`<span class="chip info">DS ✓</span>`}]}
 ];
 function rptGet(id){ return RPTS.find(r=>r.id===id); }
 function renderReports(c){
@@ -3065,6 +3093,9 @@ function searchAll(q){
       `openAlarm('${esc((r.alarm_tag||"").trim())}')`,rk,mn);}});
   DB.equip.forEach(r=>{ const tagL=(r.tag||"").toLowerCase(), svcL=(r.service||"").toLowerCase();
     if((tagL+" "+svcL).includes(s)) push("EQUIPMENT","ok",r.tag,r.service,r.area_code,r.skid_tag,`openEquip('${esc((r.tag||"").trim())}')`,rankOf(tagL,svcL),"");});
+  IDX.motorByTag.forEach(m=>{ const r=m.row; const tagL=(r.tag||"").toLowerCase(), svcL=(r.service||"").toLowerCase();
+    if((tagL+" "+svcL).includes(s)) push("MOTOR","info",r.tag,r.service, m.src==="load"?r.unit_tag:r.area_code, m.src==="load"?r.skid_tag:r.rio_panel,
+      `openMotor('${esc((r.tag||"").trim())}')`, rankOf(tagL,svcL),"");});
   IDX.stations.forEach(st=>{ if(st.panel.toLowerCase().includes(s))
     push("STATION","info",st.panel,(st.jb&&st.jb.service)||"IO station",st.unit,st.rows.length+" ch",`nav('station/${encodeURIComponent(st.panel)}')`,0,"");});
   DB.drawings.forEach(d=>{ const idL=((d.doc_no||"")+" "+(d.pid_no||"")).toLowerCase(), ttlL=(d.title||"").toLowerCase();
@@ -3082,7 +3113,7 @@ function renderSearch(c,q){
   <div class="kicker">SEARCH <span class="sub">· ALL OBJECT TYPES · SUBSTRING MATCH</span></div>
   <h1>Results for “${esc(q)}”</h1>
   <div class="facts">
-    ${["INSTRUMENT","VALVE","IO CHANNEL","ALARM","EQUIPMENT","STATION"].map(k=>{
+    ${["INSTRUMENT","VALVE","IO CHANNEL","ALARM","EQUIPMENT","MOTOR","STATION"].map(k=>{
       const n=res.filter(r=>r.kind===k).length; return n?`<div class="fact"><div class="n">${n}</div><div class="l">${k}S</div></div>`:"";}).join("")}
     ${res.length?"":'<div class="fact"><div class="n">0</div><div class="l">MATCHES</div></div>'}
   </div>
@@ -3094,7 +3125,7 @@ function renderSearch(c,q){
     <td class="mono">${nz(r.area)}</td>
     <td class="mono dim">${nz(r.extra,"")}</td></tr>`).join("")}</tbody></table>
   ${res.length>MAX?`<div class="note">Showing first ${MAX} of ${res.length} — refine the search.</div>`:""}`
-  :`<div class="empty">Nothing matches “${esc(q)}” in instruments, valves, IO, alarms, equipment or stations.</div>`}`;
+  :`<div class="empty">Nothing matches “${esc(q)}” in instruments, valves, IO, alarms, equipment, motors or stations.</div>`}`;
 }
 
 /* ── commissioning dashboard (EI60) ──────────────────────────── */
@@ -3652,6 +3683,83 @@ function openEquip(etag){
   hydrateDocRefs($("#instBody"));
 }
 window.openEquip=openEquip;
+
+/* ── motor / electrical-load card (load list + datasheets) ─────
+   Opened by clicking a motor tag in the Motor List (08), Electrical
+   Load List (09) or global search. Shows the load-list electrical
+   record plus the captured equipment datasheet (plant_equipment_datasheets),
+   e.g. the load-list-derived motor datasheets for P-332A/B, PK-361-C1A/B,
+   P-334A/B, P-551A/B, P-221A/B, P-222A/B. */
+function openMotor(mtag){
+  mtag=(mtag||"").trim(); if(!mtag) return;
+  const m=IDX.motorByTag.get(mtag);
+  if(!m) return status("✗ Motor "+mtag+" not found in load list / MCC","err");
+  const r=m.row, ds=IDX.dsByTag.get(mtag);
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  const kw=v=>{ const n=parseFloat(v); return (!n||isNaN(n))?"—":n.toFixed(1)+" kW"; };
+  const areaCode=m.src==="load"?r.unit_tag:r.area_code;
+  const area=IDX.areaByCode.get(String(areaCode));
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(mtag)}</span> — motor`;
+  let h=`<div class="kicker">MOTOR <span class="sub">· ${m.src==="load"?"plant_electrical_loads":"plant_mcc_motors"}</span></div>`;
+  if(m.src==="load"){
+    const bus=r.v690_active?["690 V",r.v690_kw,r.v690_a]:r.v400_active?["400 V",r.v400_kw,r.v400_a]:r.v230_active?["230 V",r.v230_kw,r.v230_a]:[(r.voltage||"—")+" V",null,null];
+    const running=!!(r.v690_active||r.v400_active||r.v230_active);
+    h+=`<div class="jbcard">
+      ${kv("Service", nz(r.service))}
+      ${kv("Area / unit", esc(String(r.unit_tag||"—"))+(area?" — "+esc(area.description||""):(r.unit_description?" — "+esc(r.unit_description):"")))}
+      ${kv("Skid package", nz(r.skid_tag,"—"))}
+      ${kv("Starting type", nz(r.starting_type,"—"))}
+      ${kv("Rated voltage", esc(String(r.voltage||"—"))+" V")}
+      ${kv("Installed power", kw(r.power_rating_kw))}
+      ${kv("cos φ", nz(r.cos_phi,"—"))}
+      ${kv("Load factor", nz(r.load_factor,"—"))}
+      ${kv("Supply bus", esc(bus[0]))}
+      ${kv("Duty state", `<span class="chip ${running?"info":"dim"}">${running?"DUTY (running case)":"STANDBY (not in load case)"}</span>`)}
+      ${bus[1]!=null&&+bus[1]>0?kv("Absorbed kW · A", kw(bus[1])+" · "+(Math.round(+bus[2]*100)/100)+" A"):""}
+    </div>`;
+  } else {
+    h+=`<div class="jbcard">
+      ${kv("Service", nz(r.service))}
+      ${kv("Area", esc(String(r.area_code||"—"))+(area?" — "+esc(area.description||""):""))}
+      ${kv("RIO panel", nz(r.rio_panel,"—"))}
+      ${kv("Slot", nz(r.slot,"—"))}
+      ${kv("Fail position", nz(r.fail_position,"—"))}
+      ${kv("Power", nz(r.power_rating,"—")+" kW")}
+    </div>`;
+  }
+  if(ds){
+    h+=`<h2 style="margin-top:16px">Datasheet <span class="dim" style="font-weight:400">(${esc(ds.equipment_type||"")})</span></h2>`;
+    const rows=[];
+    if(ds.manufacturer) rows.push(["Manufacturer", ds.manufacturer]);
+    if(ds.model) rows.push(["Model", ds.model]);
+    const sp=ds.specs||{};
+    const order=[["rated_power_kw","Rated power (kW)"],["voltage_v","Voltage (V)"],["voltage_config","Voltage (Δ/Y)"],
+      ["frequency_hz","Frequency (Hz)"],["phases","Phases"],["poles","Poles"],
+      ["starting_method","Starting method"],["cos_phi","cos φ"],["load_factor","Load factor"],
+      ["duty_role","Duty role"],["absorbed_power_kw","Absorbed power (kW)"],["line_current_a","Line current (A)"],
+      ["rated_current_a","Rated current (A)"],["rated_speed_rpm","Speed (rpm)"],["rated_torque_nm","Torque (Nm)"],
+      ["efficiency_class","Efficiency class"],["efficiency_pct","Efficiency (%)"],
+      ["insulation_class","Insulation class"],["temperature_class","Temp class"],["duty","Duty"],
+      ["frame_size","Frame size"],["construction","Mounting"],["frame_material","Frame material"],
+      ["protection","Protection (IP)"],["cooling","Cooling"],["weight_kg","Weight (kg)"],
+      ["bearings","Bearings"],["motor_protection","Motor protection"],
+      ["starting_current_ratio","Is/In"],["max_torque_ratio","Tmax/Tn"],["moment_of_inertia_kgm2","Inertia (kg·m²)"],
+      ["sound_pressure_db_a","Sound (dB(A))"],["atex_gas","ATEX (gas)"],["atex_dust","ATEX (dust)"],
+      ["standards","Standards"],["terminal_box","Terminal box"],["ambient_temp","Ambient temp"],
+      ["altitude_max_masl","Altitude max (m)"],
+      ["config","Configuration"],["drives","Drives"],["skid","Skid"],["unit","Unit"],
+      ["nameplate_source","Nameplate source"]];
+    order.forEach(([k,lbl])=>{ if(sp[k]!=null&&sp[k]!=="") rows.push([lbl, sp[k]]); });
+    h+=`<div class="jbcard">${rows.map(p=>kv(p[0], esc(String(p[1])))).join("")}</div>`;
+    if(sp.note) h+=`<p class="note">${esc(sp.note)}</p>`;
+    h+=`<p class="note dim">Source: ${esc(ds.source||ds.source_kind||"—")}${ds.extracted_by?" · "+esc(ds.extracted_by):""}</p>`;
+  } else {
+    h+=`<p class="note dim" style="margin-top:14px">No datasheet captured for this motor yet.</p>`;
+  }
+  $("#instBody").innerHTML=h;
+  $("#instOvl").classList.add("open");
+}
+window.openMotor=openMotor;
 
 /* ── change request modal ────────────────────────────────────── */
 const CR_FIELDS={
