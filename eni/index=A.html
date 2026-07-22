@@ -482,11 +482,7 @@ const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), 
              modelById:new Map(), mfrById:new Map(), mspecByModel:new Map(), motorByAsset:new Map(),
              eassetByAsset:new Map(), nameplateByAsset:new Map(), appreqByAsset:new Map(),
              aliasesByAsset:new Map(), drivesByAsset:new Map(), drivenByAsset:new Map(),
-             docsByAsset:new Map(), docsByModel:new Map(),
-             // normalized read-view indices (v_*_ui cutover — see HANDOVER_UI_CUTOVER.md).
-             // Built in buildUiIndexes(); guarded no-op when the views are empty so the
-             // instrument/valve cards degrade to their legacy renderers.
-             instUiByTag:new Map(), valveUiByTag:new Map(), ceByTag:new Map(), loopByField:new Map()};
+             docsByAsset:new Map(), docsByModel:new Map()};
 
 /* P&ID renders that exist on disk under /pid/<doc_no>/_full.png (40 of 47).
    Missing renders (legend sheet + 6 pending): open disabled, shown as PENDING. */
@@ -889,19 +885,6 @@ async function boot(){
       fetchOpt("plant_asset_relationships"), fetchOpt("plant_document_links")
     ]);
     Object.assign(DB,{assets,aclasses,amotors,eassets,amodels,amfrs,mmspecs,mnspecs,mappreqs,aaliases,arels,dlinks});
-    // ── normalized read views (v_*_ui) — UI cutover (HANDOVER_UI_CUTOVER.md) ──
-    // Denormalized, anon-readable per-discipline read API. Loaded through fetchOpt
-    // so a missing/blocked view yields [] and the affected card silently falls back
-    // to its legacy renderer instead of killing boot. Only the views that exist and
-    // map to a real detail card are loaded: instruments, valves, the cause-&-effect
-    // trace, and the loop trace (signal-path panel). v_mechanical_ui / v_electrical_ui
-    // do not exist yet, and the IO/alarm/safety/comms LIST pages keep their legacy
-    // data-quality sources (their grains do not match the _ui views) — see the handover.
-    const [instUi,valveUi,ceTrace,loopTrace] = await Promise.all([
-      fetchOpt("v_instrument_ui"), fetchOpt("v_valve_ui"),
-      fetchOpt("v_cause_effect_trace"), fetchOpt("v_loop_trace")
-    ]);
-    Object.assign(DB,{instUi,valveUi,ceTrace,loopTrace});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -977,24 +960,6 @@ function buildIndexes(){
   IDX.dsByTag.clear();
   DB.dsheets.forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.dsByTag.set(t,r); });
   buildAssetIndexes();
-  buildUiIndexes();
-}
-
-// ── normalized read-view indices (v_*_ui cutover) ─────────────────────────────
-// Key each read view by the tag/handle a card opens on. Guarded to no-ops when the
-// views are empty, so openInst() and friends keep falling back to the legacy path.
-// Kept separate from buildAssetIndexes() so the motor/asset registry is untouched.
-function buildUiIndexes(){
-  ["instUiByTag","valveUiByTag","ceByTag","loopByField"].forEach(k=>IDX[k].clear());
-  (DB.instUi||[]).forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.instUiByTag.set(t,r); });
-  (DB.valveUi||[]).forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.valveUiByTag.set(t,r); });
-  // one cause-&-effect function (ce_tag) fans out to many cause→effect rows.
-  (DB.ceTrace||[]).forEach(r=>{ const t=(r.ce_tag||"").trim(); if(!t) return;
-    if(!IDX.ceByTag.has(t)) IDX.ceByTag.set(t,[]); IDX.ceByTag.get(t).push(r); });
-  // loop trace is one row per IO channel → field device; a field tag can carry
-  // several channels (multi-signal devices), so keep every row per field_tag.
-  (DB.loopTrace||[]).forEach(r=>{ const t=(r.field_tag||"").trim(); if(!t) return;
-    if(!IDX.loopByField.has(t)) IDX.loopByField.set(t,[]); IDX.loopByField.get(t).push(r); });
 }
 
 // ── normalized asset registry indices ────────────────────────────
@@ -1040,7 +1005,6 @@ function buildDatalist(){
   IDX.instByTag.forEach((_,t)=>tags.add(t)); IDX.valveByTag.forEach((_,t)=>tags.add(t));
   IDX.motorByTag.forEach((_,t)=>tags.add(t));
   IDX.assetByTag.forEach((_,t)=>tags.add(t)); IDX.aliasToAsset.forEach((_,t)=>tags.add(t));
-  IDX.ceByTag.forEach((_,t)=>tags.add(t));   // cause-&-effect function tags open the C&E card
   dl.innerHTML=[...tags].sort().map(t=>`<option value="${esc(t)}">`).join("");
 }
 
@@ -3293,10 +3257,6 @@ function searchAll(q){
     const sp=dwgPath(d.doc_no);
     if((idL+" "+ttlL).includes(s)) push("DRAWING","crimson",d.doc_no,d.title,d.area_code,d.pid_no,
       sp?`openStorage('${esc(sp.bucket)}','${esc(sp.path)}')`:`nav('drawings')`, idL.includes(s)?0:1,"");});
-  IDX.ceByTag.forEach((rows,ceTag)=>{ const tagL=ceTag.toLowerCase();
-    const hay=(tagL+" "+rows.map(r=>(r.cause_tag||"")+" "+(r.effect_tag||"")+" "+(r.cause_description||"")).join(" ")).toLowerCase();
-    if(hay.includes(s)) push("CAUSE & EFFECT","crimson",ceTag,rows[0].cause_description||"cause & effect function",
-      rows[0].area_code,rows.length+" trace(s)",`openCE('${esc(ceTag)}')`, tagL.includes(s)?0:2,"");});
   out.sort((a,b)=>a.rank-b.rank);   // TAG matches first; secondary-field (e.g. line-number) matches last
   return out;
 }
@@ -3602,163 +3562,12 @@ function renderDrawings(c){
 }
 
 /* ── instrument detail ───────────────────────────────────────── */
-// ── instrument / valve card — normalized read views (v_instrument_ui / v_valve_ui) ──
-// Normalized-first entry point (HANDOVER_UI_CUTOVER.md §5). Prefer the denormalized
-// read view; a tag with no view row — or when the views failed to load — falls straight
-// through to openInstLegacy, which reads the legacy index tables untouched. A tag present
-// in BOTH views (e.g. a TSV that is both an instrument and an actuated valve) renders as
-// the instrument, matching the legacy card.
 function openInst(tag){
-  tag=(tag||"").trim(); if(!tag) return;
-  const iv=IDX.instUiByTag.get(tag);
-  if(iv) return renderInstCardNorm(iv, "inst");
-  const vv=IDX.valveUiByTag.get(tag);
-  if(vv) return renderInstCardNorm(vv, "valve");
-  return openInstLegacy(tag);   // pre-normalization fallback
-}
-
-function renderInstCardNorm(r, kind){
-  const tag=(r.tag||"").trim();
-  const isValve = kind==="valve";
-  const table = isValve ? "plant_valves" : "plant_instruments";
-  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
-  const card=cells=>{ const c=cells.filter(Boolean); return c.length?`<div class="jbcard">${c.join("")}</div>`:""; };
-  const leg = IDX.instByTag.get(tag)||IDX.valveByTag.get(tag)||null;   // used only for the P&ID render buttons + free-text notes
-  const area=IDX.areaByCode.get(String(r.area_code));
-  const typ = isValve ? (r.valve_type_raw||"actuated valve") : (r.instrument_type_raw||r.measured_variable||"instrument");
-
-  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(tag)}</span> — ${esc(typ)}`
-    + ` <span style="font-weight:400">${assetStChip(r.data_status)}</span>`;
-
-  // calibrated / instrument range — raw string wins, else low … high + uom
-  const rng = isValve
-    ? [nz(r.inst_range_raw,""), nz(r.range_uom,"")].join(" ").trim()
-    : (r.cal_range_raw ? (r.cal_range_raw+(r.cal_range_uom?" "+r.cal_range_uom:""))
-        : ([r.cal_range_low,r.cal_range_high].some(x=>x!=null)
-            ? [r.cal_range_low,r.cal_range_high].filter(x=>x!=null).join(" … ")+(r.cal_range_uom?" "+r.cal_range_uom:"")
-            : ""));
-
-  let h=`<div class="kicker">${isValve?"ACTUATED VALVE":"INSTRUMENT"} INDEX <span class="sub">· v_${isValve?"valve":"instrument"}_ui · normalized${r.class_code?" · "+esc(r.class_code):""}</span></div>`;
-
-  h+=card([
-    kv("Service — what it measures / controls", nz(r.service)),
-    isValve?kv("Valve type", nz(r.valve_type_raw)):kv("Measured variable", nz(r.measured_variable,"—")),
-    isValve?kv("Actuator / fail action", nz(r.actuator_type,"—")+" / "+nz(r.fail_action,"—")):kv("Instrument type", nz(r.instrument_type_raw)),
-    isValve&&r.valve_size?kv("Valve size", nz(r.valve_size)):"",
-    kv(isValve?"Instrument range":"Calibrated range (settings)", esc(rng)||"—"),
-    kv("Signal in / out", nz(r.signal_type)+(r.signal_output?" → "+esc(r.signal_output):"")),
-    kv("Junction box (JB) — field enclosure the cable lands in", nz(r.junction_box_tag,"—")),
-    kv("On equipment", r.equipment_tag?`<a style="color:var(--blue);cursor:pointer;font-weight:700" onclick="openAssetTag('${esc((r.equipment_tag||"").trim())}')">${esc(r.equipment_tag)} →</a>`:"—"),
-    kv("Process line", nz(r.line_number,"—")),
-    kv("FLOC", nz(r.floc_code,"—")+(r.floc_name?" — "+esc(r.floc_name):"")),
-    leg?(()=>{ const l=dwgLink(leg.tam_pid);
-        let v=nz(leg.tam_pid)+(leg.itf_pid?" · ITF "+esc(leg.itf_pid):"");
-        if(l&&l.sp) v+=` <button ${OPENBTN} style="margin-left:6px" onclick="openStorage('${esc(l.sp.bucket)}','${esc(l.sp.path)}')">RENDER ⧉</button>`;
-        if(l&&docSource(l.d.doc_no)) v+=` <button ${OPENBTN} style="margin-left:4px" onclick="openDocNo('${esc(l.d.doc_no)}')">PDF ⧉</button>`;
-        else if(l&&!l.sp) v+=` <span class="chip warn">NOT UPLOADED</span>`;
-        if(l) v+=`<div style="font-size:10px;color:var(--ink-soft);margin-top:2px">${esc(l.d.doc_no)} · ${esc(l.d.title||"")}</div>`;
-        return kv("P&ID drawing", v); })():"",
-    kv("Manufacturer / model", nz(r.manufacturer,"—")+" "+nz(r.model,"")),
-    kv("Hazardous area — device / JB", nz(r.hazardous_area_marking,"—")+" / "+nz(r.jb_hazardous_marking,"—")),
-    kv("Supplied by", nz(r.supplied_by,"—")),
-    kv("Control system", nz(r.control_system,"—")),
-    kv("Area / unit", esc(String(r.area_code||"—"))+(area?" — "+esc(area.description||""):"")),
-    kv("Data status", assetStChip(r.data_status)+(r.review_status?" "+assetStChip(r.review_status):"")),
-    r.legacy_source_table?kv("Legacy source", '<span class="dim">'+esc(r.legacy_source_table)+(r.legacy_source_id!=null?" #"+r.legacy_source_id:"")+'</span>'):""
-  ]);
-  if(IDX.instUiByTag.has(tag)&&IDX.valveUiByTag.has(tag))
-    h+=`<div class="note">⚠ This tag is in <b>both</b> the instrument and the actuated-valve view
-      (typical for TSV thermal safety valves) — the instrument record is shown; data is identical in both.</div>`;
-  if(leg&&leg.notes) h+=`<div class="note">NOTES: ${esc(leg.notes)}</div>`;
-
-  h+=loopPanelHtml(tag);                                   // v_loop_trace signal path (if any)
-  h+=instDownstreamHtml(tag, table, r.manufacturer, r.model, true);
-  instFinalizeCard(tag, h);
-}
-
-// v_loop_trace — the signal path for a field device: which IO channel(s) read it,
-// through which panel, and what monitors / control loops / cause-&-effect functions
-// depend on it. Additive; renders nothing when the tag has no loop-trace row.
-function loopPanelHtml(tag){
-  const rows=IDX.loopByField.get(tag)||[];
-  if(!rows.length) return "";
-  const ceChip=t=>{ const tt=(t||"").trim(); if(!tt) return "";
-    return IDX.ceByTag.has(tt)
-      ? `<span class="tag" onclick="event.stopPropagation();openCE('${esc(tt)}')" title="Open cause &amp; effect ${esc(tt)}">${esc(tt)}</span>`
-      : `<span class="mono">${esc(tt)}</span>`; };
-  let h=`<h2 style="margin-top:16px">Signal path <span class="dim" style="font-weight:400">(v_loop_trace)</span></h2>`;
-  h+=`<table class="data"><thead><tr><th>IO CHANNEL</th><th>SYS</th><th>KIND</th><th>SIGNAL</th><th>PANEL</th><th>MONITORS</th><th>CONTROL LOOPS</th></tr></thead><tbody>`;
-  h+=rows.map(r=>`<tr>
-    <td class="mono">${r.io_tag?`<span class="tag" onclick="openInst('${esc((r.io_tag||"").trim())}')">${esc(r.io_tag)}</span>`:"—"}</td>
-    <td class="mono dim">${nz(r.control_system,"—")}</td>
-    <td class="mono">${nz(r.io_kind,"—")}</td>
-    <td class="mono">${nz(r.signal_type,"—")}</td>
-    <td class="mono">${r.panel_tag?`<span class="tag" onclick="nav('station/'+encodeURIComponent('${esc(r.panel_tag)}'))">${esc(r.panel_tag)}</span>`:"—"}</td>
-    <td class="dim">${nz(r.monitors,"—")}</td>
-    <td class="dim">${nz(r.control_loops,"—")}</td></tr>`).join("");
-  h+=`</tbody></table>`;
-  const split=s=>String(s||"").split(/[;,]/).map(x=>x.trim()).filter(Boolean);
-  const prot=[...new Set(rows.flatMap(r=>split(r.ce_protects_this)))];
-  const init=[...new Set(rows.flatMap(r=>split(r.ce_initiated_by_this)))];
-  if(prot.length||init.length){
-    h+=`<div class="jbcard" style="margin-top:8px">
-      <div class="jbcell"><div class="k">Protected by (C&amp;E)</div><div class="v mono">${prot.length?prot.map(ceChip).join(" "):'<span class="dim">—</span>'}</div></div>
-      <div class="jbcell"><div class="k">Initiates (C&amp;E)</div><div class="v mono">${init.length?init.map(ceChip).join(" "):'<span class="dim">—</span>'}</div></div>
-    </div>`;
-  }
-  return h;
-}
-
-// ── cause & effect card (new) — v_cause_effect_trace ──────────────────────────
-// One cause-&-effect function (ce_tag) with its cause → effect rows and the
-// initiator / final-element trace. Reachable from the signal-path panel and from
-// openAssetTag(). Additive — there was no legacy equivalent.
-function openCE(ceTag){
-  ceTag=(ceTag||"").trim(); if(!ceTag) return;
-  const rows=IDX.ceByTag.get(ceTag)||[];
-  if(!rows.length) return status("✗ Cause & effect "+ceTag+" not found","err");
-  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
-  const st=rows[0].data_status;
-  const area=IDX.areaByCode.get(String(rows[0].area_code));
-  const tagChip=t=>{ const tt=(t||"").trim(); return tt?`<span class="tag" onclick="openAssetTag('${esc(tt)}')">${esc(tt)}</span>`:'<span class="dim">—</span>'; };
-  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(ceTag)}</span> — cause &amp; effect <span style="font-weight:400">${assetStChip(st)}</span>`;
-  let h=`<div class="kicker">CAUSE &amp; EFFECT <span class="sub">· v_cause_effect_trace</span></div>
-  <div class="jbcard">
-    ${kv("Function", esc(ceTag))}
-    ${kv("Area / unit", esc(String(rows[0].area_code||"—"))+(area?" — "+esc(area.description||""):""))}
-    ${kv("Document", nz(rows[0].document,"—"))}
-    ${kv("Traces", rows.length+" cause → effect row(s)")}
-  </div>`;
-  h+=`<h2 style="margin-top:16px">Cause → effect</h2>
-  <table class="data"><thead><tr><th>CAUSE</th><th>INSTRUMENT</th><th>TYPE</th><th>SET POINT</th><th>EFFECT</th><th>FINAL ELEMENT</th></tr></thead><tbody>`;
-  h+=rows.map(r=>`<tr>
-    <td class="mono">${tagChip(r.cause_tag)}${r.cause_description?`<div class="dim" style="font-size:10px">${esc(r.cause_description)}</div>`:""}</td>
-    <td class="mono">${tagChip(r.cause_instrument)}</td>
-    <td class="mono dim">${nz(r.cause_type,"—")}</td>
-    <td class="mono">${nz(r.cause_setpoint,"—")}</td>
-    <td class="mono">${tagChip(r.effect_tag)}</td>
-    <td class="mono">${tagChip(r.final_element_tag)}${r.final_element_class?`<div class="dim" style="font-size:10px">${esc(r.final_element_class)}</div>`:""}</td></tr>`).join("");
-  h+=`</tbody></table>`;
-  const inits=[...new Map(rows.filter(r=>r.initiator_tag||r.unresolved_initiator).map(r=>[(r.initiator_tag||r.unresolved_initiator),r])).values()];
-  if(inits.length){
-    h+=`<h2 style="margin-top:16px">Initiators</h2>
-    <table class="data"><thead><tr><th>INITIATOR</th><th>CLASS</th><th>STATUS</th></tr></thead><tbody>`;
-    h+=inits.map(r=>`<tr>
-      <td class="mono">${r.initiator_tag?tagChip(r.initiator_tag):`<span class="dim">${esc(r.unresolved_initiator||"")}</span>`}</td>
-      <td class="mono dim">${nz(r.initiator_class,"—")}</td>
-      <td>${r.unresolved_initiator&&!r.initiator_tag?'<span class="chip warn">UNRESOLVED</span>':'<span class="chip ok">RESOLVED</span>'}</td></tr>`).join("");
-    h+=`</tbody></table>`;
-  }
-  $("#instBody").innerHTML=h;
-  $("#instOvl").classList.add("open");
-  hydrateDocRefs($("#instBody"));
-}
-window.openCE=openCE;
-
-function openInstLegacy(tag){
   tag=(tag||"").trim(); if(!tag) return;
   const inst=IDX.instByTag.get(tag), vlv=IDX.valveByTag.get(tag);
   const ref=inst||vlv;
+  const io=IDX.ioByTag.get(tag)||[];
+  const alarms=IDX.alarmsByInst.get(tag)||[];
   const table=inst?"plant_instruments":vlv?"plant_valves":"plant_io_list";
   $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(tag)}</span> — ${ref?esc(ref.instrument_type||""):"(IO channel only)"}`;
   const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
@@ -3798,21 +3607,7 @@ function openInstLegacy(tag){
     h+=`<div class="empty">Tag not present in the instrument / valve index — IO channel data only.
     Raise a change request if this tag should be added.</div>`;
   }
-  h+=loopPanelHtml(tag);                     // v_loop_trace signal path (if any) — same panel as the normalized card
-  h+=instDownstreamHtml(tag, table, ref&&ref.manufacturer, ref&&ref.model, !!ref);
-  instFinalizeCard(tag, h);
-}
-
-// Shared lower half of the instrument/valve card — datasheet panel, IO channel
-// assignment + cross-check, document references, alarms, change history and the
-// verify / change-request toolrow. Everything here is keyed by TAG, so it is
-// identical whether the identity block above was built from the legacy index
-// (openInstLegacy) or the normalized view (renderInstCardNorm). Extracting it keeps
-// the two entry points in perfect sync instead of drifting apart.
-function instDownstreamHtml(tag, table, mfr, model, hasRef){
-  const io=IDX.ioByTag.get(tag)||[];
-  const alarms=IDX.alarmsByInst.get(tag)||[];
-  let h=`<div id="instDshBox"></div>`;   // ITF datasheet — filled async by renderInstDatasheet()
+  h+=`<div id="instDshBox"></div>`;   // ITF datasheet — filled async by renderInstDatasheet()
   if(io.length){
     h+=`<h2 style="margin-top:16px">IO channel assignment</h2>
     <table class="data"><thead><tr><th>PANEL</th><th>SLOT</th><th>CH</th><th>SIGNAL</th><th>DESCRIPTION</th><th>STATUS</th></tr></thead>
@@ -3827,10 +3622,10 @@ function instDownstreamHtml(tag, table, mfr, model, hasRef){
     cable physically terminates; the <b>panel</b> is the RIO station whose IO card reads the signal (usually the same
     box — name variants like “.1” terminal-strip suffixes are matched automatically). <b>JB MISMATCH</b> means the
     instrument index and the IO wiring list point to different boxes — worth checking in the field.</div>`;
-  } else if(hasRef){
+  } else if(ref){
     h+=`<div class="note">No IO channel found for this tag (may be local-only, pneumatic, or pending IO digitization).</div>`;
   }
-  h+=docsSection(table, tag, mfr, model);
+  h+=docsSection(table, tag, ref&&ref.manufacturer, ref&&ref.model);
   if(alarms.length) h+=`<h2 style="margin-top:16px">Alarms on this instrument</h2>${alarmTable(alarms)}`;
   const crs=DB.crs.filter(r=>r.object_tag===tag);
   if(crs.length) h+=`<h2 style="margin-top:16px">Change history</h2><table class="data"><thead><tr><th>CR</th><th>FIELD</th><th>OLD → NEW</th><th>STATUS</th></tr></thead>
@@ -3842,9 +3637,6 @@ function instDownstreamHtml(tag, table, mfr, model, hasRef){
     <span class="spacer"></span>
     <button class="btn primary" onclick="openCR('${table}','${esc(tag)}')">Raise change request</button>
   </div>`;
-  return h;
-}
-function instFinalizeCard(tag, h){
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
   // the information ↔ document link: every place this tag appears, with the page
@@ -3852,7 +3644,7 @@ function instFinalizeCard(tag, h){
   renderInstDatasheet(tag);   // ITF datasheet (migration 025) — async, fills #instDshBox
 }
 function closeInst(){ $("#instOvl").classList.remove("open"); }
-window.openInst=openInst; window.openInstLegacy=openInstLegacy; window.closeInst=closeInst;
+window.openInst=openInst; window.closeInst=closeInst;
 
 /* ── ITF instrument datasheet on the card ──────────────────────────────────────
    plant_instrument_datasheets / _fields (migration 025) hold the ITF
@@ -4156,8 +3948,7 @@ function openAssetTag(tag){
   if(a && IDX.motorByAsset.has(a.id)) return renderMotorCard(a,tag);
   if(IDX.motorByTag.has(tag)) return openMotorLegacy(tag);
   if((DB.equip||[]).some(x=>(x.tag||"").trim()===tag)) return openEquip(tag);
-  if(IDX.instByTag.has(tag)||IDX.valveByTag.has(tag)||IDX.instUiByTag.has(tag)||IDX.valveUiByTag.has(tag)) return openInst(tag);
-  if(IDX.ceByTag.has(tag)) return openCE(tag);
+  if(IDX.instByTag.has(tag)||IDX.valveByTag.has(tag)) return openInst(tag);
   return status("No detail view for "+tag,"");
 }
 
