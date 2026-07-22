@@ -470,10 +470,19 @@
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[], atypes:[],
-  svcClasses:[], plinks:[], aflows:[], trains:[], aenergy:[], xmedia:[], dsheets:[]};   // process topology (048/049/055) — read by tam-flow.js; dsheets = plant_equipment_datasheets
+  svcClasses:[], plinks:[], aflows:[], trains:[], aenergy:[], xmedia:[], dsheets:[],
+  // ── normalized asset registry (motor/asset normalization) ──
+  // canonical model layered over the legacy lists; the motor card reads these first.
+  assets:[], aclasses:[], amotors:[], eassets:[], amodels:[], amfrs:[], mmspecs:[], mnspecs:[], mappreqs:[], aaliases:[], arels:[], dlinks:[]};   // process topology (048/049/055) — read by tam-flow.js; dsheets = plant_equipment_datasheets
 const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), alarmByTag:new Map(), ioByTag:new Map(),
              stations:new Map(), areaStations:new Map(), verByKey:new Map(), jbByTag:new Map(), areaByCode:new Map(),
-             dwgByPid:new Map(), dwgByDoc:new Map(), motorByTag:new Map(), dsByTag:new Map()};
+             dwgByPid:new Map(), dwgByDoc:new Map(), motorByTag:new Map(), dsByTag:new Map(),
+             // normalized asset registry indices (built in buildIndexes)
+             assetById:new Map(), assetByTag:new Map(), aliasToAsset:new Map(), aclassById:new Map(),
+             modelById:new Map(), mfrById:new Map(), mspecByModel:new Map(), motorByAsset:new Map(),
+             eassetByAsset:new Map(), nameplateByAsset:new Map(), appreqByAsset:new Map(),
+             aliasesByAsset:new Map(), drivesByAsset:new Map(), drivenByAsset:new Map(),
+             docsByAsset:new Map(), docsByModel:new Map()};
 
 /* P&ID renders that exist on disk under /pid/<doc_no>/_full.png (40 of 47).
    Missing renders (legend sheet + 6 pending): open disabled, shown as PENDING. */
@@ -862,6 +871,20 @@ async function boot(){
       fetchOpt("plant_equipment_datasheets")
     ]);
     Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes,dsheets});
+    // ── normalized asset registry (motor/asset normalization) ──────────
+    // Canonical asset model layered over the legacy lists. Loaded fetchOpt so a
+    // partial or absent migration degrades the motor card to the legacy view
+    // instead of killing boot. openMotor() prefers the normalized asset and
+    // falls back to openMotorLegacy() when a tag has no asset row.
+    const [assets,aclasses,amotors,eassets,amodels,amfrs,mmspecs,mnspecs,mappreqs,aaliases,arels,dlinks] = await Promise.all([
+      fetchOpt("plant_assets","official_tag"), fetchOpt("plant_asset_classes","id"),
+      fetchOpt("plant_motors"), fetchOpt("plant_electrical_assets"),
+      fetchOpt("plant_models","id"), fetchOpt("plant_manufacturers","id"),
+      fetchOpt("plant_motor_model_specs"), fetchOpt("plant_motor_nameplate_specs"),
+      fetchOpt("plant_motor_application_requirements"), fetchOpt("plant_asset_aliases"),
+      fetchOpt("plant_asset_relationships"), fetchOpt("plant_document_links")
+    ]);
+    Object.assign(DB,{assets,aclasses,amotors,eassets,amodels,amfrs,mmspecs,mnspecs,mappreqs,aaliases,arels,dlinks});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -936,12 +959,52 @@ function buildIndexes(){
   // equipment datasheets / nameplate data, keyed by tag (last row wins; motor datasheets are unique per tag)
   IDX.dsByTag.clear();
   DB.dsheets.forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.dsByTag.set(t,r); });
+  buildAssetIndexes();
+}
+
+// ── normalized asset registry indices ────────────────────────────
+// One canonical asset (plant_assets) fans out to its typed extensions. Every map
+// is keyed so the motor card can assemble Design / Model / Application / Nameplate
+// blocks without re-querying. Guarded to no-ops when the tables are empty, so the
+// legacy motor path keeps working if the migration is absent.
+function buildAssetIndexes(){
+  ["assetById","assetByTag","aliasToAsset","aclassById","modelById","mfrById","mspecByModel",
+   "motorByAsset","eassetByAsset","nameplateByAsset","appreqByAsset","aliasesByAsset",
+   "drivesByAsset","drivenByAsset","docsByAsset","docsByModel"].forEach(k=>IDX[k].clear());
+  DB.aclasses.forEach(c=>IDX.aclassById.set(c.id,c));
+  DB.amfrs.forEach(m=>IDX.mfrById.set(m.id,m));
+  DB.amodels.forEach(m=>IDX.modelById.set(m.id,m));
+  // one model-spec per model; a "preferred" row wins over the rest.
+  DB.mmspecs.forEach(s=>{ const cur=IDX.mspecByModel.get(s.model_id); if(!cur||s.is_preferred) IDX.mspecByModel.set(s.model_id,s); });
+  DB.assets.forEach(a=>{ IDX.assetById.set(a.id,a); const t=(a.official_tag||"").trim(); if(t&&!IDX.assetByTag.has(t)) IDX.assetByTag.set(t,a); });
+  DB.aaliases.forEach(al=>{ const t=(al.alias_tag||"").trim();
+    if(t&&!IDX.aliasToAsset.has(t)) IDX.aliasToAsset.set(t,al.asset_id);
+    if(!IDX.aliasesByAsset.has(al.asset_id)) IDX.aliasesByAsset.set(al.asset_id,[]);
+    IDX.aliasesByAsset.get(al.asset_id).push(al); });
+  DB.amotors.forEach(m=>IDX.motorByAsset.set(m.asset_id,m));
+  DB.eassets.forEach(e=>IDX.eassetByAsset.set(e.asset_id,e));
+  // installed nameplate: only the current reading (is_current!==false)
+  DB.mnspecs.forEach(n=>{ if(n.is_current!==false) IDX.nameplateByAsset.set(n.motor_asset_id,n); });
+  DB.mappreqs.forEach(r=>{ if(!IDX.appreqByAsset.has(r.motor_asset_id)) IDX.appreqByAsset.set(r.motor_asset_id,r); });
+  DB.arels.forEach(r=>{ if(r.relationship_type!=="DRIVES") return;
+    if(!IDX.drivesByAsset.has(r.from_asset_id)) IDX.drivesByAsset.set(r.from_asset_id,[]);
+    IDX.drivesByAsset.get(r.from_asset_id).push(r);
+    if(!IDX.drivenByAsset.has(r.to_asset_id)) IDX.drivenByAsset.set(r.to_asset_id,[]);
+    IDX.drivenByAsset.get(r.to_asset_id).push(r); });
+  // document links resolve through plant_asset_docs (asset_doc_id). Model links
+  // are keyed by model so ALL units of a model share the one datasheet — the 243
+  // Seipee fans do not each carry a copy.
+  DB.dlinks.forEach(l=>{ const doc=l.asset_doc_id!=null?(DB.adocs||[]).find(d=>d.id===l.asset_doc_id):null;
+    const rec={link:l, doc};
+    if(l.asset_id!=null){ if(!IDX.docsByAsset.has(l.asset_id)) IDX.docsByAsset.set(l.asset_id,[]); IDX.docsByAsset.get(l.asset_id).push(rec); }
+    if(l.model_id!=null){ if(!IDX.docsByModel.has(l.model_id)) IDX.docsByModel.set(l.model_id,[]); IDX.docsByModel.get(l.model_id).push(rec); } });
 }
 
 function buildDatalist(){
   const dl=$("#taglist"); const tags=new Set();
   IDX.instByTag.forEach((_,t)=>tags.add(t)); IDX.valveByTag.forEach((_,t)=>tags.add(t));
   IDX.motorByTag.forEach((_,t)=>tags.add(t));
+  IDX.assetByTag.forEach((_,t)=>tags.add(t)); IDX.aliasToAsset.forEach((_,t)=>tags.add(t));
   dl.innerHTML=[...tags].sort().map(t=>`<option value="${esc(t)}">`).join("");
 }
 
@@ -3782,7 +3845,10 @@ window.openEquip=openEquip;
    record plus the captured equipment datasheet (plant_equipment_datasheets),
    e.g. the load-list-derived motor datasheets for P-332A/B, PK-361-C1A/B,
    P-334A/B, P-551A/B, P-221A/B, P-222A/B. */
-function openMotor(mtag){
+// Legacy motor card — reads the pre-normalization list tables (plant_mcc_motors /
+// plant_electrical_loads + plant_equipment_datasheets). Kept as the fallback for
+// any tag that has no plant_assets row yet. openMotor() prefers the normalized card.
+function openMotorLegacy(mtag){
   mtag=(mtag||"").trim(); if(!mtag) return;
   const m=IDX.motorByTag.get(mtag);
   if(!m) return status("✗ Motor "+mtag+" not found in load list / MCC","err");
@@ -3853,7 +3919,211 @@ function openMotor(mtag){
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
 }
-window.openMotor=openMotor;
+
+/* ── motor card — normalized asset registry (motor/asset normalization) ──────
+   Assembles one canonical asset (plant_assets) with its typed extensions into
+   separate blocks — Identity, Design (plant_electrical_assets), Installed model +
+   Model specifications (plant_models / plant_motor_model_specs), Application
+   requirements, Installed nameplate, and model/asset documents. Model data is
+   labelled as OEM MODEL specs, never "installed nameplate"; a motor with no
+   confirmed model shows MODEL NOT CONFIRMED rather than inventing data. Model
+   documents are shared by every unit of the model (not duplicated per motor). */
+const ASSET_ST={VERIFIED:"ok",NEEDS_REVIEW:"warn",CONFLICT:"fail",INCOMPLETE:"dim",UNKNOWN:"dim"};
+function assetStChip(s){ return `<span class="chip ${ASSET_ST[s]||"dim"}">${esc(s||"—")}</span>`; }
+function fmtNum(v,unit){ if(v==null||v==="") return null; const n=+v; const s=isNaN(n)?String(v):n; return esc(String(s))+(unit?" "+unit:""); }
+
+function openMotor(mtag){
+  mtag=(mtag||"").trim(); if(!mtag) return;
+  const asset = IDX.assetByTag.get(mtag)
+    || (IDX.aliasToAsset.has(mtag) ? IDX.assetById.get(IDX.aliasToAsset.get(mtag)) : null);
+  if(asset && IDX.motorByAsset.has(asset.id)) return renderMotorCard(asset, mtag);
+  return openMotorLegacy(mtag);   // pre-normalization fallback
+}
+
+// Open the correct detail card for a driven/related asset tag (motor, equipment,
+// instrument or valve) without assuming which kind it is.
+function openAssetTag(tag){
+  tag=(tag||"").trim(); if(!tag) return;
+  const a=IDX.assetByTag.get(tag)||(IDX.aliasToAsset.has(tag)?IDX.assetById.get(IDX.aliasToAsset.get(tag)):null);
+  if(a && IDX.motorByAsset.has(a.id)) return renderMotorCard(a,tag);
+  if(IDX.motorByTag.has(tag)) return openMotorLegacy(tag);
+  if((DB.equip||[]).some(x=>(x.tag||"").trim()===tag)) return openEquip(tag);
+  if(IDX.instByTag.has(tag)||IDX.valveByTag.has(tag)) return openInst(tag);
+  return status("No detail view for "+tag,"");
+}
+
+function renderMotorCard(asset, reqTag){
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  const card=cells=>{ const c=cells.filter(Boolean); return c.length?`<div class="jbcard">${c.join("")}</div>`:""; };
+  const motor  = IDX.motorByAsset.get(asset.id) || null;
+  const ea     = IDX.eassetByAsset.get(asset.id) || null;
+  const cls    = IDX.aclassById.get(asset.asset_class_id) || null;
+  const model  = motor && motor.installed_model_id!=null ? IDX.modelById.get(motor.installed_model_id) : null;
+  const mfr    = model && model.manufacturer_id!=null ? IDX.mfrById.get(model.manufacturer_id) : null;
+  const mspec  = model ? IDX.mspecByModel.get(model.id) : null;
+  const appreq = IDX.appreqByAsset.get(asset.id) || null;
+  const nplate = IDX.nameplateByAsset.get(asset.id) || null;
+  const aliases= IDX.aliasesByAsset.get(asset.id) || [];
+  const drives = IDX.drivesByAsset.get(asset.id) || [];
+  const drivenBy=IDX.drivenByAsset.get(asset.id) || [];
+  const area   = IDX.areaByCode.get(String(asset.area_code));
+
+  const drivesTags = drives.map(r=>{ const t=IDX.assetById.get(r.to_asset_id); return t?t.official_tag:null; }).filter(Boolean);
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(asset.official_tag)}</span> — motor`
+    + (drivesTags.length?` <span class="dim" style="font-weight:400">(drives ${drivesTags.map(esc).join(", ")})</span>`:"")
+    + ` <span style="font-weight:400">${assetStChip(asset.data_status)}</span>`;
+
+  let h=`<div class="kicker">MOTOR <span class="sub">· plant_assets #${asset.id}${cls?" · "+esc(cls.code):""}</span></div>`;
+
+  // 1 ── Identity
+  const aliasHtml = aliases.length
+    ? aliases.map(a=>`<span class="tag" style="cursor:default">${esc(a.alias_tag)}</span> <span class="dim" style="font-size:10px">${esc(a.namespace||"")}${a.alias_type?" · "+esc(a.alias_type):""}</span>`).join("<br>")
+    : "—";
+  const drivesHtml = drives.length
+    ? drives.map(r=>{ const t=IDX.assetById.get(r.to_asset_id); const tag=t?t.official_tag:("#"+r.to_asset_id);
+        return `<span class="tag" onclick="event.stopPropagation();openAssetTag('${esc(tag)}')">${esc(tag)}</span> ${assetStChip(r.review_status)}`; }).join("<br>")
+    : "—";
+  h+=`<h2 style="margin-top:6px">Identity</h2>`+card([
+    kv("Official tag", esc(asset.official_tag)),
+    kv("Class", cls?esc(cls.name)+' <span class="dim">('+esc(cls.discipline)+')</span>':"—"),
+    kv("Service", nz(asset.service)),
+    kv("Area / unit", esc(String(asset.area_code||"—"))+(area?" — "+esc(area.description||""):"")),
+    kv("Skid package", nz(asset.skid_tag,"—")),
+    kv("Data status", assetStChip(asset.data_status)),
+    kv("Aliases", aliasHtml),
+    kv("Drives (equipment)", drivesHtml),
+    drivenBy.length?kv("Driven by", drivenBy.map(r=>{const t=IDX.assetById.get(r.from_asset_id);const tag=t?t.official_tag:("#"+r.from_asset_id);return `<span class="tag" onclick="event.stopPropagation();openAssetTag('${esc(tag)}')">${esc(tag)}</span>`;}).join(", ")):"",
+    asset.legacy_source_table?kv("Legacy source", '<span class="dim">'+esc(asset.legacy_source_table)+(asset.legacy_source_id!=null?" #"+asset.legacy_source_id:"")+'</span>'):""
+  ]);
+
+  // 2 ── Design (electrical) — as-engineered electrical data
+  if(ea){
+    h+=`<h2 style="margin-top:16px">Design <span class="dim" style="font-weight:400">(electrical — plant_electrical_assets)</span></h2>`+card([
+      ea.design_power_kw!=null?kv("Design power", fmtNum(ea.design_power_kw,"kW")):"",
+      ea.design_voltage_v!=null?kv("Design voltage", fmtNum(ea.design_voltage_v,"V")):"",
+      ea.design_frequency_hz!=null?kv("Design frequency", fmtNum(ea.design_frequency_hz,"Hz")):"",
+      ea.design_current_a!=null?kv("Design current", fmtNum(ea.design_current_a,"A")):"",
+      ea.power_factor!=null?kv("cos φ", fmtNum(ea.power_factor)):"",
+      ea.load_factor!=null?kv("Load factor", fmtNum(ea.load_factor)):"",
+      ea.starting_method?kv("Starting method", nz(ea.starting_method)):"",
+      ea.supply_system?kv("Supply system", nz(ea.supply_system)):"",
+      ea.mcc_panel_tag?kv("MCC panel", nz(ea.mcc_panel_tag)):"",
+      ea.mcc_slot?kv("MCC slot", nz(ea.mcc_slot)):"",
+      ea.fail_position?kv("Fail position", nz(ea.fail_position)):"",
+      ea.review_status?kv("Review", assetStChip(ea.review_status)):""
+    ]);
+  }
+
+  // 3 ── Installed model + generic OEM model specifications (NOT nameplate)
+  h+=`<h2 style="margin-top:16px">Installed model</h2>`;
+  if(model){
+    h+=card([
+      kv("Manufacturer", mfr?esc(mfr.name):"—"),
+      kv("Model", esc(model.model_code||"—")),
+      model.product_code?kv("Product code", nz(model.product_code)):"",
+      model.description?kv("Description", nz(model.description)):""
+    ]);
+    if(mspec){
+      h+=`<h3 style="margin-top:12px;font-size:13px">Model specifications
+        <span class="chip dim" title="Generic OEM catalogue data for the model — NOT a reading of this unit's nameplate">MODEL · OEM</span></h3>`+card([
+        mspec.rated_power_kw!=null?kv("Rated power", fmtNum(mspec.rated_power_kw,"kW")):"",
+        mspec.rated_voltage_v!=null?kv("Rated voltage", fmtNum(mspec.rated_voltage_v,"V")):"",
+        mspec.rated_frequency_hz!=null?kv("Frequency", fmtNum(mspec.rated_frequency_hz,"Hz")):"",
+        mspec.poles!=null?kv("Poles", fmtNum(mspec.poles)):"",
+        mspec.rated_speed_rpm!=null?kv("Speed", fmtNum(mspec.rated_speed_rpm,"rpm")):"",
+        mspec.full_load_current_a!=null?kv("Full-load current", fmtNum(mspec.full_load_current_a,"A")):"",
+        mspec.power_factor!=null?kv("cos φ", fmtNum(mspec.power_factor)):"",
+        mspec.efficiency_class?kv("Efficiency class", nz(mspec.efficiency_class)):"",
+        mspec.full_load_efficiency_pct!=null?kv("Efficiency", fmtNum(mspec.full_load_efficiency_pct,"%")):"",
+        mspec.insulation_class?kv("Insulation class", nz(mspec.insulation_class)):"",
+        mspec.ip_rating?kv("IP rating", nz(mspec.ip_rating)):"",
+        mspec.frame_size?kv("Frame size", nz(mspec.frame_size)):"",
+        mspec.weight_kg!=null?kv("Weight", fmtNum(mspec.weight_kg,"kg")):"",
+        (mspec.ambient_min_c!=null||mspec.ambient_max_c!=null)?kv("Ambient", esc([mspec.ambient_min_c,mspec.ambient_max_c].filter(x=>x!=null).join(" … "))+" °C"):"",
+        mspec.duty_type?kv("Duty", nz(mspec.duty_type)):"",
+        mspec.cooling_method?kv("Cooling", nz(mspec.cooling_method)):"",
+        mspec.mounting?kv("Mounting", nz(mspec.mounting)):"",
+        mspec.hazardous_area_marking?kv("Hazardous area", nz(mspec.hazardous_area_marking)):"",
+        mspec.certification_number?kv("Certificate", nz(mspec.certification_number)):"",
+        mspec.review_status?kv("Review", assetStChip(mspec.review_status)):""
+      ]);
+    } else {
+      h+=`<p class="note dim">Model assigned, but no OEM model specifications captured yet.</p>`;
+    }
+  } else {
+    h+=`<p class="note"><span class="chip warn">MODEL NOT CONFIRMED</span> No manufacturer/model is confirmed for this motor. The design power/voltage above are the available identity — no OEM data is invented.</p>`;
+  }
+
+  // 4 ── Application requirements — service demand, separate from model & nameplate
+  if(appreq){
+    h+=`<h2 style="margin-top:16px">Application requirements <span class="dim" style="font-weight:400">(service demand)</span></h2>`+card([
+      appreq.required_power_kw!=null?kv("Required power", fmtNum(appreq.required_power_kw,"kW")):"",
+      appreq.required_voltage_v!=null?kv("Required voltage", fmtNum(appreq.required_voltage_v,"V")):"",
+      appreq.required_frequency_hz!=null?kv("Required frequency", fmtNum(appreq.required_frequency_hz,"Hz")):"",
+      appreq.base_speed_rpm!=null?kv("Base speed", fmtNum(appreq.base_speed_rpm,"rpm")):"",
+      (appreq.minimum_speed_rpm!=null||appreq.maximum_speed_rpm!=null)?kv("Speed range", esc([appreq.minimum_speed_rpm,appreq.maximum_speed_rpm].filter(x=>x!=null).join(" … "))+" rpm"):"",
+      appreq.load_type?kv("Load type", nz(appreq.load_type)):"",
+      appreq.required_ip_rating?kv("Required IP", nz(appreq.required_ip_rating)):"",
+      appreq.required_hazardous_area_marking?kv("Required Ex marking", nz(appreq.required_hazardous_area_marking)):"",
+      appreq.duty_description?kv("Duty", nz(appreq.duty_description)):"",
+      appreq.notes?kv("Notes", nz(appreq.notes)):"",
+      appreq.review_status?kv("Review", assetStChip(appreq.review_status)):""
+    ]);
+  }
+
+  // 5 ── Installed nameplate (real unit reading) — distinct from the model
+  h+=`<h2 style="margin-top:16px">Installed nameplate</h2>`;
+  if(nplate){
+    const npMfr=nplate.manufacturer_id!=null?IDX.mfrById.get(nplate.manufacturer_id):null;
+    const npModel=nplate.model_id!=null?IDX.modelById.get(nplate.model_id):null;
+    h+=card([
+      npMfr?kv("Manufacturer", esc(npMfr.name)):"",
+      npModel?kv("Model", esc(npModel.model_code||"—")):"",
+      nplate.serial_number?kv("Serial", nz(nplate.serial_number)):"",
+      nplate.rated_power_kw!=null?kv("Rated power", fmtNum(nplate.rated_power_kw,"kW")):"",
+      nplate.rated_voltage_v!=null?kv("Rated voltage", fmtNum(nplate.rated_voltage_v,"V")):"",
+      nplate.rated_frequency_hz!=null?kv("Frequency", fmtNum(nplate.rated_frequency_hz,"Hz")):"",
+      nplate.rated_speed_rpm!=null?kv("Speed", fmtNum(nplate.rated_speed_rpm,"rpm")):"",
+      nplate.full_load_current_a!=null?kv("Full-load current", fmtNum(nplate.full_load_current_a,"A")):"",
+      nplate.efficiency_class?kv("Efficiency class", nz(nplate.efficiency_class)):"",
+      nplate.ip_rating?kv("IP rating", nz(nplate.ip_rating)):"",
+      nplate.frame_size?kv("Frame size", nz(nplate.frame_size)):"",
+      nplate.hazardous_area_marking?kv("Hazardous area", nz(nplate.hazardous_area_marking)):"",
+      nplate.certification_number?kv("Certificate", nz(nplate.certification_number)):"",
+      nplate.review_status?kv("Review", assetStChip(nplate.review_status)):""
+    ]);
+  } else {
+    h+=`<p class="note dim">No installed nameplate captured for this unit. The specifications above are OEM <b>model</b> data, not a reading of this unit's plate.</p>`;
+  }
+
+  // 6 ── Documents — model-level (shared by all units) + any unit-specific
+  const docRecs=[]; const seen=new Set();
+  const pushDocs=(arr,scope)=>{ (arr||[]).forEach(rec=>{ const key=rec.doc?("d"+rec.doc.id):("l"+rec.link.id); if(seen.has(key))return; seen.add(key); docRecs.push(Object.assign({scope},rec)); }); };
+  if(model) pushDocs(IDX.docsByModel.get(model.id),"MODEL");
+  pushDocs(IDX.docsByAsset.get(asset.id),"UNIT");
+  if(docRecs.length){
+    h+=`<h2 style="margin-top:16px">Documents <span class="dim" style="font-weight:400">(${docRecs.length})</span></h2>`;
+    h+=`<table class="data"><thead><tr><th>KIND</th><th>DOCUMENT</th><th>SCOPE</th></tr></thead><tbody>`+
+      docRecs.map(rec=>{ const d=rec.doc; const lt=rec.link.link_type||"";
+        const title=d?(d.title||("asset_doc #"+d.id)):("asset_doc #"+rec.link.asset_doc_id);
+        const url=d&&d.file_url?d.file_url:null;
+        const link = url
+          ? (/^https?:\/\//i.test(url)
+              ? `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(title)} ⧉</a>`
+              : `<a onclick="openStorage('plant-docs','${esc(url)}')" style="color:var(--blue);font-weight:600;text-decoration:none;cursor:pointer">${esc(title)} ⧉</a>`)
+          : esc(title);
+        return `<tr><td><span class="chip dim">${esc(lt)}</span></td><td>${link}${d&&d.manufacturer?` <span class="dim" style="font-size:10px">${esc(d.manufacturer)}${d.model?" · "+esc(d.model):""}</span>`:""}</td>`+
+               `<td><span class="chip ${rec.scope==="MODEL"?"info":"ok"}" title="${rec.scope==="MODEL"?"Applies to every unit of this model":"Specific to this unit"}">${rec.scope}</span></td></tr>`;
+      }).join("")+`</tbody></table>`;
+    if(model) h+=`<p class="note dim">Model-scoped documents are shared by every unit of ${esc(model.model_code||"this model")} — not duplicated per motor.</p>`;
+  } else {
+    h+=`<h2 style="margin-top:16px">Documents</h2><p class="note dim">No datasheet or certificate linked to this motor${model?" or its model":""} yet.</p>`;
+  }
+
+  $("#instBody").innerHTML=h;
+  $("#instOvl").classList.add("open");
+}
+window.openMotor=openMotor; window.openMotorLegacy=openMotorLegacy; window.openAssetTag=openAssetTag; window.renderMotorCard=renderMotorCard;
 
 /* ── change request modal ────────────────────────────────────── */
 const CR_FIELDS={
