@@ -371,7 +371,7 @@
 <div class="cmdbar">
   <div class="tcode">
     <label>TX</label>
-    <input id="tcode" placeholder="EI00 · EI25 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI10 <area> · EI20 <panel> · EI25 IO list · EI30 alarms · EI40 cross-check · EI41 missing set points · EI42 spare capacity · EI43 unattributed records · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · EI85 plant safety · EI90 engineering reports · DOC <doc_no> · TAG <tag> · SEARCH <text>">
+    <input id="tcode" placeholder="EI00 · EI25 · EI10 350 · TAG PT-3411.1" title="Transactions: EI00 home · EI05 plant structure · EI10 <area> · EI20 <panel> · EI25 IO list · EI30 alarms · EI40 cross-check · EI41 missing set points · EI42 spare capacity · EI43 unattributed records · EI44 data consistency · EI50 change requests · EI60 commissioning · EI70 drawings · EI80 documents · EI85 plant safety · EI90 engineering reports · DOC <doc_no> · TAG <tag> · SEARCH <text>">
   </div>
   <div class="crumbs" id="crumbs">…</div>
   <div class="gsearch"><input id="gsearch" placeholder="⌕ search all — e.g. 3333, suction, S221" list="taglist"><datalist id="taglist"></datalist></div>
@@ -483,7 +483,7 @@ const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), 
              eassetByAsset:new Map(), nameplateByAsset:new Map(), appreqByAsset:new Map(),
              aliasesByAsset:new Map(), drivesByAsset:new Map(), drivenByAsset:new Map(),
              docsByAsset:new Map(), docsByModel:new Map(),
-             // normalized read-view indices (v_*_ui cutover — see HANDOVER_UI_CUTOVER.md).
+             // [UI-CUTOVER] NEW — normalized read-view indices (v_*_ui cutover — see HANDOVER_UI_CUTOVER.md).
              // Built in buildUiIndexes(); guarded no-op when the views are empty so the
              // instrument/valve cards degrade to their legacy renderers.
              instUiByTag:new Map(), valveUiByTag:new Map(), ceByTag:new Map(), loopByField:new Map()};
@@ -889,14 +889,21 @@ async function boot(){
       fetchOpt("plant_asset_relationships"), fetchOpt("plant_document_links")
     ]);
     Object.assign(DB,{assets,aclasses,amotors,eassets,amodels,amfrs,mmspecs,mnspecs,mappreqs,aaliases,arels,dlinks});
-    // ── normalized read views (v_*_ui) — UI cutover (HANDOVER_UI_CUTOVER.md) ──
+    // [UI-CUTOVER] NEW ── normalized read views (v_*_ui) — UI cutover (HANDOVER_UI_CUTOVER.md) ──
     // Denormalized, anon-readable per-discipline read API. Loaded through fetchOpt
     // so a missing/blocked view yields [] and the affected card silently falls back
-    // to its legacy renderer instead of killing boot. Only the views that exist and
-    // map to a real detail card are loaded: instruments, valves, the cause-&-effect
-    // trace, and the loop trace (signal-path panel). v_mechanical_ui / v_electrical_ui
-    // do not exist yet, and the IO/alarm/safety/comms LIST pages keep their legacy
-    // data-quality sources (their grains do not match the _ui views) — see the handover.
+    // to its legacy renderer instead of killing boot. Only the views that back a
+    // real detail card are loaded EAGERLY: instruments, valves, the cause-&-effect
+    // trace, and the loop trace (signal-path panel).
+    // [DB-SYNC] EDIT — DB structure as of Phases 5–7 (2026-07-22): the database ALSO
+    // exposes v_io_ui, v_measuring_ui, v_control_ui, v_network_ui, v_safety_ui,
+    // v_asset_master, v_dashboard_rollup and plant_functional_locations (all anon-
+    // readable). The IO/alarm/safety/comms LIST pages intentionally stay on their
+    // legacy data-quality sources (their grains differ — see the handover); those
+    // views are lazy-loaded on demand by EI44 (data consistency) and EI05 (plant
+    // structure) instead of slowing boot. v_mechanical_ui / v_electrical_ui still
+    // do NOT exist — the equipment & electrical cards stay legacy until they do,
+    // and EI44 tracks that as migration attention.
     const [instUi,valveUi,ceTrace,loopTrace] = await Promise.all([
       fetchOpt("v_instrument_ui"), fetchOpt("v_valve_ui"),
       fetchOpt("v_cause_effect_trace"), fetchOpt("v_loop_trace")
@@ -977,10 +984,10 @@ function buildIndexes(){
   IDX.dsByTag.clear();
   DB.dsheets.forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.dsByTag.set(t,r); });
   buildAssetIndexes();
-  buildUiIndexes();
+  buildUiIndexes();   // [UI-CUTOVER] NEW call
 }
 
-// ── normalized read-view indices (v_*_ui cutover) ─────────────────────────────
+// [UI-CUTOVER] NEW ── normalized read-view indices (v_*_ui cutover) ─────────────
 // Key each read view by the tag/handle a card opens on. Guarded to no-ops when the
 // views are empty, so openInst() and friends keep falling back to the legacy path.
 // Kept separate from buildAssetIndexes() so the motor/asset registry is untouched.
@@ -1040,7 +1047,7 @@ function buildDatalist(){
   IDX.instByTag.forEach((_,t)=>tags.add(t)); IDX.valveByTag.forEach((_,t)=>tags.add(t));
   IDX.motorByTag.forEach((_,t)=>tags.add(t));
   IDX.assetByTag.forEach((_,t)=>tags.add(t)); IDX.aliasToAsset.forEach((_,t)=>tags.add(t));
-  IDX.ceByTag.forEach((_,t)=>tags.add(t));   // cause-&-effect function tags open the C&E card
+  IDX.ceByTag.forEach((_,t)=>tags.add(t));   // [UI-CUTOVER] NEW — cause-&-effect function tags open the C&E card
   dl.innerHTML=[...tags].sort().map(t=>`<option value="${esc(t)}">`).join("");
 }
 
@@ -1054,6 +1061,8 @@ function route(){
   else if(v==="alarms") ROUTE={view:"alarms"};
   else if(v==="iolist") ROUTE={view:"iolist"};
   else if(v==="xcheck") ROUTE={view:"xcheck"};
+  else if(v==="structure") ROUTE={view:"structure"};          // [DB-SYNC] NEW — EI05 plant structure (FLOC tree)
+  else if(v==="consistency") ROUTE={view:"consistency"};      // [DB-SYNC] NEW — EI44 data-consistency report
   else if(v==="setpoints") ROUTE={view:"setpoints"};
   else if(v==="spares") ROUTE={view:"spares"};
   else if(v==="unattrib") ROUTE={view:"unattrib"};
@@ -1074,7 +1083,8 @@ const openAreas = new Set();
 function buildTree(){
   const t=$("#tree");
   let html=`<div class="thead">PROCESS VIEW · TX EI00</div>
-  <div class="tnode root ${ROUTE.view==='home'?'sel':''}" onclick="nav('')"><span class="tw">■</span><span class="lbl">TENDRARA MICRO-LNG</span><span class="cnt">${DB.io.length} IO</span></div>`;
+  <div class="tnode root ${ROUTE.view==='home'?'sel':''}" onclick="nav('')"><span class="tw">■</span><span class="lbl">TENDRARA MICRO-LNG</span><span class="cnt">${DB.io.length} IO</span></div>
+  <div class="tnode ${ROUTE.view==='structure'?'sel':''}" onclick="nav('structure')"><span class="tw">⌂</span><span class="code">EI05</span><span class="lbl">Plant structure</span><span class="cnt">${(DB.assets||[]).length||""}</span></div>`;   // [DB-SYNC] NEW — FLOC hierarchy view
   const areaNode=(code)=>{
     if(!areaExists(code)) return "";
     const st=IDX.areaStations.get(code)||[];
@@ -1111,7 +1121,8 @@ function buildTree(){
   <div class="tnode ${ROUTE.view==='xcheck'?'sel':''}" onclick="nav('xcheck')"><span class="tw">▤</span><span class="code">EI40</span><span class="lbl">Cross-check IO ↔ index</span><span class="cnt" style="color:${dq.xcheck?"var(--fail)":"var(--ok)"}">${dq.xcheck||"✓"}</span></div>
   <div class="tnode ${ROUTE.view==='setpoints'?'sel':''}" onclick="nav('setpoints')"><span class="tw">▤</span><span class="code">EI41</span><span class="lbl">Missing set points</span><span class="cnt" style="color:${dq.setpoints?"var(--amber)":"var(--ok)"}">${dq.setpoints||"✓"}</span></div>
   <div class="tnode ${ROUTE.view==='spares'?'sel':''}" onclick="nav('spares')"><span class="tw">▤</span><span class="code">EI42</span><span class="lbl">Spare capacity per JB</span><span class="cnt" style="color:var(--blue)">${dq.spares}</span></div>
-  <div class="tnode ${ROUTE.view==='unattrib'?'sel':''}" onclick="nav('unattrib')"><span class="tw">▤</span><span class="code">EI43</span><span class="lbl">Unattributed records</span><span class="cnt" style="color:${dq.unattrib?"var(--amber)":"var(--ok)"}">${dq.unattrib||"✓"}</span></div>`;
+  <div class="tnode ${ROUTE.view==='unattrib'?'sel':''}" onclick="nav('unattrib')"><span class="tw">▤</span><span class="code">EI43</span><span class="lbl">Unattributed records</span><span class="cnt" style="color:${dq.unattrib?"var(--amber)":"var(--ok)"}">${dq.unattrib||"✓"}</span></div>
+  <div class="tnode ${ROUTE.view==='consistency'?'sel':''}" onclick="nav('consistency')"><span class="tw">▤</span><span class="code">EI44</span><span class="lbl">Data consistency</span><span class="cnt" style="color:${dq.consistency?"var(--fail)":"var(--ok)"}">${dq.consistency||"✓"}</span></div>`;   // [DB-SYNC] NEW — conflicts + migration attention
   t.innerHTML=html;
 }
 function toggleArea(code){
@@ -1131,6 +1142,8 @@ function render(){
   else if(ROUTE.view==="alarms") renderAlarms(c);
   else if(ROUTE.view==="iolist") renderIOList(c);
   else if(ROUTE.view==="xcheck") renderXcheck(c);
+  else if(ROUTE.view==="structure") renderStructure(c);       // [DB-SYNC] NEW
+  else if(ROUTE.view==="consistency") renderConsistency(c);   // [DB-SYNC] NEW
   else if(ROUTE.view==="setpoints") renderSetpoints(c);
   else if(ROUTE.view==="spares") renderSpares(c);
   else if(ROUTE.view==="unattrib") renderUnattributed(c);
@@ -1230,6 +1243,8 @@ function crumbs(){
   if(ROUTE.view==="alarms") h+=` › <b>ALARM REGISTER</b>`;
   if(ROUTE.view==="iolist") h+=` › <b>IO LIST</b>`;
   if(ROUTE.view==="xcheck") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>CROSS-CHECK</b>`;
+  if(ROUTE.view==="structure") h+=` › <b>PLANT STRUCTURE</b>`;                                            // [DB-SYNC] NEW
+  if(ROUTE.view==="consistency") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>DATA CONSISTENCY</b>`;   // [DB-SYNC] NEW
   if(ROUTE.view==="setpoints") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>MISSING SET POINTS</b>`;
   if(ROUTE.view==="spares") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>SPARE CAPACITY</b>`;
   if(ROUTE.view==="unattrib") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>UNATTRIBUTED RECORDS</b>`;
@@ -3089,7 +3104,12 @@ function dqCounts(){
   return (_dqCache={xcheck:findings.length+reverse.length,
           setpoints:missingSetpoints().length,
           spares:spareCapacity().spareTot,
-          unattrib:unattributedRecords().rows.length});
+          unattrib:unattributedRecords().rows.length,
+          // [DB-SYNC] NEW — EI44 chip: canonical conflicts + records still awaiting
+          // normalization (guarded: the gap only counts when the view actually loaded,
+          // otherwise an offline view would read as 1,404 "missing" instruments).
+          consistency:(DB.assets||[]).filter(a=>a.data_status==="CONFLICT").length
+                      +instMigrationGap().length+valveMigrationGap().length});
 }
 
 /* ══ EI41 — MISSING SET POINTS ═════════════════════════════════════════════════
@@ -3249,6 +3269,368 @@ function renderUnattributed(c){
   Affected activity types: <span class="mono">${byAct.map(a=>esc(a.replace(/_/g," "))).join(" · ")}</span>.`:""}</div>`;
 }
 
+/* ══ [DB-SYNC] NEW BLOCK ▼ (lazy view loader + EI44 data consistency + EI05 plant structure) ══
+   Added 2026-07-22 to bring the Navigator in line with the database structure after
+   Phases 5–7: the normalized model is complete DB-side (v_io_ui, v_measuring_ui,
+   v_control_ui, v_network_ui, v_safety_ui, v_asset_master, v_dashboard_rollup,
+   plant_functional_locations), but the UI had no page that (a) shows the FLOC plant
+   structure, or (b) judges the consistency of the data and marks what still needs
+   to be migrated. Everything below reads views/tables lazily (on first open, cached
+   in-session) so boot cost is unchanged. Nothing legacy was modified. */
+
+/* Lazy fetch with per-session cache. Missing view/table → [] (fetchOpt), never throws. */
+const LAZY=new Map();
+async function lazyViews(names){
+  const missing=names.filter(n=>!LAZY.has(n));
+  if(missing.length){
+    const res=await Promise.all(missing.map(n=>fetchOpt(n)));
+    missing.forEach((n,i)=>LAZY.set(n,res[i]));
+  }
+  const o={}; names.forEach(n=>o[n]=LAZY.get(n)); return o;
+}
+/* HEAD-only existence/count probe — tells "view absent" apart from "view empty",
+   which is exactly the difference between VIEW MISSING and PENDING CUTOVER. */
+async function probeView(v){
+  try{ const {count,error}=await sb.from(v).select("*",{count:"exact",head:true});
+       return error?{view:v,exists:false,rows:0}:{view:v,exists:true,rows:count||0}; }
+  catch(e){ return {view:v,exists:false,rows:0}; }
+}
+
+/* ── consistency engines (pure: read DB/IDX, return data) ── */
+/* Legacy instrument-index rows with no normalized v_instrument_ui row → still to be
+   migrated (plant_assets + plant_instrument_assets). Guarded: an unloaded view must
+   not read as "everything is missing". */
+function instMigrationGap(){
+  if(!IDX.instUiByTag.size) return [];
+  return DB.inst.filter(r=>r.tag&&!IDX.instUiByTag.has(r.tag.trim()));
+}
+function valveMigrationGap(){
+  if(!IDX.valveUiByTag.size) return [];
+  return DB.valves.filter(r=>r.tag&&!IDX.valveUiByTag.has(r.tag.trim()));
+}
+/* C&E rows whose initiator never resolved to a promoted asset (Phase 6 kept them raw). */
+function ceUnresolvedInitiators(){
+  const seen=new Map();
+  (DB.ceTrace||[]).forEach(r=>{
+    if(!r.initiator_tag&&r.unresolved_initiator&&!seen.has(r.ce_tag+"|"+r.unresolved_initiator))
+      seen.set(r.ce_tag+"|"+r.unresolved_initiator,r);
+  });
+  return [...seen.values()];
+}
+const MIG_CHIP='<span class="chip crimson">MIGRATE</span>';
+
+/* ══ EI44 — DATA CONSISTENCY REPORT ════════════════════════════════════════════
+   One page that EXCLUSIVELY judges the data: where sources disagree (CONFLICT),
+   what is still legacy-only (migration attention), what has no provenance, and
+   where cross-source reconciliations fail. Numbers are computed live from the
+   same rows the rest of the Navigator reads — never hardcoded. */
+function renderConsistency(c){
+  c.innerHTML=`<div class="kicker">TX EI44 <span class="sub">· DATA QUALITY CHECK · DATA CONSISTENCY & MIGRATION ATTENTION</span></div>
+  <h1>Data consistency report</h1>
+  <div class="empty">Loading normalized model, provenance and reconciliation views…</div>`;
+  const wired={v_instrument_ui:"Instrument card",v_valve_ui:"Valve card",v_cause_effect_trace:"C&E card",v_loop_trace:"Signal-path panel"};
+  const pending={v_io_ui:"IO list (EI25)",v_measuring_ui:"Alarms / set points (EI30·EI41)",v_control_ui:"Stations & JBs (EI20)",v_network_ui:"Comms / network (EI60)",v_safety_ui:"Plant safety (EI85)"};
+  const missing={v_mechanical_ui:"Equipment card",v_electrical_ui:"Motor / electrical card"};
+  Promise.all([
+    lazyViews(["v_asset_master","v_datasheet_conflicts","v_alarm_io_gaps","v_io_tag_gaps","v_pid_orphans","v_dashboard_rollup"]),
+    Promise.all(Object.keys({...wired,...pending,...missing}).map(probeView))
+  ]).then(([V,probes])=>{
+    if(ROUTE.view!=="consistency") return;   // user navigated away while loading
+    const am=V.v_asset_master||[];
+    const pb=new Map(probes.map(p=>[p.view,p]));
+    const st=s=>am.filter(a=>a.data_status===s);
+    const conflicts=st("CONFLICT"), review=st("NEEDS_REVIEW"), verified=st("VERIFIED");
+    const instGap=instMigrationGap(), valveGap=valveMigrationGap();
+    const noSrc=am.filter(a=>!a.n_sources);
+    const ceUnres=ceUnresolvedInitiators();
+    const dsConf=V.v_datasheet_conflicts||[], aiog=V.v_alarm_io_gaps||[], iogap=V.v_io_tag_gaps||[], pidorph=V.v_pid_orphans||[];
+    const ioNoAlm=aiog.filter(g=>g.gap_type==="io_no_alarm"), almNoIo=aiog.filter(g=>g.gap_type==="alarm_no_io");
+    const migCount=instGap.length+valveGap.length+Object.keys(missing).filter(v=>!(pb.get(v)||{}).exists).length;
+    const tagCell=t=>`<span class="tag" onclick="event.stopPropagation();openAssetTag('${esc((t||"").trim())}')">${esc(t||"—")}</span>`;
+
+    /* cutover matrix rows — status derived LIVE from the probes, so if someone
+       creates v_mechanical_ui tomorrow this row flips on its own. */
+    const matrix=[
+      ...Object.entries(wired).map(([v,use])=>({v,use,st:"WIRED",rows:(pb.get(v)||{}).rows})),
+      ...Object.entries(pending).map(([v,use])=>({v,use,st:(pb.get(v)||{}).exists?"PENDING":"ABSENT",rows:(pb.get(v)||{}).rows})),
+      ...Object.entries(missing).map(([v,use])=>({v,use,st:(pb.get(v)||{}).exists?"PENDING":"ABSENT",rows:(pb.get(v)||{}).rows}))
+    ];
+    const stChip=s=>s==="WIRED"?'<span class="chip ok">WIRED ✓</span>'
+      :s==="PENDING"?'<span class="chip warn">PENDING CUTOVER</span>'
+      :'<span class="chip fail">VIEW MISSING — DB WORK</span>';
+
+    /* NEEDS_REVIEW backlog matrix: area × discipline (verification cadence driver) */
+    const discs=["MECHANICAL","ELECTRICAL","INSTRUMENTATION","CONTROL","SAFETY"];
+    const byArea=new Map();
+    review.forEach(a=>{ const k=String(a.area_code||"—");
+      if(!byArea.has(k)) byArea.set(k,{area:k,tot:0}); const e=byArea.get(k);
+      e[a.discipline]=(e[a.discipline]||0)+1; e.tot++; });
+    const areaRows=[...byArea.values()].sort((a,b)=>b.tot-a.tot);
+
+    c.innerHTML=`
+    <div class="kicker">TX EI44 <span class="sub">· DATA QUALITY CHECK · DATA CONSISTENCY & MIGRATION ATTENTION</span></div>
+    <h1>Data consistency report</h1>
+    <p class="lead">Judges the <b>canonical asset model</b> (${am.length} assets) and its agreement with the legacy
+    engineering lists. Four questions: where do sources <b>disagree</b>, what still <b>needs to be migrated</b>,
+    what has <b>no provenance</b>, and which cross-source <b>reconciliations fail</b>. Everything is computed live —
+    open a tag to fix it, raise a CR from the card, and the numbers here follow.</p>
+    <div class="facts">
+      <div class="fact"><div class="n">${am.length}</div><div class="l">CANONICAL ASSETS</div></div>
+      <div class="fact"><div class="n" style="color:var(--ok)">${verified.length}</div><div class="l">VERIFIED</div></div>
+      <div class="fact"><div class="n" style="color:var(--amber)">${review.length}</div><div class="l">NEEDS REVIEW</div></div>
+      <div class="fact"><div class="n" style="color:var(--fail)">${conflicts.length}</div><div class="l">CONFLICTS — FIX FIRST</div></div>
+      <div class="fact"><div class="n" style="color:var(--crimson)">${migCount}</div><div class="l">MIGRATION ATTENTION</div></div>
+      <div class="fact"><div class="n" style="color:var(--blue)">${noSrc.length}</div><div class="l">NO SOURCE LINK</div></div>
+      <div class="fact"><div class="n">${am.length?Math.round(verified.length/am.length*100):0}%</div><div class="l">VERIFIED SHARE</div></div>
+    </div>
+
+    <h2>1 · Conflicts — two sources disagree about the same asset (${conflicts.length})</h2>
+    <p class="lead" style="margin-top:-4px">The highest-value fixes in the whole database. Open the card, read the
+    conflicting values, decide, and raise a change request so the fix carries a reviewer.</p>
+    ${conflicts.length?dataTable("dc-conflicts","VERIFY","CONFLICT assets — fix first",[
+      {label:"TAG", get:r=>r.tag, html:(r,v)=>tagCell(v)},
+      {label:"CLASS", get:r=>r.class_code, cls:"mono dim"},
+      {label:"DISCIPLINE", get:r=>r.discipline, cls:"mono"},
+      {label:"AREA", get:r=>r.area_code, cls:"mono", html:(r,v)=>v?`<a onclick="nav('area/${esc(String(v))}')" style="cursor:pointer;color:var(--blue)" class="mono">${esc(String(v))}</a>`:"—"},
+      {label:"FLOC", get:r=>r.floc_code, cls:"mono dim"},
+      {label:"SOURCES", get:r=>r.n_sources, cls:"mono", num:true},
+      {label:"STATUS", get:r=>r.data_status, html:r=>assetStChip(r.data_status)}
+    ],conflicts,{sort:2,dir:1,sheet:"Conflicts"}):`<div class="empty">No conflicts — every asset's sources agree. ✓</div>`}
+
+    <h2 style="margin-top:18px">2 · Migration attention — what still needs to be migrated (${migCount})</h2>
+    <p class="lead" style="margin-top:-4px">The normalized model is the target structure; these are the pieces not
+    living in it yet. Marked ${MIG_CHIP} where records must be promoted, <span class="chip warn">PENDING CUTOVER</span>
+    where the DB is ready but this UI still reads legacy, <span class="chip fail">VIEW MISSING</span> where the
+    database itself lacks the read view.</p>
+    <h2 style="font-size:13px">2.1 · Read-view cutover matrix (DB structure vs what this UI reads)</h2>
+    <table class="data"><thead><tr><th>READ VIEW</th><th>CONSUMER</th><th>ROWS IN DB</th><th>STATUS</th></tr></thead><tbody>
+      ${matrix.map(m=>`<tr><td class="mono">${esc(m.v)}</td><td>${esc(m.use)}</td>
+        <td class="mono">${m.rows!=null&&(pb.get(m.v)||{}).exists?m.rows:"—"}</td><td>${stChip(m.st)}</td></tr>`).join("")}
+    </tbody></table>
+    <div class="note">PENDING CUTOVER is intentional for the list pages — their legacy data-quality grains
+    (EI25/EI30/EI40) differ from the _ui views, so re-sourcing them is a separate effort, not a card-style cutover.
+    The two MISSING views are database work: build <span class="mono">v_mechanical_ui</span> /
+    <span class="mono">v_electrical_ui</span> mirroring <span class="mono">v_instrument_ui</span>, then cut the
+    equipment and electrical cards over (the typed extensions <span class="mono">plant_mechanical_assets</span> /
+    <span class="mono">plant_electrical_assets</span> are already populated).</div>
+
+    <h2 style="font-size:13px;margin-top:14px">2.2 · Instruments still legacy-only (${instGap.length}) ${instGap.length?MIG_CHIP:""}</h2>
+    ${instGap.length?dataTable("dc-instgap","INST","Instrument index rows with no normalized asset",[
+      {label:"TAG", get:r=>r.tag, html:(r,v)=>tagCell(v)},
+      {label:"TYPE", get:r=>r.instrument_type, cls:"mono dim"},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"JB", get:r=>r.junction_box, cls:"mono"},
+      {label:"SYSTEM", get:r=>r.system, cls:"mono"},
+      {label:"AREA", get:r=>r.unit, cls:"mono"},
+      {label:"MARK", get:()=>"MIGRATE", html:()=>MIG_CHIP}
+    ],instGap,{sort:0,dir:1,sheet:"Instruments to migrate"}):`<div class="empty">Every instrument-index row has a normalized asset. ✓</div>`}
+    ${instGap.length?`<div class="note">These need <span class="mono">plant_assets</span> +
+    <span class="mono">plant_instrument_assets</span> rows. They cluster in non-transmitter sub-tags
+    (analyzer elements, gauges, switches) — e.g. an AE element whose AT transmitter is already normalized.</div>`:""}
+
+    <h2 style="font-size:13px;margin-top:14px">2.3 · Valves still legacy-only (${valveGap.length}) ${valveGap.length?MIG_CHIP:""}</h2>
+    ${valveGap.length?dataTable("dc-valvegap","VLV","Valve index rows with no normalized asset",[
+      {label:"TAG", get:r=>r.tag, html:(r,v)=>tagCell(v)},
+      {label:"TYPE", get:r=>r.instrument_type, cls:"mono dim"},
+      {label:"SERVICE", get:r=>r.service, cls:"dim"},
+      {label:"AREA", get:r=>r.unit, cls:"mono"},
+      {label:"MARK", get:()=>"MIGRATE", html:()=>MIG_CHIP}
+    ],valveGap,{sort:0,dir:1,sheet:"Valves to migrate"}):`<div class="empty">Every valve-index row has a normalized asset. ✓</div>`}
+
+    <h2 style="font-size:13px;margin-top:14px">2.4 · Cause &amp; effect initiators not yet resolved (${ceUnres.length}) ${ceUnres.length?MIG_CHIP:""}</h2>
+    ${ceUnres.length?`<table class="data"><thead><tr><th>C&E FUNCTION</th><th>RAW INITIATOR</th><th>STATUS</th><th>WHY</th></tr></thead><tbody>
+      ${ceUnres.map(r=>`<tr><td class="mono"><span class="tag" onclick="openCE('${esc(r.ce_tag)}')">${esc(r.ce_tag)}</span></td>
+        <td class="mono">${esc(r.unresolved_initiator||"")}</td><td><span class="chip warn">UNRESOLVED</span></td>
+        <td class="dim">level/pressure switch not promoted in Phase 3 — promote the switch, the initiator resolves</td></tr>`).join("")}
+    </tbody></table>`:`<div class="empty">Every C&E initiator resolves to a promoted asset. ✓</div>`}
+
+    <h2 style="margin-top:18px">3 · Provenance — assets with no source link (${noSrc.length})</h2>
+    <p class="lead" style="margin-top:-4px">Every canonical asset should trace to at least one engineering source
+    (<span class="mono">plant_data_sources</span>). These do not — the value may be right, but nothing proves where it came from.</p>
+    ${noSrc.length?dataTable("dc-nosrc","DWG","Assets without provenance",[
+      {label:"TAG", get:r=>r.tag, html:(r,v)=>tagCell(v)},
+      {label:"CLASS", get:r=>r.class_code, cls:"mono dim"},
+      {label:"DISCIPLINE", get:r=>r.discipline, cls:"mono"},
+      {label:"AREA", get:r=>r.area_code, cls:"mono"},
+      {label:"STATUS", get:r=>r.data_status, html:r=>assetStChip(r.data_status)}
+    ],noSrc,{sort:2,dir:1,sheet:"No provenance",collapsed:true}):`<div class="empty">Every asset carries provenance. ✓</div>`}
+
+    <h2 style="margin-top:18px">4 · Cross-source reconciliation failures</h2>
+    <table class="data"><thead><tr><th>CHECK</th><th>FINDINGS</th><th>MEANING</th><th>WHERE TO WORK IT</th></tr></thead><tbody>
+      <tr><td>Datasheet vs index values</td><td class="mono" style="color:${dsConf.length?"var(--fail)":"var(--ok)"}">${dsConf.length}</td>
+        <td class="dim">same tag, same field, different value per source</td><td class="mono">below</td></tr>
+      <tr><td>IO channel with no alarm record</td><td class="mono" style="color:${ioNoAlm.length?"var(--amber)":"var(--ok)"}">${ioNoAlm.length}</td>
+        <td class="dim">alarm-typed channel absent from the alarm register</td><td><a onclick="nav('alarms')" style="cursor:pointer;color:var(--blue)">EI30</a></td></tr>
+      <tr><td>Alarm with no IO channel</td><td class="mono" style="color:${almNoIo.length?"var(--amber)":"var(--ok)"}">${almNoIo.length}</td>
+        <td class="dim">registered alarm never lands on a channel</td><td><a onclick="nav('alarms')" style="cursor:pointer;color:var(--blue)">EI30</a></td></tr>
+      <tr><td>IO tag not in instrument/valve index</td><td class="mono" style="color:${iogap.length?"var(--fail)":"var(--ok)"}">${iogap.length}</td>
+        <td class="dim">wired channel whose tag the index does not know</td><td><a onclick="nav('xcheck')" style="cursor:pointer;color:var(--blue)">EI40</a></td></tr>
+      <tr><td>Alarms without a set point</td><td class="mono" style="color:${missingSetpoints().length?"var(--amber)":"var(--ok)"}">${missingSetpoints().length}</td>
+        <td class="dim">trip value still in C&E / vendor docs</td><td><a onclick="nav('setpoints')" style="cursor:pointer;color:var(--blue)">EI41</a></td></tr>
+      <tr><td>P&amp;ID references that resolve to no drawing</td><td class="mono" style="color:${pidorph.length?"var(--amber)":"var(--ok)"}">${pidorph.length}</td>
+        <td class="dim">index rows citing a P&amp;ID absent from the register</td><td><a onclick="nav('drawings')" style="cursor:pointer;color:var(--blue)">EI70</a></td></tr>
+    </tbody></table>
+    ${dsConf.length?`<h2 style="font-size:13px;margin-top:14px">4.1 · Datasheet conflicts (${dsConf.length})</h2>
+    <table class="data"><thead><tr><th>TAG</th><th>FIELD</th><th>VALUES</th><th>MIN</th><th>MAX</th><th>Δ%</th></tr></thead><tbody>
+      ${dsConf.map(r=>`<tr><td class="mono">${tagCell(r.tag)}</td><td class="mono">${esc(r.field||"")}</td>
+        <td class="mono dim">${esc(String(r.distinct_values??""))}</td><td class="mono">${nz(r.min_val)}</td>
+        <td class="mono">${nz(r.max_val)}</td><td class="mono" style="color:var(--fail)">${nz(r.pct_diff)}</td></tr>`).join("")}
+    </tbody></table>`:""}
+    ${pidorph.length?`<h2 style="font-size:13px;margin-top:14px">4.2 · P&amp;ID orphans (${pidorph.length})</h2>
+    <table class="data"><thead><tr><th>REFERENCED P&amp;ID</th><th>ISSUE</th></tr></thead><tbody>
+      ${pidorph.map(r=>`<tr><td class="mono">${esc(r.referenced_pid||"")}</td><td class="dim">${esc(r.issue||"")}</td></tr>`).join("")}
+    </tbody></table>`:""}
+
+    <h2 style="margin-top:18px">5 · Review backlog by area (${review.length} records NEEDS_REVIEW)</h2>
+    <p class="lead" style="margin-top:-4px">The verification cadence driver — work one area top-to-bottom
+    (equipment → instruments/valves → IO → C&amp;E) and mark records VERIFIED as you clear them. An area is done
+    when this row reads zero.</p>
+    <table class="data"><thead><tr><th>AREA</th><th></th>${discs.map(d=>`<th>${d.slice(0,4)}</th>`).join("")}<th>TOTAL</th></tr></thead><tbody>
+      ${areaRows.map(e=>`<tr>
+        <td class="mono"><a onclick="nav('area/${esc(e.area)}')" style="cursor:pointer;color:var(--blue)">${esc(e.area)}</a></td>
+        <td class="dim">${esc(areaName(e.area))}</td>
+        ${discs.map(d=>`<td class="mono ${e[d]?"":"dim"}">${e[d]||"·"}</td>`).join("")}
+        <td class="mono" style="font-weight:700">${e.tot}</td></tr>`).join("")}
+    </tbody></table>
+    <div class="note">Marks used on this page — <span class="chip fail">CONFLICT</span> fix first ·
+    ${MIG_CHIP} record must be promoted into the normalized model ·
+    <span class="chip warn">PENDING CUTOVER</span> DB ready, UI still legacy ·
+    <span class="chip fail">VIEW MISSING</span> database work needed ·
+    <span class="chip warn">NEEDS_REVIEW</span> awaiting field/datasheet verification. Sources:
+    <span class="mono">v_asset_master · v_dashboard_rollup · v_datasheet_conflicts · v_alarm_io_gaps ·
+    v_io_tag_gaps · v_pid_orphans · v_instrument_ui · v_valve_ui · v_cause_effect_trace</span> — all live.</div>`;
+  }).catch(e=>{
+    if(ROUTE.view!=="consistency") return;
+    c.innerHTML=`<div class="empty">Could not load the consistency views.<br><span class="mono">${esc(e.message)}</span></div>`;
+  });
+}
+
+/* ══ EI05 — PLANT STRUCTURE (FLOC hierarchy) ═══════════════════════════════════
+   The SAP-style structural spine the whole normalized model hangs on:
+   PLANT → AREA → SKID → assets (plant_functional_locations + plant_assets.
+   installed_at_floc_id). This is the "plants structure in one place" view —
+   every level shows its verification state so the top-down finishing plan
+   (handover Part 3) can be walked visually. */
+function renderStructure(c){
+  c.innerHTML=`<div class="kicker">TX EI05 <span class="sub">· PLANT STRUCTURE · FUNCTIONAL LOCATIONS</span></div>
+  <h1>Plant structure</h1>
+  <div class="empty">Loading functional-location hierarchy…</div>`;
+  lazyViews(["plant_functional_locations"]).then(V=>{
+    if(ROUTE.view!=="structure") return;
+    const flocs=V.plant_functional_locations||[];
+    if(!flocs.length){ c.innerHTML=`<div class="empty">plant_functional_locations is empty or unreadable — run the Phase-0 backfill.</div>`; return; }
+    const byId=new Map(flocs.map(f=>[f.id,f]));
+    const kids=new Map();
+    flocs.forEach(f=>{ if(f.parent_id!=null){ if(!kids.has(f.parent_id)) kids.set(f.parent_id,[]); kids.get(f.parent_id).push(f); } });
+    const assetsByFloc=new Map();
+    (DB.assets||[]).forEach(a=>{ const k=a.installed_at_floc_id;
+      if(k==null) return; if(!assetsByFloc.has(k)) assetsByFloc.set(k,[]); assetsByFloc.get(k).push(a); });
+    const discOf=a=>{ const cl=IDX.aclassById.get(a.asset_class_id); return (cl&&cl.discipline)||"—"; };
+    /* rollup = own assets + all descendants' (areas report their skids too) */
+    const roll=f=>{
+      const own=assetsByFloc.get(f.id)||[];
+      const sub=(kids.get(f.id)||[]).map(roll);
+      const tot={n:own.length, ok:own.filter(a=>a.data_status==="VERIFIED").length,
+                 nr:own.filter(a=>a.data_status==="NEEDS_REVIEW").length,
+                 cf:own.filter(a=>a.data_status==="CONFLICT").length};
+      sub.forEach(s=>{tot.n+=s.n;tot.ok+=s.ok;tot.nr+=s.nr;tot.cf+=s.cf;});
+      return tot;
+    };
+    const miniChips=t=>`<span class="chip ok" title="verified">${t.ok}</span> <span class="chip warn" title="needs review">${t.nr}</span>${t.cf?` <span class="chip fail" title="conflict">${t.cf}</span>`:""}`;
+    /* class groups inside a node — IO channels & network links are structural noise
+       at this zoom (1,354 of them) so they stay a counted line, not a tag cloud. */
+    const NOLIST=new Set(["IO_CHANNEL","NETWORK_LINK"]);
+    const CAP=150;
+    const assetGroups=fid=>{
+      const own=assetsByFloc.get(fid)||[];
+      if(!own.length) return "";
+      const byClass=new Map();
+      own.forEach(a=>{ const cl=IDX.aclassById.get(a.asset_class_id); const k=(cl&&cl.code)||"—";
+        if(!byClass.has(k)) byClass.set(k,[]); byClass.get(k).push(a); });
+      return [...byClass.entries()].sort((x,y)=>y[1].length-x[1].length).map(([cls,rows])=>{
+        const disc=discOf(rows[0]);
+        const head=`<span class="mono" style="font-size:10.5px;font-weight:700">${esc(cls)}</span>
+          <span class="dim" style="font-size:10px">· ${esc(disc)} · ${rows.length}</span>
+          <span style="margin-left:6px">${miniChips({ok:rows.filter(a=>a.data_status==="VERIFIED").length,
+            nr:rows.filter(a=>a.data_status==="NEEDS_REVIEW").length,
+            cf:rows.filter(a=>a.data_status==="CONFLICT").length})}</span>`;
+        if(NOLIST.has(cls)) return `<div style="padding:3px 0 3px 14px">${head}
+          <span class="dim" style="font-size:10px">— listed per station (EI20/EI25), not here</span></div>`;
+        const shown=rows.slice(0,CAP);
+        return `<details style="padding:2px 0 2px 14px"><summary style="cursor:pointer;list-style-position:outside">${head}</summary>
+          <div style="padding:6px 0 4px 12px;line-height:2">
+            ${shown.map(a=>`<span class="tag" style="margin-right:6px${a.data_status==="CONFLICT"?";color:var(--fail)":""}"
+              onclick="openAssetTag('${esc(a.official_tag)}')" title="${esc(a.data_status||"")}${a.service?" · "+esc(a.service):""}">${esc(a.official_tag)}</span>`).join("")}
+            ${rows.length>CAP?`<span class="dim" style="font-size:10.5px">… +${rows.length-CAP} more (use search / the area lists)</span>`:""}
+          </div></details>`;
+      }).join("");
+    };
+    const skidNode=s=>{
+      const t=roll(s);
+      return `<details style="margin:2px 0 2px 18px;border-left:1px solid var(--line);padding-left:10px">
+        <summary style="cursor:pointer"><span class="mono" style="font-weight:700">${esc(s.floc_code)}</span>
+          <span class="dim">${esc(s.name||"")}</span> <span class="mono dim" style="font-size:10px">SKID · ${t.n} assets</span>
+          ${t.n?miniChips(t):""}</summary>
+        ${assetGroups(s.id)||'<div class="dim" style="padding:4px 0 4px 14px;font-size:11px">No assets installed at this skid FLOC yet.</div>'}
+      </details>`;
+    };
+    const areaNode=f=>{
+      const t=roll(f);
+      const code=String(f.area_code||f.floc_code.replace(/^TAM-/,""));
+      const sk=(kids.get(f.id)||[]).filter(k=>k.level_kind==="SKID").sort((a,b)=>a.floc_code.localeCompare(b.floc_code));
+      return `<details style="margin:4px 0;border:1px solid var(--line);border-radius:4px;padding:6px 10px" ${t.cf?"open":""}>
+        <summary style="cursor:pointer">
+          <span class="mono" style="color:var(--crimson);font-weight:700">${esc(f.floc_code)}</span>
+          <b style="margin-left:4px">${esc(f.name||areaName(code))}</b>
+          <span class="mono dim" style="font-size:10px;margin-left:6px">${f.level_kind==="AREA"?"AREA "+esc(code):esc(f.level_kind)} · ${sk.length?sk.length+" skids · ":""}${t.n} assets</span>
+          <span style="margin-left:8px">${miniChips(t)}</span>
+          <a onclick="event.preventDefault();event.stopPropagation();nav('area/${esc(code)}')" style="cursor:pointer;color:var(--blue);font-size:11px;margin-left:10px">open area →</a>
+        </summary>
+        <div style="margin-top:6px">
+          ${sk.map(skidNode).join("")}
+          ${assetGroups(f.id)}
+          ${!sk.length&&!(assetsByFloc.get(f.id)||[]).length?'<div class="dim" style="padding:4px 0;font-size:11px">Nothing installed directly at this level.</div>':""}
+        </div>
+      </details>`;
+    };
+    const plant=flocs.find(f=>f.level_kind==="PLANT");
+    const areas=flocs.filter(f=>f.level_kind==="AREA");
+    const others=flocs.filter(f=>f.parent_id===(plant&&plant.id)&&f.level_kind!=="AREA"&&f.level_kind!=="PLANT");
+    const ord=c2=>{ const i=PROC_ORDER.indexOf(String(c2)); if(i>=0) return i;
+      const j=UTIL_ORDER.indexOf(String(c2)); return j>=0?100+j:200; };
+    areas.sort((a,b)=>ord(a.area_code)-ord(b.area_code)||String(a.area_code).localeCompare(String(b.area_code)));
+    const T=plant?roll(plant):{n:0,ok:0,nr:0,cf:0};
+    const skTot=flocs.filter(f=>f.level_kind==="SKID").length;
+    c.innerHTML=`
+    <div class="kicker">TX EI05 <span class="sub">· PLANT STRUCTURE · plant_functional_locations + plant_assets</span></div>
+    <h1>Plant structure</h1>
+    <p class="lead">The functional-location spine of the normalized model: <b>PLANT → AREA → SKID → asset</b>.
+    Every asset points at exactly one FLOC (<span class="mono">installed_at_floc_id</span>), so this tree IS the
+    plant as the database understands it. Chips show the verification state rolled up per node —
+    <span class="chip ok">verified</span> <span class="chip warn">needs review</span> <span class="chip fail">conflict</span>.
+    Areas with a conflict open pre-expanded.</p>
+    <div class="facts">
+      <div class="fact"><div class="n">1</div><div class="l">PLANT</div></div>
+      <div class="fact"><div class="n">${areas.length}</div><div class="l">AREAS / UNITS</div></div>
+      <div class="fact"><div class="n">${skTot}</div><div class="l">SKIDS & PACKAGES</div></div>
+      <div class="fact"><div class="n">${T.n}</div><div class="l">ASSETS PLACED</div></div>
+      <div class="fact"><div class="n" style="color:var(--ok)">${T.ok}</div><div class="l">VERIFIED</div></div>
+      <div class="fact"><div class="n" style="color:var(--amber)">${T.nr}</div><div class="l">NEEDS REVIEW</div></div>
+      <div class="fact"><div class="n" style="color:${T.cf?"var(--fail)":"var(--ok)"}">${T.cf}</div><div class="l">CONFLICTS</div></div>
+    </div>
+    ${plant?`<div class="note"><span class="mono" style="font-weight:700">${esc(plant.floc_code)}</span> — ${esc(plant.name||"")}
+      · structure and verification chips are live from the database; see <a onclick="nav('consistency')" style="cursor:pointer;color:var(--blue)">EI44</a>
+      for what the chips mean and what still needs migrating.</div>`:""}
+    ${areas.map(areaNode).join("")}
+    ${others.length?`<h2 style="margin-top:14px">Other top-level locations</h2>${others.map(areaNode).join("")}`:""}`;
+  }).catch(e=>{
+    if(ROUTE.view!=="structure") return;
+    c.innerHTML=`<div class="empty">Could not load the plant structure.<br><span class="mono">${esc(e.message)}</span></div>`;
+  });
+}
+window.renderConsistency=renderConsistency; window.renderStructure=renderStructure;
+/* ══ [DB-SYNC] NEW BLOCK ▲ end ══ */
+
 /* ── global search results (EI70 / gsearch) ──────────────────── */
 function searchAll(q){
   const s=q.toLowerCase(); const out=[]; const seen=new Set();
@@ -3293,7 +3675,7 @@ function searchAll(q){
     const sp=dwgPath(d.doc_no);
     if((idL+" "+ttlL).includes(s)) push("DRAWING","crimson",d.doc_no,d.title,d.area_code,d.pid_no,
       sp?`openStorage('${esc(sp.bucket)}','${esc(sp.path)}')`:`nav('drawings')`, idL.includes(s)?0:1,"");});
-  IDX.ceByTag.forEach((rows,ceTag)=>{ const tagL=ceTag.toLowerCase();
+  IDX.ceByTag.forEach((rows,ceTag)=>{ const tagL=ceTag.toLowerCase();   // [UI-CUTOVER] NEW — C&E functions searchable
     const hay=(tagL+" "+rows.map(r=>(r.cause_tag||"")+" "+(r.effect_tag||"")+" "+(r.cause_description||"")).join(" ")).toLowerCase();
     if(hay.includes(s)) push("CAUSE & EFFECT","crimson",ceTag,rows[0].cause_description||"cause & effect function",
       rows[0].area_code,rows.length+" trace(s)",`openCE('${esc(ceTag)}')`, tagL.includes(s)?0:2,"");});
@@ -3602,6 +3984,7 @@ function renderDrawings(c){
 }
 
 /* ── instrument detail ───────────────────────────────────────── */
+// [UI-CUTOVER] NEW BLOCK ▼ (openInst wrapper + renderInstCardNorm + loopPanelHtml + openCE) ────
 // ── instrument / valve card — normalized read views (v_instrument_ui / v_valve_ui) ──
 // Normalized-first entry point (HANDOVER_UI_CUTOVER.md §5). Prefer the denormalized
 // read view; a tag with no view row — or when the views failed to load — falls straight
@@ -3754,7 +4137,11 @@ function openCE(ceTag){
   hydrateDocRefs($("#instBody"));
 }
 window.openCE=openCE;
+// [UI-CUTOVER] NEW BLOCK ▲ end
 
+// [UI-CUTOVER] RENAMED — this was `openInst` before the cutover; body UNCHANGED except the
+// downstream half is now the shared instDownstreamHtml()/instFinalizeCard() helpers, and a
+// loopPanelHtml() line was added. It is the legacy fallback for tags not in the views.
 function openInstLegacy(tag){
   tag=(tag||"").trim(); if(!tag) return;
   const inst=IDX.instByTag.get(tag), vlv=IDX.valveByTag.get(tag);
@@ -3803,6 +4190,7 @@ function openInstLegacy(tag){
   instFinalizeCard(tag, h);
 }
 
+// [UI-CUTOVER] REFACTOR (extracted verbatim from the old openInst) ────────────────
 // Shared lower half of the instrument/valve card — datasheet panel, IO channel
 // assignment + cross-check, document references, alarms, change history and the
 // verify / change-request toolrow. Everything here is keyed by TAG, so it is
@@ -4157,7 +4545,7 @@ function openAssetTag(tag){
   if(IDX.motorByTag.has(tag)) return openMotorLegacy(tag);
   if((DB.equip||[]).some(x=>(x.tag||"").trim()===tag)) return openEquip(tag);
   if(IDX.instByTag.has(tag)||IDX.valveByTag.has(tag)||IDX.instUiByTag.has(tag)||IDX.valveUiByTag.has(tag)) return openInst(tag);
-  if(IDX.ceByTag.has(tag)) return openCE(tag);
+  if(IDX.ceByTag.has(tag)) return openCE(tag);   // [UI-CUTOVER] NEW — route C&E function tags
   return status("No detail view for "+tag,"");
 }
 
@@ -4397,6 +4785,8 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="EI41") nav("setpoints");
   else if(cmd==="EI42") nav("spares");
   else if(cmd==="EI43") nav("unattrib");
+  else if(cmd==="EI44") nav("consistency");   // [DB-SYNC] NEW
+  else if(cmd==="EI05") nav("structure");     // [DB-SYNC] NEW
   else if(cmd==="EI50") nav("cr");
   else if(cmd==="EI60") nav("comm");
   else if(cmd==="EI70") nav("drawings");
@@ -4407,7 +4797,7 @@ $("#tcode").addEventListener("keydown", e=>{
   else if(cmd==="TAG"&&a) openInst(a);
   else if((cmd==="SEARCH"||cmd==="FIND")&&a) nav("search/"+encodeURIComponent(a));
   else if(IDX.areaByCode.has(cmd)) nav("area/"+cmd);
-  else status("✗ Unknown transaction: "+v+" — try EI00, EI10 <area>, EI20 <panel>, EI25, EI30, EI40, EI41, EI42, EI43, EI50, EI60, EI70, EI80, EI85, DOC <doc_no>, TAG <tag>, SEARCH <text>","err");
+  else status("✗ Unknown transaction: "+v+" — try EI00, EI05, EI10 <area>, EI20 <panel>, EI25, EI30, EI40, EI41, EI42, EI43, EI44, EI50, EI60, EI70, EI80, EI85, DOC <doc_no>, TAG <tag>, SEARCH <text>","err");
 });
 $("#gsearch").addEventListener("keydown", e=>{
   if(e.key!=="Enter") return;
