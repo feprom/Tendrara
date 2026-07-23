@@ -577,7 +577,7 @@ function docLinkHtml(d){
     return `<a href="${esc(o.url)}" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;text-decoration:none">${title} ⧉</a>`;
   if(o&&o.kind==="storage")
     return `<a onclick="openStorage('plant-docs','${esc(o.url)}')" style="color:var(--blue);font-weight:600;text-decoration:none;cursor:pointer">${title} ⧉</a>`;
-  return `<span style="font-weight:600">${title}</span> <span class="chip warn" title="Catalogued but not uploaded to the document store — nothing opens yet (source: ${esc((d&&d.source)||"—")}; path: ${esc((d&&d.file_url)||"—")}). Upload the file and set a real URL to make it open.">NOT UPLOADED</span>`;
+  return `<span style="font-weight:600">${title}</span> <span class="chip dim" title="Source document — its data is captured in the record; the original file is not stored online (source: ${esc((d&&d.source)||"—")}; path: ${esc((d&&d.file_url)||"—")}).">source · not stored online</span>`;
 }
 /* ONE documents section per asset. It merges two things that used to be separate:
      1. AUTO references from plant_doc_refs — every drawing/manual page that mentions
@@ -804,6 +804,12 @@ async function hydrateDocRefs(root){
     el.setAttribute("data-docrefs-done","1");
     await renderDocRefs(el.getAttribute("data-docrefs"), el);
   }
+  // [REVIEW] combined multi-tag reference blocks (one table for a set of related tags)
+  const multi=[...(root||document).querySelectorAll("[data-docrefs-multi]:not([data-docrefs-done])")];
+  for(const el of multi){
+    el.setAttribute("data-docrefs-done","1");
+    await renderDocRefsMulti(el.getAttribute("data-docrefs-multi"), el);
+  }
 }
 window.hydrateDocRefs=hydrateDocRefs;
 
@@ -831,6 +837,41 @@ async function renderDocRefs(tag, elOrId){
     </td></tr>`;}).join("")}</tbody></table>`;
 }
 window.renderDocRefs=renderDocRefs;
+
+// [REVIEW] Combined reference table for a SET of related tags (motor + driven equipment +
+// aliases) in one query and one table, instead of a separate empty box per tag. A TAG column
+// appears when more than one tag is searched. The empty message is diagnostic: the index is
+// keyed by the tag exactly as printed on the document, so a tag that differs from the drawing
+// (e.g. a train ‑1/‑2 designation vs a normalized ‑5) will not resolve until aliased.
+async function renderDocRefsMulti(tagsAttr, elOrId){
+  const el=typeof elOrId==="string"?document.getElementById(elOrId):elOrId;
+  if(!el) return;
+  const tags=[...new Set((tagsAttr||"").split(",").map(t=>t.trim()).filter(Boolean))];
+  if(!tags.length){ el.innerHTML=""; return; }
+  const {data,error}=await sb.from("v_asset_doc_refs").select("*").in("tag",tags);
+  if(error){ el.innerHTML=`<div class="dim">${esc(error.message)}</div>`; return; }
+  if(!data.length){
+    el.innerHTML=`<div class="empty" style="padding:12px">No drawing or manual indexes ${tags.map(t=>`<span class="mono">${esc(t)}</span>`).join(", ")} yet.
+      The index matches the tag <b>exactly as printed on the document</b> — if the drawings label this item differently
+      (for a duplicated train, ‑1 / ‑2 rather than the normalized tag), add that as an alias so its references resolve.</div>`;
+    return;
+  }
+  const order={IO_CHANNEL:0,PID:1,ALARM:2,MANUAL:3,DATASHEET:4,PANEL:5};
+  data.sort((a,b)=> (order[a.ref_kind]-order[b.ref_kind]) || String(a.tag).localeCompare(String(b.tag)) || ((a.page||0)-(b.page||0)));
+  const multi=tags.length>1;
+  el.innerHTML=`<table class="data"><thead><tr>${multi?"<th>TAG</th>":""}<th>WHERE</th><th>DOCUMENT</th><th>PAGE</th><th>WHAT'S THERE</th><th></th></tr></thead>
+  <tbody>${data.map(r=>{
+    const k=REFKIND[r.ref_kind]||{label:r.ref_kind,chip:"dim",hint:""};
+    return `<tr>
+    ${multi?`<td class="mono dim">${esc(r.tag)}</td>`:""}
+    <td><span class="chip ${k.chip}" title="${esc(k.hint)}">${k.label}</span>${r.confidence==="TEXT_MATCH"?`<span class="chip dim" title="The tag literally appears on this page — it may be a passing mention">~</span>`:""}</td>
+    <td class="mono" style="font-weight:700;color:var(--crimson);cursor:pointer" onclick="nav('docs')" title="${esc(r.title||"")}">${esc(r.doc_no)}${r.rev?`<span class="dim" style="font-weight:400"> rev ${esc(r.rev)}</span>`:""}</td>
+    <td class="mono">${r.page!=null?"p."+r.page:"—"}</td>
+    <td class="dim" style="font-size:11px"><div class="clamp one" onclick="this.classList.toggle('open')">${esc(r.context||"")}</div></td>
+    <td style="white-space:nowrap">${r.pdf_path?`<button ${OPENBTN} onclick="openStorage('${esc(r.pdf_bucket)}','${esc(r.pdf_path)}',${r.page||0})"
+        title="Open the PDF straight at page ${r.page||1}">PDF${r.page?" p."+r.page:""} ⧉</button>`:""}</td></tr>`;}).join("")}</tbody></table>`;
+}
+window.renderDocRefsMulti=renderDocRefsMulti;
 function setUserChip(){
   $("#userchip").innerHTML = SESSION
     ? `<b>${esc(SESSION.name)}</b> · ${esc(SESSION.group||"")} <span style="opacity:.6">⏻</span>` : "SIGN IN";
@@ -4852,10 +4893,11 @@ function renderMotorCard(asset, reqTag){
     ]);
   }
 
-  // [REVIEW] 6 ── Documents — deduped by underlying FILE. Model-scoped datasheets are
-  // linked once per unit + per source table, which used to render the same file 4–6×; here
-  // they collapse to one row per file, listing which unit tags it covers. Links go through
-  // docLinkHtml() so a not-uploaded file shows NOT UPLOADED instead of a dead click.
+  // [REVIEW] Documents — ONE section (user review 2026-07-23). Two parts under a single
+  // heading: (a) attached datasheets (deduped by file; NOT UPLOADED where the file isn't in
+  // the store), and (b) references — where the tag appears in drawings & manuals, auto-indexed
+  // with deep PDF links. Motor drawings are frequently indexed under the DRIVEN-equipment tag,
+  // so the reference search covers the motor tag + its driven tags + aliases.
   const recs=[];
   const addRecs=(arr,scope)=>{ (arr||[]).forEach(r=> recs.push(Object.assign({scope},r))); };
   if(model) addRecs(IDX.docsByModel.get(model.id),"MODEL");
@@ -4868,8 +4910,13 @@ function renderMotorCard(asset, reqTag){
     if(rec.link&&rec.link.link_type) g.kinds.add(rec.link.link_type);
     if(d&&d.object_tag) g.tags.add(d.object_tag.trim()); });
   const docList=[...byFile.values()];
+  const refTags=[...new Set([asset.official_tag, ...drivesTags, ...aliases.map(a=>a&&a.alias_tag)]
+    .map(t=>(t||"").trim()).filter(Boolean))];
+
+  h+=`<h2 style="margin-top:16px">Documents</h2>`;
+  // (a) attached datasheets
+  h+=`<h3 style="margin-top:4px;font-size:13px">Attached datasheets${docList.length?` <span class="dim" style="font-weight:400">(${docList.length})</span>`:""}</h3>`;
   if(docList.length){
-    h+=`<h2 style="margin-top:16px">Documents <span class="dim" style="font-weight:400">(${docList.length})</span></h2>`;
     h+=`<table class="data"><thead><tr><th>KIND</th><th>DOCUMENT</th><th>COVERS</th><th>SCOPE</th></tr></thead><tbody>`+
       docList.map(g=>{ const d=g.doc; const kind=[...g.kinds][0]||(d&&d.doc_kind)||"DOC";
         const covers=[...g.tags].filter(Boolean);
@@ -4879,27 +4926,18 @@ function renderMotorCard(asset, reqTag){
           `<td class="mono dim" style="font-size:10px">${covers.length?covers.map(esc).join(", "):"—"}</td>`+
           `<td><span class="chip ${scope==="MODEL"?"info":"ok"}" title="${scope==="MODEL"?"Applies to every unit of this model":"Specific to this unit"}">${scope}</span></td></tr>`;
       }).join("")+`</tbody></table>`;
-    if(model) h+=`<p class="note dim">Model-scoped datasheets are shared by every unit of ${esc(model.model_code||"this model")} — listed once here, not duplicated per unit.</p>`;
+    h+=`<p class="note dim">The datasheet's process data is captured in the <b>Motor characteristics</b> above — the card itself is the working datasheet. The row below is the <b>source document</b> it was transcribed from${model?` (model-scoped, shared by every unit of ${esc(model.model_code||"this model")})`:""}; the original file is not stored online.</p>`;
   } else {
-    h+=`<h2 style="margin-top:16px">Documents</h2><p class="note dim">No datasheet or certificate linked to this motor${model?" or its model":""} yet.</p>`;
+    h+=`<p class="note dim">No source datasheet recorded for this motor${model?" or its model":""} yet — the <b>Motor characteristics</b> above are the working datasheet.</p>`;
   }
-
-  // [REVIEW] Related documents — every drawing/manual page where this motor, the equipment
-  // it drives, or its aliases appear, with deep PDF page links (v_asset_doc_refs, filled by
-  // hydrateDocRefs). Motor drawings are frequently indexed under the DRIVEN-equipment tag,
-  // so we search the motor tag + its driven tags + aliases.
-  const refTags=[...new Set([asset.official_tag, ...drivesTags, ...aliases.map(a=>a&&a.alias_tag)]
-    .map(t=>(t||"").trim()).filter(Boolean))];
-  h+=`<h2 style="margin-top:16px">Related documents <span class="dim" style="font-weight:400">· where this tag appears</span></h2>`;
-  h+=`<div class="note" style="margin:0 0 6px">Every drawing / manual page that mentions the motor or the equipment it drives, indexed automatically with the exact page. <b>PDF p.N</b> opens the source straight at that page.</div>`;
-  refTags.forEach(t=>{
-    h+=`<div style="margin-top:8px"><div class="mono dim" style="font-size:11px;margin-bottom:2px">${esc(t)}</div>
-      <div data-docrefs="${esc(t)}"><div class="dim" style="padding:8px">Looking up references…</div></div></div>`;
-  });
+  // (b) references — where this tag appears (auto, PDF-linked)
+  h+=`<h3 style="margin-top:12px;font-size:13px">Referenced in drawings &amp; manuals <span class="dim" style="font-weight:400">· where this tag appears</span></h3>`;
+  h+=`<div class="note" style="margin:0 0 6px">Auto-indexed from the P&amp;IDs, manuals and IO list — <b>PDF p.N</b> opens the source straight at that page. Searched: ${refTags.map(t=>`<span class="mono">${esc(t)}</span>`).join(", ")||"—"}.</div>`;
+  h+=`<div data-docrefs-multi="${esc(refTags.join(","))}"><div class="dim" style="padding:8px">Looking up references…</div></div>`;
 
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
-  hydrateDocRefs($("#instBody"));   // [REVIEW] fill the Related-documents reference tables (PDF links)
+  hydrateDocRefs($("#instBody"));   // [REVIEW] fill the reference table (PDF links)
 }
 window.openMotor=openMotor; window.openMotorLegacy=openMotorLegacy; window.openAssetTag=openAssetTag; window.renderMotorCard=renderMotorCard;
 
