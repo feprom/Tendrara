@@ -558,6 +558,27 @@ function docsFor(tag, model){
     (d.object_tag && d.object_tag.trim()===t) ||
     (!d.object_tag && d.model && m && d.model.trim().toUpperCase()===m));
 }
+// [REVIEW] Honest document link. plant_asset_docs.file_url is often a LOCAL placeholder
+// path (e.g. /docs/…) that was catalogued but never uploaded to the document store, so the
+// old code rendered a live openStorage() link that silently did nothing on click. Rule:
+//  · http(s) url            → external link
+//  · real storage object    → openStorage (non-LOCAL source, bucket-style path)
+//  · everything else        → title + a NOT UPLOADED chip, never a dead link.
+function docOpenable(d){
+  const u=((d&&d.file_url)||"").trim();
+  if(/^https?:\/\//i.test(u)) return {kind:"http", url:u};
+  if(u && d.source && d.source.toUpperCase()!=="LOCAL" && !u.startsWith("/")) return {kind:"storage", url:u};
+  return null;   // LOCAL placeholder / not uploaded — no openable target
+}
+function docLinkHtml(d){
+  const title=esc((d&&d.title)||("datasheet #"+((d&&d.id)||"?")));
+  const o=docOpenable(d);
+  if(o&&o.kind==="http")
+    return `<a href="${esc(o.url)}" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;text-decoration:none">${title} ⧉</a>`;
+  if(o&&o.kind==="storage")
+    return `<a onclick="openStorage('plant-docs','${esc(o.url)}')" style="color:var(--blue);font-weight:600;text-decoration:none;cursor:pointer">${title} ⧉</a>`;
+  return `<span style="font-weight:600">${title}</span> <span class="chip warn" title="Catalogued but not uploaded to the document store — nothing opens yet (source: ${esc((d&&d.source)||"—")}; path: ${esc((d&&d.file_url)||"—")}). Upload the file and set a real URL to make it open.">NOT UPLOADED</span>`;
+}
 /* ONE documents section per asset. It merges two things that used to be separate:
      1. AUTO references from plant_doc_refs — every drawing/manual page that mentions
         this tag, with the exact page. Filled async by renderDocRefs().
@@ -566,12 +587,13 @@ function docsFor(tag, model){
         broken: it only ever rendered "nothing attached yet".
    Auto refs come first because they are the ones that actually exist. */
 function docsSection(table, tag, mfr, model){
-  const docs=docsFor(tag, model);
+  // [REVIEW] dedupe by underlying file so the same datasheet linked several times
+  // (per unit / per source table) shows once; honest link via docLinkHtml (no dead links).
+  const seen=new Set();
+  const docs=docsFor(tag, model).filter(d=>{ const k=((d.file_url||"").trim())||("t:"+(d.title||"").trim()); if(seen.has(k)) return false; seen.add(k); return true; });
   const rows=docs.map(d=>`<tr>
     <td><span class="chip ${d.doc_kind==="DATASHEET"?"info":"dim"}">${esc(d.doc_kind)}</span></td>
-    <td>${/^https?:\/\//i.test(d.file_url||"")
-        ? `<a href="${esc(d.file_url)}" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(d.title)} ⧉</a>`
-        : `<a onclick="openStorage('plant-docs','${esc(d.file_url)}')" style="color:var(--blue);font-weight:600;text-decoration:none;cursor:pointer">${esc(d.title)} ⧉</a>`}
+    <td>${docLinkHtml(d)}
       ${!d.object_tag?'<span class="chip dim" title="Applies to every asset of this model">MODEL</span>':""}</td>
     <td><span class="chip ${d.source==="WEB"?"warn":"ok"}">${esc(d.source)}</span></td>
     <td class="mono dim" style="font-size:10px">${nz(d.uploaded_by,"")} ${esc((d.created_at||"").slice(0,10))}</td></tr>`).join("");
@@ -4633,6 +4655,63 @@ const ASSET_ST={VERIFIED:"ok",NEEDS_REVIEW:"warn",CONFLICT:"fail",INCOMPLETE:"di
 function assetStChip(s){ return `<span class="chip ${ASSET_ST[s]||"dim"}">${esc(s||"—")}</span>`; }
 function fmtNum(v,unit){ if(v==null||v==="") return null; const n=+v; const s=isNaN(n)?String(v):n; return esc(String(s))+(unit?" "+unit:""); }
 
+// [REVIEW] One combined motor record. The three sources (Design = as-engineered, OEM model
+// = catalogue, Nameplate = as-built) are merged into a single authoritative value per
+// parameter. OEM model is the FINAL source (user decision 2026-07-23); where the model is
+// silent the value falls back to Nameplate then Design, tagged with its origin. A ≠ marks a
+// parameter where the sources disagreed (the OEM value is kept). Installation-only attributes
+// (starting method, MCC, etc.) are folded in so the whole spec reads as one table.
+function motorSpecTable(ea, mspec, nplate){
+  const amb = mspec && (mspec.ambient_min_c!=null||mspec.ambient_max_c!=null)
+      ? [mspec.ambient_min_c,mspec.ambient_max_c].filter(x=>x!=null).join(" … ") : null;
+  const rows=[
+    {p:"Power",u:"kW",n:1, oem:mspec&&mspec.rated_power_kw, np:nplate&&nplate.rated_power_kw, dz:ea&&ea.design_power_kw},
+    {p:"Voltage",u:"V",n:1, oem:mspec&&mspec.rated_voltage_v, np:nplate&&nplate.rated_voltage_v, dz:ea&&ea.design_voltage_v},
+    {p:"Frequency",u:"Hz",n:1, oem:mspec&&mspec.rated_frequency_hz, np:nplate&&nplate.rated_frequency_hz, dz:ea&&ea.design_frequency_hz},
+    {p:"Full-load current",u:"A",n:1, oem:mspec&&mspec.full_load_current_a, np:nplate&&nplate.full_load_current_a, dz:ea&&ea.design_current_a},
+    {p:"Speed",u:"rpm",n:1, oem:mspec&&mspec.rated_speed_rpm, np:nplate&&nplate.rated_speed_rpm},
+    {p:"Poles",u:"",n:1, oem:mspec&&mspec.poles},
+    {p:"cos φ",u:"",n:1, oem:mspec&&mspec.power_factor, dz:ea&&ea.power_factor},
+    {p:"Efficiency class",u:"", oem:mspec&&mspec.efficiency_class, np:nplate&&nplate.efficiency_class},
+    {p:"Efficiency",u:"%",n:1, oem:mspec&&mspec.full_load_efficiency_pct},
+    {p:"Insulation class",u:"", oem:mspec&&mspec.insulation_class},
+    {p:"IP rating",u:"", oem:mspec&&mspec.ip_rating, np:nplate&&nplate.ip_rating},
+    {p:"Frame size",u:"", oem:mspec&&mspec.frame_size, np:nplate&&nplate.frame_size},
+    {p:"Weight",u:"kg",n:1, oem:mspec&&mspec.weight_kg},
+    {p:"Ambient",u:"°C", oem:amb},
+    {p:"Duty",u:"", oem:mspec&&mspec.duty_type},
+    {p:"Cooling",u:"", oem:mspec&&mspec.cooling_method},
+    {p:"Mounting",u:"", oem:mspec&&mspec.mounting},
+    {p:"Hazardous area",u:"", oem:mspec&&mspec.hazardous_area_marking, np:nplate&&nplate.hazardous_area_marking},
+    {p:"Certificate",u:"", oem:mspec&&mspec.certification_number, np:nplate&&nplate.certification_number},
+    {p:"Serial number",u:"", np:nplate&&nplate.serial_number},
+    {p:"Starting method",u:"", dz:ea&&ea.starting_method},
+    {p:"Supply system",u:"", dz:ea&&ea.supply_system},
+    {p:"Load factor",u:"",n:1, dz:ea&&ea.load_factor},
+    {p:"MCC panel",u:"", dz:ea&&ea.mcc_panel_tag},
+    {p:"MCC slot",u:"", dz:ea&&ea.mcc_slot},
+    {p:"Fail position",u:"", dz:ea&&ea.fail_position}
+  ];
+  const has=x=>x!=null&&x!=="";
+  const norm=(v,n)=> !has(v)?null:(n&&!isNaN(+v)?+v:String(v).trim().toLowerCase());
+  const out=[];
+  rows.forEach(r=>{
+    const cands=[["OEM",r.oem],["Nameplate",r.np],["Design",r.dz]].filter(c=>has(c[1]));
+    if(!cands.length) return;                          // OEM > Nameplate > Design
+    const differ = new Set(cands.map(c=>norm(c[1],r.n))).size>1;
+    out.push({p:r.p, u:r.u, v:cands[0][1], src:cands[0][0], differ,
+      tip: differ?cands.map(c=>c[0]+": "+c[1]).join(" · "):""});
+  });
+  if(!out.length) return "";
+  const body=out.map(o=>{
+    const tag = o.src!=="OEM" ? ` <span class="dim" style="font-size:10px">(${o.src.toLowerCase()})</span>` : "";
+    const d   = o.differ ? ` <span class="chip warn" title="Sources differ — ${esc(o.tip)}. OEM model kept as final.">≠</span>` : "";
+    return `<tr><td>${esc(o.p)}${d}</td><td class="mono">${esc(String(o.v))}${o.u?" "+o.u:""}${tag}</td></tr>`;
+  }).join("");
+  return `<table class="data"><thead><tr><th>PARAMETER</th>
+    <th>VALUE</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
 function openMotor(mtag){
   mtag=(mtag||"").trim(); if(!mtag) return;
   const asset = IDX.assetByTag.get(mtag)
@@ -4687,7 +4766,6 @@ function renderMotorCard(asset, reqTag){
 
   let h=`<div class="kicker">MOTOR <span class="sub">· plant_assets #${asset.id}${cls?" · "+esc(cls.code):""}</span></div>`;
 
-  // 1 ── Identity
   const aliasHtml = aliases.length
     ? aliases.map(a=>`<span class="tag" style="cursor:default">${esc(a.alias_tag)}</span> <span class="dim" style="font-size:10px">${esc(a.namespace||"")}${a.alias_type?" · "+esc(a.alias_type):""}</span>`).join("<br>")
     : "—";
@@ -4695,38 +4773,28 @@ function renderMotorCard(asset, reqTag){
     ? drives.map(r=>{ const t=IDX.assetById.get(r.to_asset_id); const tag=t?t.official_tag:("#"+r.to_asset_id);
         return `<span class="tag" onclick="event.stopPropagation();openAssetTag('${esc(tag)}')">${esc(tag)}</span> ${assetStChip(r.review_status)}`; }).join("<br>")
     : "—";
-  h+=`<h2 style="margin-top:6px">Identity</h2>`+card([
-    kv("Official tag", esc(asset.official_tag)),
-    kv("Class", cls?esc(cls.name)+' <span class="dim">('+esc(cls.discipline)+')</span>':"—"),
+
+  // [REVIEW] 1 ── Process identity — ALWAYS shown: where this motor sits in the plant and
+  // what it does (service · area · unit · skid), so every card leads with process context.
+  h+=`<h2 style="margin-top:6px">Process identity</h2>`+card([
+    kv("Tag", esc(asset.official_tag)),
     kv("Service", nz(asset.service)),
-    kv("Area / unit", esc(String(asset.area_code||"—"))+(area?" — "+esc(area.description||""):"")),
-    kv("Skid package", nz(asset.skid_tag,"—")),
-    kv("Data status", assetStChip(asset.data_status)),
+    kv("Area", esc(String(asset.area_code||"—"))),
+    kv("Unit", area?esc(area.description||"—"):"—"),
+    kv("Skid", nz(asset.skid_tag,"—")),
+    kv("Class", cls?esc(cls.name)+' <span class="dim">('+esc(cls.discipline)+')</span>':"—"),
+    kv("Data status", assetStChip(asset.data_status))
+  ]);
+
+  // 1b ── Registry & relationships (secondary identity)
+  h+=`<h2 style="margin-top:16px">Registry &amp; relationships</h2>`+card([
     kv("Aliases", aliasHtml),
     kv("Drives (equipment)", drivesHtml),
     drivenBy.length?kv("Driven by", drivenBy.map(r=>{const t=IDX.assetById.get(r.from_asset_id);const tag=t?t.official_tag:("#"+r.from_asset_id);return `<span class="tag" onclick="event.stopPropagation();openAssetTag('${esc(tag)}')">${esc(tag)}</span>`;}).join(", ")):"",
     asset.legacy_source_table?kv("Legacy source", '<span class="dim">'+esc(asset.legacy_source_table)+(asset.legacy_source_id!=null?" #"+asset.legacy_source_id:"")+'</span>'):""
   ]);
 
-  // 2 ── Design (electrical) — as-engineered electrical data
-  if(ea){
-    h+=`<h2 style="margin-top:16px">Design <span class="dim" style="font-weight:400">(electrical — plant_electrical_assets)</span></h2>`+card([
-      ea.design_power_kw!=null?kv("Design power", fmtNum(ea.design_power_kw,"kW")):"",
-      ea.design_voltage_v!=null?kv("Design voltage", fmtNum(ea.design_voltage_v,"V")):"",
-      ea.design_frequency_hz!=null?kv("Design frequency", fmtNum(ea.design_frequency_hz,"Hz")):"",
-      ea.design_current_a!=null?kv("Design current", fmtNum(ea.design_current_a,"A")):"",
-      ea.power_factor!=null?kv("cos φ", fmtNum(ea.power_factor)):"",
-      ea.load_factor!=null?kv("Load factor", fmtNum(ea.load_factor)):"",
-      ea.starting_method?kv("Starting method", nz(ea.starting_method)):"",
-      ea.supply_system?kv("Supply system", nz(ea.supply_system)):"",
-      ea.mcc_panel_tag?kv("MCC panel", nz(ea.mcc_panel_tag)):"",
-      ea.mcc_slot?kv("MCC slot", nz(ea.mcc_slot)):"",
-      ea.fail_position?kv("Fail position", nz(ea.fail_position)):"",
-      ea.review_status?kv("Review", assetStChip(ea.review_status)):""
-    ]);
-  }
-
-  // 3 ── Installed model + generic OEM model specifications (NOT nameplate)
+  // 2 ── Installed model identity (the authoritative "OEM model" source for the spec below)
   h+=`<h2 style="margin-top:16px">Installed model</h2>`;
   if(model){
     h+=card([
@@ -4735,36 +4803,37 @@ function renderMotorCard(asset, reqTag){
       model.product_code?kv("Product code", nz(model.product_code)):"",
       model.description?kv("Description", nz(model.description)):""
     ]);
-    if(mspec){
-      h+=`<h3 style="margin-top:12px;font-size:13px">Model specifications
-        <span class="chip dim" title="Generic OEM catalogue data for the model — NOT a reading of this unit's nameplate">MODEL · OEM</span></h3>`+card([
-        mspec.rated_power_kw!=null?kv("Rated power", fmtNum(mspec.rated_power_kw,"kW")):"",
-        mspec.rated_voltage_v!=null?kv("Rated voltage", fmtNum(mspec.rated_voltage_v,"V")):"",
-        mspec.rated_frequency_hz!=null?kv("Frequency", fmtNum(mspec.rated_frequency_hz,"Hz")):"",
-        mspec.poles!=null?kv("Poles", fmtNum(mspec.poles)):"",
-        mspec.rated_speed_rpm!=null?kv("Speed", fmtNum(mspec.rated_speed_rpm,"rpm")):"",
-        mspec.full_load_current_a!=null?kv("Full-load current", fmtNum(mspec.full_load_current_a,"A")):"",
-        mspec.power_factor!=null?kv("cos φ", fmtNum(mspec.power_factor)):"",
-        mspec.efficiency_class?kv("Efficiency class", nz(mspec.efficiency_class)):"",
-        mspec.full_load_efficiency_pct!=null?kv("Efficiency", fmtNum(mspec.full_load_efficiency_pct,"%")):"",
-        mspec.insulation_class?kv("Insulation class", nz(mspec.insulation_class)):"",
-        mspec.ip_rating?kv("IP rating", nz(mspec.ip_rating)):"",
-        mspec.frame_size?kv("Frame size", nz(mspec.frame_size)):"",
-        mspec.weight_kg!=null?kv("Weight", fmtNum(mspec.weight_kg,"kg")):"",
-        (mspec.ambient_min_c!=null||mspec.ambient_max_c!=null)?kv("Ambient", esc([mspec.ambient_min_c,mspec.ambient_max_c].filter(x=>x!=null).join(" … "))+" °C"):"",
-        mspec.duty_type?kv("Duty", nz(mspec.duty_type)):"",
-        mspec.cooling_method?kv("Cooling", nz(mspec.cooling_method)):"",
-        mspec.mounting?kv("Mounting", nz(mspec.mounting)):"",
-        mspec.hazardous_area_marking?kv("Hazardous area", nz(mspec.hazardous_area_marking)):"",
-        mspec.certification_number?kv("Certificate", nz(mspec.certification_number)):"",
-        mspec.review_status?kv("Review", assetStChip(mspec.review_status)):""
-      ]);
-    } else {
-      h+=`<p class="note dim">Model assigned, but no OEM model specifications captured yet.</p>`;
-    }
   } else {
-    h+=`<p class="note"><span class="chip warn">MODEL NOT CONFIRMED</span> No manufacturer/model is confirmed for this motor. The design power/voltage above are the available identity — no OEM data is invented.</p>`;
+    h+=`<p class="note"><span class="chip warn">MODEL NOT CONFIRMED</span> No manufacturer/model is confirmed for this motor — OEM-model values are unavailable, so the spec below falls back to Nameplate/Design where present; nothing is invented.</p>`;
   }
+
+  // [REVIEW] 3 ── Motor characteristics — ONE combined record; OEM model authoritative,
+  // gaps filled from Nameplate then Design (source tagged). Installation attributes folded in.
+  const specs=motorSpecTable(ea, mspec, nplate);
+  h+=`<h2 style="margin-top:16px">Motor characteristics</h2>`;
+  if(specs){
+    h+=specs;
+    const srcChip=(lbl,o)=> `${lbl} ${o?(o.review_status?assetStChip(o.review_status):'<span class="chip ok">present</span>'):'<span class="dim">absent</span>'}`;
+    h+=`<p class="note dim" style="margin-top:6px"><b>OEM model is the authoritative source.</b>
+      A <span class="dim">(design)</span> / <span class="dim">(nameplate)</span> tag marks a value the model did not provide;
+      a <span class="chip warn">≠</span> marks a parameter where the sources disagreed (OEM value kept).<br>
+      Sources: ${srcChip("OEM model", mspec)} · ${srcChip("Design", ea)} · ${srcChip("Nameplate", nplate)}.</p>`;
+  } else {
+    h+=`<p class="note dim">No motor characteristics captured yet (no OEM model, Design or Nameplate data).</p>`;
+  }
+
+  // [REVIEW] 3b ── Feeders (electrical supply) — the point this motor is fed from.
+  // Scaffold: known supply hints come from plant_electrical_assets; the feed point
+  // (source panel / feeder tag, cable, breaker) is TO BE FILLED LATER from the power
+  // distribution / feeder list.
+  h+=`<h2 style="margin-top:16px">Feeders <span class="dim" style="font-weight:400">· electrical supply</span></h2>`+card([
+    kv("Fed from (MCC / panel)", ea&&ea.mcc_panel_tag?nz(ea.mcc_panel_tag):'<span class="dim">— to be completed</span>'),
+    kv("Slot / feeder", ea&&ea.mcc_slot?nz(ea.mcc_slot):'<span class="dim">— to be completed</span>'),
+    kv("Supply system", ea&&ea.supply_system?nz(ea.supply_system):'<span class="dim">— to be completed</span>'),
+    kv("Feeder tag", '<span class="dim">— to be completed</span>'),
+    kv("Cable / route", '<span class="dim">— to be completed</span>'),
+    kv("Protection / breaker", '<span class="dim">— to be completed</span>')
+  ])+`<p class="note dim">Placeholder — the electrical feeding point will be filled in from the power-distribution / feeder list.</p>`;
 
   // 4 ── Application requirements — service demand, separate from model & nameplate
   if(appreq){
@@ -4783,57 +4852,54 @@ function renderMotorCard(asset, reqTag){
     ]);
   }
 
-  // 5 ── Installed nameplate (real unit reading) — distinct from the model
-  h+=`<h2 style="margin-top:16px">Installed nameplate</h2>`;
-  if(nplate){
-    const npMfr=nplate.manufacturer_id!=null?IDX.mfrById.get(nplate.manufacturer_id):null;
-    const npModel=nplate.model_id!=null?IDX.modelById.get(nplate.model_id):null;
-    h+=card([
-      npMfr?kv("Manufacturer", esc(npMfr.name)):"",
-      npModel?kv("Model", esc(npModel.model_code||"—")):"",
-      nplate.serial_number?kv("Serial", nz(nplate.serial_number)):"",
-      nplate.rated_power_kw!=null?kv("Rated power", fmtNum(nplate.rated_power_kw,"kW")):"",
-      nplate.rated_voltage_v!=null?kv("Rated voltage", fmtNum(nplate.rated_voltage_v,"V")):"",
-      nplate.rated_frequency_hz!=null?kv("Frequency", fmtNum(nplate.rated_frequency_hz,"Hz")):"",
-      nplate.rated_speed_rpm!=null?kv("Speed", fmtNum(nplate.rated_speed_rpm,"rpm")):"",
-      nplate.full_load_current_a!=null?kv("Full-load current", fmtNum(nplate.full_load_current_a,"A")):"",
-      nplate.efficiency_class?kv("Efficiency class", nz(nplate.efficiency_class)):"",
-      nplate.ip_rating?kv("IP rating", nz(nplate.ip_rating)):"",
-      nplate.frame_size?kv("Frame size", nz(nplate.frame_size)):"",
-      nplate.hazardous_area_marking?kv("Hazardous area", nz(nplate.hazardous_area_marking)):"",
-      nplate.certification_number?kv("Certificate", nz(nplate.certification_number)):"",
-      nplate.review_status?kv("Review", assetStChip(nplate.review_status)):""
-    ]);
-  } else {
-    h+=`<p class="note dim">No installed nameplate captured for this unit. The specifications above are OEM <b>model</b> data, not a reading of this unit's plate.</p>`;
-  }
-
-  // 6 ── Documents — model-level (shared by all units) + any unit-specific
-  const docRecs=[]; const seen=new Set();
-  const pushDocs=(arr,scope)=>{ (arr||[]).forEach(rec=>{ const key=rec.doc?("d"+rec.doc.id):("l"+rec.link.id); if(seen.has(key))return; seen.add(key); docRecs.push(Object.assign({scope},rec)); }); };
-  if(model) pushDocs(IDX.docsByModel.get(model.id),"MODEL");
-  pushDocs(IDX.docsByAsset.get(asset.id),"UNIT");
-  if(docRecs.length){
-    h+=`<h2 style="margin-top:16px">Documents <span class="dim" style="font-weight:400">(${docRecs.length})</span></h2>`;
-    h+=`<table class="data"><thead><tr><th>KIND</th><th>DOCUMENT</th><th>SCOPE</th></tr></thead><tbody>`+
-      docRecs.map(rec=>{ const d=rec.doc; const lt=rec.link.link_type||"";
-        const title=d?(d.title||("asset_doc #"+d.id)):("asset_doc #"+rec.link.asset_doc_id);
-        const url=d&&d.file_url?d.file_url:null;
-        const link = url
-          ? (/^https?:\/\//i.test(url)
-              ? `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(title)} ⧉</a>`
-              : `<a onclick="openStorage('plant-docs','${esc(url)}')" style="color:var(--blue);font-weight:600;text-decoration:none;cursor:pointer">${esc(title)} ⧉</a>`)
-          : esc(title);
-        return `<tr><td><span class="chip dim">${esc(lt)}</span></td><td>${link}${d&&d.manufacturer?` <span class="dim" style="font-size:10px">${esc(d.manufacturer)}${d.model?" · "+esc(d.model):""}</span>`:""}</td>`+
-               `<td><span class="chip ${rec.scope==="MODEL"?"info":"ok"}" title="${rec.scope==="MODEL"?"Applies to every unit of this model":"Specific to this unit"}">${rec.scope}</span></td></tr>`;
+  // [REVIEW] 6 ── Documents — deduped by underlying FILE. Model-scoped datasheets are
+  // linked once per unit + per source table, which used to render the same file 4–6×; here
+  // they collapse to one row per file, listing which unit tags it covers. Links go through
+  // docLinkHtml() so a not-uploaded file shows NOT UPLOADED instead of a dead click.
+  const recs=[];
+  const addRecs=(arr,scope)=>{ (arr||[]).forEach(r=> recs.push(Object.assign({scope},r))); };
+  if(model) addRecs(IDX.docsByModel.get(model.id),"MODEL");
+  addRecs(IDX.docsByAsset.get(asset.id),"UNIT");
+  const byFile=new Map();
+  recs.forEach(rec=>{ const d=rec.doc;
+    const key=d?(((d.file_url||"").trim())||("t:"+(d.title||"").trim())||("id:"+d.id)):("l:"+rec.link.id);
+    if(!byFile.has(key)) byFile.set(key,{doc:d, link:rec.link, scopes:new Set(), tags:new Set(), kinds:new Set()});
+    const g=byFile.get(key); g.scopes.add(rec.scope);
+    if(rec.link&&rec.link.link_type) g.kinds.add(rec.link.link_type);
+    if(d&&d.object_tag) g.tags.add(d.object_tag.trim()); });
+  const docList=[...byFile.values()];
+  if(docList.length){
+    h+=`<h2 style="margin-top:16px">Documents <span class="dim" style="font-weight:400">(${docList.length})</span></h2>`;
+    h+=`<table class="data"><thead><tr><th>KIND</th><th>DOCUMENT</th><th>COVERS</th><th>SCOPE</th></tr></thead><tbody>`+
+      docList.map(g=>{ const d=g.doc; const kind=[...g.kinds][0]||(d&&d.doc_kind)||"DOC";
+        const covers=[...g.tags].filter(Boolean);
+        const scope=g.scopes.has("MODEL")?"MODEL":"UNIT";
+        return `<tr><td><span class="chip ${kind==="DATASHEET"?"info":"dim"}">${esc(kind)}</span></td>`+
+          `<td>${d?docLinkHtml(d):esc("asset_doc #"+g.link.asset_doc_id)}${d&&d.manufacturer?` <span class="dim" style="font-size:10px">${esc(d.manufacturer)}${d.model?" · "+esc(d.model):""}</span>`:""}</td>`+
+          `<td class="mono dim" style="font-size:10px">${covers.length?covers.map(esc).join(", "):"—"}</td>`+
+          `<td><span class="chip ${scope==="MODEL"?"info":"ok"}" title="${scope==="MODEL"?"Applies to every unit of this model":"Specific to this unit"}">${scope}</span></td></tr>`;
       }).join("")+`</tbody></table>`;
-    if(model) h+=`<p class="note dim">Model-scoped documents are shared by every unit of ${esc(model.model_code||"this model")} — not duplicated per motor.</p>`;
+    if(model) h+=`<p class="note dim">Model-scoped datasheets are shared by every unit of ${esc(model.model_code||"this model")} — listed once here, not duplicated per unit.</p>`;
   } else {
     h+=`<h2 style="margin-top:16px">Documents</h2><p class="note dim">No datasheet or certificate linked to this motor${model?" or its model":""} yet.</p>`;
   }
 
+  // [REVIEW] Related documents — every drawing/manual page where this motor, the equipment
+  // it drives, or its aliases appear, with deep PDF page links (v_asset_doc_refs, filled by
+  // hydrateDocRefs). Motor drawings are frequently indexed under the DRIVEN-equipment tag,
+  // so we search the motor tag + its driven tags + aliases.
+  const refTags=[...new Set([asset.official_tag, ...drivesTags, ...aliases.map(a=>a&&a.alias_tag)]
+    .map(t=>(t||"").trim()).filter(Boolean))];
+  h+=`<h2 style="margin-top:16px">Related documents <span class="dim" style="font-weight:400">· where this tag appears</span></h2>`;
+  h+=`<div class="note" style="margin:0 0 6px">Every drawing / manual page that mentions the motor or the equipment it drives, indexed automatically with the exact page. <b>PDF p.N</b> opens the source straight at that page.</div>`;
+  refTags.forEach(t=>{
+    h+=`<div style="margin-top:8px"><div class="mono dim" style="font-size:11px;margin-bottom:2px">${esc(t)}</div>
+      <div data-docrefs="${esc(t)}"><div class="dim" style="padding:8px">Looking up references…</div></div></div>`;
+  });
+
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
+  hydrateDocRefs($("#instBody"));   // [REVIEW] fill the Related-documents reference tables (PDF links)
 }
 window.openMotor=openMotor; window.openMotorLegacy=openMotorLegacy; window.openAssetTag=openAssetTag; window.renderMotorCard=renderMotorCard;
 
