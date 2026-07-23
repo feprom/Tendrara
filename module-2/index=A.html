@@ -114,11 +114,9 @@
   .person{flex:1;min-width:220px;border:1px solid var(--line-strong);border-radius:8px;padding:18px 20px;background:var(--bg-soft);}
   .person .av{width:48px;height:48px;border-radius:50%;background:var(--crimson);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;margin-bottom:12px;font-family:var(--mono);}
   .person .av.zr{background:var(--blue);}
-  .person .av.am{background:var(--amber);}
   .person .nm{font-size:20px;font-weight:700;}
   .person .rl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--crimson);margin-top:3px;}
   .person .rl.zr{color:var(--blue);}
-  .person .rl.am{color:var(--amber);}
   .person .org{font-size:13px;color:var(--ink-soft);margin-top:6px;}
   .zagenda{display:flex;flex-direction:column;gap:11px;margin-top:12px;}
   .zag{display:flex;align-items:center;gap:16px;}
@@ -373,16 +371,15 @@
 
     <!-- 1c INSTRUCTORS · Mario · 2 -->
     <section class="slide" data-min="2" data-block="Module open" data-presenter="Mario"
-      data-notes='["Each presenter introduces himself — about one minute each.","1 · MARIO MENDIZABAL — module lead: engineering background and your role in the Tendrara project (engineering, documents, commissioning). Opens the module and moderates Q&A — why you know this plant.","2 · FABIO DITOMASO — E&I Specialist: presents Block 1, the engineered safety barriers — fire &amp; gas, ESD/PSD, relief and firefighting systems (how the plant protects you).","3 · AYMEN MABROUK — HSE Manager: presents Block 2, the ITF HSE management system applied on site — permits, procedures, induction and emergency response (how you protect yourself).","Common closing (Mario): Technical America is the technology vendor and training provider; questions welcome at any slide — the exam only covers what we present."]'>
+      data-notes='["Each presenter introduces himself — about one minute each.","1 · MARIO — plant, process & operations lead: engineering background and your role in the Tendrara project (engineering, documents, commissioning) — why you know this plant.","2 · ITF — the Italfluid HSE organization: owner of the HSE management system applied on site — permits, procedures, emergency response. Block 2 is presented from the ITF side.","Common closing (Mario): Technical America is the technology vendor and training provider; questions welcome at any slide — the exam only covers what we present."]'>
       <div class="kicker">Your presenters</div>
       <h2>Meet the team</h2>
       <div class="team">
-        <div class="person"><div class="av">MM</div><div class="nm">Mario Mendizabal</div><div class="rl">Instructor — Module Lead</div><div class="org">Technical America · program &amp; plant overview, module open &amp; Q&amp;A — the Tendrara project</div></div>
-        <div class="person"><div class="av zr">FD</div><div class="nm">Fabio Ditomaso</div><div class="rl zr">E&amp;I Specialist — Block 1</div><div class="org">Engineered safety barriers · fire &amp; gas, ESD/PSD, relief &amp; firefighting systems — how the plant protects you</div></div>
-        <div class="person"><div class="av am">AM</div><div class="nm">Aymen Mabrouk</div><div class="rl am">HSE Manager — Block 2</div><div class="org">ITF HSE management system · permits, procedures, induction &amp; emergency response — how you protect yourself</div></div>
+        <div class="person"><div class="av">MM</div><div class="nm">Mario Mendizabal</div><div class="rl">Instructor — Plant &amp; Operations</div><div class="org">The Tendrara facility · engineered safety barriers, process &amp; plant systems — Block 1</div></div>
+        <div class="person"><div class="av zr">ITF</div><div class="nm">ITF — Italfluid</div><div class="rl zr">HSE Management System</div><div class="org">Contractor &amp; HSE system owner · permits, procedures, induction &amp; emergency response — Block 2</div></div>
       </div>
       <div class="note">Technical America — technology vendor &amp; training provider.
-        <b style="color:var(--crimson);">Mario</b> opens the module · <b style="color:var(--blue);">Fabio</b> — engineered plant safety (Block 1) · <b style="color:var(--amber);">Aymen</b> — the ITF HSE system you work under (Block 2).</div>
+        <b style="color:var(--crimson);">Mario</b> — plant &amp; engineered safety · <b style="color:var(--blue);">ITF</b> — the HSE system you work under.</div>
     </section>
 
     <!-- 1d ROADMAP · Mario · 2 -->
@@ -453,8 +450,8 @@
       </div>
     </section>
 
-    <!-- B1-1 HAZARDS · Fabio · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-1 HAZARDS · Mario · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
       data-notes='["Start from what is different about LNG: the same gas you know, but at minus 163.5 C — cold enough to burn skin and embrittle carbon steel.","One litre of LNG becomes about 600 litres of gas — a small spill makes a big flammable cloud.","Methane burns only inside its flammability range; the FERA models the fire types listed here — jet fire, pool fire, flash fire.","Ammonia is the refrigerant of Unit 340: toxic at low concentration — 6 dedicated detectors, eye-level mounted.","CO2 from the amine unit and nitrogen are asphyxiants — the confined-space rules in Block 2 exist because of them.","Feed arrives at 45 to 55 barg: stored pressure energy on top of everything else.","Message: none of these hazards is exotic — each one has a barrier designed against it, and that is the rest of Block 1."]'>
       <div class="kicker">Block 1 · Hazards <span class="sub">— what makes an LNG plant different</span></div>
       <h2>The hazards we design against</h2>
@@ -495,8 +492,8 @@
       </div>
     </section>
 
-    <!-- B1-2 ZONES · Fabio · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-2 ZONES · Mario · 7 -->
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
       data-notes='["The plant is cut into three emergency-isolatable zones, bounded by fail-close SDVs.","Zone 1 gas treatment: from plant inlet SDV-2001 to dehydration outlet SDV-3560 — units 200, 330, 310.","Zone 2 liquefaction: SDV-3560 to the LNG tank valves SDV-2201/2202 and BOG inlet XV-3601 — units 350, 340, 360.","Zone 3 is the LNG tank and loading bay — with its own dedicated shutdown level, ASD.","On top of that the plot is divided into fire zones per unit — each with its own detection.","Why you care: in an emergency each zone isolates and depressurizes separately — know which zone you are standing in."]'>
       <div class="kicker">Block 1 · Isolation <span class="sub">— the plant cut into safe pieces</span></div>
       <h2>Three emergency-isolatable zones</h2>
@@ -563,8 +560,8 @@
       </div>
     </section>
 
-    <!-- B1-3 LAYERS + HIERARCHY · Fabio · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-3 LAYERS + HIERARCHY · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
       data-notes='["Core concept of process safety: layers of protection — no single barrier is trusted alone.","Layer 1: the PCS pre-alarm (PAH) tells the operator to act. Layer 2: the trip level (PAHH) acts automatically — PSD. Layer 3: if automation is not enough, the mechanical PSV opens. Beyond that: ESD depressurizes the whole zone.","Then the shutdown ladder, top down: I1 ESD — closes plant inlet/outlets, depressurizes, drops main power to emergency generators. I2 PSD — closes process inlets/outlets, some units keep running. I3 LSD — one package only. I4 ASD — loading bay only, closes the LNG pump valves.","Key architecture fact, quote it: ESD, PSD and ASD sit in one integrated system fully independent of the PCS, per API RP 14C.","Critical HAZOP loops get fail-safe SIL 2 shutdown valves.","What trips ESD: pushbuttons along escape ways, fire detection in process areas, LNG spill detection at the tank."]'>
       <div class="kicker">Block 1 · Layers of protection <span class="sub">— nobody trusts a single barrier</span></div>
       <h2>Alarm → trip → relief → shutdown: the hierarchy</h2>
@@ -609,8 +606,8 @@
       <div class="note">“Emergency shut down levels (ESD, PSD and ASD) are done within one integrated system which is <b>fully independent from the process control system (PCS)</b>, as per API RP 14C.” — SAF01. Critical loops: fail-safe <b>SIL 2</b> SDVs.</div>
     </section>
 
-    <!-- B1-4 ESD & BLOWDOWN · Fabio · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-4 ESD & BLOWDOWN · Mario · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
       data-notes='["Why depressurize? In a fire the gas-side vessel wall weakens; a PSV limits pressure but cannot remove the inventory — only blowdown does. Quote SAF05: a relief valve cannot provide depressurizing.","The target, from API 521: 6.9 barg or half the design pressure, whichever is lower, within 15 minutes.","BDVs are emergency valves — they must fail OPEN; all BDVs of a fire zone open simultaneously.","No liquid blowdown anywhere: liquid inventory is kept deliberately — it slows the heating of a vessel in a fire.","The ammonia and mixed-refrigerant loops have PSVs but no BDVs — closed loops per ASHRAE 15 / EN 378.","Four flares to one common burn pit: hot, cold, ammonia, plus the client wells-area flare. Pit is south — the wind blows from the north — and at least 100 m from process and cabins.","Field consequence: during blowdown expect noise and flare radiation — this is the system working, not failing."]'>
       <div class="kicker">Block 1 · ESD &amp; depressurization <span class="sub">— remove the energy, remove the fuel</span></div>
       <h2>Blowdown: the plant empties itself to flare</h2>
@@ -660,8 +657,8 @@
       </div>
     </section>
 
-    <!-- B1-5 RELIEF · Fabio · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-5 RELIEF · Mario · 6 -->
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
       data-notes='["The PSV is the last barrier that needs no power, no signal, no operator — a spring against pressure.","Set at the design pressure (MAWP); allowed accumulation 110% single valve, 116% multiple, 120% fire case.","Where production cannot stop, valves are spared duty/standby with locked inlet valves arranged so it is impossible to isolate both relief valves at the same time.","Cryogenic specialty: every place LNG can be trapped between two valves gets a thermal relief valve — warming LNG expands enormously.","The LNG tank is fragile: it can rupture from overpressure OR vacuum — 2 x 100% pilot PSVs plus a pressure build-up coil against vacuum.","Field rule that follows: never close a locked-open valve under a PSV — that lock is a barrier."]'>
       <div class="kicker">Block 1 · Relief <span class="sub">— the barrier that needs no power</span></div>
       <h2>PSVs &amp; thermal relief — mechanical, always ready</h2>
@@ -694,8 +691,8 @@
       </div>
     </section>
 
-    <!-- B1-6 F&G · Fabio · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-6 F&G · Mario · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Mario"
       data-notes='["The F&G system is the plant sense organs, living in the safety PLC — independent of the PCS, positions mapped on the control-room SCADA.","49 gas detectors: 43 infrared point detectors for methane, 6 electrochemical for ammonia mounted at eye level near the Unit 340 leak points.","13 triple-IR flame detectors watch flanges, pumps and vessels; they self-check for dirty lenses every minute.","Thresholds to memorize: 5% LEL warning on one detector; 20% LEL confirmed on two — executive action. Ammonia 30 ppm warning, 250 ppm shutdown.","One flame detector in alarm = confirmed fire: plant ESD, fire brigade, and in the tank area the deluge/foam valve opens automatically.","Smoke detectors in every cabin in pairs — 2oo2 trips plant ESD.","Fiber-optic DTS cold detection follows the LNG path — a spill announces itself by temperature.","Manual call points everywhere — max 61 m travel; the fire tone is different from the gas tone.","Voting exists to avoid false trips — but a single detector already means: leave, report, wait."]'>
       <div class="kicker">Block 1 · Fire &amp; gas detection <span class="sub">— the plant’s sense organs</span></div>
       <h2>F&amp;G: detect early, vote, act automatically</h2>
@@ -731,8 +728,8 @@
       <div class="note">Manual call points: red, Ex-rated, max <b>61 m</b> travel (NFPA 72) — fire tone ≠ gas tone. F&amp;G logic in the fail-safe safety PLC, independent of the PCS. Sources: SAF11-ING-FR01/FR02. Site F&amp;G detector layout (SAF11-ING-PR01 Rev.6) — full GA next slide.</div>
     </section>
 
-    <!-- B1-6b F&G GA · Fabio · 3 -->
-    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-6b F&G GA · Mario · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Mario"
       data-notes='["This is the general-arrangement drawing behind the numbers on the previous slide — where the gas, flame, smoke and DTS elements actually sit in the plant.","Point out the legend: point flammable-gas detectors, multispectrum flame detectors (300 m radius field of view per location), smoke detectors (roof level only), and the distributed-temperature-sensing (DTS) fibre route.","Current revision: SAF11-ING-PR01 Rev.6, superseding the Rev.1 drawing referenced earlier in the corpus — layout only, the thresholds and counts taught on the previous slide are unchanged.","No new numbers to memorize here — this slide is a map, not a quiz."]'>
       <div class="kicker">Block 1 · F&amp;G general arrangement <span class="sub">— SAF11-ING-PR01 Rev.6</span></div>
       <h2>Where every detector actually sits</h2>
@@ -742,8 +739,8 @@
       <div class="note">Legend on the drawing: <b>point flammable-gas detector</b> · <b>multispectrum flame detector</b> (300 m radius field of view, per specific-location requirement) · <b>smoke detector</b> (roof level only) · <b>distributed temperature sensing (DTS)</b> fibre run. Current revision <b>Rev.6</b> (11-Dec-2025) — supersedes the Rev.1 drawing. Click to enlarge. Source: SAF11-ING-PR01.</div>
     </section>
 
-    <!-- B1-7 FERA · Fabio · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-7 FERA · Mario · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Mario"
       data-notes='["The FERA is the study that asks: if the plant leaks, what happens? Leak frequencies from industry data, consequences modelled in PHAST.","Reassuring result 1: about 83% of predicted releases are small — 5 mm class; only about 1% are full-bore ruptures.","Reassuring result 2: explosion overpressure damage thresholds are never reached — the plot is open and methane is lighter than air.","The one scenario that can escalate: a MEDIUM gas leak in the gas-treatment section IS-01G — a jet fire exceeding 37.5 kW/m2 on structures for more than 10 minutes.","Pool fires — LNG tank, inlet separators, hot oil, MR liquid — are credible at all sizes; that is why the foam systems exist.","Vulnerability numbers: 12.5 kW/m2 damages buildings, 37.5 kW/m2 damages steel and valves.","Flash fire: seconds long, no structural damage — but lethal to a person inside the cloud. Distance is your protection.","Why you care: every small leak you report kills the statistics that feed this study."]'>
       <div class="kicker">Block 1 · FERA <span class="sub">— fire &amp; explosion risk assessment (SAF02-ING-FR03)</span></div>
       <h2>What the risk study says about this plant</h2>
@@ -777,9 +774,9 @@
       </div>
     </section>
 
-    <!-- B1-8 FIREFIGHTING · Fabio · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Fabio"
-      data-notes='["Fabio presents: the active firefighting layer, designed from the FERA scenarios.","Design demand 330 m3/h — the governing scenario is a jet fire at the liquefaction section; storage 660 m3 gives two hours at full demand.","Underground ring main, 8 inch — supply survives a broken section; 13 dry-barrel pillar hydrants, each with a hose cabinet.","Two diesel main pumps plus a jockey keep the ring pressurized: first pump starts itself at 4 barg falling, second at 3 barg. Manual start is at the field panel only — not from the control room.","Five trailer-mounted monitors, two of them foam-capable.","The LNG tank bund has 8 fixed high-expansion foam generators fed by a bladder tank — automatic on spill or fire detection.","Cardinal rules, quote them: LNG pool fires are neither controlled nor extinguished by water — water increases vaporization and the burning rate. And a jet fire is answered by isolation and depressurization, not by trying to put it out.","For trainees: your job with this equipment is to know where it is and keep it accessible — fighting a plant fire is the ERT role, not yours."]'>
+    <!-- B1-8 FIREFIGHTING · ITF · 9 -->
+    <section class="slide" data-min="9" data-block="Block 1" data-presenter="ITF"
+      data-notes='["ITF presents: the active firefighting layer, designed from the FERA scenarios.","Design demand 330 m3/h — the governing scenario is a jet fire at the liquefaction section; storage 660 m3 gives two hours at full demand.","Underground ring main, 8 inch — supply survives a broken section; 13 dry-barrel pillar hydrants, each with a hose cabinet.","Two diesel main pumps plus a jockey keep the ring pressurized: first pump starts itself at 4 barg falling, second at 3 barg. Manual start is at the field panel only — not from the control room.","Five trailer-mounted monitors, two of them foam-capable.","The LNG tank bund has 8 fixed high-expansion foam generators fed by a bladder tank — automatic on spill or fire detection.","Cardinal rules, quote them: LNG pool fires are neither controlled nor extinguished by water — water increases vaporization and the burning rate. And a jet fire is answered by isolation and depressurization, not by trying to put it out.","For trainees: your job with this equipment is to know where it is and keep it accessible — fighting a plant fire is the ERT role, not yours."]'>
       <div class="kicker">Block 1 · Firefighting <span class="sub">— designed from the FERA scenarios</span></div>
       <h2>Firewater, foam &amp; the cardinal LNG rules</h2>
       <div class="facts" style="margin-top:2px;">
@@ -811,8 +808,8 @@
       </div>
     </section>
 
-    <!-- B1-8b SAFETY EQUIPMENT GA · Fabio · 3 -->
-    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-8b SAFETY EQUIPMENT GA · ITF · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="ITF"
       data-notes='["This is the safety equipment general-arrangement drawing referenced on the previous slide — hydrants, monitors, foam generators, extinguishers, eyewash stations and showers, drawn to scale.","Legend panel: type-of-fire / suitable-extinguisher chart top right; eyewash, infirmary, wind sock, emergency spillage kit, life belt, emergency shower, alarm beacon, speaker and alarm push button symbols.","Same equipment counts as the previous slide — this is simply where they physically sit on the plot.","Current revision SAF07-ING-PR02 Rev.11."]'>
       <div class="kicker">Block 1 · Safety equipment general arrangement <span class="sub">— SAF07-ING-PR02 Rev.11</span></div>
       <h2>Where the safety equipment sits</h2>
@@ -822,8 +819,8 @@
       <div class="note" style="font-size:11px;">Legend: eyewash · infirmary · wind sock · emergency spillage kit · life belt · emergency shower · alarm beacon · speaker · alarm push button · fire-extinguisher selection chart (top right). Click to enlarge. Source: SAF07-ING-PR02.</div>
     </section>
 
-    <!-- B1-8c FF SYSTEM GA · Fabio · 3 -->
-    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-8c FF SYSTEM GA · ITF · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="ITF"
       data-notes='["This is the firewater system general-arrangement drawing — the ring main, hydrants, monitors and foam generators from the previous slide, drawn to scale.","Legend: underground PEHD header 8\" (ring main) with aboveground carbon-steel branch piping 6\"/4\"/2\"; hydrants (6\", HY-XX); fire monitors (FM-XX) and combined monitor+foam units (FMF-XX); foam generators (GF-XX, 15 m3/h each) around the LNG tank bund and impoundment pit; deluge valves (DV-XX); the 1 m3 foam-concentrate bladder tank (T-01).","Same facts as the previous slide — 330 m3/h design demand, 13 hydrants, 5 monitors, 8 foam generators — this is simply where they physically sit.","Current revision SAF02-ING-PR01 Rev.5 (02-Dec-2024)."]'>
       <div class="kicker">Block 1 · Firefighting general arrangement <span class="sub">— SAF02-ING-PR01 Rev.5</span></div>
       <h2>Ring main, hydrants, monitors &amp; foam — where they sit</h2>
@@ -833,8 +830,8 @@
       <div class="note">Legend on the drawing: <b>underground PEHD header 8&Prime;</b> (ring main) / aboveground CS branch 6&Prime;/4&Prime;/2&Prime; · <b>hydrant</b> 6&Prime; (HY-XX) · <b>fire monitor</b> (FM-XX) / <b>fire monitor &amp; foam</b> (FMF-XX) · <b>foam generator</b> (GF-XX, 15 m³/h) on the LNG bund · <b>deluge valve</b> (DV-XX) · <b>bladder tank</b> T-01 (1 m³). Click to enlarge. Source: SAF02-ING-PR01.</div>
     </section>
 
-    <!-- B1-9 LNG STORAGE & SPILL · Fabio · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-9 LNG STORAGE & SPILL · Mario · 7 -->
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Mario"
       data-notes='["The tank is the largest inventory on site: 6,200 m3 geometric, about 10 days of production, single containment, atmospheric — max working pressure only 200 mbar.","Fragile both ways: overpressure AND vacuum can rupture it — 2x100% pilot PSVs, plus a pressure build-up coil against vacuum, plus hydraulic seals in the process design.","Every LNG area has impoundment per NFPA 59A: the bund holds 110% of the tank; gas and temperature detectors live inside it.","A detected spill automatically opens the foam deluge — foam separates LNG from air, suppresses the vapor cloud and knocks down radiation.","At the loading bay: low-temperature probes trigger ASD — the LNG pump valves close; an unignited spill has no impact on the process.","The response to a contained LNG spill is patience: secure, isolate, and wait for it to evaporate completely. Never put water on it.","Truck loading: at least 12 loadings a day, 40 m3 each — the highest-frequency LNG operation on site, human-error driven, hence its own shutdown level."]'>
       <div class="kicker">Block 1 · LNG storage &amp; spill <span class="sub">— the largest inventory, the gentlest handling</span></div>
       <h2>Tank, bund &amp; loading bay protection</h2>
@@ -870,8 +867,8 @@
       </div>
     </section>
 
-    <!-- B1-10 ALARMS & RESPONSE · Fabio · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-10 ALARMS & RESPONSE · ITF · 8 -->
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="ITF"
       data-notes='["This is the slide everyone must remember perfectly — what you hear and what you do.","Two site alarm signals: fire/explosion = one continuous signal; gas leak = a twice-interrupted signal. Instructor note: HSE-08 is internally inconsistent on which is which — teach this convention and CONFIRM at the site induction.","PA announcements always start Attention, Attention.","Your response is always the same five steps: stop work — exit by the nearest safe route — muster UPWIND, watch the windsock — T-card count — wait for instructions.","Never run, never take personal risks, never go back for anything, never re-enter without the all-clear.","Four muster points about 20 m outside the fence; three guards bring the T-card boards; a person not accounted for is treated as missing.","Alarms sound at least 180 seconds, survive blackout on UPS for 15 minutes; manual push buttons within 25 m anywhere in the four plant areas.","Practice question: gas alarm and the windsock points at your muster point — what do you do? Go to the OTHER, upwind one."]'>
       <div class="kicker">Block 1 · Alarms &amp; your response <span class="sub">— the five steps that never change</span></div>
       <h2>When the siren sounds</h2>
@@ -903,8 +900,8 @@
       </div>
     </section>
 
-    <!-- B1-10b EMERGENCY EXITS GA · Fabio · 3 -->
-    <section class="slide" data-min="3" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-10b EMERGENCY EXITS GA · ITF · 3 -->
+    <section class="slide" data-min="3" data-block="Block 1" data-presenter="ITF"
       data-notes='["This is the emergency exits and muster point general-arrangement drawing referenced on the previous slide, drawn to scale.","Legend: muster point, no-access zone, emergency exit indication, and the temporary position marker for auxiliary installation.","Four muster points about 20 m outside the fence, as counted on the previous slide — this is simply where they physically sit and how the exit routes run.","Current revision SAF07-ING-PR01 Rev.7."]'>
       <div class="kicker">Block 1 · Emergency exits general arrangement <span class="sub">— SAF07-ING-PR01 Rev.7</span></div>
       <h2>Exits &amp; muster points — where they sit</h2>
@@ -914,8 +911,8 @@
       <div class="note" style="font-size:11px;">Legend: muster point · no-access zone · emergency exit indication · temporary position for auxiliary installation. Click to enlarge. Source: SAF07-ING-PR01.</div>
     </section>
 
-    <!-- B1-11 HAZARDOUS AREAS · Fabio · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Fabio"
+    <!-- B1-11 HAZARDOUS AREAS · Mario · 6 -->
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Mario"
       data-notes='["Last engineered barrier: keeping ignition away from where gas could be.","The plant is classified per API RP 505 — Zone 2: flammable gas only under abnormal conditions. Zone 1 areas are where gas is likely in normal operation.","Everything electrical inside classified areas is Ex/ATEX rated — that is why you never bring your own electronics.","No mobile phones outside the offices, no cameras, only intrinsically safe radios in the restricted area.","Any ignition source in a risk area = HOT WORK = red permit — Block 2 covers the permit system.","Static is controlled by bonding and earthing; hot surfaces above 250 C get personal-protection barriers.","Smoking only in the designated area outside — zero tolerance inside."]'>
       <div class="kicker">Block 1 · Ignition control <span class="sub">— hazardous areas keep fire and fuel apart</span></div>
       <h2>Classified zones &amp; ignition sources</h2>
@@ -949,8 +946,8 @@
       </div>
     </section>
 
-    <!-- B1-12 RECAP · All · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="All"
+    <!-- B1-12 RECAP · Both · 7 -->
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Both"
       data-notes='["Recap Block 1 as one stack of barriers — walk it top to bottom and ask the group to name each layer before revealing.","Quiz: what is the difference between PSD and ESD? Which valves fail open, which fail close? What happens at 20% LEL? Why never water on an LNG fire?","Key message: the plant is designed to survive its own accidents — but every barrier assumes people respect locks, permits and zones.","Bridge to Block 2: after the break — the human layer: the rules, the permits, the emergency organization."]'>
       <div class="kicker">Block 1 · Recap <span class="sub">— the barrier stack, top to bottom</span></div>
       <h2>Eight layers between a hazard and you</h2>
@@ -1027,8 +1024,8 @@
       </div>
     </section>
 
-    <!-- B2-1 HSE SYSTEM & GOLDEN RULES · Aymen · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-1 HSE SYSTEM & GOLDEN RULES · ITF · 8 -->
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="ITF"
       data-notes='["Block 2 is the human layer — the ITF HSE management system, certified ISO 9001, 14001 and 45001.","Project goal, quote it: no harm to people, no accident, no damage to the environment — zero LTI.","The 10 Golden Rules are minimum, non-negotiable requirements for everyone on site including visitors.","Walk the list — each rule maps to a slide or a Block 1 barrier.","Stop Work Authority: any person has the RIGHT and the OBLIGATION to stop work on immediate danger — and no disciplinary action or retaliation for stopping work in good faith.","If a Golden Rule cannot be applied: stop the work and report — that IS the procedure.","STOP cards: observe, stop the job, highlight the risk, complete the card, submit — targets of 5 per week per organization."]'>
       <div class="kicker">Block 2 · The ITF HSE system <span class="sub">— 10 rules, one authority everyone holds</span></div>
       <h2>Golden Rules &amp; Stop Work Authority</h2>
@@ -1049,8 +1046,8 @@
         &nbsp;·&nbsp; System certified <b>ISO 9001 · 14001 · 45001</b> · Goal: <b>zero LTI — no harm to people</b>.</div>
     </section>
 
-    <!-- B2-2 DAY ONE · Aymen · 7 -->
-    <section class="slide" data-min="7" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-2 DAY ONE · ITF · 7 -->
+    <section class="slide" data-min="7" data-block="Block 2" data-presenter="ITF"
       data-notes='["Nobody works without: site HSE induction, a valid medical fitness certificate, and the mandatory PPE.","Mandatory PPE at all times: helmet, safety shoes, coverall — flame-resistant where the area requires it — gloves, safety glasses. Task-specific gear on top, including cryogenic PPE for LNG service.","PPE standards are specified in HSE-32: EN 397 helmets replaced every 3 years, EN ISO 20345 footwear, EN 166 eyes, hearing protection mandatory from 80 dB.","Site rules: no smoking except the designated area, phones only in offices, no cameras, reverse parking, 10 km/h — 5 inside the site.","No rings or jewellery, long hair tied, no loose clothing near machines, clean-shaven for tight respirators.","Green Hand rules for newcomers: never work alone, buddy system, visible marking, no HSE-critical tasks, assessed after 6 months.","Housekeeping is a safety system: a tidy site removes fuel, trip hazards and blocked escape routes. Red bins = hazardous waste."]'>
       <div class="kicker">Block 2 · Day one on site <span class="sub">— induction, PPE, site rules</span></div>
       <h2>Before you touch anything</h2>
@@ -1094,8 +1091,8 @@
       </div>
     </section>
 
-    <!-- B2-3 JSA & TBT · Aymen · 6 -->
-    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-3 JSA & TBT · ITF · 6 -->
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="ITF"
       data-notes='["Every job starts on paper: risk assessment before work is a policy commitment.","The JSA breaks the task into steps, finds the hazards per step, rates them Criticality = Probability x Severity, then adds controls until the residual risk is acceptable.","Probability A to E, severity 0 to 5 across four targets: people, assets, environment, reputation.","Controls follow the hierarchy: eliminate, substitute, engineer, signage/administrative, PPE — PPE is always LAST.","High priority risk = must be reduced ALARP before work; low = acceptable.","The toolbox talk is the last barrier before hands touch tools: 5-10 minutes at the workface, the JSA explained to every worker, signed on the TBT form.","JSA is required with every permit type — no JSA, no permit, no work."]'>
       <div class="kicker">Block 2 · Think before you work <span class="sub">— JSA · hierarchy of controls · toolbox talk</span></div>
       <h2>Risk on paper before risk in the field</h2>
@@ -1123,8 +1120,8 @@
       </div>
     </section>
 
-    <!-- B2-4 PTW · Aymen · 9 -->
-    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-4 PTW · ITF · 9 -->
+    <section class="slide" data-min="9" data-block="Block 2" data-presenter="ITF"
       data-notes='["Golden Rule number 1 gets its own slide: the permit system.","Five permit types — learn the colors: hot work red 24h, cold work blue 7 days, electrical yellow, working at height white, confined space green 24h.","Hot work is any actual or potential ignition source in a fire-risk area; on hydrocarbon equipment: positively isolate, depressurize, drain, purge, vent first.","Roles: the Permit Authorizer authorizes, the Performing Authority accepts and can STOP the work, the Isolating Authority makes the isolations, the Site Checker verifies.","Work starts only after three signatures: Permit Authorizer, Performing Authority, HSE Supervisor.","Three copies displayed: worksite, permit coordination room, permit authorizer.","Quote the instruction: the issue of a permit does not, by itself, make a job safe.","Trap question for the exam: a suspended permit remains LIVE until cancelled — isolations may still be active."]'>
       <div class="kicker">Block 2 · Permit to Work <span class="sub">— Golden Rule #1 in practice</span></div>
       <h2>Five permits, five colors — no permit, no work</h2>
@@ -1169,8 +1166,8 @@
       </div>
     </section>
 
-    <!-- B2-5 LOTO · Aymen · 6 -->
-    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-5 LOTO · ITF · 6 -->
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="ITF"
       data-notes='["LOTO controls every form of hazardous energy: electrical, mechanical, hydraulic, pneumatic, chemical, thermal, gravity.","Nine steps in strict order — read the flow: prepare, notify, shut down, isolate, lock and tag, release stored energy, VERIFY zero energy with a try-out and voltage absence test, earth, then authorize.","One lock one key — as many locks as there are teams; keys stay with the Isolating Authority.","Quote: tags are essentially warning devices — they do not provide the physical restraint of a lock.","Only the person who applied a device removes it; work on live systems is not allowed, low voltage under 1000 V only.","Major mechanical work needs double block and bleed, or valve plus spade.","Push buttons and selector switches are NOT energy-isolating devices.","Bypassing or defeating a safety system needs its own certificate with an ALARP risk assessment — Golden Rule 2."]'>
       <div class="kicker">Block 2 · Energy isolation <span class="sub">— LOTO: Golden Rule #3</span></div>
       <h2>Lock it, tag it, prove it dead</h2>
@@ -1224,8 +1221,8 @@
       </div>
     </section>
 
-    <!-- B2-6 CONFINED SPACE · Aymen · 6 -->
-    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-6 CONFINED SPACE · ITF · 6 -->
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="ITF"
       data-notes='["A confined space is anywhere enclosed enough to trap atmosphere: vessels, tanks, pits, excavations over 1.5 m with possible bad air — entry is when ANY body part crosses the opening.","First rule: do not enter — can the job be done from outside?","Entry needs the green permit AND the entry certificate, both signed, gas test done by a competent person with a calibrated detector.","Acceptance: oxygen 19 to 23 percent, flammables and toxics below 10 percent of LEL. Note: the confined-space instruction states the O2 window two conflicting ways (19-23% in one section, 18-23% in another) — we teach the most conservative; confirm the site ruling.","Quote: never trust your senses to determine if the air in a confined space is safe.","Never add oxygen to sweeten the air; never petrol engines inside; Ex lighting and non-sparking tools in flammable atmospheres.","An attendant stays at the entry the whole time; the rescue plan exists BEFORE anyone enters; rescue drills at least every 12 months.","In an LNG plant the invisible killers are nitrogen and CO2 — you cannot smell an oxygen-deficient atmosphere."]'>
       <div class="kicker">Block 2 · Confined space <span class="sub">— Golden Rule #6: the air is guilty until proven safe</span></div>
       <h2>Never trust your senses</h2>
@@ -1265,8 +1262,8 @@
       </div>
     </section>
 
-    <!-- B2-7 LIFTING / SIMOPS / LINE OF FIRE · Aymen · 5 -->
-    <section class="slide" data-min="5" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-7 LIFTING / SIMOPS / LINE OF FIRE · ITF · 5 -->
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="ITF"
       data-notes='["Three field disciplines in one slide.","Lifting: every lift has a lifting plan by a competent person; rigging safety factor at least 5 to 1; wind limit 8 m/s; two tag lines; and the absolute: nobody under or passing under the load, ever.","Color coding on lifting gear shows certification status — red-tagged gear is quarantined, never use it.","SIMOPS — simultaneous operations: when two activities can interact, a joint assessment, a SIMOPS matrix and daily coordination TBTs are required; first ask if the operations can simply be separated.","Line of fire is the habit that ties it together: before every task ask what moves, what falls, what releases — and stand where it cannot reach you.","If a problem appears during a lift: load back to origin, replan with the whole team, resume only on agreement."]'>
       <div class="kicker">Block 2 · Lifting · SIMOPS · line of fire <span class="sub">— Golden Rules #5, #8</span></div>
       <h2>Plan the lift, separate the work, stay out of the line</h2>
@@ -1307,8 +1304,8 @@
       </div>
     </section>
 
-    <!-- B2-8 EMERGENCY ORG · Aymen · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-8 EMERGENCY ORG · ITF · 8 -->
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="ITF"
       data-notes='["What stands behind the alarm you learned in Block 1.","Three tiers: Tier 1 handled by the field team — IMT led by the Field Manager as Incident Commander. Tier 2 brings the in-country organization — EMT. Tier 3 is corporate crisis — CMT led by the CEO.","The ERT is the first-intervention team: leader, firefighters, medical staff, isolation team, and the counter doing the T-card headcount.","Medical chain: site clinic with doctor and 4x4 ambulance 24/7 — then Hassan II Bouarfa or Al Irfan and CHU Oujda; expat serious cases stabilize then fly via Rabat.","At least 30 percent of the field workforce holds level-2 first-aid training — you may be asked to be one of them; firefighting training is separate and not held to the same quota.","MEDEVAC decisions belong primarily to the site doctor — a competent-person backup applies if the doctor is unavailable, and HSE Managers can authorize evacuation in extreme emergencies.","Spills: six kits along the process area — stop, contain, clean; eliminate ignition first; only trained people clean; everything goes in the spill log.","Drills: one scenario per month — take them seriously, they are the rehearsal for the worst day."]'>
       <div class="kicker">Block 2 · Emergency organization <span class="sub">— who does what when it goes wrong</span></div>
       <h2>Tiers, teams &amp; the medical chain</h2>
@@ -1362,8 +1359,8 @@
       </div>
     </section>
 
-    <!-- B2-9 REPORTING · Aymen · 5 -->
-    <section class="slide" data-min="5" data-block="Block 2" data-presenter="Aymen"
+    <!-- B2-9 REPORTING · ITF · 5 -->
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="ITF"
       data-notes='["Last content slide — the culture layer: a plant is only as safe as what its people report.","A near miss is free information: same causes as an accident, nobody hurt. The form FR_HSE66 allows anonymous reporting.","STOP cards: observe, stop the job if needed, recommend, submit — targets of 5 per week per organization; even visitors can raise one.","Accidents: report immediately to supervision and HSE; the initial accident report form is completed within 24 hours (for fire incidents specifically, the investigation itself is opened within 24 hours); root causes on the 6M model — man, machine, method, materials, environment, management.","Failure to report can jeopardize compensation claims — reporting protects YOU.","Close the loop with the two big messages of the day: the plant is built to protect you — and you are authorized, obliged and protected to stop any work that feels wrong.","Bridge to break, then Q&A and exam."]'>
       <div class="kicker">Block 2 · Speak up <span class="sub">— reporting is a barrier too</span></div>
       <h2>Near misses, STOP cards, accidents</h2>
@@ -1408,7 +1405,7 @@
     </section>
 
     <!-- Q&A -->
-    <section class="slide inter" data-min="15" data-block="Q&amp;A" data-presenter="All"
+    <section class="slide inter" data-min="15" data-block="Q&amp;A" data-presenter="Both"
       data-notes='["Seed questions if quiet: what is the difference between PSD and ESD? Why do BDVs fail open and SDVs fail closed? What do you do at 20% LEL? Which permit for grinding near a flange — and why? Who can stop the work?","Capture site-specific questions (alarm convention, O2 window ruling, assembly point allocation) for follow-up with ITF HSE.","Keep to 15 minutes so the exam starts on time."]'>
       <div>
         <div class="big">?</div>
@@ -1418,7 +1415,7 @@
     </section>
 
     <!-- EXAM -->
-    <section class="slide inter" data-min="30" data-block="Assessment" data-presenter="All"
+    <section class="slide inter" data-min="30" data-block="Assessment" data-presenter="Both"
       data-notes='["Open the module exam — objectives + key messages: hazards, ESD/PSD/LSD/ASD, F&G thresholds, alarm response, Golden Rules, permit types, LOTO, confined space, reporting.","Then the module evaluation form.","Record attendance/results against each trainee reference (TND-…)."]'>
       <div>
         <div class="big">30:00</div>
@@ -1563,7 +1560,6 @@
   .badge.blk{background:#33363c;color:#cfd2d7;}
   .badge.pr{background:#3a1f25;color:#ff98a6;}
   .badge.pr.zr{background:#16293c;color:var(--blue);}
-  .badge.pr.am{background:#3a2f16;color:var(--amber);}
   .cur-title{font-size:23px;font-weight:700;line-height:1.2;margin:2px 0 4px;color:#fff;}
   .times{font-family:"Consolas",monospace;font-size:12px;color:var(--mut);margin-bottom:14px;}
   .times b{color:#fff;}
@@ -1640,7 +1636,7 @@
     document.getElementById('blk').textContent=d.block;
     const pe=document.getElementById('pres');
     pe.textContent='▸ '+(d.presenter||'—');
-    pe.className='badge pr'+(d.presenter==='Fabio'?' zr':(d.presenter==='Aymen'?' am':''));
+    pe.className='badge pr'+(d.presenter==='ITF'?' zr':'');
     document.getElementById('title').textContent=d.title;
     document.getElementById('times').innerHTML='This slide <b>'+d.min+' min</b> · runs <b>'+fmt(d.start)+'</b> → <b>'+fmt(d.end)+'</b> · of '+fmt(TOTAL);
     document.getElementById('notes').innerHTML=d.notes.length? d.notes.map(n=>'<li>'+n+'</li>').join('') : '<li style="color:#777">No notes.</li>';
