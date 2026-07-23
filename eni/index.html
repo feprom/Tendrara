@@ -486,7 +486,9 @@ const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), 
              // [UI-CUTOVER] NEW — normalized read-view indices (v_*_ui cutover — see HANDOVER_UI_CUTOVER.md).
              // Built in buildUiIndexes(); guarded no-op when the views are empty so the
              // instrument/valve cards degrade to their legacy renderers.
-             instUiByTag:new Map(), valveUiByTag:new Map(), ceByTag:new Map(), loopByField:new Map()};
+             instUiByTag:new Map(), valveUiByTag:new Map(), ceByTag:new Map(), loopByField:new Map(),
+             // [UI-CUTOVER] NEW — equipment + electrical read-view indices (v_mechanical_ui / v_electrical_ui).
+             mechUiByTag:new Map(), elecUiByTag:new Map()};
 
 /* P&ID renders that exist on disk under /pid/<doc_no>/_full.png (40 of 47).
    Missing renders (legend sheet + 6 pending): open disabled, shown as PENDING. */
@@ -901,14 +903,17 @@ async function boot(){
     // readable). The IO/alarm/safety/comms LIST pages intentionally stay on their
     // legacy data-quality sources (their grains differ — see the handover); those
     // views are lazy-loaded on demand by EI44 (data consistency) and EI05 (plant
-    // structure) instead of slowing boot. v_mechanical_ui / v_electrical_ui still
-    // do NOT exist — the equipment & electrical cards stay legacy until they do,
-    // and EI44 tracks that as migration attention.
-    const [instUi,valveUi,ceTrace,loopTrace] = await Promise.all([
+    // structure) instead of slowing boot.
+    // [UI-CUTOVER] EDIT — v_mechanical_ui / v_electrical_ui now EXIST (SQL/104–105)
+    // and are consumed by the equipment card (normalized-first, legacy fallback).
+    // Loaded here so the card can render from them; guarded via fetchOpt so a missing
+    // view degrades to the legacy equipment card rather than breaking boot.
+    const [instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi] = await Promise.all([
       fetchOpt("v_instrument_ui"), fetchOpt("v_valve_ui"),
-      fetchOpt("v_cause_effect_trace"), fetchOpt("v_loop_trace")
+      fetchOpt("v_cause_effect_trace"), fetchOpt("v_loop_trace"),
+      fetchOpt("v_mechanical_ui"), fetchOpt("v_electrical_ui")   // [UI-CUTOVER] NEW
     ]);
-    Object.assign(DB,{instUi,valveUi,ceTrace,loopTrace});
+    Object.assign(DB,{instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -992,9 +997,12 @@ function buildIndexes(){
 // views are empty, so openInst() and friends keep falling back to the legacy path.
 // Kept separate from buildAssetIndexes() so the motor/asset registry is untouched.
 function buildUiIndexes(){
-  ["instUiByTag","valveUiByTag","ceByTag","loopByField"].forEach(k=>IDX[k].clear());
+  ["instUiByTag","valveUiByTag","ceByTag","loopByField","mechUiByTag","elecUiByTag"].forEach(k=>IDX[k].clear());
   (DB.instUi||[]).forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.instUiByTag.set(t,r); });
   (DB.valveUi||[]).forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.valveUiByTag.set(t,r); });
+  // [UI-CUTOVER] NEW — v_mechanical_ui / v_electrical_ui keyed by tag (equipment card cutover).
+  (DB.mechUi||[]).forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.mechUiByTag.set(t,r); });
+  (DB.elecUi||[]).forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.elecUiByTag.set(t,r); });
   // one cause-&-effect function (ce_tag) fans out to many cause→effect rows.
   (DB.ceTrace||[]).forEach(r=>{ const t=(r.ce_tag||"").trim(); if(!t) return;
     if(!IDX.ceByTag.has(t)) IDX.ceByTag.set(t,[]); IDX.ceByTag.get(t).push(r); });
@@ -3328,9 +3336,10 @@ function renderConsistency(c){
   c.innerHTML=`<div class="kicker">TX EI44 <span class="sub">· DATA QUALITY CHECK · DATA CONSISTENCY & MIGRATION ATTENTION</span></div>
   <h1>Data consistency report</h1>
   <div class="empty">Loading normalized model, provenance and reconciliation views…</div>`;
-  const wired={v_instrument_ui:"Instrument card",v_valve_ui:"Valve card",v_cause_effect_trace:"C&E card",v_loop_trace:"Signal-path panel"};
+  const wired={v_instrument_ui:"Instrument card",v_valve_ui:"Valve card",v_cause_effect_trace:"C&E card",v_loop_trace:"Signal-path panel",
+    v_mechanical_ui:"Equipment card",v_electrical_ui:"Equipment electrical block / motor card"};   // [UI-CUTOVER] NEW — v_mechanical_ui + v_electrical_ui built (SQL/104–105) and consumed
   const pending={v_io_ui:"IO list (EI25)",v_measuring_ui:"Alarms / set points (EI30·EI41)",v_control_ui:"Stations & JBs (EI20)",v_network_ui:"Comms / network (EI60)",v_safety_ui:"Plant safety (EI85)"};
-  const missing={v_mechanical_ui:"Equipment card",v_electrical_ui:"Motor / electrical card"};
+  const missing={};   // [UI-CUTOVER] every read view now exists + is consumed; nothing left as VIEW MISSING
   Promise.all([
     lazyViews(["v_asset_master","v_datasheet_conflicts","v_alarm_io_gaps","v_io_tag_gaps","v_pid_orphans","v_dashboard_rollup"]),
     Promise.all(Object.keys({...wired,...pending,...missing}).map(probeView))
@@ -3409,10 +3418,10 @@ function renderConsistency(c){
     </tbody></table>
     <div class="note">PENDING CUTOVER is intentional for the list pages — their legacy data-quality grains
     (EI25/EI30/EI40) differ from the _ui views, so re-sourcing them is a separate effort, not a card-style cutover.
-    The two MISSING views are database work: build <span class="mono">v_mechanical_ui</span> /
-    <span class="mono">v_electrical_ui</span> mirroring <span class="mono">v_instrument_ui</span>, then cut the
-    equipment and electrical cards over (the typed extensions <span class="mono">plant_mechanical_assets</span> /
-    <span class="mono">plant_electrical_assets</span> are already populated).</div>
+    <span class="mono">v_mechanical_ui</span> and <span class="mono">v_electrical_ui</span> are now built
+    (<span class="mono">SQL/104</span>–<span class="mono">105</span>) and consumed by the equipment card
+    (normalized-first from <span class="mono">v_mechanical_ui</span> with the electrical block from
+    <span class="mono">v_electrical_ui</span>, legacy fallback) — the last two card views are WIRED ✓.</div>
 
     <h2 style="font-size:13px;margin-top:14px">2.2 · Instruments still legacy-only (${instGap.length}) ${instGap.length?MIG_CHIP:""}</h2>
     ${instGap.length?dataTable("dc-instgap","INST","Instrument index rows with no normalized asset",[
@@ -4404,23 +4413,95 @@ function openAlarm(atag){
 window.openAlarm=openAlarm;
 
 /* ── equipment card (datasheets / technical documentation) ───── */
+// [UI-CUTOVER] NEW BLOCK ▼ (openEquip wrapper + renderMechCardNorm + shared helpers) ────
+// ── equipment card — normalized read view (v_mechanical_ui), legacy fallback ──
+// Normalized-first entry point, mirroring openInst() (HANDOVER_UI_CUTOVER.md §5 / TODO P2).
+// Prefer the denormalized v_mechanical_ui row; a tag with no view row — or when the view
+// failed to load — falls straight through to openEquipLegacy, which reads plant_equipment
+// untouched. Below the identity block both renderers share equipDownstreamHtml().
 function openEquip(etag){
   etag=(etag||"").trim(); if(!etag) return;
-  const e=DB.equip.find(x=>(x.tag||"").trim()===etag);
-  if(!e) return status("✗ Equipment "+etag+" not found","err");
+  const mv=IDX.mechUiByTag.get(etag);
+  if(mv) return renderMechCardNorm(mv);   // [UI-CUTOVER] normalized-first from v_mechanical_ui
+  return openEquipLegacy(etag);           // pre-normalization fallback (reads plant_equipment)
+}
+
+// [UI-CUTOVER] NEW — normalized equipment card from v_mechanical_ui (+ electrical block
+// from v_electrical_ui when the equipment is electrically driven). Legacy downstream
+// (docs, instruments-on-equipment, CR) is shared with openEquipLegacy() so the two cards
+// are identical below the identity/design block.
+function renderMechCardNorm(r){
+  const tag=(r.tag||"").trim();
   const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
-  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(etag)}</span> — equipment`;
-  const area=IDX.areaByCode.get(String(e.area_code));
+  const card=cells=>{ const c=cells.filter(Boolean); return c.length?`<div class="jbcard">${c.join("")}</div>`:""; };
+  const area=IDX.areaByCode.get(String(r.area_code));
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(tag)}</span> — ${esc(nz(r.equipment_type,"equipment"))}`
+    + ` <span style="font-weight:400">${assetStChip(r.data_status)}</span>`;
+  const wt=[["Empty",r.empty_weight_kg],["Operating",r.operating_weight_kg],["Test",r.test_weight_kg]]
+    .filter(p=>p[1]!=null).map(p=>p[0]+" "+p[1]+" kg").join(" · ");
+  let h=`<div class="kicker">EQUIPMENT <span class="sub">· v_mechanical_ui · normalized${r.class_code?" · "+esc(r.class_code):""}</span></div>`;
+  h+=`<h2 style="margin-top:6px">Identity &amp; design</h2>`+card([
+    kv("Service", nz(r.service)),
+    kv("Equipment type", nz(r.equipment_type,"—")+(r.is_rotating!=null?` <span class="dim">(${r.is_rotating?"rotating":"static"})</span>`:"")),
+    kv("Class", nz(r.class_code,"—")+(r.discipline?' <span class="dim">('+esc(r.discipline)+')</span>':"")),
+    r.service_fluid?kv("Service fluid", nz(r.service_fluid)):"",
+    r.design_pressure_barg!=null?kv("Design pressure", fmtNum(r.design_pressure_barg,"barg")):"",
+    r.design_temp_c!=null?kv("Design temperature", fmtNum(r.design_temp_c,"°C")):"",
+    r.mdmt_c!=null?kv("MDMT", fmtNum(r.mdmt_c,"°C")+(r.mdmt_at_barg!=null?" @ "+r.mdmt_at_barg+" barg":"")):"",
+    r.operating_pressure_barg!=null?kv("Operating pressure", fmtNum(r.operating_pressure_barg,"barg")):"",
+    (r.operating_temp_c!=null&&r.operating_temp_c!=="")?kv("Operating temperature", nz(r.operating_temp_c)+" °C"):"",
+    r.volume_m3!=null?kv("Volume", fmtNum(r.volume_m3,"m³")):"",
+    (r.capacity!=null&&r.capacity!=="")?kv("Capacity", nz(r.capacity)):"",
+    wt?kv("Weights", esc(wt)):"",
+    r.design_code?kv("Design code", nz(r.design_code)):"",
+    (r.size!=null&&r.size!=="")?kv("Size", nz(r.size)):"",
+    (r.manufacturer||r.model)?kv("Manufacturer / model", nz(r.manufacturer,"—")+" "+nz(r.model,"")):"",
+    r.serial_number?kv("Serial", nz(r.serial_number)):"",
+    r.year_built!=null?kv("Year built", esc(String(r.year_built))):"",
+    kv("Area / unit", esc(String(r.area_code||"—"))+(area?" — "+esc(area.description||""):"")),
+    kv("Skid package", nz(r.skid_tag,"—")),
+    kv("FLOC", nz(r.floc_code,"—")+(r.floc_name?" — "+esc(r.floc_name):"")),
+    kv("Data status", assetStChip(r.data_status)+(r.review_status?" "+assetStChip(r.review_status):"")),
+    r.legacy_source_table?kv("Legacy source", '<span class="dim">'+esc(r.legacy_source_table)+(r.legacy_source_id!=null?" #"+r.legacy_source_id:"")+'</span>'):""
+  ]);
+  h+=elecBlockHtml(tag);            // [UI-CUTOVER] electrical block from v_electrical_ui (driven equipment)
+  h+=equipDownstreamHtml(tag);      // shared legacy downstream
+  $("#instBody").innerHTML=h;
+  $("#instOvl").classList.add("open");
+  hydrateDocRefs($("#instBody"));
+}
+
+// [UI-CUTOVER] NEW — electrical block rendered from v_electrical_ui. Additive: returns ""
+// when the tag has no electrical-extension row, so it is safe to call from any card. This is
+// the equipment card's consumption of v_electrical_ui (the motor card already renders the
+// same plant_electrical_assets data via the asset registry).
+function elecBlockHtml(tag){
+  const e=IDX.elecUiByTag.get((tag||"").trim());
+  if(!e) return "";
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  const cells=[
+    e.design_power_kw!=null?kv("Design power", fmtNum(e.design_power_kw,"kW")):"",
+    e.design_voltage_v!=null?kv("Design voltage", fmtNum(e.design_voltage_v,"V")):"",
+    e.design_frequency_hz!=null?kv("Design frequency", fmtNum(e.design_frequency_hz,"Hz")):"",
+    e.design_current_a!=null?kv("Design current", fmtNum(e.design_current_a,"A")):"",
+    e.power_factor!=null?kv("cos φ", fmtNum(e.power_factor)):"",
+    e.load_factor!=null?kv("Load factor", fmtNum(e.load_factor)):"",
+    e.starting_method?kv("Starting method", nz(e.starting_method)):"",
+    e.supply_system?kv("Supply system", nz(e.supply_system)):"",
+    e.mcc_panel_tag?kv("MCC panel", nz(e.mcc_panel_tag)):"",
+    e.mcc_slot?kv("MCC slot", nz(e.mcc_slot)):"",
+    e.fail_position?kv("Fail position", nz(e.fail_position)):"",
+    e.review_status?kv("Review", assetStChip(e.review_status)):""
+  ].filter(Boolean);
+  if(!cells.length) return "";
+  return `<h2 style="margin-top:16px">Electrical <span class="dim" style="font-weight:400">(v_electrical_ui · normalized)</span></h2><div class="jbcard">${cells.join("")}</div>`;
+}
+
+// [UI-CUTOVER] REFACTOR — the legacy equipment card's downstream (docs, instruments on the
+// equipment, CR toolrow), extracted verbatim so the normalized and legacy cards share it.
+function equipDownstreamHtml(etag){
   const onIt=DB.inst.filter(r=>(r.equipment||"").trim()===etag);
-  let h=`<div class="kicker">EQUIPMENT <span class="sub">· plant_equipment</span></div>
-  <div class="jbcard">
-    ${kv("Service", nz(e.service))}
-    ${kv("Area / unit", esc(String(e.area_code||"—"))+(area?" — "+esc(area.description||""):""))}
-    ${kv("Skid package", nz(e.skid_tag,"—"))}
-    ${kv("Source document", nz(e.document,"—"))}
-    ${kv("Notes", nz(e.notes,"—"))}
-  </div>`;
-  h+=docsSection("plant_equipment", etag, "", "");
+  let h=docsSection("plant_equipment", etag, "", "");
   if(onIt.length) h+=`<h2 style="margin-top:16px">Instruments on this equipment (${onIt.length})</h2>
     <table class="data"><thead><tr><th>TAG</th><th>TYPE</th><th>SERVICE</th></tr></thead>
     <tbody>${onIt.map(r=>`<tr><td class="tag" onclick="openInst('${esc((r.tag||"").trim())}')">${esc(r.tag)}</td>
@@ -4429,11 +4510,35 @@ function openEquip(etag){
     <span class="spacer"></span>
     <button class="btn primary" onclick="openCR('plant_equipment','${esc(etag)}')">Raise change request</button>
   </div>`;
+  return h;
+}
+
+// [UI-CUTOVER] RENAMED — this was `openEquip` before the cutover; body UNCHANGED except the
+// downstream half is now the shared equipDownstreamHtml() helper and an elecBlockHtml() line
+// was added. It is the legacy fallback for tags not in v_mechanical_ui.
+function openEquipLegacy(etag){
+  etag=(etag||"").trim(); if(!etag) return;
+  const e=DB.equip.find(x=>(x.tag||"").trim()===etag);
+  if(!e) return status("✗ Equipment "+etag+" not found","err");
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(etag)}</span> — equipment`;
+  const area=IDX.areaByCode.get(String(e.area_code));
+  let h=`<div class="kicker">EQUIPMENT <span class="sub">· plant_equipment</span></div>
+  <div class="jbcard">
+    ${kv("Service", nz(e.service))}
+    ${kv("Area / unit", esc(String(e.area_code||"—"))+(area?" — "+esc(area.description||""):""))}
+    ${kv("Skid package", nz(e.skid_tag,"—"))}
+    ${kv("Source document", nz(e.document,"—"))}
+    ${kv("Notes", nz(e.notes,"—"))}
+  </div>`;
+  h+=elecBlockHtml(etag);            // [UI-CUTOVER] electrical block if this legacy equip also has a v_electrical_ui row
+  h+=equipDownstreamHtml(etag);
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
   hydrateDocRefs($("#instBody"));
 }
-window.openEquip=openEquip;
+window.openEquip=openEquip; window.openEquipLegacy=openEquipLegacy;
+// [UI-CUTOVER] NEW BLOCK ▲ end
 
 /* ── motor / electrical-load card (load list + datasheets) ─────
    Opened by clicking a motor tag in the Motor List (08), Electrical
@@ -4533,6 +4638,16 @@ function openMotor(mtag){
   const asset = IDX.assetByTag.get(mtag)
     || (IDX.aliasToAsset.has(mtag) ? IDX.assetById.get(IDX.aliasToAsset.get(mtag)) : null);
   if(asset && IDX.motorByAsset.has(asset.id)) return renderMotorCard(asset, mtag);
+  // [DB-SYNC] NEW — DRIVES hop: the area motor lists are built from the load list,
+  // whose tag is the DRIVEN equipment (C-341-1), while the normalized motor asset
+  // is its own tag (MC-341-1) with a DRIVES relationship between them. If the tag
+  // resolves to a driven-equipment asset, hop to the normalized motor that drives
+  // it so the card renders normalized (status chip, model, extensions) instead of
+  // silently falling back to the legacy load-list card.
+  if(asset && IDX.drivenByAsset.has(asset.id)){
+    const rel=(IDX.drivenByAsset.get(asset.id)||[]).find(r=>IDX.motorByAsset.has(r.from_asset_id));
+    if(rel) return renderMotorCard(IDX.assetById.get(rel.from_asset_id), mtag);
+  }
   return openMotorLegacy(mtag);   // pre-normalization fallback
 }
 
@@ -4543,7 +4658,7 @@ function openAssetTag(tag){
   const a=IDX.assetByTag.get(tag)||(IDX.aliasToAsset.has(tag)?IDX.assetById.get(IDX.aliasToAsset.get(tag)):null);
   if(a && IDX.motorByAsset.has(a.id)) return renderMotorCard(a,tag);
   if(IDX.motorByTag.has(tag)) return openMotorLegacy(tag);
-  if((DB.equip||[]).some(x=>(x.tag||"").trim()===tag)) return openEquip(tag);
+  if((DB.equip||[]).some(x=>(x.tag||"").trim()===tag) || IDX.mechUiByTag.has(tag)) return openEquip(tag);   // [UI-CUTOVER] also route normalized-only equipment (datasheet/skid-sourced, not in plant_equipment)
   if(IDX.instByTag.has(tag)||IDX.valveByTag.has(tag)||IDX.instUiByTag.has(tag)||IDX.valveUiByTag.has(tag)) return openInst(tag);
   if(IDX.ceByTag.has(tag)) return openCE(tag);   // [UI-CUTOVER] NEW — route C&E function tags
   return status("No detail view for "+tag,"");
