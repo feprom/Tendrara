@@ -1538,21 +1538,19 @@ function areaName(code){const m=AREA_META[String(code)];return m?m.n:((IDX.areaB
 function areaGroup(code){const m=AREA_META[String(code)];return m?m.g:"U";}
 function areaExists(code){return IDX.areaByCode.has(String(code));}
 // [REVIEW] Functional-location breadcrumb, shared by every asset card so placement is easy to eyeball.
-// crumb = PLANT › AREA (name) › SKID from the flat area/skid the asset carries; the dim suffix shows the
-// real FLOC node (installed_at_floc_id via the *_ui views) so a mismatch between the two is visible.
+// crumb = Tendrara (plant) - AREA (name) - SKID/EQUIPMENT tag, from the flat area/skid the asset carries.
 function flocCrumb(areaCode, skidTag){
-  const p=["TAM"];
+  const p=["Tendrara"];                                   // plant root shown by name, not the TAM floc code
   if(areaCode!=null&&String(areaCode).trim()!==""){ const n=areaName(areaCode); p.push(esc(String(areaCode))+(n?" "+esc(String(n)):"")); }
   if(skidTag!=null&&String(skidTag).trim()!==""&&String(skidTag).trim()!==String(areaCode==null?"":areaCode).trim()) p.push(esc(String(skidTag)));
-  return p.join(" › ");
+  return p.join(" - ");
 }
 function flocLine(o){
   o=o||{};
   let crumb=flocCrumb(o.area_code, o.skid_tag);
-  if(o.equip!=null&&String(o.equip).trim()!==""&&String(o.equip).trim()!==String(o.skid_tag==null?"":o.skid_tag).trim()) crumb+=" › "+esc(String(o.equip));
-  const node=(o.floc_code!=null&&String(o.floc_code).trim()!=="")
-    ? ` <span class="dim" style="font-size:10px">· ${esc(String(o.floc_code))}${o.floc_name?" "+esc(String(o.floc_name)):""}</span>` : "";
-  return crumb+node;
+  if(o.equip!=null&&String(o.equip).trim()!==""&&String(o.equip).trim()!==String(o.skid_tag==null?"":o.skid_tag).trim()) crumb+=" - "+esc(String(o.equip));
+  // Crumb ends at the equipment/skid tag; the raw floc_code + long floc_name tail was dropped as redundant.
+  return crumb;
 }
 
 /* ══ TAM industrial icon set — single source of truth ═══════════
