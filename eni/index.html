@@ -1537,6 +1537,23 @@ const UTIL_ORDER=["410","480","500","600","230","530","540","550"];
 function areaName(code){const m=AREA_META[String(code)];return m?m.n:((IDX.areaByCode.get(String(code))||{}).description||("AREA "+code));}
 function areaGroup(code){const m=AREA_META[String(code)];return m?m.g:"U";}
 function areaExists(code){return IDX.areaByCode.has(String(code));}
+// [REVIEW] Functional-location breadcrumb, shared by every asset card so placement is easy to eyeball.
+// crumb = PLANT › AREA (name) › SKID from the flat area/skid the asset carries; the dim suffix shows the
+// real FLOC node (installed_at_floc_id via the *_ui views) so a mismatch between the two is visible.
+function flocCrumb(areaCode, skidTag){
+  const p=["TAM"];
+  if(areaCode!=null&&String(areaCode).trim()!==""){ const n=areaName(areaCode); p.push(esc(String(areaCode))+(n?" "+esc(String(n)):"")); }
+  if(skidTag!=null&&String(skidTag).trim()!=="") p.push(esc(String(skidTag)));
+  return p.join(" › ");
+}
+function flocLine(o){
+  o=o||{};
+  let crumb=flocCrumb(o.area_code, o.skid_tag);
+  if(o.equip!=null&&String(o.equip).trim()!==""&&String(o.equip).trim()!==String(o.skid_tag==null?"":o.skid_tag).trim()) crumb+=" › "+esc(String(o.equip));
+  const node=(o.floc_code!=null&&String(o.floc_code).trim()!=="")
+    ? ` <span class="dim" style="font-size:10px">· ${esc(String(o.floc_code))}${o.floc_name?" "+esc(String(o.floc_name)):""}</span>` : "";
+  return crumb+node;
+}
 
 /* ══ TAM industrial icon set — single source of truth ═══════════
    One canonical glyph per asset class, reused by: summary cards,
@@ -3616,11 +3633,16 @@ function renderStructure(c){
        at this zoom (1,354 of them) so they stay a counted line, not a tag cloud. */
     const NOLIST=new Set(["IO_CHANNEL","NETWORK_LINK"]);
     const CAP=150;
-    const assetGroups=fid=>{
-      const own=assetsByFloc.get(fid)||[];
-      if(!own.length) return "";
+    const childKids=new Map();   // parentId -> [child asset]; scoped per skid, reset by assetGroups
+    const assetTag=a=>`<span class="tag" style="margin-right:6px${a.data_status==="CONFLICT"?";color:var(--fail)":""}" onclick="openAssetTag('${esc(a.official_tag)}')" title="${esc(a.data_status||"")}${a.service?" · "+esc(a.service):""}">${esc(a.official_tag)}</span>`;
+    const childBlock=pid=>{
+      const ch=childKids.get(pid); if(!ch||!ch.length) return "";
+      const byC=new Map(); ch.forEach(a=>{ const cl=IDX.aclassById.get(a.asset_class_id); const k=(cl&&cl.code)||"—"; if(!byC.has(k)) byC.set(k,[]); byC.get(k).push(a); });
+      return [...byC.entries()].map(([cls,rows])=>`<div style="padding:2px 0 2px 18px"><span class="mono dim" style="font-size:9.5px">↳ ${esc(cls)} · ${rows.length}</span> ${rows.map(assetTag).join("")}</div>`).join("");
+    };
+    const classGroups=(list,indent)=>{
       const byClass=new Map();
-      own.forEach(a=>{ const cl=IDX.aclassById.get(a.asset_class_id); const k=(cl&&cl.code)||"—";
+      list.forEach(a=>{ const cl=IDX.aclassById.get(a.asset_class_id); const k=(cl&&cl.code)||"—";
         if(!byClass.has(k)) byClass.set(k,[]); byClass.get(k).push(a); });
       return [...byClass.entries()].sort((x,y)=>y[1].length-x[1].length).map(([cls,rows])=>{
         const disc=discOf(rows[0]);
@@ -3629,16 +3651,33 @@ function renderStructure(c){
           <span style="margin-left:6px">${miniChips({ok:rows.filter(a=>a.data_status==="VERIFIED").length,
             nr:rows.filter(a=>a.data_status==="NEEDS_REVIEW").length,
             cf:rows.filter(a=>a.data_status==="CONFLICT").length})}</span>`;
-        if(NOLIST.has(cls)) return `<div style="padding:3px 0 3px 14px">${head}
+        if(NOLIST.has(cls)) return `<div style="padding:3px 0 3px ${indent}px">${head}
           <span class="dim" style="font-size:10px">— listed per station (EI20/EI25), not here</span></div>`;
         const shown=rows.slice(0,CAP);
-        return `<details style="padding:2px 0 2px 14px"><summary style="cursor:pointer;list-style-position:outside">${head}</summary>
+        return `<details style="padding:2px 0 2px ${indent}px"><summary style="cursor:pointer;list-style-position:outside">${head}</summary>
           <div style="padding:6px 0 4px 12px;line-height:2">
-            ${shown.map(a=>`<span class="tag" style="margin-right:6px${a.data_status==="CONFLICT"?";color:var(--fail)":""}"
-              onclick="openAssetTag('${esc(a.official_tag)}')" title="${esc(a.data_status||"")}${a.service?" · "+esc(a.service):""}">${esc(a.official_tag)}</span>`).join("")}
+            ${shown.map(a=>assetTag(a)+childBlock(a.id)).join("")}
             ${rows.length>CAP?`<span class="dim" style="font-size:10.5px">… +${rows.length-CAP} more (use search / the area lists)</span>`:""}
           </div></details>`;
       }).join("");
+    };
+    // [REVIEW] Within a skid, components PART_OF another asset in the same skid nest under their
+    // parent (e.g. cooler-fan motors under oil cooler E-341-1) instead of a flat MOTOR group.
+    const assetGroups=fid=>{
+      const own=assetsByFloc.get(fid)||[];
+      if(!own.length) return "";
+      const ownIds=new Set(own.map(a=>a.id));
+      childKids.clear();
+      const childIds=new Set();
+      (DB.arels||[]).forEach(r=>{
+        if(r.relationship_type==="PART_OF" && ownIds.has(r.from_asset_id) && ownIds.has(r.to_asset_id)){
+          const ch=IDX.assetById.get(r.from_asset_id); if(!ch) return;
+          if(!childKids.has(r.to_asset_id)) childKids.set(r.to_asset_id,[]);
+          childKids.get(r.to_asset_id).push(ch); childIds.add(r.from_asset_id);
+        }
+      });
+      const topLevel=own.filter(a=>!childIds.has(a.id));
+      return classGroups(topLevel, 14);
     };
     const skidNode=s=>{
       const t=roll(s);
@@ -4108,7 +4147,7 @@ function renderInstCardNorm(r, kind){
     kv("Junction box (JB) — field enclosure the cable lands in", nz(r.junction_box_tag,"—")),
     kv("On equipment", r.equipment_tag?`<a style="color:var(--blue);cursor:pointer;font-weight:700" onclick="openAssetTag('${esc((r.equipment_tag||"").trim())}')">${esc(r.equipment_tag)} →</a>`:"—"),
     kv("Process line", nz(r.line_number,"—")),
-    kv("FLOC", nz(r.floc_code,"—")+(r.floc_name?" — "+esc(r.floc_name):"")),
+    kv("Functional location", flocLine(r)),
     leg?(()=>{ const l=dwgLink(leg.tam_pid);
         let v=nz(leg.tam_pid)+(leg.itf_pid?" · ITF "+esc(leg.itf_pid):"");
         if(l&&l.sp) v+=` <button ${OPENBTN} style="margin-left:6px" onclick="openStorage('${esc(l.sp.bucket)}','${esc(l.sp.path)}')">RENDER ⧉</button>`;
@@ -4526,7 +4565,7 @@ function renderMechCardNorm(r){
     r.year_built!=null?kv("Year built", esc(String(r.year_built))):"",
     kv("Area / unit", esc(String(r.area_code||"—"))+(area?" — "+esc(area.description||""):"")),
     kv("Skid package", nz(r.skid_tag,"—")),
-    kv("FLOC", nz(r.floc_code,"—")+(r.floc_name?" — "+esc(r.floc_name):"")),
+    kv("Functional location", flocLine(r)),
     kv("Data status", assetStChip(r.data_status)+(r.review_status?" "+assetStChip(r.review_status):"")),
     r.legacy_source_table?kv("Legacy source", '<span class="dim">'+esc(r.legacy_source_table)+(r.legacy_source_id!=null?" #"+r.legacy_source_id:"")+'</span>'):""
   ]);
@@ -4594,6 +4633,7 @@ function openEquipLegacy(etag){
     ${kv("Service", nz(e.service))}
     ${kv("Area / unit", esc(String(e.area_code||"—"))+(area?" — "+esc(area.description||""):""))}
     ${kv("Skid package", nz(e.skid_tag,"—"))}
+    ${kv("Functional location", flocLine({area_code:e.area_code, skid_tag:e.skid_tag}))}
     ${kv("Source document", nz(e.document,"—"))}
     ${kv("Notes", nz(e.notes,"—"))}
   </div>`;
@@ -4634,6 +4674,7 @@ function openMotorLegacy(mtag){
       ${kv("Service", nz(r.service))}
       ${kv("Area / unit", esc(String(r.unit_tag||"—"))+(area?" — "+esc(area.description||""):(r.unit_description?" — "+esc(r.unit_description):"")))}
       ${kv("Skid package", nz(r.skid_tag,"—"))}
+      ${kv("Functional location", flocLine({area_code:r.unit_tag, skid_tag:r.skid_tag}))}
       ${kv("Starting type", nz(r.starting_type,"—"))}
       ${kv("Rated voltage", esc(String(r.voltage||"—"))+" V")}
       ${kv("Installed power", kw(r.power_rating_kw))}
@@ -4802,6 +4843,8 @@ function renderMotorCard(asset, reqTag){
   const drives = IDX.drivesByAsset.get(asset.id) || [];
   const drivenBy=IDX.drivenByAsset.get(asset.id) || [];
   const area   = IDX.areaByCode.get(String(asset.area_code));
+  const eu     = IDX.elecUiByTag.get((asset.official_tag||"").trim()) || {};
+  const partOfTag = (()=>{ const rr=(DB.arels||[]).find(x=>x.relationship_type==="PART_OF"&&x.from_asset_id===asset.id); return rr?((IDX.assetById.get(rr.to_asset_id)||{}).official_tag||null):null; })();
 
   const drivesTags = drives.map(r=>{ const t=IDX.assetById.get(r.to_asset_id); return t?t.official_tag:null; }).filter(Boolean);
   $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(asset.official_tag)}</span> — motor`
@@ -4826,7 +4869,7 @@ function renderMotorCard(asset, reqTag){
     kv("Area", esc(String(asset.area_code||"—"))),
     kv("Unit", area?esc(area.description||"—"):"—"),
     kv("Skid", nz(asset.skid_tag,"—")),
-    kv("Functional location", ["TAM", asset.area_code?esc(String(asset.area_code))+(area&&area.description?" "+esc(area.description):""):null, asset.skid_tag?esc(String(asset.skid_tag)):null].filter(Boolean).join(" › ")),
+    kv("Functional location", flocLine({area_code:asset.area_code, skid_tag:asset.skid_tag, floc_code:eu.floc_code, floc_name:eu.floc_name, equip:partOfTag})),
     kv("Class", cls?esc(cls.name)+' <span class="dim">('+esc(cls.discipline)+')</span>':"—"),
     kv("Data status", assetStChip(asset.data_status))
   ]);
