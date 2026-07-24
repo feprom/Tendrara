@@ -3679,31 +3679,62 @@ function renderStructure(c){
       const topLevel=own.filter(a=>!childIds.has(a.id));
       return classGroups(topLevel, 14);
     };
+    // [REVIEW] EQUIPMENT FLOC (below SKID, mig 119): the node IS a piece of equipment
+    // (e.g. ammonia condenser E-342-1). Its title is the lead asset — the asset whose id ==
+    // floc.legacy_source_id (fallback: the sole HEAT_EXCHANGER) — clickable to its card. Its
+    // fans + motors render as PARALLEL class groups below (NOT motor-under-fan; the DRIVES link
+    // is lateral). The lead asset is excluded from the body so it never appears twice.
+    const equipmentNode=f=>{
+      const t=roll(f);
+      const own=assetsByFloc.get(f.id)||[];
+      const lead=own.find(a=>a.id===f.legacy_source_id)
+              || own.find(a=>{const cl=IDX.aclassById.get(a.asset_class_id);return cl&&cl.code==="HEAT_EXCHANGER";});
+      const rest=own.filter(a=>!lead||a.id!==lead.id);
+      const eqk=(kids.get(f.id)||[]).filter(k=>k.level_kind==="EQUIPMENT").sort((a,b)=>a.floc_code.localeCompare(b.floc_code));
+      childKids.clear();
+      const title=lead
+        ? `<span class="tag" style="font-weight:700;margin-right:6px" onclick="event.stopPropagation();openAssetTag('${esc(lead.official_tag)}')" title="${esc(lead.service||"")}">${esc(lead.official_tag)}</span>`
+        : `<span class="mono" style="font-weight:700">${esc(f.floc_code)}</span>`;
+      const body=classGroups(rest,14);
+      return `<details style="margin:2px 0 2px 18px;border-left:2px solid var(--blue);padding-left:10px">
+        <summary style="cursor:pointer">${title}
+          <span class="dim">${esc(f.name||"")}</span> <span class="mono dim" style="font-size:10px">EQUIPMENT · ${t.n} assets</span>
+          ${t.n?miniChips(t):""}</summary>
+        ${eqk.map(equipmentNode).join("")}
+        ${body||(eqk.length?'':'<div class="dim" style="padding:4px 0 4px 14px;font-size:11px">No child assets at this equipment FLOC.</div>')}
+      </details>`;
+    };
     const skidNode=s=>{
       const t=roll(s);
+      const eqk=(kids.get(s.id)||[]).filter(k=>k.level_kind==="EQUIPMENT").sort((a,b)=>a.floc_code.localeCompare(b.floc_code));
       return `<details style="margin:2px 0 2px 18px;border-left:1px solid var(--line);padding-left:10px">
         <summary style="cursor:pointer"><span class="mono" style="font-weight:700">${esc(s.floc_code)}</span>
           <span class="dim">${esc(s.name||"")}</span> <span class="mono dim" style="font-size:10px">SKID · ${t.n} assets</span>
           ${t.n?miniChips(t):""}</summary>
-        ${assetGroups(s.id)||'<div class="dim" style="padding:4px 0 4px 14px;font-size:11px">No assets installed at this skid FLOC yet.</div>'}
+        ${eqk.map(equipmentNode).join("")}
+        ${assetGroups(s.id)||(eqk.length?'':'<div class="dim" style="padding:4px 0 4px 14px;font-size:11px">No assets installed at this skid FLOC yet.</div>')}
       </details>`;
     };
     const areaNode=f=>{
       const t=roll(f);
       const code=String(f.area_code||f.floc_code.replace(/^TAM-/,""));
-      const sk=(kids.get(f.id)||[]).filter(k=>k.level_kind==="SKID").sort((a,b)=>a.floc_code.localeCompare(b.floc_code));
+      // SKID and EQUIPMENT children render side by side, ordered by floc_code so an
+      // EQUIPMENT condenser (TAM-340-E-342-1) sits beside the PK-341 skid packages.
+      const nodes=(kids.get(f.id)||[]).filter(k=>k.level_kind==="SKID"||k.level_kind==="EQUIPMENT").sort((a,b)=>a.floc_code.localeCompare(b.floc_code));
+      const sk=nodes.filter(k=>k.level_kind==="SKID");
+      const eq=nodes.filter(k=>k.level_kind==="EQUIPMENT");
       return `<details style="margin:4px 0;border:1px solid var(--line);border-radius:4px;padding:6px 10px" ${t.cf?"open":""}>
         <summary style="cursor:pointer">
           <span class="mono" style="color:var(--crimson);font-weight:700">${esc(f.floc_code)}</span>
           <b style="margin-left:4px">${esc(f.name||areaName(code))}</b>
-          <span class="mono dim" style="font-size:10px;margin-left:6px">${f.level_kind==="AREA"?"AREA "+esc(code):esc(f.level_kind)} · ${sk.length?sk.length+" skids · ":""}${t.n} assets</span>
+          <span class="mono dim" style="font-size:10px;margin-left:6px">${f.level_kind==="AREA"?"AREA "+esc(code):esc(f.level_kind)} · ${sk.length?sk.length+" skids · ":""}${eq.length?eq.length+" equipment · ":""}${t.n} assets</span>
           <span style="margin-left:8px">${miniChips(t)}</span>
           <a onclick="event.preventDefault();event.stopPropagation();nav('area/${esc(code)}')" style="cursor:pointer;color:var(--blue);font-size:11px;margin-left:10px">open area →</a>
         </summary>
         <div style="margin-top:6px">
-          ${sk.map(skidNode).join("")}
+          ${nodes.map(k=>k.level_kind==="EQUIPMENT"?equipmentNode(k):skidNode(k)).join("")}
           ${assetGroups(f.id)}
-          ${!sk.length&&!(assetsByFloc.get(f.id)||[]).length?'<div class="dim" style="padding:4px 0;font-size:11px">Nothing installed directly at this level.</div>':""}
+          ${!nodes.length&&!(assetsByFloc.get(f.id)||[]).length?'<div class="dim" style="padding:4px 0;font-size:11px">Nothing installed directly at this level.</div>':""}
         </div>
       </details>`;
     };
@@ -3718,7 +3749,7 @@ function renderStructure(c){
     c.innerHTML=`
     <div class="kicker">TX EI05 <span class="sub">· PLANT STRUCTURE · plant_functional_locations + plant_assets</span></div>
     <h1>Plant structure</h1>
-    <p class="lead">The functional-location spine of the normalized model: <b>PLANT → AREA → SKID → asset</b>.
+    <p class="lead">The functional-location spine of the normalized model: <b>PLANT → AREA → SKID / EQUIPMENT → asset</b>.
     Every asset points at exactly one FLOC (<span class="mono">installed_at_floc_id</span>), so this tree IS the
     plant as the database understands it. Chips show the verification state rolled up per node —
     <span class="chip ok">verified</span> <span class="chip warn">needs review</span> <span class="chip fail">conflict</span>.
