@@ -4852,8 +4852,12 @@ function openAssetTag(tag){
   tag=(tag||"").trim(); if(!tag) return;
   const a=IDX.assetByTag.get(tag)||(IDX.aliasToAsset.has(tag)?IDX.assetById.get(IDX.aliasToAsset.get(tag)):null);
   if(a && IDX.motorByAsset.has(a.id)) return renderMotorCard(a,tag);
-  if(IDX.motorByTag.has(tag)) return openMotorLegacy(tag);
+  // A real mechanical/equipment asset must open as equipment even when it also appears in the
+  // electrical load-list. An air-cooled condenser (E-342-1) draws power, so it has an eloads row
+  // and lands in motorByTag — but it is a HEAT_EXCHANGER, not a motor. Route by the asset's true
+  // nature (mechanical extension / plant_equipment) BEFORE the legacy load-list/MCC motor fallback.
   if((DB.equip||[]).some(x=>(x.tag||"").trim()===tag) || IDX.mechUiByTag.has(tag)) return openEquip(tag);   // [UI-CUTOVER] also route normalized-only equipment (datasheet/skid-sourced, not in plant_equipment)
+  if(IDX.motorByTag.has(tag)) return openMotorLegacy(tag);
   if(IDX.instByTag.has(tag)||IDX.valveByTag.has(tag)||IDX.instUiByTag.has(tag)||IDX.valveUiByTag.has(tag)) return openInst(tag);
   if(IDX.ceByTag.has(tag)) return openCE(tag);   // [UI-CUTOVER] NEW — route C&E function tags
   return status("No detail view for "+tag,"");
