@@ -2098,9 +2098,9 @@ const RPTS=[
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       rptAreaCol(r=>r.area_code),
       {label:"SKID", get:r=>r.skid_tag, cls:"mono dim"},
-      {label:"kW", get:r=>r.design_power_kw, num:true, r:true, cls:"mono"},
+      {label:"kW", get:r=>r.design_power_kw, num:true, r:true, cls:"mono", html:(r,v)=>v!=null&&v!==''?(+v).toFixed(2):'<span class="dim">—</span>'},
       {label:"V", get:r=>r.design_voltage_v, num:true, r:true, cls:"mono", html:(r,v)=>v!=null?esc(String(v)):'<span class="dim">—</span>'},
-      {label:"cos φ", get:r=>r.power_factor, num:true, r:true, cls:"mono", html:(r,v)=>v!=null?esc(String(v)):'<span class="dim">—</span>'},
+      {label:"cos φ", get:r=>r.power_factor, num:true, r:true, cls:"mono", html:(r,v)=>v!=null&&v!==''?(+v).toFixed(2):'<span class="dim">—</span>'},
       {label:"STARTING", get:r=>r.starting_method, cls:"mono dim"},
       {label:"MCC / FEEDER", get:r=>r.mcc_panel_tag, cls:"mono", html:(r,v)=>v?esc(String(v))+(r.mcc_slot?` <span class="dim">/ ${esc(String(r.mcc_slot))}</span>`:""):'<span class="dim">—</span>'},
       {label:"STATUS", get:r=>r.data_status, html:(r,v)=>assetStChip(v)}]},
@@ -4709,13 +4709,13 @@ function motorSpecTable(ea, mspec, nplate){
   const amb = mspec && (mspec.ambient_min_c!=null||mspec.ambient_max_c!=null)
       ? [mspec.ambient_min_c,mspec.ambient_max_c].filter(x=>x!=null).join(" … ") : null;
   const rows=[
-    {p:"Power",u:"kW",n:1, oem:mspec&&mspec.rated_power_kw, np:nplate&&nplate.rated_power_kw, dz:ea&&ea.design_power_kw},
+    {p:"Power",u:"kW",n:1,dec:2, oem:mspec&&mspec.rated_power_kw, np:nplate&&nplate.rated_power_kw, dz:ea&&ea.design_power_kw},
     {p:"Voltage",u:"V",n:1, oem:mspec&&mspec.rated_voltage_v, np:nplate&&nplate.rated_voltage_v, dz:ea&&ea.design_voltage_v},
     {p:"Frequency",u:"Hz",n:1, oem:mspec&&mspec.rated_frequency_hz, np:nplate&&nplate.rated_frequency_hz, dz:ea&&ea.design_frequency_hz},
     {p:"Full-load current",u:"A",n:1, oem:mspec&&mspec.full_load_current_a, np:nplate&&nplate.full_load_current_a, dz:ea&&ea.design_current_a},
     {p:"Speed",u:"rpm",n:1, oem:mspec&&mspec.rated_speed_rpm, np:nplate&&nplate.rated_speed_rpm},
     {p:"Poles",u:"",n:1, oem:mspec&&mspec.poles},
-    {p:"cos φ",u:"",n:1, oem:mspec&&mspec.power_factor, dz:ea&&ea.power_factor},
+    {p:"cos φ",u:"",n:1,dec:2, oem:mspec&&mspec.power_factor, dz:ea&&ea.power_factor},
     {p:"Efficiency class",u:"", oem:mspec&&mspec.efficiency_class, np:nplate&&nplate.efficiency_class},
     {p:"Efficiency",u:"%",n:1, oem:mspec&&mspec.full_load_efficiency_pct},
     {p:"Insulation class",u:"", oem:mspec&&mspec.insulation_class},
@@ -4743,14 +4743,14 @@ function motorSpecTable(ea, mspec, nplate){
     const cands=[["OEM",r.oem],["Nameplate",r.np],["Design",r.dz]].filter(c=>has(c[1]));
     if(!cands.length) return;                          // OEM > Nameplate > Design
     const differ = new Set(cands.map(c=>norm(c[1],r.n))).size>1;
-    out.push({p:r.p, u:r.u, v:cands[0][1], src:cands[0][0], differ,
+    out.push({p:r.p, u:r.u, v:cands[0][1], src:cands[0][0], differ, dec:r.dec,
       tip: differ?cands.map(c=>c[0]+": "+c[1]).join(" · "):""});
   });
   if(!out.length) return "";
   const body=out.map(o=>{
     const tag = o.src!=="OEM" ? ` <span class="dim" style="font-size:10px">(${o.src.toLowerCase()})</span>` : "";
     const d   = o.differ ? ` <span class="chip warn" title="Sources differ — ${esc(o.tip)}. OEM model kept as final.">≠</span>` : "";
-    return `<tr><td>${esc(o.p)}${d}</td><td class="mono">${esc(String(o.v))}${o.u?" "+o.u:""}${tag}</td></tr>`;
+    return `<tr><td>${esc(o.p)}${d}</td><td class="mono">${(o.dec!=null&&o.v!==""&&!isNaN(+o.v))?(+o.v).toFixed(o.dec):esc(String(o.v))}${o.u?" "+o.u:""}${tag}</td></tr>`;
   }).join("");
   return `<table class="data"><thead><tr><th>PARAMETER</th>
     <th>VALUE</th></tr></thead><tbody>${body}</tbody></table>`;
@@ -4826,6 +4826,7 @@ function renderMotorCard(asset, reqTag){
     kv("Area", esc(String(asset.area_code||"—"))),
     kv("Unit", area?esc(area.description||"—"):"—"),
     kv("Skid", nz(asset.skid_tag,"—")),
+    kv("Functional location", ["TAM", asset.area_code?esc(String(asset.area_code))+(area&&area.description?" "+esc(area.description):""):null, asset.skid_tag?esc(String(asset.skid_tag)):null].filter(Boolean).join(" › ")),
     kv("Class", cls?esc(cls.name)+' <span class="dim">('+esc(cls.discipline)+')</span>':"—"),
     kv("Data status", assetStChip(asset.data_status))
   ]);
