@@ -224,6 +224,8 @@
      keep the action column intact and let the description absorb the slack instead
      of every column stretching ── */
   #dt-iolist .dtbody, #dt-st-io .dtbody{max-height:72vh;}   /* taller than the 460px default: this is a working list, but keep the sticky header + scroll */
+  /* [REVIEW] Engineering-report tables are working lists too — let them fill the viewport (sticky header + scroll) instead of the 460px default. */
+  [id^="dt-rpt-"] .dtbody{max-height:78vh;}
   #dt-iolist td.nowrap, #dt-iolist th.nowrap, #dt-st-io td.nowrap, #dt-st-io th.nowrap{white-space:nowrap;}
   #dt-iolist td.nowrap button.btn.mini, #dt-st-io td.nowrap button.btn.mini{margin-right:3px;}
   /* clamped cells — click to expand in place */
@@ -1752,7 +1754,7 @@ function renderHome(c){
     ${fact("IO",DB.io.length,"IO CHANNELS")}
     ${fact("INST",DB.inst.length,"INSTRUMENTS")}
     ${fact("VLV",DB.valves.length,"ACTUATED VALVES")}
-    ${fact("MOT",DB.dsheets.filter(d=>d.specs&&d.specs.motor_class).length,"MOTORS",{link:"nav('report/motords')"})}
+    ${fact("MOT",(DB.elecUi||[]).filter(r=>r.class_code==="MOTOR").length,"MOTORS",{link:"nav('report/motors')"})}
     ${fact("ALM",DB.alarms.length,"ALARMS",{link:"nav('alarms')"})}
     ${fact("DWG",DB.drawings.length,"P&ID DRAWINGS",{link:"nav('drawings')"})}
     ${fact("VERIFY",Math.round(100*verified/Math.max(1,DB.io.length))+"%","IO FIELD-VERIFIED ("+verified+"/"+DB.io.length+")")}
@@ -2085,27 +2087,42 @@ const RPTS=[
       {label:"SET POINT", get:r=>r.set_point, cls:"mono", html:(r,v)=>v?esc(v):'<span class="chip warn">NOT SET</span>'},
       rptAreaCol(r=>r.area_code),
       {label:"DESCRIPTION", get:r=>r.description, cls:"dim"}]},
-  {id:"motors", no:"08", title:"Motor List — Remote MCC", src:()=>[...DB.mcc].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+  // [REVIEW] Single official motor list — normalized source (v_electrical_ui / DB.elecUi, class MOTOR).
+  // Replaces the legacy "Motor List — Remote MCC" (plant_mcc_motors); all 245 MCC motors are covered here.
+  {id:"motors", no:"08", title:"Electrical Motor / Actuator List",
+    src:()=>[...(DB.elecUi||[])].filter(r=>r.class_code==="MOTOR")
+      .sort((a,b)=>String(a.tag).localeCompare(String(b.tag),undefined,{numeric:true})),
     click:r=>`openMotor('${esc((r.tag||"").trim())}')`,
     cols:()=>[
-      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v||"—")}</b>`},
+      {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--crimson)">${esc(v||"—")}</b>`},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       rptAreaCol(r=>r.area_code),
-      {label:"FAIL POSITION", get:r=>r.fail_position, html:(r,v)=>`<span class="chip ${/close/i.test(v||"")?"crimson":"dim"}">${nz(v,"—")}</span>`},
-      {label:"RIO PANEL", get:r=>r.rio_panel, cls:"mono"},
-      {label:"SLOT", get:r=>r.slot, cls:"mono dim"},
-      {label:"POWER", get:r=>r.power_rating, cls:"mono", r:true}]},
-  {id:"loads", no:"09", title:"Electrical Load List", src:()=>[...DB.eloads].sort((a,b)=>String(a.tag).localeCompare(String(b.tag))),
+      {label:"SKID", get:r=>r.skid_tag, cls:"mono dim"},
+      {label:"kW", get:r=>r.design_power_kw, num:true, r:true, cls:"mono"},
+      {label:"V", get:r=>r.design_voltage_v, num:true, r:true, cls:"mono", html:(r,v)=>v!=null?esc(String(v)):'<span class="dim">—</span>'},
+      {label:"cos φ", get:r=>r.power_factor, num:true, r:true, cls:"mono", html:(r,v)=>v!=null?esc(String(v)):'<span class="dim">—</span>'},
+      {label:"STARTING", get:r=>r.starting_method, cls:"mono dim"},
+      {label:"MCC / FEEDER", get:r=>r.mcc_panel_tag, cls:"mono", html:(r,v)=>v?esc(String(v))+(r.mcc_slot?` <span class="dim">/ ${esc(String(r.mcc_slot))}</span>`:""):'<span class="dim">—</span>'},
+      {label:"STATUS", get:r=>r.data_status, html:(r,v)=>assetStChip(v)}]},
+  // [REVIEW] Shrinking remainder — legacy electrical loads (plant_electrical_loads) whose tag is NOT
+  // yet in the normalized registry (v_electrical_ui). Empties itself as normalization proceeds; when it
+  // reaches 0, delete this report. The "Electrical Motor / Actuator List" above is the normalized source.
+  {id:"loads", no:"09", title:"Motors — pending normalization",
+    src:()=>{ const norm=new Set();
+        (DB.elecUi||[]).forEach(e=>{ if(e.tag)norm.add(String(e.tag).trim().toUpperCase());
+          if(e.normalized_tag)norm.add(String(e.normalized_tag).trim().toUpperCase()); });
+        return [...DB.eloads].filter(r=>!norm.has(String(r.tag||"").trim().toUpperCase()))
+          .sort((a,b)=>String(a.tag).localeCompare(String(b.tag),undefined,{numeric:true})); },
     click:r=>`openMotor('${esc((r.tag||"").trim())}')`,
     cols:()=>[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b>${esc(v||"—")}</b>`},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       rptAreaCol(r=>r.unit_tag),
-      {label:"STARTING", get:r=>r.starting_type, cls:"dim"},
-      {label:"690 V kW", get:r=>r.v690_kw, num:true, r:true, cls:"mono"},
-      {label:"400 V kW", get:r=>r.v400_kw, num:true, r:true, cls:"mono"},
-      {label:"230 V kW", get:r=>r.v230_kw, num:true, r:true, cls:"mono"},
-      {label:"INSTALLED kW", get:r=>r.power_rating_kw, num:true, r:true, cls:"mono"}]},
+      {label:"STARTING", get:r=>r.starting_type, cls:"mono dim"},
+      {label:"V", get:r=>r.voltage, num:true, r:true, cls:"mono"},
+      {label:"INSTALLED kW", get:r=>r.power_rating_kw, num:true, r:true, cls:"mono"},
+      {label:"cos φ", get:r=>r.cos_phi, num:true, r:true, cls:"mono"},
+      {label:"", get:r=>"pending", html:()=>`<span class="chip warn">NOT NORMALIZED</span>`}]},
   {id:"skids", no:"10", title:"Skid List", src:()=>[...DB.skids].sort((a,b)=>String(a.tag).localeCompare(String(b.tag)))
       .map(s=>Object.assign({}, s, {eq_count:DB.equip.filter(e=>(e.skid_tag||"").trim()===(s.tag||"").trim()).length})),
     cols:()=>[
@@ -2131,23 +2148,9 @@ const RPTS=[
       {label:"P&ID NO", get:r=>r.pid_no, cls:"mono dim"},
       rptAreaCol(r=>r.area_code),
       {label:"TITLE", get:r=>r.title, cls:"dim"},
-      {label:"STATUS", get:r=>r.status, cls:"mono dim"}]},
-  {id:"motords", no:"13", title:"Motor Datasheets — full list",
-    src:()=>DB.dsheets.filter(d=>d.specs&&d.specs.motor_class)
-      .map(d=>({tag:d.tag, motor:d.specs.motor_tag||"", service:d.service, area:d.area_code, cls:d.specs.motor_class,
-        kw:d.specs.rated_power_kw, v:d.specs.voltage_v||d.specs.supply_bus_v, start:d.specs.starting_method}))
-      .sort((a,b)=>String(a.motor||a.tag).localeCompare(String(b.motor||b.tag))),
-    click:r=>`openMotor('${esc((r.tag||"").trim())}')`,
-    cols:()=>[
-      {label:"MOTOR TAG", get:r=>r.motor, cls:"mono", html:(r,v)=>`<b style="color:var(--crimson)">${esc(v||"—")}</b>`},
-      {label:"DRIVES (EQUIP)", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--blue)">${esc(v||"—")}</b>`},
-      {label:"SERVICE", get:r=>r.service, cls:"dim"},
-      rptAreaCol(r=>r.area),
-      {label:"CLASS", get:r=>r.cls, cls:"dim"},
-      {label:"kW", get:r=>r.kw, num:true, r:true, cls:"mono"},
-      {label:"V", get:r=>r.v, num:true, r:true, cls:"mono"},
-      {label:"STARTING", get:r=>r.start, cls:"mono dim"},
-      {label:"DATASHEET", get:r=>"DS", cls:"mono", html:()=>`<span class="chip info">DS ✓</span>`}]}
+      {label:"STATUS", get:r=>r.status, cls:"mono dim"}]}
+  // [REVIEW] Removed legacy "Motor Datasheets — full list" (was #13, plant_equipment_datasheets):
+  //   redundant with the normalized motor list + per-motor card (datasheets now open from the card).
 ];
 function rptGet(id){ return RPTS.find(r=>r.id===id); }
 function renderReports(c){
