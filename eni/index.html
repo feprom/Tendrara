@@ -2102,14 +2102,33 @@ const RPTS=[
       {label:"SET POINT", get:r=>r.set_point, cls:"mono", html:(r,v)=>v?esc(v):'<span class="chip warn">NOT SET</span>'},
       rptAreaCol(r=>r.area_code),
       {label:"DESCRIPTION", get:r=>r.description, cls:"dim"}]},
-  // [REVIEW] Single official motor list — normalized source (v_electrical_ui / DB.elecUi, class MOTOR).
-  // Replaces the legacy "Motor List — Remote MCC" (plant_mcc_motors); all 245 MCC motors are covered here.
-  {id:"motors", no:"08", title:"Electrical Motor / Actuator List",
-    src:()=>[...(DB.elecUi||[])].filter(r=>r.class_code==="MOTOR")
+  // [REVIEW] Electrical Load List — every electrical consumer in the normalized registry
+  // (v_electrical_ui / DB.elecUi): motors, pumps, heaters, compressors, condensers, generators, etc.
+  // Rows route to the correct detail card per type via openAssetTag (not just the motor card).
+  {id:"motors", no:"08", title:"Electrical Load List",
+    src:()=>[...(DB.elecUi||[])]
       .sort((a,b)=>String(a.tag).localeCompare(String(b.tag),undefined,{numeric:true})),
-    click:r=>`openMotor('${esc((r.tag||"").trim())}')`,
+    click:r=>`openAssetTag('${esc((r.tag||"").trim())}')`,
+    // [REVIEW] same "MOT" badge as the area-summary Motors table; summary bar = row count,
+    // counts per starting method, and total kW per voltage (mirrors the area electrical summary).
+    badge:"MOT",
+    summary:(rows)=>{
+      const byStart=new Map(), byV=new Map(); let totKw=0;
+      rows.forEach(r=>{
+        const sm=String(r.starting_method||"").trim()||"—";
+        byStart.set(sm,(byStart.get(sm)||0)+1);
+        const kw=parseFloat(r.design_power_kw)||0; totKw+=kw;
+        const v=(r.design_voltage_v!=null&&r.design_voltage_v!=="")?String(r.design_voltage_v):"—";
+        byV.set(v,(byV.get(v)||0)+kw);
+      });
+      const kv=(k,val,tot)=>`<span class="kv${tot?" tot":""}"><span class="k">${esc(k)}</span><span class="v">${esc(String(val))}</span></span>`;
+      const st=[...byStart.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>kv(k,n)).join("");
+      const vv=[...byV.entries()].sort((a,b)=>b[1]-a[1]).map(([k,kw])=>kv(k==="—"?"— V":k+" V",kw.toFixed(1)+" kW")).join("");
+      return kv("LOADS Σ",rows.length,true)+st+vv+kv("POWER Σ",totKw.toFixed(1)+" kW",true);
+    },
     cols:()=>[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--crimson)">${esc(v||"—")}</b>`},
+      {label:"TYPE", get:r=>r.class_code, cls:"mono dim", html:(r,v)=>v?`<span class="chip info">${esc(String(v))}</span>`:'<span class="dim">—</span>'},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       rptAreaCol(r=>r.area_code),
       {label:"SKID", get:r=>r.skid_tag, cls:"mono dim"},
@@ -2121,8 +2140,8 @@ const RPTS=[
       {label:"STATUS", get:r=>r.data_status, html:(r,v)=>assetStChip(v)}]},
   // [REVIEW] Shrinking remainder — legacy electrical loads (plant_electrical_loads) whose tag is NOT
   // yet in the normalized registry (v_electrical_ui). Empties itself as normalization proceeds; when it
-  // reaches 0, delete this report. The "Electrical Motor / Actuator List" above is the normalized source.
-  {id:"loads", no:"09", title:"Motors — pending normalization",
+  // reaches 0, delete this report. The "Electrical Load List" above is the normalized source.
+  {id:"loads", no:"09", title:"Electrical loads — pending normalization",
     src:()=>{ const norm=new Set();
         (DB.elecUi||[]).forEach(e=>{ if(e.tag)norm.add(String(e.tag).trim().toUpperCase());
           if(e.normalized_tag)norm.add(String(e.normalized_tag).trim().toUpperCase()); });
@@ -2199,7 +2218,7 @@ function renderReport(c, id){
     <span class="spacer"></span>
     <button class="btn primary" onclick="exportReportPdf('${rp.id}')">⎙ PDF report</button>
   </div>
-  ${rows.length?dataTable("rpt-"+rp.id, "IO", rp.title, rp.cols(), rows, {sheet:rp.title, rowClick:rp.click||null})
+  ${rows.length?dataTable("rpt-"+rp.id, rp.badge||"IO", rp.title, rp.cols(), rows, {sheet:rp.title, rowClick:rp.click||null, summary:rp.summary?rp.summary(rows):null})
     :`<div class="empty" style="margin-top:14px">No rows yet — this list fills up as the source drawings are digitized.</div>`}`;
 }
 function exportReportXlsx(id){
@@ -4676,8 +4695,8 @@ window.openEquip=openEquip; window.openEquipLegacy=openEquipLegacy;
 // [UI-CUTOVER] NEW BLOCK ▲ end
 
 /* ── motor / electrical-load card (load list + datasheets) ─────
-   Opened by clicking a motor tag in the Motor List (08), Electrical
-   Load List (09) or global search. Shows the load-list electrical
+   Opened by clicking a load tag in the Electrical Load List (08), the
+   pending-normalization list (09) or global search. Shows the load-list electrical
    record plus the captured equipment datasheet (plant_equipment_datasheets),
    e.g. the load-list-derived motor datasheets for P-332A/B, PK-361-C1A/B,
    P-334A/B, P-551A/B, P-221A/B, P-222A/B. */
