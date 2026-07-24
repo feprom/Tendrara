@@ -1543,7 +1543,7 @@ function areaExists(code){return IDX.areaByCode.has(String(code));}
 function flocCrumb(areaCode, skidTag){
   const p=["TAM"];
   if(areaCode!=null&&String(areaCode).trim()!==""){ const n=areaName(areaCode); p.push(esc(String(areaCode))+(n?" "+esc(String(n)):"")); }
-  if(skidTag!=null&&String(skidTag).trim()!=="") p.push(esc(String(skidTag)));
+  if(skidTag!=null&&String(skidTag).trim()!==""&&String(skidTag).trim()!==String(areaCode==null?"":areaCode).trim()) p.push(esc(String(skidTag)));
   return p.join(" › ");
 }
 function flocLine(o){
