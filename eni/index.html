@@ -122,6 +122,9 @@
   .dtsummary .kv .v{font-weight:700;color:var(--ink);}
   .dtsummary .kv.tot{border-color:var(--crimson);background:#FBE9EC;}
   .dtsummary .kv.tot .v{color:var(--crimson);}
+  .dtsummary .kv.kvbtn{cursor:pointer;user-select:none;transition:border-color .1s,background .1s;}
+  .dtsummary .kv.kvbtn:hover{border-color:var(--crimson);background:#FBE9EC;}
+  .dtsummary .kv.kvbtn:active{transform:translateY(1px);}
 
   /* ── cause & effect matrix (module-101 style) ─────────────────── */
   .cewrap{overflow:auto;margin-top:6px;}
@@ -1803,9 +1806,21 @@ function renderHome(c){
 const TBL=new Map();
 function dataTable(id, icon, title, cols, rows, opts){
   opts=opts||{};
+  // summary may be a static HTML string OR a function (rows,id)=>html. A function summary is
+  // recomputed from the CURRENTLY FILTERED rows and re-rendered on every filter change, so its
+  // counters track the filter; its chips can call dtChip(id,term) to filter by themselves.
+  const sumFn = (typeof opts.summary==="function") ? opts.summary : null;
+  const sumStatic = (typeof opts.summary==="string") ? opts.summary : null;
   TBL.set(id,{id,icon,title,cols,rows,sort:opts.sort==null?null:opts.sort,dir:opts.dir||1,
-    filter:"",collapsed:!!opts.collapsed,rowClick:opts.rowClick||null,sheet:opts.sheet||title});
-  return `<div class="dt" id="dt-${id}">${dtHead(id)}${opts.summary?`<div class="dtsummary">${opts.summary}</div>`:""}<div class="dtbody" id="dtbody-${id}">${dtTableHTML(id)}</div></div>`;
+    filter:"",collapsed:!!opts.collapsed,rowClick:opts.rowClick||null,sheet:opts.sheet||title,
+    summaryFn:sumFn, summaryStatic:sumStatic});
+  const hasSum = sumFn||sumStatic;
+  return `<div class="dt" id="dt-${id}">${dtHead(id)}${hasSum?`<div class="dtsummary" id="dtsummary-${id}">${dtSummaryHTML(id)}</div>`:""}<div class="dtbody" id="dtbody-${id}">${dtTableHTML(id)}</div></div>`;
+}
+function dtSummaryHTML(id){
+  const t=TBL.get(id); if(!t) return "";
+  if(t.summaryFn) return t.summaryFn(dtView(t), id);   // filter-aware
+  return t.summaryStatic||"";
 }
 function dtHead(id){
   const t=TBL.get(id);
@@ -1860,8 +1875,16 @@ function dtToggle(id){ const t=TBL.get(id); if(!t) return; t.collapsed=!t.collap
 function dtSort(id,i){ const t=TBL.get(id); if(!t) return; if(t.sort===i) t.dir=-t.dir; else { t.sort=i; t.dir=1; }
   document.getElementById('dtbody-'+id).innerHTML=dtTableHTML(id); }
 function dtFilter(id,v){ const t=TBL.get(id); if(!t) return; t.filter=v;
-  document.getElementById('dtbody-'+id).innerHTML=dtTableHTML(id); }
-window.dtToggle=dtToggle; window.dtSort=dtSort; window.dtFilter=dtFilter;
+  document.getElementById('dtbody-'+id).innerHTML=dtTableHTML(id);
+  // keep the filter box, the (n) header count and a function-summary in sync with the filter
+  const inp=document.querySelector('#dt-'+id+' .dtfilter'); if(inp&&inp.value!==v) inp.value=v;
+  const n=document.querySelector('#dt-'+id+' .dtn');
+  if(n){ const fr=dtView(t).length; n.textContent='('+((t.filter&&fr!==t.rows.length)?fr+'/'+t.rows.length:t.rows.length)+')'; }
+  const s=document.getElementById('dtsummary-'+id); if(s&&t.summaryFn) s.innerHTML=dtSummaryHTML(id);
+}
+// toggle a chip filter: click sets it, click the active one again clears it
+function dtChip(id,term){ const t=TBL.get(id); if(!t) return; dtFilter(id, t.filter===term?"":term); }
+window.dtToggle=dtToggle; window.dtSort=dtSort; window.dtFilter=dtFilter; window.dtChip=dtChip;
 
 function sheetName(s){ return (String(s).replace(/[\\\/\?\*\[\]:]/g,"").slice(0,31))||"Sheet"; }
 function dtAOA(t){ return [t.cols.map(c=>c.label)].concat(t.rows.map(r=>t.cols.map(c=>{ const v=c.get(r); return v==null?"":String(v); }))); }
@@ -2117,24 +2140,32 @@ const RPTS=[
     // load = Σ busbar_kw (FEEDER rows only) so a feeder and the sub-loads it internally supplies
     // (cooler fans; a compressor vs its motor) are never double-counted. Per-voltage kW is busbar_kw.
     badge:"MOT",
-    summary:(rows)=>{
+    // [ELEC-FLOC] (rows,id): rows are already the FILTERED set (dtSummaryHTML passes dtView), so the
+    // counters reflect the active filter. Each count chip is a toggle button — dtChip(id,term) sets
+    // the table filter to `term` (click the active one again to clear). ROWS Σ clears the filter.
+    summary:(rows,id)=>{
       const byStart=new Map(), byV=new Map();
-      let busKw=0, subKw=0, srcKw=0, nF=0, nS=0, nG=0;
+      let busKw=0, srcKw=0, nF=0, nS=0, nG=0;
       rows.forEach(r=>{
         const role=String(r.feed_role||"FEEDER").trim();
         const kw=parseFloat(r.design_power_kw)||0;
         const bkw=(r.busbar_kw!=null)?(parseFloat(r.busbar_kw)||0):(role==="FEEDER"?kw:0);
         const v=(r.design_voltage_v!=null&&r.design_voltage_v!=="")?String(r.design_voltage_v):"—";
         if(role==="SOURCE"){ nG++; srcKw+=kw; }
-        else if(role==="SUB_LOAD"){ nS++; subKw+=kw; }
+        else if(role==="SUB_LOAD"){ nS++; }
         else { nF++; busKw+=bkw; byV.set(v,(byV.get(v)||0)+bkw);
                const sm=String(r.starting_method||"").trim()||"—"; byStart.set(sm,(byStart.get(sm)||0)+1); }
       });
-      const kv=(k,val,tot)=>`<span class="kv${tot?" tot":""}"><span class="k">${esc(k)}</span><span class="v">${esc(String(val))}</span></span>`;
-      const st=[...byStart.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>kv(k,n)).join("");
-      const vv=[...byV.entries()].sort((a,b)=>b[1]-a[1]).map(([k,kw])=>kv(k==="—"?"— V":k+" V",kw.toFixed(1)+" kW")).join("");
-      return kv("ROWS Σ",rows.length,true)
-        +kv("FEEDERS",nF)+kv("SUB-LOADS",nS)+kv("SOURCES",nG)
+      // kv(label,value,tot?,term?): when term is a string the chip becomes a clickable filter button.
+      const kv=(k,val,tot,term)=>{
+        const btn=(term!=null);
+        const oc=btn?` onclick="dtChip('${id}','${String(term).replace(/'/g,"\\'")}')" title="filter: ${esc(String(term)||"clear")}"`:"";
+        return `<span class="kv${tot?" tot":""}${btn?" kvbtn":""}"${oc}><span class="k">${esc(k)}</span><span class="v">${esc(String(val))}</span></span>`;
+      };
+      const st=[...byStart.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>kv(k,n,false,k==="—"?null:k)).join("");
+      const vv=[...byV.entries()].sort((a,b)=>b[1]-a[1]).map(([k,kw])=>kv(k==="—"?"— V":k+" V",kw.toFixed(1)+" kW",false,k==="—"?null:k)).join("");
+      return kv("ROWS Σ",rows.length,true,"")
+        +kv("FEEDERS",nF,false,"FEEDER")+kv("SUB-LOADS",nS,false,"SUB_LOAD")+kv("SOURCES",nG,false,"SOURCE")
         +st+vv
         +kv("BUSBAR Σ",busKw.toFixed(1)+" kW",true)
         +(nG?kv("GEN Σ",srcKw.toFixed(1)+" kW",true):"");
@@ -2249,7 +2280,7 @@ function renderReport(c, id){
     <span class="spacer"></span>
     <button class="btn primary" onclick="exportReportPdf('${rp.id}')">⎙ PDF report</button>
   </div>
-  ${rows.length?dataTable("rpt-"+rp.id, rp.badge||"IO", rp.title, rp.cols(), rows, {sheet:rp.title, rowClick:rp.click||null, summary:rp.summary?rp.summary(rows):null})
+  ${rows.length?dataTable("rpt-"+rp.id, rp.badge||"IO", rp.title, rp.cols(), rows, {sheet:rp.title, rowClick:rp.click||null, summary:rp.summary||null})
     :`<div class="empty" style="margin-top:14px">No rows yet — this list fills up as the source drawings are digitized.</div>`}`;
 }
 function exportReportXlsx(id){
