@@ -750,7 +750,8 @@
       · Nothing is invented. A position with no busbar edge and no load edge is
         drawn as it stands; an off-sheet target is labelled as off-sheet.      */
 
-  const SLD_COL = 96, SLD_PADX = 140, SLD_BAND = 312;   // PADX = left gutter for the busbar label
+  const SLD_COL = 96, SLD_PADX = 140, SLD_BAND = 312;
+  const SLD_L2_DY = 62;                 // drop from a served board to what IT feeds   // PADX = left gutter for the busbar label
   const SLD_SRC_Y = 14, SLD_INC_Y = 78, SLD_BUS_Y = 146, SLD_OUT_Y = 182, SLD_LOAD_Y = 250;
   const SLD_BOXW = 86, SLD_BOXH = 34;
   const SLD_STATUS = { VERIFIED: "#1F8A4C", NEEDS_REVIEW: "#B26A00", CONFLICT: CRIMSON };
@@ -942,7 +943,37 @@
 
     const cols = Math.max(4, ...bands.map(b => Math.max(b.inc.length, b.out.length)));
     const W = SLD_PADX * 2 + cols * SLD_COL;
-    const H = 74 + bands.length * SLD_BAND + 34;
+    /* v1.2.0 — a served BOARD can itself feed a load (migration 154: the flash
+       compressors 690-JG-695/696 → PK-361-MC1A/B). When any position on this
+       switchboard has that second level, every band grows by one load row so
+       the deeper node has somewhere to be drawn. Boards without it are
+       byte-identical to v1.1.0. */
+    /* everything this diagram already draws in its own right: busbars and
+       feeder positions. A second-level node that is one of these is NOT a
+       deeper load — it is the same node seen from the other side (an inverter
+       feeding its own outgoing position, `.II2 → 480-INV-002 → .OI2`). Drawing
+       it twice would invent a machine that does not exist. */
+    const alreadyDrawn = new Set();
+    bands.forEach(b => { alreadyDrawn.add(b.bus.tag);
+      b.inc.concat(b.out).forEach(p => alreadyDrawn.add(p.tag)); });
+    S.nodes.forEach(n => { if (n.symbol_kind === "BUSBAR" || n.symbol_kind === "BUSBAR_INVERTER" ||
+      n.symbol_kind === "SWITCHBOARD") alreadyDrawn.add(n.tag); });
+
+    /* A node counts as a LOAD on this diagram only if it is not a busbar and
+       not a position belonging to another Power Center — the same predicate the
+       drawing loop uses. Without it the detector follows bus-coupler hops
+       (`.MCG1 → BUSBAR B → PC2 .MCG2`) and grows every band for nothing. */
+    const isLoadHere = t => t && !isBusbar(t) &&
+      !(sldBoardOf(S, t) && sldBoardOf(S, t) !== boardTag);
+    const secondLevel = t => sldOut(S, t.tag).filter(e =>
+      e.edge_kind === "FEEDS" && S._byTag.has(e.to_tag) &&
+      !alreadyDrawn.has(e.to_tag) && isLoadHere(S._byTag.get(e.to_tag)));
+
+    const hasL2 = bands.some(b => b.out.concat(b.inc).some(p =>
+      sldOut(S, p.tag).some(e => e.edge_kind === "FEEDS" && isLoadHere(S._byTag.get(e.to_tag)) &&
+        secondLevel(S._byTag.get(e.to_tag)).length)));
+    const BAND = SLD_BAND + (hasL2 ? SLD_L2_DY + 26 : 0);
+    const H = 74 + bands.length * BAND + 34;
     const colX = i => SLD_PADX + i * SLD_COL + SLD_COL / 2;
 
     let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">`;
@@ -958,7 +989,7 @@
     const drawn = { inc: 0, out: 0, load: 0, src: 0, cpl: 0, offsheet: 0 };
 
     bands.forEach((band, bi) => {
-      const y0 = 74 + bi * SLD_BAND;
+      const y0 = 74 + bi * BAND;
       const busY = y0 + SLD_BUS_Y;
       const nWide = Math.max(band.inc.length, band.out.length);
       const busX1 = SLD_PADX - 22, busX2 = SLD_PADX + Math.max(2, nWide) * SLD_COL;
@@ -1075,6 +1106,31 @@
             s += `<text x="${cx}" y="${cyL + 52}" text-anchor="middle" font-family="${MONO}" font-size="6.8" fill="${SOFT}">${esc(lk)}</text>`;
           if (targets.length > 1)
             s += `<text x="${cx}" y="${cyL + 62}" text-anchor="middle" font-family="${MONO}" font-size="6.4" fill="${CRIMSON}">+${targets.length - 1} more</text>`;
+
+          /* SECOND LEVEL (v1.2.0) — this load is itself a board that feeds
+             something. Migration 154 put those nodes in v_sld_nodes; without
+             this block their edges would be drawable and still not drawn,
+             which is the worse of the two failures: the footer would report
+             everything fine while the motor was missing from the picture. */
+          const kids = secondLevel(tn);
+          if (kids.length) {
+            const cyK = cyL + SLD_L2_DY + (targets.length > 1 ? 8 : 0);
+            const kn = S._byTag.get(kids[0].to_tag);
+            s += `<line x1="${cx}" y1="${cyL + 56}" x2="${cx}" y2="${cyK - 4}" stroke="${SLD_BUSCOL}" stroke-width="1.3"/>`;
+            if (kids[0].cable_tag)
+              s += `<text x="${cx + 4}" y="${cyK - 24}" font-family="${MONO}" font-size="6.4" fill="${SOFT}"${HALO}>${esc(kids[0].cable_tag)}</text>`;
+            s += sldGlyph(kn.symbol_kind, cx, cyK + 12, INK, false);
+            s += `<circle cx="${cx - 26}" cy="${cyK + 12}" r="3" fill="${SLD_STATUS[kn.data_status] || SOFT}">` +
+              `<title>${esc(kn.data_status || "")}</title></circle>`;
+            s += `<text x="${cx}" y="${cyK + 38}" text-anchor="middle" font-family="${MONO}" font-size="8" font-weight="700" fill="${INK}"` +
+              (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(kn.tag)}')"` : "") +
+              `>${esc(clip(kn.tag, 15))}</text>`;
+            const kk = sldKw(kn); if (kk)
+              s += `<text x="${cx}" y="${cyK + 48}" text-anchor="middle" font-family="${MONO}" font-size="6.8" fill="${SOFT}">${esc(kk)}</text>`;
+            if (kids.length > 1)
+              s += `<text x="${cx}" y="${cyK + 58}" text-anchor="middle" font-family="${MONO}" font-size="6.4" fill="${CRIMSON}">+${kids.length - 1} more</text>`;
+            drawn.load++;
+          }
         }
       });
     });
