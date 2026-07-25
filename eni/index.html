@@ -2164,8 +2164,10 @@ const RPTS=[
       };
       const st=[...byStart.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>kv(k,n,false,k==="—"?null:k)).join("");
       const vv=[...byV.entries()].sort((a,b)=>b[1]-a[1]).map(([k,kw])=>kv(k==="—"?"— V":k+" V",kw.toFixed(1)+" kW",false,k==="—"?null:k)).join("");
+      // SUB-LOADS chip omitted — the motor-centric model (SQL/139–141) leaves no sub-loads; the
+      // list is generation (SOURCE) + real loads (FEEDER). feed_role/SUB_LOAD stay in the schema.
       return kv("ROWS Σ",rows.length,true,"")
-        +kv("FEEDERS",nF,false,"FEEDER")+kv("SUB-LOADS",nS,false,"SUB_LOAD")+kv("SOURCES",nG,false,"SOURCE")
+        +kv("FEEDERS",nF,false,"FEEDER")+kv("SOURCES",nG,false,"SOURCE")
         +st+vv
         +kv("BUSBAR Σ",busKw.toFixed(1)+" kW",true)
         +(nG?kv("GEN Σ",srcKw.toFixed(1)+" kW",true):"");
@@ -2192,11 +2194,11 @@ const RPTS=[
       {label:"V", get:r=>r.design_voltage_v, num:true, r:true, cls:"mono", html:(r,v)=>v!=null?esc(String(v)):'<span class="dim">—</span>'},
       {label:"cos φ", get:r=>r.power_factor, num:true, r:true, cls:"mono", html:(r,v)=>v!=null&&v!==''?(+v).toFixed(2):'<span class="dim">—</span>'},
       {label:"STARTING", get:r=>r.starting_method, cls:"mono dim"},
-      // [ELEC-FLOC] FED FROM = the immediate upstream supplier (the feeder a sub-load hangs off, or
-      // the busbar FLOC for a feeder). Falls back to the legacy MCC panel/slot when no feed link.
-      {label:"FED FROM", get:r=>r.fed_from_tag||r.supply_floc||r.mcc_panel_tag, cls:"mono", html:(r,v)=>{
-        if(r.fed_from_tag) return `<span class="mono">${esc(String(r.fed_from_tag))}</span>`;
-        if(r.supply_floc) return `<span class="mono dim">${esc(String(r.supply_floc))}</span>`;
+      // [ELEC-FLOC] BUSBAR = the busbar FLOC this load sits on (=EL-<v>V). fed_from_tag would show an
+      // upstream feeder if sub-distribution were modelled (none today); legacy MCC panel/slot as fallback.
+      {label:"BUSBAR", get:r=>r.supply_floc||r.fed_from_tag||r.mcc_panel_tag, cls:"mono", html:(r,v)=>{
+        if(r.supply_floc) return `<span class="mono">${esc(String(r.supply_floc))}</span>`;
+        if(r.fed_from_tag) return `<span class="mono dim">${esc(String(r.fed_from_tag))}</span>`;
         if(r.mcc_panel_tag) return esc(String(r.mcc_panel_tag))+(r.mcc_slot?` <span class="dim">/ ${esc(String(r.mcc_slot))}</span>`:"");
         return '<span class="dim">—</span>'; }},
       {label:"STATUS", get:r=>r.data_status, html:(r,v)=>assetStChip(v)}]},
@@ -4901,8 +4903,12 @@ function motorSpecTable(ea, mspec, nplate){
       tip: differ?cands.map(c=>c[0]+": "+c[1]).join(" · "):""});
   });
   if(!out.length) return "";
+  // When there is NO OEM catalogue spec, every value necessarily comes from the nameplate/design,
+  // so tagging each row "(nameplate)" is noise — the plate IS the source of truth. Only tag rows
+  // when an OEM model spec exists (there the tag distinguishes model values from fallbacks).
+  const hasOem = !!mspec;
   const body=out.map(o=>{
-    const tag = o.src!=="OEM" ? ` <span class="dim" style="font-size:10px">(${o.src.toLowerCase()})</span>` : "";
+    const tag = (hasOem && o.src!=="OEM") ? ` <span class="dim" style="font-size:10px">(${o.src.toLowerCase()})</span>` : "";
     const d   = o.differ ? ` <span class="chip warn" title="Sources differ — ${esc(o.tip)}. OEM model kept as final.">≠</span>` : "";
     return `<tr><td>${esc(o.p)}${d}</td><td class="mono">${(o.dec!=null&&o.v!==""&&!isNaN(+o.v))?(+o.v).toFixed(o.dec):esc(String(o.v))}${o.u?" "+o.u:""}${tag}</td></tr>`;
   }).join("");
@@ -5019,10 +5025,15 @@ function renderMotorCard(asset, reqTag){
   if(specs){
     h+=specs;
     const srcChip=(lbl,o)=> `${lbl} ${o?(o.review_status?assetStChip(o.review_status):'<span class="chip ok">present</span>'):'<span class="dim">absent</span>'}`;
-    h+=`<p class="note dim" style="margin-top:6px"><b>OEM model is the authoritative source.</b>
-      A <span class="dim">(design)</span> / <span class="dim">(nameplate)</span> tag marks a value the model did not provide;
-      a <span class="chip warn">≠</span> marks a parameter where the sources disagreed (OEM value kept).<br>
-      Sources: ${srcChip("OEM model", mspec)} · ${srcChip("Design", ea)} · ${srcChip("Nameplate", nplate)}.</p>`;
+    if(mspec){
+      h+=`<p class="note dim" style="margin-top:6px"><b>OEM model is the authoritative source.</b>
+        A <span class="dim">(design)</span> / <span class="dim">(nameplate)</span> tag marks a value the model did not provide;
+        a <span class="chip warn">≠</span> marks a parameter where the sources disagreed (OEM value kept).<br>
+        Sources: ${srcChip("OEM model", mspec)} · ${srcChip("Design", ea)} · ${srcChip("Nameplate", nplate)}.</p>`;
+    } else {
+      h+=`<p class="note dim" style="margin-top:6px"><b>Installed nameplate is the source of truth</b> for this motor — no OEM catalogue datasheet on file; Design fills only what the plate leaves blank.<br>
+        Sources: ${srcChip("Nameplate", nplate)} · ${srcChip("Design", ea)}.</p>`;
+    }
   } else {
     h+=`<p class="note dim">No motor characteristics captured yet (no OEM model, Design or Nameplate data).</p>`;
   }
