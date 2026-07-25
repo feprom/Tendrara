@@ -21,6 +21,13 @@
      TamFlow.unitSummary(data, code, o) → Manual §3.1 unit-flow diagram
      TamFlow.hmbCards(data, code, o)    → IN / DUTY / OUT HMB cards (html)
      TamFlow.svcClass(data, code)       → service class {color,dash,width,…}
+
+   ELECTRICAL SINGLE-LINE (phase 11, added v1.1.0 — v_sld_nodes / v_sld_edges):
+     TamFlow.loadSld(sb)                → {nodes, edges} bundle, indexed
+     TamFlow.sldFromViewer(DB)          → same bundle from the ENI viewer DB
+     TamFlow.sldBoards(sld)             → [{tag,doc_no,busbars,positions,loads}]
+     TamFlow.sld(sld, boardTag, opts)   → one Power Center single-line (html)
+
    opts.case: 'C1S' | 'C1W' | 'C2S' | 'C2W'  (default 'C1W')
    opts.onNavigate / opts.onEquip: names of global fns for inline onclick.
    ═══════════════════════════════════════════════════════════════════════ */
@@ -714,8 +721,341 @@
     return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">${cards.join("")}</div>`;
   }
 
+  /* ══ SINGLE-LINE DIAGRAM · ELD03 electrical (phase 11) ═══════════════════
+     Data: v_sld_nodes / v_sld_edges (migration 152 series).
+
+     ONE diagram per switchboard. Each busbar of the board gets a band:
+
+         sources          GE-00n, or a feeder on another Power Center
+            │
+         incomers         positions that FEED the busbar
+         ═══════          BUSBAR
+            │
+         positions        outgoing feeders, in display_rank order
+            │
+         loads            the served asset
+
+     display_rank is 1000 + sheet_no*100 + column_index for feeder positions,
+     so ordering by it reproduces the paper drawing's column order exactly.
+     Bus couplers are NORMALLY OPEN and are drawn dashed (rule from Round 4).
+
+     Two data cautions, both handled here rather than assumed away:
+      · v_sld_edges also carries fibre/Modbus network links whose endpoints are
+        not electrical nodes. Only edges with BOTH endpoints in v_sld_nodes are
+        drawable; the rest are counted and reported, never silently dropped.
+      · Nothing is invented. A position with no busbar edge and no load edge is
+        drawn as it stands; an off-sheet target is labelled as off-sheet.      */
+
+  const SLD_COL = 96, SLD_PADX = 140, SLD_BAND = 312;   // PADX = left gutter for the busbar label
+  const SLD_SRC_Y = 14, SLD_INC_Y = 78, SLD_BUS_Y = 146, SLD_OUT_Y = 182, SLD_LOAD_Y = 250;
+  const SLD_BOXW = 86, SLD_BOXH = 34;
+  const SLD_STATUS = { VERIFIED: "#1F8A4C", NEEDS_REVIEW: "#B26A00", CONFLICT: CRIMSON };
+  const SLD_BUSCOL = "#0B5CAD";          // busbar / power path
+  const SLD_ROTARY = new Set(["MOTOR", "PUMP", "COMPRESSOR", "GENERATOR", "FAN", "BLOWER"]);
+
+  /* ── data ─────────────────────────────────────────────────────────────── */
+  async function loadSld(sb) {
+    const all = async (t, order) => {
+      let q = sb.from(t).select("*"); if (order) q = q.order(order);
+      const { data, error } = await q;
+      if (error) { console.warn("tam-flow/sld: " + t + ": " + error.message); return []; }
+      return data || [];
+    };
+    const [nodes, edges] = await Promise.all([all("v_sld_nodes", "display_rank"), all("v_sld_edges")]);
+    return indexSld({ nodes, edges });
+  }
+  function sldFromViewer(DB) {
+    return indexSld({ nodes: DB.sldNodes || [], edges: DB.sldEdges || [] });
+  }
+  function indexSld(sld) {
+    sld.nodes = sld.nodes || []; sld.edges = sld.edges || [];
+    sld._byTag = new Map(sld.nodes.map(n => [n.tag, n]));
+    sld._kids = new Map();
+    sld.nodes.forEach(n => {
+      if (!n.parent_tag || n.parent_tag === n.tag) return;
+      if (!sld._kids.has(n.parent_tag)) sld._kids.set(n.parent_tag, []);
+      sld._kids.get(n.parent_tag).push(n);
+    });
+    const drawable = e => sld._byTag.has(e.from_tag) && sld._byTag.has(e.to_tag);
+    sld._edges = sld.edges.filter(drawable);
+    sld._skipped = sld.edges.filter(e => !drawable(e));
+    sld._out = new Map(); sld._in = new Map();
+    sld._edges.forEach(e => {
+      if (!sld._out.has(e.from_tag)) sld._out.set(e.from_tag, []);
+      if (!sld._in.has(e.to_tag)) sld._in.set(e.to_tag, []);
+      sld._out.get(e.from_tag).push(e); sld._in.get(e.to_tag).push(e);
+    });
+    return sld;
+  }
+  /* the switchboard a node sits on, or "" if it is not under one */
+  function sldBoardOf(sld, n) {
+    if (!n) return "";
+    if (n.symbol_kind === "SWITCHBOARD") return n.tag;
+    let cur = n, hops = 0;
+    while (cur && cur.parent_tag && cur.parent_tag !== cur.tag && hops++ < 6) {
+      const up = sld._byTag.get(cur.parent_tag);
+      if (!up) return String(cur.parent_tag).replace(/-(BB|F).*$/, "");
+      if (up.symbol_kind === "SWITCHBOARD") return up.tag;
+      cur = up;
+    }
+    return "";
+  }
+  const sldOut = (sld, tag) => sld._out.get(tag) || [];
+  const sldIn = (sld, tag) => sld._in.get(tag) || [];
+  const isBusbar = n => n && (n.symbol_kind === "BUSBAR" || n.symbol_kind === "BUSBAR_INVERTER");
+  const byRank = (a, b) => (a.display_rank || 0) - (b.display_rank || 0) ||
+    String(a.tag).localeCompare(String(b.tag));
+
+  /* "480-JG-691-FMC1" on board "480-JG-691" → ".MC1"   (the paper column code) */
+  function sldPosCode(tag, board) {
+    let t = String(tag || "");
+    if (board && t.indexOf(board + "-") === 0) t = t.slice(board.length + 1);
+    return /^F./.test(t) ? "." + t.slice(1) : t;
+  }
+  /* "480-JG-691-BBIA" → "IA" */
+  function sldBusCode(tag, board) {
+    let t = String(tag || "");
+    if (board && t.indexOf(board + "-") === 0) t = t.slice(board.length + 1);
+    return t.replace(/^BB/, "") || t;
+  }
+
+  /* boards present in the data, for a picker */
+  function sldBoards(sld) {
+    return sld.nodes.filter(n => n.symbol_kind === "SWITCHBOARD").sort(byRank)
+      .map(b => {
+        const bus = (sld._kids.get(b.tag) || []).filter(isBusbar);
+        const pos = bus.reduce((a, bb) => a.concat(sld._kids.get(bb.tag) || []), []);
+        return {
+          tag: b.tag, doc_no: b.doc_no, voltage_v: b.voltage_v,
+          busbars: bus.length, positions: pos.length,
+          loads: pos.reduce((n, p) => n + (sld._kids.get(p.tag) || []).length, 0)
+        };
+      });
+  }
+
+  /* ── symbols ──────────────────────────────────────────────────────────── */
+  const HALO = ` paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round"`;
+  function sldGlyph(kind, cx, cy, col, open) {
+    const sw = 1.6, W = `stroke="${col}" stroke-width="${sw}"`;
+    const box = (r, dash) => `<rect x="${cx - r}" y="${cy - r}" width="${2 * r}" height="${2 * r}" fill="#fff" ${W}${dash ? ` stroke-dasharray="${dash}"` : ""}/>`;
+    const disc = (r, ch) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" ${W}/>` +
+      (ch ? `<text x="${cx}" y="${cy + 4}" text-anchor="middle" font-family="${MONO}" font-size="11" font-weight="700" fill="${col}">${ch}</text>` : "");
+    switch (kind) {
+      case "GENERAL_SWITCH":
+      case "DISCONNECTOR":
+        return `<line x1="${cx}" y1="${cy - 12}" x2="${cx + 10}" y2="${cy + 10}" ${W}/>` +
+               `<circle cx="${cx}" cy="${cy - 12}" r="2.4" fill="${col}"/>` +
+               `<circle cx="${cx}" cy="${cy + 12}" r="2.4" fill="${col}"/>`;
+      case "NETWORK_ANALYZER": return disc(10, "A");
+      case "TRANSFORMER":
+        return `<circle cx="${cx}" cy="${cy - 5}" r="9.5" fill="none" ${W}/>` +
+               `<circle cx="${cx}" cy="${cy + 5}" r="9.5" fill="none" ${W}/>`;
+      case "SPARE": return box(10, "3 3");
+      case "BUS_COUPLER":
+        return box(10, open ? "4 3" : "") +
+               `<text x="${cx + 15}" y="${cy - 12}" font-family="${MONO}" font-size="6.4" font-weight="700" fill="${col}">N.O.</text>`;
+      case "MOTOR": return disc(13, "M");
+      case "GENERATOR": return disc(13, "G");
+      case "PUMP": return disc(13, "P");
+      case "COMPRESSOR": return disc(13, "C");
+      case "INVERTER":
+        return box(12) + `<line x1="${cx - 8}" y1="${cy + 8}" x2="${cx + 8}" y2="${cy - 8}" ${W}/>` +
+               `<text x="${cx - 5}" y="${cy - 2}" text-anchor="middle" font-family="${MONO}" font-size="8" fill="${col}">=</text>` +
+               `<text x="${cx + 5}" y="${cy + 9}" text-anchor="middle" font-family="${MONO}" font-size="8" fill="${col}">~</text>`;
+      case "HEATER":
+        return box(11) + `<path d="M${cx - 6},${cy + 4} l3,-8 l3,8 l3,-8 l3,8" fill="none" ${W}/>`;
+      default: return box(10);   // INCOMER · FEEDER · everything else = breaker
+    }
+  }
+  /* small labelled card used for sources and for served loads */
+  function sldCard(cx, y, node, sub, dim) {
+    const x = cx - SLD_BOXW / 2;
+    const st = SLD_STATUS[node.data_status] || SOFT;
+    return `<g><rect x="${x}" y="${y}" width="${SLD_BOXW}" height="${SLD_BOXH}" rx="4" fill="#fff" stroke="${dim ? LINE : st}" stroke-width="1.3"/>` +
+      `<text x="${cx}" y="${y + 14}" text-anchor="middle" font-family="${MONO}" font-size="8.4" font-weight="700" fill="${INK}">${esc(clip(node.tag, 14))}</text>` +
+      `<text x="${cx}" y="${y + 26}" text-anchor="middle" font-family="${MONO}" font-size="7" fill="${SOFT}">${esc(clip(sub || "", 16))}</text></g>`;
+  }
+  const sldKw = n => n && n.power_kw != null ? n1(n.power_kw) + " kW" : "";
+
+  /* ── renderer ─────────────────────────────────────────────────────────── */
+  function sld(sldData, boardTag, opts) {
+    const o = opts || {}, S = sldData;
+    if (!S || !S._byTag) return `<div style="font:400 11px ${MONO};color:${SOFT}">tam-flow: call TamFlow.loadSld(sb) first</div>`;
+    const board = S._byTag.get(boardTag);
+    if (!board) return `<div style="font:400 11px ${MONO};color:${SOFT}">no switchboard "${esc(boardTag)}" in v_sld_nodes</div>`;
+    const nav = o.onNavigate;
+
+    const busbars = (S._kids.get(boardTag) || []).filter(isBusbar).sort(byRank);
+    if (!busbars.length) return `<div style="font:400 11px ${MONO};color:${SOFT}">${esc(boardTag)} has no busbars in v_sld_nodes</div>`;
+    const busSet = new Set(busbars.map(b => b.tag));
+
+    /* classify each position on each busbar */
+    const bands = busbars.map(bb => {
+      const kids = (S._kids.get(bb.tag) || []).slice().sort(byRank);
+      const inc = [], out = [], cpl = [];
+      kids.forEach(p => {
+        if (p.symbol_kind === "BUS_COUPLER") { cpl.push(p); return; }
+        /* an incomer is a position that FEEDS a busbar of this board */
+        const feedsBus = sldOut(S, p.tag).some(e => e.edge_kind === "FEEDS" && busSet.has(e.to_tag));
+        (feedsBus ? inc : out).push(p);
+      });
+      return { bus: bb, inc, out: out.concat(cpl), cplCount: cpl.length };
+    });
+
+    const cols = Math.max(4, ...bands.map(b => Math.max(b.inc.length, b.out.length)));
+    const W = SLD_PADX * 2 + cols * SLD_COL;
+    const H = 74 + bands.length * SLD_BAND + 34;
+    const colX = i => SLD_PADX + i * SLD_COL + SLD_COL / 2;
+
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">`;
+    s += `<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`;
+
+    /* title block */
+    s += `<rect x="0" y="0" width="${W}" height="4" fill="${CRIMSON}"/>` +
+      `<text x="${SLD_PADX}" y="30" font-family="${MONO}" font-size="15" font-weight="700" fill="${CRIMSON}">${esc(board.tag)}</text>` +
+      `<text x="${SLD_PADX}" y="46" font-family="${MONO}" font-size="8.6" fill="${SOFT}">${esc(board.doc_no || "")}` +
+      (board.voltage_v != null ? `  ·  ${esc(n0(board.voltage_v))} V` : "") +
+      `  ·  ${bands.length} busbar${bands.length > 1 ? "s" : ""}  ·  ${bands.reduce((n, b) => n + b.inc.length + b.out.length, 0)} positions</text>`;
+
+    const drawn = { inc: 0, out: 0, load: 0, src: 0, cpl: 0, offsheet: 0 };
+
+    bands.forEach((band, bi) => {
+      const y0 = 74 + bi * SLD_BAND;
+      const busY = y0 + SLD_BUS_Y;
+      const nWide = Math.max(band.inc.length, band.out.length);
+      const busX1 = SLD_PADX - 22, busX2 = SLD_PADX + Math.max(2, nWide) * SLD_COL;
+
+      /* ── busbar ── */
+      s += `<line x1="${busX1}" y1="${busY}" x2="${busX2}" y2="${busY}" stroke="${SLD_BUSCOL}" stroke-width="5" stroke-linecap="round"/>`;
+      s += `<text x="10" y="${busY + 1}" font-family="${MONO}" font-size="12" font-weight="700" fill="${SLD_BUSCOL}">` +
+        `BUSBAR ${esc(sldBusCode(band.bus.tag, boardTag))}</text>`;
+      s += `<text x="10" y="${busY + 13}" font-family="${MONO}" font-size="6.8" fill="${SOFT}">${esc(band.bus.tag)}` +
+        `${band.bus.symbol_kind === "BUSBAR_INVERTER" ? " · inverter bus" : ""}</text>`;
+
+      /* ── incomers, above the bar ── */
+      band.inc.forEach((p, i) => {
+        const cx = colX(i), cy = y0 + SLD_INC_Y;
+        drawn.inc++;
+        /* source above the incomer, if the graph names one */
+        const up = sldIn(S, p.tag).filter(e => e.edge_kind === "FEEDS");
+        if (up.length) {
+          const srcNode = S._byTag.get(up[0].from_tag);
+          /* the board a node belongs to: its own tag for a switchboard, else the
+             switchboard part of its parent ("480-JG-692-BBD" → "480-JG-692").   */
+          const srcBoard = sldBoardOf(S, srcNode);
+          const off = !!srcBoard && srcBoard !== boardTag;
+          const shown = off ? { tag: srcBoard, data_status: srcNode.data_status } : srcNode;
+          const sub = srcNode && srcNode.symbol_kind === "GENERATOR"
+            ? (sldKw(srcNode) || "generator")
+            : (off ? sldPosCode(srcNode.tag, srcBoard) + (up[0].cable_tag ? " · " + up[0].cable_tag : "")
+                   : ([srcNode && srcNode.parent_tag ? "via " + sldPosCode(srcNode.parent_tag, boardTag) : "",
+                       up[0].cable_tag || ""].filter(Boolean).join(" · ")));
+          s += sldCard(cx, y0 + SLD_SRC_Y, shown, sub, false);
+          if (off) drawn.offsheet++;
+          drawn.src++;
+          s += `<line x1="${cx}" y1="${y0 + SLD_SRC_Y + SLD_BOXH}" x2="${cx}" y2="${cy - 13}" stroke="${INK}" stroke-width="1.4"/>`;
+          if (up[0].cable_tag)
+            s += `<text x="${cx + 4}" y="${y0 + SLD_SRC_Y + SLD_BOXH + 13}" font-family="${MONO}" font-size="6.6" fill="${SOFT}"${HALO}>${esc(up[0].cable_tag)}</text>`;
+        }
+        s += `<line x1="${cx}" y1="${cy + 13}" x2="${cx}" y2="${busY - 2}" stroke="${INK}" stroke-width="1.4"/>`;
+        s += sldGlyph(p.symbol_kind, cx, cy, INK, false);
+        s += `<text x="${cx}" y="${cy + 32}" text-anchor="middle" font-family="${MONO}" font-size="8.4" font-weight="700" fill="${INK}"${HALO}` +
+          (nav ? ` style="cursor:pointer" onclick="${nav}('sld/${esc(p.tag)}')"` : "") +
+          `>${esc(clip(sldPosCode(p.tag, boardTag), 14))}</text>`;
+        const meta = [sldKw(p), p.current_a != null ? n0(p.current_a) + " A" : ""].filter(Boolean).join(" · ");
+        if (meta) s += `<text x="${cx}" y="${cy + 42}" text-anchor="middle" font-family="${MONO}" font-size="6.8" fill="${SOFT}"${HALO}>${esc(meta)}</text>`;
+      });
+
+      /* ── outgoing positions + couplers, below the bar ── */
+      band.out.forEach((p, i) => {
+        const cx = colX(i), cy = y0 + SLD_OUT_Y;
+        const isCpl = p.symbol_kind === "BUS_COUPLER";
+        const edges = sldOut(S, p.tag).filter(e => e.edge_kind === "FEEDS");
+        const openEdge = edges.some(e => e.normally_open);
+        const dash = openEdge ? ` stroke-dasharray="5 4"` : "";
+        drawn.out++; if (isCpl) drawn.cpl++;
+
+        /* what this position reaches — resolved BEFORE the labels are painted so
+           the drop line never runs across the position code (see HALO too) */
+        const targets = edges.map(e => ({ e: e, n: S._byTag.get(e.to_tag) }))
+          .filter(t => t.n && t.n.tag !== band.bus.tag);
+        const t = targets[0], tn = t && t.n;
+
+        s += `<line x1="${cx}" y1="${busY + 2}" x2="${cx}" y2="${cy - 13}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        if (t) s += `<line x1="${cx}" y1="${cy + 15}" x2="${cx}" y2="${y0 + SLD_LOAD_Y - 2}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        s += sldGlyph(p.symbol_kind, cx, cy, isCpl ? SLD_BUSCOL : INK, openEdge);
+        s += `<text x="${cx}" y="${cy + 30}" text-anchor="middle" font-family="${MONO}" font-size="8.4" font-weight="700" fill="${INK}"${HALO}` +
+          (nav ? ` style="cursor:pointer" onclick="${nav}('sld/${esc(p.tag)}')"` : "") +
+          `>${esc(clip(sldPosCode(p.tag, boardTag), 14))}</text>`;
+        const meta = [sldKw(p), p.current_a != null ? n0(p.current_a) + " A" : ""].filter(Boolean).join(" · ");
+        if (meta) s += `<text x="${cx}" y="${cy + 40}" text-anchor="middle" font-family="${MONO}" font-size="6.8" fill="${SOFT}"${HALO}>${esc(meta)}</text>`;
+
+        if (!t) {
+          /* no power edge — but the position may still carry a documented
+             cable-identity tie (CONNECTED_TO). Show it rather than "no load". */
+          const tie = sldOut(S, p.tag).concat(sldIn(S, p.tag))
+            .filter(e => e.edge_kind === "CONNECTED_TO" && e.cable_tag)[0];
+          if (tie) {
+            const other = S._byTag.get(tie.from_tag === p.tag ? tie.to_tag : tie.from_tag);
+            const ob = other ? (sldBoardOf(S, other) || "") : "";
+            s += `<line x1="${cx}" y1="${cy + 15}" x2="${cx}" y2="${y0 + SLD_LOAD_Y - 2}" stroke="${SOFT}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 8}" text-anchor="middle" font-family="${MONO}" font-size="7.4" font-weight="700" fill="${SOFT}">⇢ ${esc(ob || "tie")} ${esc(other ? sldPosCode(other.tag, ob) : "")}</text>`;
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 19}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">cable tie · ${esc(tie.cable_tag)}</text>`;
+          } else if (p.symbol_kind !== "SPARE" && p.symbol_kind !== "NETWORK_ANALYZER") {
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 16}" text-anchor="middle" font-family="${MONO}" font-size="6.8" fill="${SOFT}">— no load linked —</text>`;
+          }
+          return;
+        }
+        if (t.e.cable_tag)
+          s += `<text x="${cx}" y="${cy + 52}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}"${HALO}>${esc(t.e.cable_tag)}</text>`;
+
+        if (isBusbar(tn)) {                       /* coupler → another busbar */
+          const here = busSet.has(tn.tag);
+          const tBoard = here ? boardTag : (sldBoardOf(S, tn) || String(tn.parent_tag || ""));
+          s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 12}" text-anchor="middle" font-family="${MONO}" font-size="7.6" font-weight="700" fill="${SLD_BUSCOL}">` +
+            `⇢ BUSBAR ${esc(sldBusCode(tn.tag, tBoard))}</text>`;
+          if (!here) { drawn.offsheet++;
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 23}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">off-sheet · ${esc(tBoard)}</text>`; }
+        } else if (sldBoardOf(S, tn) && sldBoardOf(S, tn) !== boardTag) {
+          /* the target is a POSITION on another Power Center (.210 → PC3 .300,
+             .211 → PC4 .400) — that is a board-to-board tie, not a load.       */
+          drawn.offsheet++;
+          const tb = sldBoardOf(S, tn);
+          s += sldCard(cx, y0 + SLD_LOAD_Y, { tag: tb, data_status: tn.data_status },
+                       sldPosCode(tn.tag, tb) + (t.e.cable_tag ? " · " + t.e.cable_tag : ""), false);
+          s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + SLD_BOXH + 11}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">off-sheet · Power Center tie</text>`;
+        } else {                                   /* a served load */
+          drawn.load++;
+          const cyL = y0 + SLD_LOAD_Y;
+          s += sldGlyph(tn.symbol_kind, cx, cyL + 14, INK, false);
+          s += `<text x="${cx}" y="${cyL + 42}" text-anchor="middle" font-family="${MONO}" font-size="8" font-weight="700" fill="${INK}"` +
+            (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(tn.tag)}')"` : "") +
+            `>${esc(clip(tn.tag, 15))}</text>`;
+          const st = SLD_STATUS[tn.data_status] || SOFT;
+          s += `<circle cx="${cx - 26}" cy="${cyL + 14}" r="3" fill="${st}"><title>${esc(tn.data_status || "")}</title></circle>`;
+          const lk = sldKw(tn); if (lk)
+            s += `<text x="${cx}" y="${cyL + 52}" text-anchor="middle" font-family="${MONO}" font-size="6.8" fill="${SOFT}">${esc(lk)}</text>`;
+          if (targets.length > 1)
+            s += `<text x="${cx}" y="${cyL + 62}" text-anchor="middle" font-family="${MONO}" font-size="6.4" fill="${CRIMSON}">+${targets.length - 1} more</text>`;
+        }
+      });
+    });
+
+    /* footer: legend + an honest account of what was not drawn */
+    const fy = H - 14;
+    const skipped = S._skipped.length;
+    s += `<text x="${SLD_PADX}" y="${fy}" font-family="${MONO}" font-size="7.4" fill="${SOFT}">` +
+      `□ breaker  ⊘ disconnector  Ⓐ analyser  ◎◎ transformer  Ⓜ motor  Ⓖ generator  ` +
+      `dashed = NORMALLY OPEN (bus coupler)  ·  dot = data status  ·  order = display_rank (paper column order)</text>`;
+    if (skipped) s += `<text x="${SLD_PADX}" y="${fy + 11}" font-family="${MONO}" font-size="7.4" fill="${CRIMSON}">` +
+      `${skipped} edge${skipped > 1 ? "s" : ""} in v_sld_edges not drawable — endpoint absent from v_sld_nodes (network links, and the 690-JG-695/696 flash-compressor motors)</text>`;
+    s += `</svg>`;
+    return `<div style="overflow-x:auto">${s}</div>`;
+  }
+
   /* ── export ───────────────────────────────────────────────────────────── */
-  const API = { load, fromViewer, plantMap, areaBlock, unitSummary, hmbCards, svcClass, hmbChip, indexData, version: "1.0.0" };
+  const API = { load, fromViewer, plantMap, areaBlock, unitSummary, hmbCards, svcClass, hmbChip, indexData,
+                loadSld, sldFromViewer, indexSld, sldBoards, sld, version: "1.1.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;

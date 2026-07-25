@@ -463,7 +463,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/supabase-config.js"></script>
 <script src="doc-manifest.js"></script>
-<script src="tam-flow.js?v=1.6"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
+<script src="tam-flow.js?v=1.7"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
@@ -1139,6 +1139,7 @@ function route(){
   else if(v==="iolist") ROUTE={view:"iolist"};
   else if(v==="xcheck") ROUTE={view:"xcheck"};
   else if(v==="structure") ROUTE={view:"structure"};          // [DB-SYNC] NEW — EI05 plant structure (FLOC tree)
+  else if(v==="sld") ROUTE={view:"sld", board:rest[0]||null};  // [SLD] NEW — EI06 electrical single-line (v_sld_nodes / v_sld_edges)
   else if(v==="consistency") ROUTE={view:"consistency"};      // [DB-SYNC] NEW — EI44 data-consistency report
   else if(v==="setpoints") ROUTE={view:"setpoints"};
   else if(v==="spares") ROUTE={view:"spares"};
@@ -1161,7 +1162,8 @@ function buildTree(){
   const t=$("#tree");
   let html=`<div class="thead">PROCESS VIEW · TX EI00</div>
   <div class="tnode root ${ROUTE.view==='home'?'sel':''}" onclick="nav('')"><span class="tw">■</span><span class="lbl">TENDRARA MICRO-LNG</span><span class="cnt">${DB.io.length} IO</span></div>
-  <div class="tnode ${ROUTE.view==='structure'?'sel':''}" onclick="nav('structure')"><span class="tw">⌂</span><span class="code">EI05</span><span class="lbl">Plant structure</span><span class="cnt">${(DB.assets||[]).length||""}</span></div>`;   // [DB-SYNC] NEW — FLOC hierarchy view
+  <div class="tnode ${ROUTE.view==='structure'?'sel':''}" onclick="nav('structure')"><span class="tw">⌂</span><span class="code">EI05</span><span class="lbl">Plant structure</span><span class="cnt">${(DB.assets||[]).length||""}</span></div>
+  <div class="tnode ${ROUTE.view==='sld'?'sel':''}" onclick="nav('sld')"><span class="tw">⌁</span><span class="code">EI06</span><span class="lbl">Electrical single-line</span><span class="cnt">${SLD.data?SLD.data.nodes.length:""}</span></div>`;   // [SLD] NEW — ELD03 single-line, lazy-loaded
   const areaNode=(code)=>{
     if(!areaExists(code)) return "";
     const st=IDX.areaStations.get(code)||[];
@@ -1220,6 +1222,7 @@ function render(){
   else if(ROUTE.view==="iolist") renderIOList(c);
   else if(ROUTE.view==="xcheck") renderXcheck(c);
   else if(ROUTE.view==="structure") renderStructure(c);       // [DB-SYNC] NEW
+  else if(ROUTE.view==="sld") renderSld(c, ROUTE.board);      // [SLD] NEW
   else if(ROUTE.view==="consistency") renderConsistency(c);   // [DB-SYNC] NEW
   else if(ROUTE.view==="setpoints") renderSetpoints(c);
   else if(ROUTE.view==="spares") renderSpares(c);
@@ -1321,6 +1324,7 @@ function crumbs(){
   if(ROUTE.view==="iolist") h+=` › <b>IO LIST</b>`;
   if(ROUTE.view==="xcheck") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>CROSS-CHECK</b>`;
   if(ROUTE.view==="structure") h+=` › <b>PLANT STRUCTURE</b>`;                                            // [DB-SYNC] NEW
+  if(ROUTE.view==="sld") h+=` › <a onclick="nav('sld')">ELECTRICAL SINGLE-LINE</a>${ROUTE.board?` › <b>${esc(ROUTE.board)}</b>`:""}`;   // [SLD] NEW
   if(ROUTE.view==="consistency") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>DATA CONSISTENCY</b>`;   // [DB-SYNC] NEW
   if(ROUTE.view==="setpoints") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>MISSING SET POINTS</b>`;
   if(ROUTE.view==="spares") h+=` › <a onclick="nav('xcheck')">DATA QUALITY</a> › <b>SPARE CAPACITY</b>`;
@@ -3690,6 +3694,97 @@ function renderConsistency(c){
    installed_at_floc_id). This is the "plants structure in one place" view —
    every level shows its verification state so the top-down finishing plan
    (handover Part 3) can be walked visually. */
+
+/* ══ EI06 · ELECTRICAL SINGLE-LINE ══════════════════════════════════════════
+   [SLD] NEW — renders the ELD03 single-line straight from v_sld_nodes /
+   v_sld_edges (migrations 150b · 151 · 152 series) through TamFlow.sld().
+
+   The two views are LAZY-loaded on first open and cached for the session, so
+   boot cost is unchanged — same pattern as EI05 / EI44. Nothing legacy is
+   touched: this view only reads.
+
+   The drawing itself is produced by tam-flow.js, the one renderer. Do not add a
+   second one here — extend tam-flow.js instead.                              */
+const SLD = { data:null, board:null };
+
+async function sldLoad(){
+  if(SLD.data) return SLD.data;
+  const v = await lazyViews(["v_sld_nodes","v_sld_edges"]);
+  const nodes = v.v_sld_nodes||[], edges = v.v_sld_edges||[];
+  if(!nodes.length || !window.TamFlow || !TamFlow.indexSld) return null;
+  SLD.data = TamFlow.indexSld({nodes:nodes.slice(), edges:edges.slice()});
+  return SLD.data;
+}
+
+/* a click on any tag in the diagram opens the normal asset card */
+function sldNav(ref){
+  const [kind, ...rest] = String(ref||"").split("/");
+  const tag = rest.join("/");
+  if(!tag) return;
+  if(kind==="asset" && window.openAssetTag) return openAssetTag(tag);
+  // a feeder POSITION has no asset card of its own — show it in search instead,
+  // which resolves the position tag against the asset/alias index.
+  nav("search/"+encodeURIComponent(tag));
+}
+window.sldNav = sldNav;
+
+async function renderSld(c, board){
+  c.innerHTML = `<div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · SINGLE-LINE DIAGRAM</span></div>
+    <h1>Electrical single-line</h1><div class="empty">Loading v_sld_nodes / v_sld_edges…</div>`;
+  const S = await sldLoad();
+  if(!S){
+    c.innerHTML = `<div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · SINGLE-LINE DIAGRAM</span></div>
+      <h1>Electrical single-line</h1>
+      <div class="empty">No single-line data.<br>
+      <span class="mono">v_sld_nodes / v_sld_edges are empty, not readable, or tam-flow.js did not load</span></div>`;
+    return;
+  }
+  const boards = TamFlow.sldBoards(S);
+  if(!boards.length){ c.innerHTML = `<div class="empty">v_sld_nodes carries no SWITCHBOARD row.</div>`; return; }
+  const cur = boards.some(b=>b.tag===board) ? board : boards[0].tag;
+  SLD.board = cur;
+
+  const totPos = boards.reduce((n,b)=>n+b.positions,0);
+  const totLoad = boards.reduce((n,b)=>n+b.loads,0);
+  const skipped = S._skipped.length;
+
+  c.innerHTML = `
+  <div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · SINGLE-LINE DIAGRAM</span></div>
+  <h1>Electrical single-line</h1>
+  <p class="lead">The ELD03 Power Center schedules as a drawing, generated from
+  <span class="mono">v_sld_nodes</span> / <span class="mono">v_sld_edges</span> — nothing is drawn that the
+  database does not hold. Positions run left to right in <b>display_rank</b> order
+  (<span class="mono">1000 + sheet_no×100 + column_index</span>), which reproduces each sheet's own column
+  sequence. Bus couplers are <b>NORMALLY OPEN</b> and drawn dashed. The dot beside a load is its
+  <span class="mono">data_status</span>. A position with no power edge says so rather than showing nothing.</p>
+  <div class="facts">
+    <div class="fact" style="border-color:var(--crimson)"><div class="fbody"><div class="n" style="color:var(--blue)">${boards.length}</div><div class="l">POWER CENTERS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${totPos}</div><div class="l">POSITIONS</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n">${totLoad}</div><div class="l">LOADS LINKED</div></div></div>
+    <div class="fact"><div class="fbody"><div class="n" style="color:${skipped?"var(--amber)":"var(--ok)"}">${skipped||"✓"}</div><div class="l">EDGES NOT DRAWABLE</div></div></div>
+  </div>
+  <div style="margin:14px 0 8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    ${boards.map(b=>`<span class="chip ${b.tag===cur?"ok":"dim"}" style="cursor:pointer"
+      onclick="nav('sld/'+encodeURIComponent('${esc(b.tag)}'))">${esc(b.tag)} · ${esc(b.doc_no||"")}
+      <span class="dim">${b.positions}p</span></span>`).join("")}
+  </div>
+  <div id="sldbox" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px"></div>
+  <p class="lead" style="margin-top:10px">Click any load tag to open its asset card. The diagram scrolls
+  horizontally — PC3 is 42 columns wide.</p>
+  ${dataTable("sldcov","SC","Coverage per Power Center",[
+    {label:"BOARD", get:r=>r.tag, cls:"mono",
+      html:(r,v)=>`<span class="tag" onclick="event.stopPropagation();nav('sld/'+encodeURIComponent('${esc(r.tag)}'))">${esc(v)}</span>`},
+    {label:"DOCUMENT", get:r=>r.doc_no||"—", cls:"mono dim"},
+    {label:"V", get:r=>r.voltage_v==null?"—":r.voltage_v, cls:"mono", num:true},
+    {label:"BUSBARS", get:r=>r.busbars, cls:"mono", num:true},
+    {label:"POSITIONS", get:r=>r.positions, cls:"mono", num:true},
+    {label:"LOADS LINKED", get:r=>r.loads, cls:"mono", num:true}
+  ], boards)}`;
+
+  const box=document.getElementById("sldbox");
+  if(box) box.innerHTML = TamFlow.sld(S, cur, {onNavigate:"sldNav"});
+}
+
 function renderStructure(c){
   c.innerHTML=`<div class="kicker">TX EI05 <span class="sub">· PLANT STRUCTURE · FUNCTIONAL LOCATIONS</span></div>
   <h1>Plant structure</h1>
