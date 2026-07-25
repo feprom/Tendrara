@@ -973,12 +973,13 @@ async function boot(){
     // and are consumed by the equipment card (normalized-first, legacy fallback).
     // Loaded here so the card can render from them; guarded via fetchOpt so a missing
     // view degrades to the legacy equipment card rather than breaking boot.
-    const [instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi] = await Promise.all([
+    const [instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi,elecLoads] = await Promise.all([
       fetchOpt("v_instrument_ui"), fetchOpt("v_valve_ui"),
       fetchOpt("v_cause_effect_trace"), fetchOpt("v_loop_trace"),
-      fetchOpt("v_mechanical_ui"), fetchOpt("v_electrical_ui")   // [UI-CUTOVER] NEW
+      fetchOpt("v_mechanical_ui"), fetchOpt("v_electrical_ui"),   // [UI-CUTOVER] NEW
+      fetchOpt("v_electrical_loads")   // [ELEC-FLOC] feed_role / fed_from / busbar_kw (SQL/135–138)
     ]);
-    Object.assign(DB,{instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi});
+    Object.assign(DB,{instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi,elecLoads});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -2106,37 +2107,67 @@ const RPTS=[
   // (v_electrical_ui / DB.elecUi): motors, pumps, heaters, compressors, condensers, generators, etc.
   // Rows route to the correct detail card per type via openAssetTag (not just the motor card).
   {id:"motors", no:"08", title:"Electrical Load List",
-    src:()=>[...(DB.elecUi||[])]
+    // [ELEC-FLOC] Source is v_electrical_loads (feed_role / fed_from / busbar_kw; SQL/135–138) so the
+    // list shows EVERY consumer yet the power sums ONCE per busbar. Falls back to v_electrical_ui if
+    // the feed-role view is missing (older DB) — the LEVEL/FED FROM columns then read as plain FEEDER.
+    src:()=>[...((DB.elecLoads&&DB.elecLoads.length)?DB.elecLoads:(DB.elecUi||[]))]
       .sort((a,b)=>String(a.tag).localeCompare(String(b.tag),undefined,{numeric:true})),
     click:r=>`openAssetTag('${esc((r.tag||"").trim())}')`,
-    // [REVIEW] same "MOT" badge as the area-summary Motors table; summary bar = row count,
-    // counts per starting method, and total kW per voltage (mirrors the area electrical summary).
+    // [ELEC-FLOC] Summary separates GENERATION (SOURCE) from consumption, and totals the TRUE busbar
+    // load = Σ busbar_kw (FEEDER rows only) so a feeder and the sub-loads it internally supplies
+    // (cooler fans; a compressor vs its motor) are never double-counted. Per-voltage kW is busbar_kw.
     badge:"MOT",
     summary:(rows)=>{
-      const byStart=new Map(), byV=new Map(); let totKw=0;
+      const byStart=new Map(), byV=new Map();
+      let busKw=0, subKw=0, srcKw=0, nF=0, nS=0, nG=0;
       rows.forEach(r=>{
-        const sm=String(r.starting_method||"").trim()||"—";
-        byStart.set(sm,(byStart.get(sm)||0)+1);
-        const kw=parseFloat(r.design_power_kw)||0; totKw+=kw;
+        const role=String(r.feed_role||"FEEDER").trim();
+        const kw=parseFloat(r.design_power_kw)||0;
+        const bkw=(r.busbar_kw!=null)?(parseFloat(r.busbar_kw)||0):(role==="FEEDER"?kw:0);
         const v=(r.design_voltage_v!=null&&r.design_voltage_v!=="")?String(r.design_voltage_v):"—";
-        byV.set(v,(byV.get(v)||0)+kw);
+        if(role==="SOURCE"){ nG++; srcKw+=kw; }
+        else if(role==="SUB_LOAD"){ nS++; subKw+=kw; }
+        else { nF++; busKw+=bkw; byV.set(v,(byV.get(v)||0)+bkw);
+               const sm=String(r.starting_method||"").trim()||"—"; byStart.set(sm,(byStart.get(sm)||0)+1); }
       });
       const kv=(k,val,tot)=>`<span class="kv${tot?" tot":""}"><span class="k">${esc(k)}</span><span class="v">${esc(String(val))}</span></span>`;
       const st=[...byStart.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>kv(k,n)).join("");
       const vv=[...byV.entries()].sort((a,b)=>b[1]-a[1]).map(([k,kw])=>kv(k==="—"?"— V":k+" V",kw.toFixed(1)+" kW")).join("");
-      return kv("LOADS Σ",rows.length,true)+st+vv+kv("POWER Σ",totKw.toFixed(1)+" kW",true);
+      return kv("ROWS Σ",rows.length,true)
+        +kv("FEEDERS",nF)+kv("SUB-LOADS",nS)+kv("SOURCES",nG)
+        +st+vv
+        +kv("BUSBAR Σ",busKw.toFixed(1)+" kW",true)
+        +(nG?kv("GEN Σ",srcKw.toFixed(1)+" kW",true):"");
     },
     cols:()=>[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--crimson)">${esc(v||"—")}</b>`},
       {label:"TYPE", get:r=>r.class_code, cls:"mono dim", html:(r,v)=>v?`<span class="chip info">${esc(String(v))}</span>`:'<span class="dim">—</span>'},
+      // [ELEC-FLOC] LEVEL = feed role: SOURCE (generation), FEEDER (counted busbar load), SUB-LOAD
+      // (fed downstream of a feeder — shown but NOT summed at the busbar).
+      {label:"LEVEL", get:r=>r.feed_role, cls:"mono", html:(r,v)=>{
+        const rr=String(v||"FEEDER").trim();
+        const map={SOURCE:["GEN","ok"],FEEDER:["FEEDER","info"],SUB_LOAD:["SUB-LOAD","dim"]};
+        const m=map[rr]||["FEEDER","info"];
+        return `<span class="chip ${m[1]}">${m[0]}</span>`; }},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
       rptAreaCol(r=>r.area_code),
       {label:"SKID", get:r=>r.skid_tag, cls:"mono dim"},
       {label:"kW", get:r=>r.design_power_kw, num:true, r:true, cls:"mono", html:(r,v)=>v!=null&&v!==''?(+v).toFixed(2):'<span class="dim">—</span>'},
+      // [ELEC-FLOC] BUSBAR kW = power counted at the busbar (design kW for FEEDER, 0 for SUB-LOAD/SOURCE).
+      {label:"BUSBAR kW", get:r=>r.busbar_kw, num:true, r:true, cls:"mono", html:(r,v)=>{
+        const role=String(r.feed_role||"FEEDER").trim();
+        const bv=(v!=null&&v!=='')?+v:(role==="FEEDER"?(+r.design_power_kw||0):0);
+        return role==="FEEDER"?`<b>${bv.toFixed(2)}</b>`:'<span class="dim">0</span>'; }},
       {label:"V", get:r=>r.design_voltage_v, num:true, r:true, cls:"mono", html:(r,v)=>v!=null?esc(String(v)):'<span class="dim">—</span>'},
       {label:"cos φ", get:r=>r.power_factor, num:true, r:true, cls:"mono", html:(r,v)=>v!=null&&v!==''?(+v).toFixed(2):'<span class="dim">—</span>'},
       {label:"STARTING", get:r=>r.starting_method, cls:"mono dim"},
-      {label:"MCC / FEEDER", get:r=>r.mcc_panel_tag, cls:"mono", html:(r,v)=>v?esc(String(v))+(r.mcc_slot?` <span class="dim">/ ${esc(String(r.mcc_slot))}</span>`:""):'<span class="dim">—</span>'},
+      // [ELEC-FLOC] FED FROM = the immediate upstream supplier (the feeder a sub-load hangs off, or
+      // the busbar FLOC for a feeder). Falls back to the legacy MCC panel/slot when no feed link.
+      {label:"FED FROM", get:r=>r.fed_from_tag||r.supply_floc||r.mcc_panel_tag, cls:"mono", html:(r,v)=>{
+        if(r.fed_from_tag) return `<span class="mono">${esc(String(r.fed_from_tag))}</span>`;
+        if(r.supply_floc) return `<span class="mono dim">${esc(String(r.supply_floc))}</span>`;
+        if(r.mcc_panel_tag) return esc(String(r.mcc_panel_tag))+(r.mcc_slot?` <span class="dim">/ ${esc(String(r.mcc_slot))}</span>`:"");
+        return '<span class="dim">—</span>'; }},
       {label:"STATUS", get:r=>r.data_status, html:(r,v)=>assetStChip(v)}]},
   // [REVIEW] Shrinking remainder — legacy electrical loads (plant_electrical_loads) whose tag is NOT
   // yet in the normalized registry (v_electrical_ui). Empties itself as normalization proceeds; when it
@@ -3626,7 +3657,10 @@ function renderStructure(c){
   <div class="empty">Loading functional-location hierarchy…</div>`;
   lazyViews(["plant_functional_locations"]).then(V=>{
     if(ROUTE.view!=="structure") return;
-    const flocs=V.plant_functional_locations||[];
+    // [ELEC-FLOC] This is the PROCESS-aspect structure. ELECTRICAL/CONTROL aspect FLOCs (=EL …,
+    // SQL/135–138) live in the same table under domain<>'PROCESS' — exclude them so they don't
+    // surface as a stray extra root here.
+    const flocs=(V.plant_functional_locations||[]).filter(f=>(f.domain||"PROCESS")==="PROCESS");
     if(!flocs.length){ c.innerHTML=`<div class="empty">plant_functional_locations is empty or unreadable — run the Phase-0 backfill.</div>`; return; }
     const byId=new Map(flocs.map(f=>[f.id,f]));
     const kids=new Map();
