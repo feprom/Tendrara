@@ -2144,17 +2144,21 @@ const RPTS=[
     // counters reflect the active filter. Each count chip is a toggle button — dtChip(id,term) sets
     // the table filter to `term` (click the active one again to clear). ROWS Σ clears the filter.
     summary:(rows,id)=>{
-      const byStart=new Map(), byV=new Map();
-      let busKw=0, srcKw=0, nF=0, nS=0, nG=0;
+      const byStart=new Map(), byV=new Map(), byClass=new Map();
+      let busKw=0, srcKw=0, nF=0, nG=0;
       rows.forEach(r=>{
         const role=String(r.feed_role||"FEEDER").trim();
         const kw=parseFloat(r.design_power_kw)||0;
         const bkw=(r.busbar_kw!=null)?(parseFloat(r.busbar_kw)||0):(role==="FEEDER"?kw:0);
         const v=(r.design_voltage_v!=null&&r.design_voltage_v!=="")?String(r.design_voltage_v):"—";
+        const cc=String(r.class_code||"").trim().toUpperCase();
+        if(cc) byClass.set(cc,(byClass.get(cc)||0)+1);
         if(role==="SOURCE"){ nG++; srcKw+=kw; }
-        else if(role==="SUB_LOAD"){ nS++; }
         else { nF++; busKw+=bkw; byV.set(v,(byV.get(v)||0)+bkw);
-               const sm=String(r.starting_method||"").trim()||"—"; byStart.set(sm,(byStart.get(sm)||0)+1); }
+               // starting-method breakdown: unify plain CB into DIRECT (CB); drop blank & INTERLOCKED
+               let sm=String(r.starting_method||"").trim();
+               if(sm.toUpperCase()==="CB") sm="DIRECT (CB)";
+               if(sm && sm.toUpperCase()!=="INTERLOCKED") byStart.set(sm,(byStart.get(sm)||0)+1); }
       });
       // kv(label,value,tot?,term?): when term is a string the chip becomes a clickable filter button.
       const kv=(k,val,tot,term)=>{
@@ -2162,15 +2166,17 @@ const RPTS=[
         const oc=btn?` onclick="dtChip('${id}','${String(term).replace(/'/g,"\\'")}')" title="filter: ${esc(String(term)||"clear")}"`:"";
         return `<span class="kv${tot?" tot":""}${btn?" kvbtn":""}"${oc}><span class="k">${esc(k)}</span><span class="v">${esc(String(val))}</span></span>`;
       };
-      const st=[...byStart.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>kv(k,n,false,k==="—"?null:k)).join("");
+      // DIRECT (CB) filters on the substring "CB" so the merged chip also catches plain-CB rows.
+      const st=[...byStart.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>kv(k,n,false,/^direct \(cb\)$/i.test(k)?"CB":k)).join("");
       const vv=[...byV.entries()].sort((a,b)=>b[1]-a[1]).map(([k,kw])=>kv(k==="—"?"— V":k+" V",kw.toFixed(1)+" kW",false,k==="—"?null:k)).join("");
-      // SUB-LOADS chip omitted — the motor-centric model (SQL/139–141) leaves no sub-loads; the
-      // list is generation (SOURCE) + real loads (FEEDER). feed_role/SUB_LOAD stay in the schema.
+      const nMot=byClass.get("MOTOR")||0, nHtr=byClass.get("HEATER")||0;
+      // Generation (gensets) is separated from consumption; MOTORS/HEATERS count by equipment type.
       return kv("ROWS Σ",rows.length,true,"")
-        +kv("FEEDERS",nF,false,"FEEDER")+kv("SOURCES",nG,false,"SOURCE")
+        +kv("FEEDERS",nF,false,"FEEDER")+kv("GENSETS",nG,false,"SOURCE")
+        +kv("MOTORS",nMot,false,"MOTOR")+kv("HEATERS",nHtr,false,"HEATER")
         +st+vv
         +kv("BUSBAR Σ",busKw.toFixed(1)+" kW",true)
-        +(nG?kv("GEN Σ",srcKw.toFixed(1)+" kW",true):"");
+        +(nG?kv("GENSETS Σ",srcKw.toFixed(1)+" kW",true):"");
     },
     cols:()=>[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--crimson)">${esc(v||"—")}</b>`},
