@@ -463,7 +463,14 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/supabase-config.js"></script>
 <script src="doc-manifest.js"></script>
-<script src="tam-flow.js?v=1.7"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
+<!-- Symbol system: kernel first, then one pack per discipline, then the renderer.
+     ORDER MATTERS. tam-flow.js looks for TamSym at draw time and falls back to
+     its legacy inline glyphs if the packs are absent, so a file that fails to
+     load degrades the drawing instead of breaking the page.
+     Bump ?v= on every release — same cache rule as tam-flow.js. -->
+<script src="tam-sym.js?v=0.1"></script>
+<script src="tam-sym-elec.js?v=0.1"></script>
+<script src="tam-flow.js?v=1.8"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════

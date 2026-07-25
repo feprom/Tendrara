@@ -22,7 +22,11 @@
      TamFlow.hmbCards(data, code, o)    → IN / DUTY / OUT HMB cards (html)
      TamFlow.svcClass(data, code)       → service class {color,dash,width,…}
 
-   ELECTRICAL SINGLE-LINE (phase 11, added v1.1.0 — v_sld_nodes / v_sld_edges):
+   ELECTRICAL SINGLE-LINE (phase 11, v1.1.0 — v_sld_nodes / v_sld_edges):
+     v1.2.0 — symbol geometry now comes from tam-sym.js + tam-sym-elec.js.
+     Load those two BEFORE this file. Without them the legacy inline glyphs
+     still draw, so the page degrades instead of breaking.
+     TamFlow.sldSymbolStyle = 'IEC' (default) | 'BOX'
      TamFlow.loadSld(sb)                → {nodes, edges} bundle, indexed
      TamFlow.sldFromViewer(DB)          → same bundle from the ENI viewer DB
      TamFlow.sldBoards(sld)             → [{tag,doc_no,busbars,positions,loads}]
@@ -833,9 +837,42 @@
       });
   }
 
-  /* ── symbols ──────────────────────────────────────────────────────────── */
-  const HALO = ` paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round"`;
+  /* ── symbols ──────────────────────────────────────────────────────────────
+     v1.2.0: the symbol geometry moved OUT of this renderer into the symbol
+     packs (`tam-sym.js` + `tam-sym-elec.js`). This function is now a delegate.
+
+     Why: an inline switch cannot carry ports, state, data quality or measured
+     values, and it cannot be shared with the process side. The packs can.
+     See GRAPHICS_LIBRARY_PLAN.md.
+
+     The legacy switch is KEPT as the fallback, deliberately: if the packs fail
+     to load, EI06 degrades to exactly what it drew before rather than to a
+     blank page. Delete it only after the packs have shipped and been verified.
+
+     TamFlow.sldSymbolStyle selects the switching-device form:
+       'IEC'  breaker as the IEC cross-on-contact; disconnector, switch-
+              disconnector and contactor drawn distinctly          ← default
+       'BOX'  the square shorthand every switching device used to get, now
+              FILLED when closed and hollow when open
+     Set TamFlow.sldSymbolStyle = 'BOX' before rendering to go back.           */
+  let sldSymbolStyle = "IEC";
+  let _symUsed = null;                 // symbol kinds drawn in the current sld() call
+
   function sldGlyph(kind, cx, cy, col, open) {
+    if (_symUsed) _symUsed.add(String(kind || "").toUpperCase());
+    const S = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (S && S.ELEC_MAP && S.draw) {
+      let k = S.ELEC_MAP[String(kind || "").toUpperCase()] || "UNKNOWN";
+      if (sldSymbolStyle === "BOX" && (k === "CIRCUIT_BREAKER" || k === "ACB_DRAWOUT"))
+        k = "CIRCUIT_BREAKER_BOX";
+      return S.draw(k, { x: cx, y: cy, color: col, open: !!open,
+                         state: open ? "OPEN" : "DESIGN", scale: 0.92 });
+    }
+    return sldGlyphLegacy(kind, cx, cy, col, open);
+  }
+
+  const HALO = ` paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round"`;
+  function sldGlyphLegacy(kind, cx, cy, col, open) {
     const sw = 1.6, W = `stroke="${col}" stroke-width="${sw}"`;
     const box = (r, dash) => `<rect x="${cx - r}" y="${cy - r}" width="${2 * r}" height="${2 * r}" fill="#fff" ${W}${dash ? ` stroke-dasharray="${dash}"` : ""}/>`;
     const disc = (r, ch) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" ${W}/>` +
@@ -880,6 +917,7 @@
   /* ── renderer ─────────────────────────────────────────────────────────── */
   function sld(sldData, boardTag, opts) {
     const o = opts || {}, S = sldData;
+    _symUsed = new Set();              // reset per render — drives the legend
     if (!S || !S._byTag) return `<div style="font:400 11px ${MONO};color:${SOFT}">tam-flow: call TamFlow.loadSld(sb) first</div>`;
     const board = S._byTag.get(boardTag);
     if (!board) return `<div style="font:400 11px ${MONO};color:${SOFT}">no switchboard "${esc(boardTag)}" in v_sld_nodes</div>`;
@@ -1041,13 +1079,36 @@
       });
     });
 
-    /* footer: legend + an honest account of what was not drawn */
+    /* footer: legend + an honest account of what was not drawn.
+       The legend is GENERATED from the symbols this board actually used, so a
+       symbol added to the pack can never leave a stale key behind (rule G-7).  */
     const fy = H - 14;
     const skipped = S._skipped.length;
-    s += `<text x="${SLD_PADX}" y="${fy}" font-family="${MONO}" font-size="7.4" fill="${SOFT}">` +
-      `□ breaker  ⊘ disconnector  Ⓐ analyser  ◎◎ transformer  Ⓜ motor  Ⓖ generator  ` +
-      `dashed = NORMALLY OPEN (bus coupler)  ·  dot = data status  ·  order = display_rank (paper column order)</text>`;
-    if (skipped) s += `<text x="${SLD_PADX}" y="${fy + 11}" font-family="${MONO}" font-size="7.4" fill="${CRIMSON}">` +
+    const Sym = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    const used = _symUsed || new Set();
+    if (Sym && Sym.ELEC_MAP && used.size) {
+      const seen = [], names = [];
+      used.forEach(k => {
+        let m = Sym.ELEC_MAP[String(k).toUpperCase()] || "UNKNOWN";
+        if (sldSymbolStyle === "BOX" && (m === "CIRCUIT_BREAKER" || m === "ACB_DRAWOUT"))
+          m = "CIRCUIT_BREAKER_BOX";
+        if (seen.indexOf(m) < 0 && m !== "BUSBAR" && m !== "BUSBAR_INVERTER" &&
+            m !== "SWITCHBOARD") { seen.push(m); names.push((Sym.spec(m) || {}).name || m); }
+      });
+      let lx = SLD_PADX;
+      seen.forEach((m, i) => {
+        s += Sym.draw(m, { x: lx + 5, y: fy - 4, scale: 0.42 });
+        s += `<text x="${lx + 13}" y="${fy - 1}" font-family="${MONO}" font-size="6.8" fill="${SOFT}">${esc(names[i])}</text>`;
+        lx += 22 + names[i].length * 4.6;
+      });
+      s += `<text x="${SLD_PADX}" y="${fy + 10}" font-family="${MONO}" font-size="7.4" fill="${SOFT}">` +
+        `dashed = NORMALLY OPEN (bus coupler)  ·  dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.1.0</text>`;
+    } else {
+      s += `<text x="${SLD_PADX}" y="${fy}" font-family="${MONO}" font-size="7.4" fill="${SOFT}">` +
+        `□ breaker  ⊘ disconnector  Ⓐ analyser  ◎◎ transformer  Ⓜ motor  Ⓖ generator  ` +
+        `dashed = NORMALLY OPEN (bus coupler)  ·  dot = data status  ·  order = display_rank (paper column order)</text>`;
+    }
+    if (skipped) s += `<text x="${SLD_PADX}" y="${fy + (Sym && Sym.ELEC_MAP && used.size ? 21 : 11)}" font-family="${MONO}" font-size="7.4" fill="${CRIMSON}">` +
       `${skipped} edge${skipped > 1 ? "s" : ""} in v_sld_edges not drawable — endpoint absent from v_sld_nodes (network links, and the 690-JG-695/696 flash-compressor motors)</text>`;
     s += `</svg>`;
     return `<div style="overflow-x:auto">${s}</div>`;
@@ -1055,7 +1116,10 @@
 
   /* ── export ───────────────────────────────────────────────────────────── */
   const API = { load, fromViewer, plantMap, areaBlock, unitSummary, hmbCards, svcClass, hmbChip, indexData,
-                loadSld, sldFromViewer, indexSld, sldBoards, sld, version: "1.1.0" };
+                loadSld, sldFromViewer, indexSld, sldBoards, sld,
+                get sldSymbolStyle() { return sldSymbolStyle; },
+                set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
+                version: "1.2.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
