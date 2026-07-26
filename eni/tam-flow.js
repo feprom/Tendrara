@@ -1318,10 +1318,21 @@
          heights, and the two destination names never share a line. */
       const h = busY - sy + gx(20) + (dir > 0 ? ((o.n || 1) - 1 - i) * gx(22) : 0), e = gx(26) * dir;
       const col = SLD_BUSCOL;
-      let g = `<line x1="${x}" y1="${busY}" x2="${x}" y2="${busY - h}" stroke="${col}" ` +
-        `stroke-width="1.6"${o.open ? ` stroke-dasharray="5 4"` : ""}/>` +
+      /* The conductor STOPS AT THE DEVICE'S TERMINALS and starts again on the
+         other side — it does not run through the symbol. Every other position
+         on this drawing already does that (`cy ± 13·Z`); the tie stub was
+         drawing one line from the bar to the elbow with the breaker painted on
+         top of it, so the dashes crossed the glyph. A line through a device is
+         not a shorter way of saying the same thing: it says the device is not
+         in the circuit. */
+      const dash = o.open ? ` stroke-dasharray="5 4"` : "";
+      const gap = zy(13);
+      let g = `<line x1="${x}" y1="${busY}" x2="${x}" y2="${sy + gap}" stroke="${col}" ` +
+        `stroke-width="1.6"${dash}/>` +
+        `<line x1="${x}" y1="${sy - gap}" x2="${x}" y2="${busY - h}" stroke="${col}" ` +
+        `stroke-width="1.6"${dash}/>` +
         `<line x1="${x}" y1="${busY - h}" x2="${x + e}" y2="${busY - h}" stroke="${col}" ` +
-        `stroke-width="1.6"${o.open ? ` stroke-dasharray="5 4"` : ""}/>`;
+        `stroke-width="1.6"${dash}/>`;
       g += sldGlyph(o.kind, x, sy, col, !!o.open);
       /* The OUT label runs right, into the page margin, where there is room.
          The IN label cannot: anchored at the elbow it ran OFF THE LEFT EDGE of
@@ -1664,7 +1675,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.7.0" };
+                version: "1.7.1" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
