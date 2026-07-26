@@ -494,6 +494,9 @@ const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), 
              modelById:new Map(), mfrById:new Map(), mspecByModel:new Map(), motorByAsset:new Map(),
              eassetByAsset:new Map(), nameplateByAsset:new Map(), appreqByAsset:new Map(),
              aliasesByAsset:new Map(), drivesByAsset:new Map(), drivenByAsset:new Map(),
+             // [ELEC-POS] switchgear position card: feeder / protection / cable
+             feederByAsset:new Map(), devsByFeeder:new Map(), cablesByFeeder:new Map(),
+             busbarByAsset:new Map(), swbdByAsset:new Map(), pspecByModel:new Map(),
              docsByAsset:new Map(), docsByModel:new Map(),
              // [UI-CUTOVER] NEW — normalized read-view indices (v_*_ui cutover — see HANDOVER_UI_CUTOVER.md).
              // Built in buildUiIndexes(); guarded no-op when the views are empty so the
@@ -990,6 +993,17 @@ async function boot(){
       fetchOpt("v_electrical_loads")   // [ELEC-FLOC] feed_role / fed_from / busbar_kw (SQL/135–138)
     ]);
     Object.assign(DB,{instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi,elecLoads});
+    // [ELEC-POS] ── switchgear layer (migrations 147–161) ──────────────────────
+    // The single-line already renders from v_sld_nodes/v_sld_edges, but NOTHING in
+    // the viewer could show what is inside a cubicle: the breaker, its settings, its
+    // cable. Clicking a position landed on "No detail view". These five tables are
+    // small (111 + 183 + 92 + 10 + 4 + 2 rows) and are what renderFeederCard reads.
+    const [pfeeders,pdevs,pcables,pbusbars,pswbds,pspecs] = await Promise.all([
+      fetchOpt("plant_feeders"), fetchOpt("plant_protection_devices"),
+      fetchOpt("plant_cables"), fetchOpt("plant_busbars"),
+      fetchOpt("plant_switchboards"), fetchOpt("plant_protection_model_specs")
+    ]);
+    Object.assign(DB,{pfeeders,pdevs,pcables,pbusbars,pswbds,pspecs});
     buildIndexes();
     buildTree();
     buildDatalist();
@@ -1096,7 +1110,21 @@ function buildUiIndexes(){
 function buildAssetIndexes(){
   ["assetById","assetByTag","aliasToAsset","aclassById","modelById","mfrById","mspecByModel",
    "motorByAsset","eassetByAsset","nameplateByAsset","appreqByAsset","aliasesByAsset",
-   "drivesByAsset","drivenByAsset","docsByAsset","docsByModel"].forEach(k=>IDX[k].clear());
+   "drivesByAsset","drivenByAsset","docsByAsset","docsByModel",
+   "feederByAsset","devsByFeeder","cablesByFeeder","busbarByAsset","swbdByAsset",
+   "pspecByModel"].forEach(k=>IDX[k].clear());
+  // [ELEC-POS] switchgear position indexes — no-ops when the tables are absent
+  (DB.pfeeders||[]).forEach(f=>IDX.feederByAsset.set(f.asset_id,f));
+  (DB.pbusbars||[]).forEach(b=>IDX.busbarByAsset.set(b.asset_id,b));
+  (DB.pswbds||[]).forEach(w=>IDX.swbdByAsset.set(w.asset_id,w));
+  (DB.pspecs||[]).forEach(sp=>{ const cur=IDX.pspecByModel.get(sp.model_id);
+    // a manufacturer DATASHEET outranks an ORDER_CODE_DECODE of the same model
+    if(!cur || (sp.source_kind==="DATASHEET" && cur.source_kind!=="DATASHEET"))
+      IDX.pspecByModel.set(sp.model_id,sp); });
+  (DB.pdevs||[]).forEach(d=>{ if(!IDX.devsByFeeder.has(d.feeder_asset_id)) IDX.devsByFeeder.set(d.feeder_asset_id,[]);
+    IDX.devsByFeeder.get(d.feeder_asset_id).push(d); });
+  (DB.pcables||[]).forEach(c=>{ if(!IDX.cablesByFeeder.has(c.feeder_asset_id)) IDX.cablesByFeeder.set(c.feeder_asset_id,[]);
+    IDX.cablesByFeeder.get(c.feeder_asset_id).push(c); });
   DB.aclasses.forEach(c=>IDX.aclassById.set(c.id,c));
   DB.amfrs.forEach(m=>IDX.mfrById.set(m.id,m));
   DB.amodels.forEach(m=>IDX.modelById.set(m.id,m));
@@ -5048,6 +5076,11 @@ function openAssetTag(tag){
   tag=(tag||"").trim(); if(!tag) return;
   const a=IDX.assetByTag.get(tag)||(IDX.aliasToAsset.has(tag)?IDX.assetById.get(IDX.aliasToAsset.get(tag)):null);
   if(a && IDX.motorByAsset.has(a.id)) return renderMotorCard(a,tag);
+  // [ELEC-POS] a switchgear POSITION is not a machine — it is a cubicle. It has its
+  // own card because the breaker, its settings and its cable live there and nowhere
+  // else in the UI. Routed before the equipment/motor fallbacks: a feeder is never
+  // one of those.
+  if(a && IDX.feederByAsset.has(a.id)) return renderFeederCard(a,tag);
   // A real mechanical/equipment asset must open as equipment even when it also appears in the
   // electrical load-list. An air-cooled condenser (E-342-1) draws power, so it has an eloads row
   // and lands in motorByTag — but it is a HEAT_EXCHANGER, not a motor. Route by the asset's true
@@ -5058,6 +5091,200 @@ function openAssetTag(tag){
   if(IDX.ceByTag.has(tag)) return openCE(tag);   // [UI-CUTOVER] NEW — route C&E function tags
   return status("No detail view for "+tag,"");
 }
+
+/* ── [ELEC-POS] switchgear position card ─────────────────────────────────────
+   A feeder POSITION is one column of an ELD03 schedule: one cubicle of a Power
+   Center. It is not a machine, which is why openAssetTag's equipment/motor/
+   instrument routes all miss it and it used to land on "No detail view".
+
+   Everything below already exists in the database and appeared on NO screen:
+   the protective device and its settings, the OEM limits per voltage, the cable,
+   and the validation findings raised against this position.
+
+   The device itself has no tag of its own yet — the schematic designates it
+   (QS.G1, Q.MC1, F.S1 per IEC 81346) but plant_protection_devices has no column
+   for that, so the card shows the role and the MLFB. When designations are
+   captured this is where they surface.                                        */
+async function renderFeederCard(asset, reqTag){
+  const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
+  const card=cells=>{ const c=cells.filter(Boolean); return c.length?`<div class="jbcard">${c.join("")}</div>`:""; };
+  const nz2=(v,d)=>v==null||v===""?(d||"—"):v;
+  const num=v=>v==null?"—":(+v).toLocaleString("en-US",{maximumFractionDigits:2});
+  // tagChip is a local const in another renderer and docChip does not exist — define
+  // both here rather than hoisting someone else's helper out from under them.
+  const tagChip=t=>{ const tt=(t||"").trim();
+    return tt?'<span class="tag" onclick="openAssetTag(\''+esc(tt)+'\')">'+esc(tt)+'</span>':'<span class="dim">—</span>'; };
+  const docTag=t=>'<span class="tag" style="cursor:default">'+esc(t||"")+'</span>';
+  // .note has no warn/dim variant in the stylesheet; style the callouts inline.
+  const CALLOUT='margin:6px 0;padding:7px 10px;font-size:11px;line-height:1.5;border-left:3px solid var(--crimson);background:#FDF2F4;color:var(--ink)';
+  const SOFTOUT='margin:4px 0;padding:6px 10px;font-size:10.5px;line-height:1.5;border-left:3px solid var(--line-strong);background:var(--paper-2,#F7F8F9);color:var(--ink-soft)';
+
+  const f      = IDX.feederByAsset.get(asset.id) || {};
+  const devs   = (IDX.devsByFeeder.get(asset.id)||[]).slice()
+                  .sort((a,b)=>String(a.device_role||"").localeCompare(String(b.device_role||"")));
+  const cables = IDX.cablesByFeeder.get(asset.id)||[];
+  const busA   = f.busbar_asset_id!=null ? IDX.assetById.get(f.busbar_asset_id) : null;
+  const bus    = f.busbar_asset_id!=null ? IDX.busbarByAsset.get(f.busbar_asset_id) : null;
+  const swbd   = bus && bus.switchboard_asset_id!=null ? IDX.swbdByAsset.get(bus.switchboard_asset_id) : null;
+  const swbdA  = bus && bus.switchboard_asset_id!=null ? IDX.assetById.get(bus.switchboard_asset_id) : null;
+  const served = f.served_asset_id!=null ? IDX.assetById.get(f.served_asset_id) : null;
+  const aliases= IDX.aliasesByAsset.get(asset.id) || [];
+
+  $("#instTitle").innerHTML=`<span class="mono" style="color:var(--crimson)">${esc(asset.official_tag)}</span> — switchgear position`
+    + (f.load_code?` <span class="dim" style="font-weight:400">(.${esc(f.load_code)})</span>`:"")
+    + ` <span style="font-weight:400">${assetStChip(asset.data_status)}</span>`;
+
+  let h=`<div class="kicker">FEEDER POSITION <span class="sub">· plant_feeders · plant_assets #${asset.id}</span></div>`;
+
+  /* what the schedule says this position IS */
+  h+=`<h4>Position</h4>`+card([
+    kv("Load code", f.load_code?"."+esc(f.load_code):"—"),
+    kv("Description", esc(nz2(f.description_raw))),
+    kv("Kind", esc(nz2(f.feeder_kind))),
+    kv("Switchboard", swbdA?tagChip(swbdA.official_tag):"—"),
+    kv("Busbar", busA?tagChip(busA.official_tag):"—"),
+    kv("Drawing", esc(nz2(f.doc_no))+(f.sheet_no!=null?" · sheet "+f.sheet_no:"")),
+    kv("Serves", served?tagChip(served.official_tag):`<span class="dim">${esc(nz2(f.served_tag_raw,"— no load linked —"))}</span>`),
+    kv("Match", esc(nz2(f.match_confidence))),
+    kv("Review", esc(nz2(f.review_status)))
+  ]);
+
+  /* the design duty printed on the sheet */
+  h+=`<h4>Design duty</h4>`+card([
+    kv("Simultaneous power", f.simultaneous_power_kw!=null?num(f.simultaneous_power_kw)+" kW":"—"),
+    kv("Current Ib", f.current_ib_a!=null?num(f.current_ib_a)+" A":"—"),
+    kv("cos φ", nz2(f.cos_phi)),
+    kv("Simultaneity", f.simultaneity_pct!=null?f.simultaneity_pct+" %":"—"),
+    kv("Utilization Ku", f.utilization_ku_pct!=null?f.utilization_ku_pct+" %":"—"),
+    kv("Contactor type", esc(nz2(f.contactor_type)))
+  ]);
+
+  /* the protective devices — the whole point of the card */
+  h+=`<h4>Protection device${devs.length>1?"s":""}</h4>`;
+  if(!devs.length){
+    h+=`<div class="empty">No protective device recorded for this position.</div>`;
+  } else devs.forEach(d=>{
+    const model = d.model_id!=null ? IDX.modelById.get(d.model_id) : null;
+    const spec  = model ? IDX.pspecByModel.get(model.id) : null;
+    const mfr   = model && model.manufacturer_id!=null ? IDX.mfrById.get(model.manufacturer_id) : null;
+
+    h+=`<div class="kicker" style="margin-top:8px">${esc(d.device_role||"DEVICE")}`
+     + (d.qty&&d.qty>1?` <span class="sub">· ${d.qty} ×</span>`:"")+`</div>`;
+    h+=card([
+      kv("Brand", esc(nz2(d.brand_raw||(mfr?mfr.name:null)))),
+      kv("Model", esc(nz2(d.model_text))),
+      kv("MLFB", esc(nz2(d.mlfb))),
+      kv("In (max/min/set)", esc(nz2(d.in_raw))),
+      kv("Im (max/min/set)", esc(nz2(d.im_raw))),
+      kv("Poles / curve", esc(nz2(d.poles_curve))),
+      kv("Breaking capacity (printed)", d.breaking_capacity_ka!=null?num(d.breaking_capacity_ka)+" kA":"—"),
+      kv("RCD Id", d.rcd_id_a!=null?num(d.rcd_id_a)+" A":"—"),
+      kv("Review", esc(nz2(d.review_status)))
+    ]);
+
+    if(!spec){
+      h+=`<div style="${SOFTOUT}">No manufacturer data registered for this model — the figures above are what the schedule prints.</div>`;
+      return;
+    }
+    /* THE finding, stated where an engineer will meet it */
+    if(spec.has_trip_unit===false){
+      h+=`<div style="${CALLOUT}"><b>No integral trip unit.</b> This device is a
+          ${esc(nz2(spec.device_type,"non-automatic breaker"))} — it switches and isolates but does not sense
+          current. There are no L/S/I settings to obtain: overcurrent protection must be provided externally
+          and is <b>not documented in this database</b>. Tripping is commanded through the shunt trip
+          ${spec.shunt_trip?`(${esc(spec.shunt_trip)})`:""}.</div>`;
+    }
+    h+=`<div class="kicker" style="margin-top:6px">MANUFACTURER DATA
+        <span class="sub">· ${esc(model.model_code)} · ${esc(spec.source_kind)}</span></div>`;
+    if(spec.source_kind==="ORDER_CODE_DECODE")
+      h+=`<div style="${SOFTOUT}">Derived from the article number, not a manufacturer
+          certificate — treat every figure as unconfirmed until the order acknowledgement or the equipment
+          nameplate is obtained.</div>`;
+    h+=card([
+      kv("Device type", esc(nz2(spec.device_type))),
+      kv("Rated In", spec.rated_current_in_a!=null?num(spec.rated_current_in_a)+" A"
+          +(spec.ambient_ref_c!=null?" @"+spec.ambient_ref_c+" °C":""):"—"),
+      kv("Ue max", spec.ue_max_v!=null?num(spec.ue_max_v)+" V":"—"),
+      kv("Frame · poles", esc(nz2(spec.frame_size))+(spec.poles?" · "+spec.poles+"P":"")),
+      kv("Withdrawable", spec.withdrawable==null?"—":(spec.withdrawable?"yes":"no")),
+      kv("Trip unit", spec.has_trip_unit===false?"<b>none</b>":esc(nz2(spec.trip_unit))
+          +(spec.protection_functions?" · "+esc(spec.protection_functions):"")),
+      spec.ir_min_a!=null?kv("Ir (L)", num(spec.ir_min_a)+" – "+num(spec.ir_max_a)+" A"):null,
+      spec.isd_min_a!=null?kv("Isd (S)", num(spec.isd_min_a)+" – "+num(spec.isd_max_a)+" A"):null,
+      spec.ii_min_a!=null?kv("Ii (I)", spec.ii_min_a===spec.ii_max_a
+          ? num(spec.ii_min_a)+" A <span class='dim'>(fixed)</span>"
+          : num(spec.ii_min_a)+" – "+num(spec.ii_max_a)+" A"):null,
+      kv("Icu @690 V", spec.icu_ka_690!=null?num(spec.icu_ka_690)+" kA":"—"),
+      kv("Ics @690 V", spec.ics_ka_690!=null?num(spec.ics_ka_690)+" kA":"—"),
+      kv("Icu @415 V", spec.icu_ka_415!=null?num(spec.icu_ka_415)+" kA":"—"),
+      kv("Icw 1 s", spec.icw_ka_1s!=null?num(spec.icw_ka_1s)+" kA":"—")
+    ]);
+    /* the trap this whole exercise was built around */
+    if(d.breaking_capacity_ka!=null && spec.icu_ka_690!=null
+       && Number(d.breaking_capacity_ka)!==Number(spec.icu_ka_690)){
+      h+=`<div style="${CALLOUT}">The schedule prints
+          <b>${num(d.breaking_capacity_ka)} kA</b> but the manufacturer gives
+          <b>${num(spec.icu_ka_690)} kA at 690 V</b>. The plant runs at 690 V, so the lower figure governs.
+          Both values are retained — see the change request.</div>`;
+    }
+  });
+
+  /* the cable — the other half of every V-01 check */
+  h+=`<h4>Cable${cables.length>1?"s":""}</h4>`;
+  if(!cables.length) h+=`<div class="empty">No cable recorded for this position.</div>`;
+  else cables.forEach(c=>{
+    const form = c.parallel_runs&&c.parallel_runs>1 ? `${c.parallel_runs}×(${c.cores||3}×${num(c.cross_section_mm2)}`
+                 +(c.pe_section_mm2?`+PE${num(c.pe_section_mm2)}`:"")+")"
+               : `${c.cores||3}×${num(c.cross_section_mm2)}`+(c.pe_section_mm2?`+PE${num(c.pe_section_mm2)}`:"");
+    h+=card([
+      kv("Cable tag", esc(nz2(c.cable_tag))),
+      kv("Type", esc(nz2(c.cable_type))),
+      kv("Formation", c.cross_section_mm2!=null?form:"—"),
+      kv("Total section", c.total_section_mm2!=null?num(c.total_section_mm2)+" mm²":"—"),
+      kv("Length", c.length_m!=null?num(c.length_m)+" m":"—"),
+      kv("Iz", c.iz_a!=null?num(c.iz_a)+" A":"—"),
+      kv("Iz with Ib", c.iz_with_ib_pct!=null?num(c.iz_with_ib_pct)+" %":"—")
+    ]);
+  });
+
+  /* aliases + documents */
+  if(aliases.length)
+    h+=`<h4>Also known as</h4><div class="jbcard"><div class="jbcell"><div class="v">`
+      + aliases.map(a=>`<span class="tag" style="cursor:default">${esc(a.alias_tag)}</span>
+          <span class="dim" style="font-size:10px">${esc(a.namespace||"")}${a.alias_type?" · "+esc(a.alias_type):""}</span>`).join("<br>")
+      + `</div></div></div>`;
+
+  const dls=(DB.dlinks||[]).filter(l=>l.asset_id===asset.id);
+  if(dls.length){
+    h+=`<h4>Documents</h4><div class="jbcard"><div class="jbcell"><div class="v">`;
+    dls.forEach(l=>{ const doc=(DB.docs||[]).find(x=>x.id===l.document_id);
+      h+=`<div>${doc?docTag(doc.doc_no):"—"} <span class="dim" style="font-size:10px">${esc(l.link_type||"")}</span></div>`;
+      if(l.source_note) h+=`<div class="dim" style="font-size:10px;margin:0 0 4px">${esc(l.source_note)}</div>`; });
+    h+=`</div></div></div>`;
+  }
+
+  $("#instBody").innerHTML=h;
+  $("#instOvl").classList.add("open");
+
+  /* findings are lazy: v_mcc_validation is 525 rows and only this card needs it */
+  try{
+    const V=await lazyViews(["v_mcc_validation"]);
+    const rows=(V.v_mcc_validation||[]).filter(r=>r.object_tag===asset.official_tag
+                                              || (f.load_code && r.object_tag==="."+f.load_code));
+    if(rows.length){
+      let fh=`<h4>Validation findings (${rows.length})</h4><table class="t"><thead><tr>
+        <th>Check</th><th>Severity</th><th>Detail</th></tr></thead><tbody>`;
+      rows.forEach(r=>{ fh+=`<tr><td class="mono">${esc(r.check_id)}</td>
+        <td><span class="chip ${r.severity==="INFO"?"":"warn"}">${esc(r.severity)}</span></td>
+        <td>${esc(r.detail)}</td></tr>`; });
+      fh+=`</tbody></table>`;
+      $("#instBody").insertAdjacentHTML("beforeend",fh);
+    }
+  }catch(e){ console.warn("feeder card findings: "+e.message); }
+
+  hydrateDocRefs($("#instBody"));
+}
+window.renderFeederCard=renderFeederCard;
 
 function renderMotorCard(asset, reqTag){
   const kv=(k,v)=>`<div class="jbcell"><div class="k">${k}</div><div class="v mono">${v}</div></div>`;
