@@ -148,14 +148,46 @@
     body: c => stubs(c) + fixedTop(c) + blade(c) + motor(c)
   });
 
+  /* CONTACTOR — full IEC 60617-07 form: N.O. contact + operating coil.
+     Mario, two decisions, both his to make:
+       1. "show the contactors as N.O. because they are" — so the blade is drawn
+          OPEN by default. That is the device at rest: a contactor's main
+          contacts are normally open and close when the coil is energised.
+       2. "all contactors have coils, include a contactor with coil, or as per
+          IEC symbology" — so the coil is drawn by DEFAULT.
+
+     Worth recording why that is a choice and not a copy: the ELD03 power
+     single-line does NOT draw the coil. Checked at 300 dpi (PR01 sheet 4,
+     K.MC10 / K.IC10 under Q.MC10) — it draws the bare N.O. contact and sends
+     the operating circuit elsewhere, "See aux wiring diagram for details". The
+     coil is real, it is simply on another drawing. Drawing it here makes this
+     single-line say more than the source sheet, deliberately. `{coil:false}`
+     gives the ELD03 form back; `{state:"CLOSED"}` draws it energised.
+
+     `w` covers the coil, otherwise the kernel would place labels and the data
+     quality dot against a box the symbol has outgrown. */
   def("CONTACTOR", {
-    name: "Contactor", std: "IEC 60617-07", w: 22, h: H, stateful: true,
+    name: "Contactor (N.O. + coil)", std: "IEC 60617-07", w: 52, h: H, stateful: true,
     ports: PORTS_AB,
-    /* the cup sits at the MOVING contact tip and opens toward the fixed
-       contact — that is what separates a contactor from a disconnector */
-    body: c => { const t = tipOf(c);
-      return stubs(c) + fixedTop(c) + blade(c) +
-        c.path(`M${t.x - 4},${t.y} A4,4 0 0 0 ${t.x + 4},${t.y}`); }
+    body: c => {
+      const o = c.o || {};
+      const cc = Object.assign({}, c, {
+        open: String(o.state || "").toUpperCase() !== "CLOSED" });
+      const t = tipOf(cc);
+      let g = stubs(c) + c.cir(0, TOP + 3, 2, "#fff") + blade(cc) +
+        /* the cup on the moving contact — the mark that says CONTACTOR and not
+           switch. It opens toward the fixed contact it is travelling to. */
+        c.path(`M${t.x - 4.6},${t.y - 1.4} A4.6,4.6 0 0 0 ${t.x + 4.6},${t.y - 1.4}`);
+      if (o.coil !== false)
+        /* Mechanical link (dashed, IEC) and the coil: a plain rectangle, the
+           IEC 60617-07 relay element. The link is anchored at a FIXED point,
+           not at the moving tip: anchored to the tip it collapsed to nothing in
+           the open state — the box started exactly where the tip ended — so the
+           dashes only appeared when the contact was closed, which is the one
+           state the drawing does not normally show. */
+        g += c.ln(4, 3, 14, 3, "2 2") + c.rect(14, -2.5, 11, 11, "#fff");
+      return g;
+    }
   });
 
   def("FUSE", {
@@ -252,20 +284,48 @@
       c.path("M-10,-6 q3,-5 6,0") + c.txt(6, 9, "=", 9, 700)
   });
 
+  /* IEC 60617-06 static converter: a square split by a diagonal, with the INPUT
+     quantity in the upper-left triangle and the OUTPUT in the lower-right. That
+     one rule generates the whole family and keeps them tellable apart:
+         RECTIFIER   sine in, = out
+         INVERTER    = in, sine out
+         VFD         sine in, sine out   ← a FREQUENCY converter: AC to AC
+     v0.2.3 draws both sides as real sine curves (a full period each) instead of
+     a single "q" bump plus a stray step polyline that read as noise at drawing
+     scale and made the drive hard to tell from the inverter. */
   def("VFD", {
-    name: "Variable frequency drive", w: 28, h: 26,
+    name: "Variable frequency drive", std: "IEC 60617-06", w: 28, h: 26,
     ports: { A: [0, -13, "N"], B: [0, 13, "S"] },
     body: c => c.rect(-14, -13, 28, 26, "#fff") + c.ln(-12, 11, 12, -11) +
-      c.path("M-11,-5 q3,-4 6,0") + c.path("M5,8 q3,-4 6,0") +
-      c.path("M-9,6 l4,0 l0,-4 l4,0", null)
+      /* input, upper-left triangle */
+      c.path("M-11,-5 q2.4,-4.2 4.8,0 t4.8,0") +
+      /* output, lower-right triangle */
+      c.path("M1.4,7 q2.4,-4.2 4.8,0 t4.8,0")
   });
 
+  /* A soft starter is an AC power controller, and IEC 60617 draws that as what
+     it physically is: a pair of ANTI-PARALLEL THYRISTORS (60617-05). v0.1.0 had
+     a diagonal plus two loose triangles floating in a box — not a circuit, and
+     at drawing scale just three marks. This is the real thing: two parallel
+     branches between the terminals, a thyristor in each, pointing opposite ways,
+     each with its cathode bar and its gate lead. One branch conducts each
+     half-cycle; phase-shifting the gates is the soft start. */
   def("SOFT_STARTER", {
-    name: "Soft starter", w: 28, h: 26,
+    name: "Soft starter", std: "IEC 60617-05", w: 28, h: 26,
     ports: { A: [0, -13, "N"], B: [0, 13, "S"] },
-    body: c => c.rect(-14, -13, 28, 26, "#fff") + c.path("M-9,8 L9,-8") +
-      /* the two anti-parallel thyristors */
-      c.path("M-6,-2 l4,0 l-2,-4 Z", c.col) + c.path("M2,2 l4,0 l-2,4 Z", c.col)
+    body: c =>
+      /* two parallel branches between the terminals */
+      c.ln(0, -13, 0, -9) + c.ln(0, 13, 0, 9) +
+      c.ln(-9, -9, 9, -9) + c.ln(-9, 9, 9, 9) +
+      c.ln(-9, -9, -9, 9) + c.ln(9, -9, 9, 9) +
+      /* left branch: a thyristor conducting DOWNWARD - triangle apex down with
+         its cathode bar across the apex */
+      c.path("M-12,-3.5 L-6,-3.5 L-9,1.5 Z", c.col) + c.ln(-12, 1.5, -6, 1.5) +
+      /* right branch: the ANTI-PARALLEL one, conducting upward. One branch
+         conducts each half-cycle; phase-shifting the gates is the soft start. */
+      c.path("M6,3.5 L12,3.5 L9,-1.5 Z", c.col) + c.ln(6, -1.5, 12, -1.5) +
+      /* the gate lead of each thyristor, off its cathode bar (IEC 60617-05) */
+      c.ln(-6, 1.5, -3.5, 4) + c.ln(6, -1.5, 3.5, -4)
   });
 
   def("UPS", {

@@ -127,6 +127,17 @@
            rot, color, dim }
      Returns one <g>. Everything inside is in SYMBOL units; the group scales,
      so a symbol drawn at scale 2 keeps its line weights proportional. */
+  /* ── v0.2.0 · textScale ────────────────────────────────────────────────
+     The kernel prints a symbol's tag and its sub-datum (a CT ratio, a rating).
+     Those sizes were fixed at 8 and 6.8 px, so a renderer that scaled its own
+     labels up left the pack's labels behind and the drawing lost one type
+     scale. One knob, default 1 — every existing caller is byte-identical.
+       TamSym.textScale = 1.3
+     Belongs in the KERNEL, not in a pack or a renderer: it is type, and type
+     is a property of the drawing system (db-graphics §1).                   */
+  let textScale = 1;
+  const tz = n => Math.max(8, +(n * textScale).toFixed(1));
+
   function draw(kind, o) {
     o = o || {};
     const sp = spec(kind);
@@ -166,10 +177,10 @@
     }
     if (o.label) {
       const y = lp === "above"
-        ? top - (o.sub && !subRight ? 14 : 7)
-        : bot + 11;
+        ? top - (o.sub && !subRight ? tz(8) + 6 : tz(8) - 1)
+        : bot + tz(8) + 3;
       g += `<text x="0" y="${num(y)}" text-anchor="middle" font-family="${MONO}" ` +
-        `font-size="8" font-weight="700" fill="${o.dim ? SOFT : INK}">${esc(clip(o.label, 16))}</text>`;
+        `font-size="${tz(8)}" font-weight="700" fill="${o.dim ? SOFT : INK}">${esc(clip(o.label, 16))}</text>`;
     }
     if (o.sub) {
       const sx = subRight ? subX : 0;
@@ -177,7 +188,7 @@
         : lp === "above" ? top - 5
         : bot + (o.label ? 20 : 11);
       g += `<text x="${num(sx)}" y="${num(sy)}" text-anchor="${subRight ? "start" : "middle"}" ` +
-        `font-family="${MONO}" font-size="6.8" fill="${SOFT}">${esc(clip(o.sub, 22))}</text>`;
+        `font-family="${MONO}" font-size="${tz(6.8)}" font-weight="600" fill="${SOFT}">${esc(clip(o.sub, 22))}</text>`;
     }
     /* measurement badge — always to the right, beside the symbol, so it never
        fights the tag whichever side the tag is on. When the sub already
@@ -212,13 +223,17 @@
     const v = (values || []).filter(Boolean);
     if (!v.length) return "";
     const anchor = o.anchor || "start";
-    const dy = 9;
+    /* v0.2.1 — the line pitch has to follow the type, not sit at a constant.
+       v0.2.0 gave the badge a SCALED font (tz) and left dy at 9, so above
+       textScale ≈ 1.3 the two lines of a generator's rating printed on top of
+       each other. Found by the layout sweep at 1.5, not by eye at 1.3. */
+    const dy = Math.max(9, tz(6.8) + 2.4);
     let s = `<g>`;
     if (o.live) s += `<circle cx="${num(x - 4)}" cy="${num(y - 3)}" r="2" fill="#1F8A4C"><title>live</title></circle>`;
     v.forEach((m, i) => {
       const label = (m.k ? m.k + " " : "") + fmt(m.v) + (m.u ? " " + m.u : "");
       s += `<text x="${num(x)}" y="${num(y + i * dy)}" text-anchor="${anchor}" font-family="${MONO}" ` +
-        `font-size="6.8" fill="${m.alarm ? CRIMSON : SOFT}">${esc(label)}</text>`;
+        `font-size="${tz(6.8)}" font-weight="600" fill="${m.alarm ? CRIMSON : SOFT}">${esc(label)}</text>`;
     });
     return s + `</g>`;
   }
@@ -246,7 +261,7 @@
       const cx = side === "left" ? mx - 6 : side === "right" ? mx + 6 : mx;
       const cy = side === "over" ? my - 6 : my + 2;
       const an = side === "left" ? "end" : side === "right" ? "start" : "middle";
-      s += `<text x="${num(cx)}" y="${num(cy)}" text-anchor="${an}" font-family="${MONO}" font-size="6.8" ` +
+      s += `<text x="${num(cx)}" y="${num(cy)}" text-anchor="${an}" font-family="${MONO}" font-size="${tz(6.8)}" font-weight="600" ` +
         `paint-order="stroke" stroke="#fff" stroke-width="3" fill="${col}">${esc(o.chip)}</text>`;
     }
     return s;
@@ -278,7 +293,9 @@
   });
 
   const API = { def, has, kinds, spec, draw, ports, badge, flow, legend,
-                STATE, DQ, esc, fmt, MONO, INK, SOFT, LINE, CRIMSON, version: "0.1.0" };
+                get textScale() { return textScale; },
+                set textScale(v) { textScale = (+v > 0 ? +v : 1); },
+                STATE, DQ, esc, fmt, MONO, INK, SOFT, LINE, CRIMSON, version: "0.2.3" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamSym = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
