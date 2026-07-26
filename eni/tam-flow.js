@@ -921,14 +921,30 @@
          air circuit breaker that is actually in the cubicle appeared nowhere.
          A cubicle that holds a MAIN_BREAKER is drawn as that breaker. */
       if (fam && k === "TRANSFORMER") k = "CIRCUIT_BREAKER";
-      if (k === "CIRCUIT_BREAKER" && fam === "ACB") k = "ACB_DRAWOUT";
+      k = sldFamSym(k, fam);
       if (sldSymbolStyle === "BOX" && (k === "CIRCUIT_BREAKER" || k === "ACB_DRAWOUT"))
         k = "CIRCUIT_BREAKER_BOX";
-      if (_symUsed && k === "ACB_DRAWOUT") _symUsed.add("ACB_DRAWOUT");
+      if (_symUsed) _symUsed.add(k);
       return S.draw(k, { x: cx, y: cy, color: col, open: !!open,
                          state: open ? "OPEN" : "DESIGN", scale: 0.92 * Z() });
     }
     return sldGlyphLegacy(kind, cx, cy, col, open);
+  }
+
+  /* ── v1.13.0 · familia de aparato -> simbolo, SIN tabla que mantener ──────
+     Mario: "esto no deberia ser en programacion solo DB". De acuerdo. Antes
+     habia un `if` por familia, asi que cada familia nueva pedia una linea de
+     codigo. Ahora, si el pack tiene un simbolo REGISTRADO con el nombre de la
+     familia, se usa ese y ya esta: 'FUSE_SWITCH' dibuja FUSE_SWITCH sin tocar
+     nada. Solo quedan los dos alias donde el nombre de la familia y el del
+     simbolo difieren de verdad. */
+  const SLD_FAM_ALIAS = { ACB: "ACB_DRAWOUT", MCCB: "CIRCUIT_BREAKER" };
+  function sldFamSym(k, fam) {
+    if (!fam || k !== "CIRCUIT_BREAKER") return k;
+    const S = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    const alias = SLD_FAM_ALIAS[fam];
+    if (alias) return alias;
+    return (S && S.spec && S.spec(fam)) ? fam : k;
   }
 
   /* v1.9.0 — where a conductor must STOP so it touches the symbol.
@@ -943,7 +959,7 @@
     if (S && S.ELEC_MAP && S.ports) {
       let k = S.ELEC_MAP[String(kind || "").toUpperCase()] || "UNKNOWN";
       if (fam && k === "TRANSFORMER") k = "CIRCUIT_BREAKER";
-      if (k === "CIRCUIT_BREAKER" && fam === "ACB") k = "ACB_DRAWOUT";
+      k = sldFamSym(k, fam);
       if (sldSymbolStyle === "BOX" && (k === "CIRCUIT_BREAKER" || k === "ACB_DRAWOUT"))
         k = "CIRCUIT_BREAKER_BOX";
       const p = S.ports(k, { x: cx, y: cy, scale: 0.92 * Z() });
@@ -1809,7 +1825,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.12.0" };
+                version: "1.13.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
