@@ -995,6 +995,20 @@
     return { svg: s, y: yy };
   }
 
+  /* v1.8.0 — the cable label sits BESIDE its conductor, not on it, and carries
+     its length underneath. `length_m` has been in `v_sld_edges` all along; the
+     renderer simply never read it. Centred on the drop line the tag fought the
+     line itself; to the right it reads as an annotation of that run. */
+  function sldCable(cx, y, e) {
+    if (!e || !e.cable_tag) return "";
+    let g = `<text x="${cx + zy(4)}" y="${y}" text-anchor="start" font-weight="600" ` +
+      `font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}"${HALO}>${esc(e.cable_tag)}</text>`;
+    if (e.length_m != null)
+      g += `<text x="${cx + zy(4)}" y="${y + zy(9)}" text-anchor="start" font-weight="600" ` +
+        `font-family="${MONO}" font-size="${ts(6.2)}" fill="${SOFT}"${HALO}>${esc(n1(e.length_m))} m</text>`;
+    return g;
+  }
+
   /* small labelled card used for sources and for served loads */
   function sldCard(cx, y, node, sub, dim) {
     const x = cx - gx(SLD_BOXW) / 2;
@@ -1496,8 +1510,7 @@
           if (off) drawn.offsheet++;
           drawn.src++;
           s += `<line x1="${cx}" y1="${srcBottom}" x2="${cx}" y2="${cy - zy(13)}" stroke="${INK}" stroke-width="1.4"/>`;
-          if (up[0].cable_tag)
-            s += `<text x="${cx + 4}" y="${srcBottom + 13}" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}"${HALO}>${esc(up[0].cable_tag)}</text>`;
+          s += sldCable(cx, srcBottom + 13, up[0]);
         }
         s += `<line x1="${cx}" y1="${cy + zy(13)}" x2="${cx}" y2="${busY - 2}" stroke="${INK}" stroke-width="1.4"/>`;
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, true, meterOn.get(p.tag));
@@ -1550,8 +1563,7 @@
           }
           return;
         }
-        if (t.e.cable_tag)
-          s += `<text x="${cx}" y="${cy + zy(52)}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}"${HALO}>${esc(t.e.cable_tag)}</text>`;
+        s += sldCable(cx, cy + zy(50), t.e);
 
         if (isBusbar(tn)) {                       /* coupler → another busbar */
           const here = busSet.has(tn.tag);
@@ -1592,8 +1604,7 @@
             const cyK = cyL + gx(SLD_L2_DY) + (targets.length > 1 ? 8 : 0);
             const kn = S._byTag.get(kids[0].to_tag);
             s += `<line x1="${cx}" y1="${cyL + zy(56)}" x2="${cx}" y2="${cyK - zy(4)}" stroke="${SLD_BUSCOL}" stroke-width="1.3"/>`;
-            if (kids[0].cable_tag)
-              s += `<text x="${cx + 4}" y="${cyK - zy(24)}" font-weight="600" font-family="${MONO}" font-size="${ts(6.4)}" fill="${SOFT}"${HALO}>${esc(kids[0].cable_tag)}</text>`;
+            s += sldCable(cx, cyK - zy(28), kids[0]);
             s += sldGlyph(kn.symbol_kind, cx, cyK + zy(12), INK, false);
             s += `<circle cx="${cx - zy(26)}" cy="${cyK + zy(12)}" r="3" fill="${SLD_STATUS[kn.data_status] || SOFT}">` +
               `<title>${esc(kn.data_status || "")}</title></circle>`;
@@ -1675,7 +1686,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.7.1" };
+                version: "1.8.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
