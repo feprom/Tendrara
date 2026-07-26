@@ -164,7 +164,9 @@ async function signUp(){
   const pin_hash=await sha(email,pin);
   const {data,error}=await sb.from("eni_users")
     .insert({full_name:name,email,company:company||null,group_code:group,pin_hash,last_login:new Date().toISOString()})
-    .select().single();
+    // explicit column list: anon no longer has SELECT on pin_hash, so .select() with the
+    // default "*" would fail. The browser never needs to read it back.
+    .select("id,full_name,email,company,group_code").single();
   document.getElementById("btnUp").disabled=false;
   if(error){
     if((error.message||"").includes("duplicate")) return say("An account with this email already exists — use SIGN IN.","err");

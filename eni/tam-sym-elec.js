@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    tam-sym-elec.js — ELECTRICAL symbol pack for tam-sym.js
    ─────────────────────────────────────────────────────────────────────────
-   33 IEC-style single-line symbols. Geometry only: no renderer, no layout,
+   34 IEC-style single-line symbols. Geometry only: no renderer, no layout,
    no data loading. Requires tam-sym.js to be loaded first.
 
    CONVENTIONS THE WHOLE PACK OBEYS
@@ -310,10 +310,9 @@
      branches between the terminals, a thyristor in each, pointing opposite ways,
      each with its cathode bar and its gate lead. One branch conducts each
      half-cycle; phase-shifting the gates is the soft start. */
-  def("SOFT_STARTER", {
-    name: "Soft starter", std: "IEC 60617-05", w: 28, h: 26,
-    ports: { A: [0, -13, "N"], B: [0, 13, "S"] },
-    body: c =>
+  /* the thyristor pair on its own, so SOFT_STARTER and SOFT_STARTER_2C draw the
+     same controller instead of two hand-copied versions that drift apart. */
+  const thyristorPair = c =>
       /* two parallel branches between the terminals */
       c.ln(0, -13, 0, -9) + c.ln(0, 13, 0, 9) +
       c.ln(-9, -9, 9, -9) + c.ln(-9, 9, 9, 9) +
@@ -325,7 +324,52 @@
          conducts each half-cycle; phase-shifting the gates is the soft start. */
       c.path("M6,3.5 L12,3.5 L9,-1.5 Z", c.col) + c.ln(6, -1.5, 12, -1.5) +
       /* the gate lead of each thyristor, off its cathode bar (IEC 60617-05) */
-      c.ln(-6, 1.5, -3.5, 4) + c.ln(6, -1.5, 3.5, -4)
+      c.ln(-6, 1.5, -3.5, 4) + c.ln(6, -1.5, 3.5, -4);
+
+  def("SOFT_STARTER", {
+    name: "Soft starter", std: "IEC 60617-05", w: 28, h: 26,
+    ports: { A: [0, -13, "N"], B: [0, 13, "S"] },
+    body: thyristorPair
+  });
+
+  /* SOFT_STARTER_2C — one soft starter shared by TWO machines through a pair of
+     mechanically interlocked contactors. Migration 183b puts this kind in
+     `v_sld_start_device` when a way carries a soft starter, contactors with
+     qty>=2, AND feeds two loads in the power graph; without the second load it
+     stays SOFT_STARTER, because two contactors on a single machine are usually
+     line + bypass, which is a different animal.
+
+     Drawn as what it is: the thyristor pair, then the conductor FORKS into two
+     N.O. contacts and merges again at port B. The fork/merge is symbolic — the
+     two real destinations hang off the way below — but it is the only mark that
+     says "this starter serves two machines". The dashed bar across the two
+     blades is the IEC mechanical link: the interlock, which is the whole point.
+     Only one contactor can close, so only one machine runs at a time. Draw them
+     both open (N.O. at rest), same decision as CONTACTOR. */
+  def("SOFT_STARTER_2C", {
+    name: "Soft starter, two interlocked contactors", std: "IEC 60617-05/-07",
+    w: 62, h: 76,
+    ports: { A: [0, -38, "N"], B: [0, 38, "S"] },
+    body: c => {
+      const X = 17;                                /* half the fork width */
+      const branch = x => {
+        const tx = x + 7.5, ty = 0;                /* blade open at 30 degrees,
+                                                      leaning the same way as
+                                                      every other contact here */
+        return c.ln(x, -8, x, -2) + c.dot(x, -2, 1.8) +
+               c.ln(x, 13, tx, ty) +
+               /* the cup that says CONTACTOR and not switch */
+               c.path(`M${tx - 4.6},${ty - 1.4} A4.6,4.6 0 0 0 ${tx + 4.6},${ty - 1.4}`) +
+               c.ln(x, 13, x, 26);
+      };
+      return `<g transform="translate(0,-25)">` + thyristorPair(c) + `</g>` +
+        c.ln(0, -12, 0, -8) + c.ln(-X, -8, X, -8) +
+        branch(-X) + branch(X) +
+        /* mechanical interlock between the two contactors (IEC dashed link):
+           only one can close, so only one machine runs at a time */
+        c.ln(-X + 4, 8, X - 4, 8, "2 2") +
+        c.ln(-X, 26, X, 26) + c.ln(0, 26, 0, 38);
+    }
   });
 
   def("UPS", {
@@ -444,5 +488,5 @@
 
   T.ELEC_MAP = ELEC_MAP;
   T.fromNode = fromNode;
-  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.1.0", count: T.kinds().length }]);
+  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.3.0", count: T.kinds().length }]);
 })();

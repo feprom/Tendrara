@@ -798,6 +798,7 @@
   /* v1.10.0 — the starting methods v_sld_nodes can name, and how to say them.
      A value outside this map draws nothing rather than guessing a symbol. */
   const SLD_START = new Map([["CONTACTOR", "Contactor"], ["SOFT_STARTER", "Soft starter"],
+                             ["SOFT_STARTER_2C", "Soft starter, two interlocked contactors"],
                              ["VFD", "Variable-frequency drive"]]);
 
   /* ── data ─────────────────────────────────────────────────────────────── */
@@ -1615,6 +1616,24 @@
         const targets = edges.map(e => ({ e: e, n: S._byTag.get(e.to_tag) }))
           .filter(t => t.n && t.n.tag !== band.bus.tag);
         const t = targets[0], tn = t && t.n;
+        /* ── v1.14.0 · a way that feeds MORE THAN ONE machine ──────────────
+           Mario, on .312 and .313: "ambos deberían ser arrancados por
+           arrancador suave, luego tener dos contactores auto-enclavados y dos
+           motores conectados". Until now the renderer drew targets[0] and
+           printed "+N more" in red — honest, but it left the second machine as
+           a footnote on a drawing whose whole point is that there are two.
+           Migration 184 made v_sld_nodes read the loads from the power graph,
+           so N loads per way is now ordinary data and the drawing has to say
+           so: the conductor forks into a short branch bar and each machine
+           hangs off its own drop.
+           Only plain, on-board, end-of-branch machines fan out. A busbar, an
+           off-sheet position or a node that passes power on keeps the old
+           single-target layout — those carry side labels and second levels
+           that a fork would collide with. */
+        const fan = (targets.length > 1 && targets.every(x =>
+              x.n && !isBusbar(x.n) &&
+              !(sldBoardOf(S, x.n) && sldBoardOf(S, x.n) !== boardTag) &&
+              secondLevel(x.n).length === 0)) ? targets : null;
 
         s += `<line x1="${cx}" y1="${busY + 2}" x2="${cx}" y2="${sldPortY(p.symbol_kind, cx, cy, "A", p.breaker_family)}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, false, meterOn.get(p.tag));
@@ -1630,6 +1649,7 @@
         const yTop = sldPortY(p.symbol_kind, cx, cy, "B", p.breaker_family);
         const yBot = (tn && !isBusbar(tn) && !(sldBoardOf(S, tn) && sldBoardOf(S, tn) !== boardTag))
             ? sldPortY(tn.symbol_kind, cx, y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + zy(14), "A")
+              - (fan ? zy(13) : 0)
             : y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt - 2;
         const stKind = p.start_kind && SLD_START.has(p.start_kind) ? p.start_kind : null;
         const stY = cy + zy(40);
@@ -1668,7 +1688,11 @@
           }
           return;
         }
-        s += sldCable(cx, stKind ? stY + zy(24) : cy + zy(50), t.e);
+        /* v1.14.0 — the cable label sat at a hard-coded stY+24, which was below
+           the 26-unit starting symbols and INSIDE the 76-unit SOFT_STARTER_2C.
+           Hang it off the symbol's own B port instead, so it stays clear of any
+           symbol the pack grows later. */
+        s += sldCable(cx, stKind ? sldPortYDirect(stKind, cx, stY, "B") + zy(9) : cy + zy(50), t.e);
 
         if (isBusbar(tn)) {                       /* coupler → another busbar */
           const here = busSet.has(tn.tag);
@@ -1685,6 +1709,27 @@
           s += sldCard(cx, y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt, { tag: tb, data_status: tn.data_status },
                        sldPosCode(tn.tag, tb) + (t.e.cable_tag ? " · " + t.e.cable_tag : ""), false);
           s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + gx(SLD_BOXH) + 11}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">off-sheet · PC tie</text>`;
+        } else if (fan) {                          /* several machines, in parallel */
+          const cyL = y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt;
+          const cyM = cyL + zy(14);
+          const dx  = gx(SLD_COL) * 0.28;          /* inside the column pitch */
+          const yBar = sldPortY(tn.symbol_kind, cx, cyM, "A") - zy(13);
+          s += `<line x1="${cx - dx}" y1="${yBar}" x2="${cx + dx}" y2="${yBar}" stroke="${INK}" stroke-width="1.4"/>`;
+          fan.forEach((x, k) => {
+            const n = x.n, ox = cx + (k === 0 ? -dx : dx) + (fan.length > 2 ? (k - (fan.length - 1) / 2) * 0 : 0);
+            drawn.load++;
+            s += `<line x1="${ox}" y1="${yBar}" x2="${ox}" y2="${sldPortY(n.symbol_kind, ox, cyM, "A")}" stroke="${INK}" stroke-width="1.4"/>`;
+            s += sldGlyph(n.symbol_kind, ox, cyM, INK, false);
+            /* the tags are clipped harder than in the single-machine case: two
+               labels have to live inside one column pitch without touching each
+               other or the neighbouring way. check_sld_layout.js is the judge. */
+            s += `<text x="${ox}" y="${cyL + zy(42)}" text-anchor="middle" font-family="${MONO}" font-size="${ts(7.4)}" font-weight="700" fill="${INK}"` +
+              (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(n.tag)}')"` : "") +
+              `>${esc(clip(n.tag, 9))}</text>`;
+            s += sldRating(ox, cyL + zy(51), n).svg;
+            const stk = SLD_STATUS[n.data_status] || SOFT;
+            s += `<circle cx="${ox - zy(16)}" cy="${cyM}" r="3" fill="${stk}"><title>${esc(n.data_status || "")}</title></circle>`;
+          });
         } else {                                   /* a served load */
           drawn.load++;
           const cyL = y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt;
@@ -1785,7 +1830,7 @@
       fy = ly;
       s += `<text x="${gx(SLD_PADX)}" y="${fy + zy(14)}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${SOFT}">` +
         `dashed = NORMALLY OPEN (bus coupler)  ·  dotted from an analyser = voltage reference, not a load  ·  ` +
-        `dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.1.0</text>`;
+        `dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.3.0</text>`;
     } else {
       s += `<text x="${gx(SLD_PADX)}" y="${fy}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${SOFT}">` +
         `□ breaker  ⊘ disconnector  Ⓐ analyser  ◎◎ transformer  Ⓜ motor  Ⓖ generator  ` +
@@ -1825,7 +1870,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.13.0" };
+                version: "1.14.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
