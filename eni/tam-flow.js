@@ -1653,16 +1653,38 @@
         } else {                                   /* a served load */
           drawn.load++;
           const cyL = y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt;
+          /* ── v1.11.0 · a node that PASSES POWER ON is labelled to the SIDE ──
+             Mario: "connect them to the motor". The conductor from a drive down
+             to its motor was being drawn — and it was ONE PIXEL LONG. The start
+             was hard-coded below the node's own label block (cyL + 56) while
+             the motor's top port sits at about cyL + 73, so the line existed,
+             passed every check, and joined nothing. It looked exactly like a
+             drive with no motor attached.
+             The label block was there to keep the conductor off the text; the
+             fix is the same one the positions already use — put the text BESIDE
+             the symbol and run the conductor straight through where it belongs.
+             A node at the END of a branch keeps its labels underneath. */
+          const passesOn = secondLevel(tn).length > 0;
           s += sldGlyph(tn.symbol_kind, cx, cyL + zy(14), INK, false);
-          s += `<text x="${cx}" y="${cyL + zy(42)}" text-anchor="middle" font-family="${MONO}" font-size="${ts(8)}" font-weight="700" fill="${INK}"` +
-            (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(tn.tag)}')"` : "") +
-            `>${esc(clip(tn.tag, 15))}</text>`;
+          if (passesOn) {
+            s += `<text x="${cx + zy(17)}" y="${cyL + zy(12)}" text-anchor="start" font-family="${MONO}" font-size="${ts(8)}" font-weight="700" fill="${INK}"${HALO}` +
+              (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(tn.tag)}')"` : "") +
+              `>${esc(clip(tn.tag, 15))}</text>`;
+            let ry = cyL + zy(22);
+            [sldKw(tn), sldAmp(tn)].filter(Boolean).forEach(v => {
+              s += `<text x="${cx + zy(17)}" y="${ry}" text-anchor="start" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}"${HALO}>${esc(v)}</text>`;
+              ry += zy(10);
+            });
+          } else {
+            s += `<text x="${cx}" y="${cyL + zy(42)}" text-anchor="middle" font-family="${MONO}" font-size="${ts(8)}" font-weight="700" fill="${INK}"` +
+              (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(tn.tag)}')"` : "") +
+              `>${esc(clip(tn.tag, 15))}</text>`;
+            const rt = sldRating(cx, cyL + zy(52), tn); s += rt.svg;
+            if (targets.length > 1)
+              s += `<text x="${cx}" y="${rt.y}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.4)}" fill="${CRIMSON}">+${targets.length - 1} more</text>`;
+          }
           const st = SLD_STATUS[tn.data_status] || SOFT;
           s += `<circle cx="${cx - zy(26)}" cy="${cyL + zy(14)}" r="3" fill="${st}"><title>${esc(tn.data_status || "")}</title></circle>`;
-          /* v1.5.0 — power, then current, under the load's own tag */
-          const rt = sldRating(cx, cyL + zy(52), tn); s += rt.svg;
-          if (targets.length > 1)
-            s += `<text x="${cx}" y="${rt.y}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.4)}" fill="${CRIMSON}">+${targets.length - 1} more</text>`;
 
           /* SECOND LEVEL (v1.2.0) — this load is itself a board that feeds
              something. Migration 154 put those nodes in v_sld_nodes; without
@@ -1673,8 +1695,8 @@
           if (kids.length) {
             const cyK = cyL + gx(SLD_L2_DY) + (targets.length > 1 ? 8 : 0);
             const kn = S._byTag.get(kids[0].to_tag);
-            s += `<line x1="${cx}" y1="${cyL + zy(56)}" x2="${cx}" y2="${
-              sldPortY(kn.symbol_kind, cx, cyK + zy(12), "A")}" stroke="${SLD_BUSCOL}" stroke-width="1.3"/>`;
+            s += `<line x1="${cx}" y1="${sldPortY(tn.symbol_kind, cx, cyL + zy(14), "B")}" x2="${cx}" y2="${
+              sldPortY(kn.symbol_kind, cx, cyK + zy(12), "A")}" stroke="${INK}" stroke-width="1.4"/>`;
             s += sldCable(cx, cyK - zy(28), kids[0]);
             s += sldGlyph(kn.symbol_kind, cx, cyK + zy(12), INK, false);
             s += `<circle cx="${cx - zy(26)}" cy="${cyK + zy(12)}" r="3" fill="${SLD_STATUS[kn.data_status] || SOFT}">` +
@@ -1768,7 +1790,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.10.0" };
+                version: "1.11.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
