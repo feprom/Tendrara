@@ -753,6 +753,11 @@
   const SLD_COL = 96, SLD_PADX = 140, SLD_BAND = 312;
   const SLD_L2_DY = 62;                 // drop from a served board to what IT feeds   // PADX = left gutter for the busbar label
   const SLD_SRC_Y = 14, SLD_INC_Y = 78, SLD_BUS_Y = 146, SLD_OUT_Y = 182, SLD_LOAD_Y = 250;
+  /* v1.3.0 — extra conductor length between a position and the busbar when a
+     metering assembly (CT + analyser) has to be drawn on that segment. Applied
+     per band and only on the side that actually carries one, so a board with no
+     meters is byte-identical to v1.2.0. */
+  const SLD_MTR_DY = 40;
   const SLD_BOXW = 86, SLD_BOXH = 34;
   const SLD_STATUS = { VERIFIED: "#1F8A4C", NEEDS_REVIEW: "#B26A00", CONFLICT: CRIMSON };
   const SLD_BUSCOL = "#0B5CAD";          // busbar / power path
@@ -872,6 +877,24 @@
     return sldGlyphLegacy(kind, cx, cy, col, open);
   }
 
+  /* draw a REGISTERED symbol kind directly, bypassing ELEC_MAP.
+     v1.3.0. Used by the metering assembly: "CT" is a shape the renderer places
+     from `ct_ratio_raw` on a metering node — it is NOT a `symbol_kind` any row
+     in v_sld_nodes carries, so putting it in ELEC_MAP would claim the database
+     says something it does not (db-graphics §4). The kind is still registered
+     in `_symUsed` so the auto-generated legend picks it up (rule G-7).
+     Falls back to a plain circle when the packs are absent, per G-8. */
+  function sldSymDirect(kind, o) {
+    if (_symUsed) _symUsed.add(String(kind || "").toUpperCase());
+    const S = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (S && S.draw && S.spec && S.spec(kind)) return S.draw(kind, o);
+    const cx = (o && o.x) || 0, cy = (o && o.y) || 0, col = (o && o.color) || INK;
+    return `<circle cx="${cx}" cy="${cy}" r="7" fill="#fff" stroke="${col}" stroke-width="1.6"/>` +
+      ((o && o.label) ? `<text x="${cx}" y="${cy + (o.labelPos === "above" ? -12 : 18)}" text-anchor="middle" ` +
+        `font-family="${MONO}" font-size="8" font-weight="700" fill="${INK}">${esc(o.label)}</text>` : "") +
+      ((o && o.sub) ? `<text x="${cx + 15}" y="${cy + 3}" font-family="${MONO}" font-size="6.8" fill="${SOFT}">${esc(o.sub)}</text>` : "");
+  }
+
   const HALO = ` paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round"`;
   function sldGlyphLegacy(kind, cx, cy, col, open) {
     const sw = 1.6, W = `stroke="${col}" stroke-width="${sw}"`;
@@ -928,17 +951,49 @@
     if (!busbars.length) return `<div style="font:400 11px ${MONO};color:${SOFT}">${esc(boardTag)} has no busbars in v_sld_nodes</div>`;
     const busSet = new Set(busbars.map(b => b.tag));
 
+    /* ── metering (v1.3.0) ────────────────────────────────────────────────
+       A metering position is a cubicle holding an instrument; it carries no
+       current of its own and feeds nothing. Drawing it as an outgoing column
+       said the opposite — it read as a load hanging off the bar. Migration 166
+       puts the measuring point in the view (`measures_tag`, `voltage_ref_tag`,
+       `ct_ratio_raw`), so it can now be drawn where it physically is: a CT
+       clamped on the measured conductor, tapped across to the analyser.
+
+       Only a metering position whose measured circuit is a node ON THIS BOARD
+       moves. One with no `measures_tag`, or one pointing off-sheet, stays in
+       the outgoing row and says so — a gap must stay visible (rule G-4). */
+    const isMeterPos = p => p.symbol_kind === "NETWORK_ANALYZER";
+    const meterOn = new Map();          // measured tag → [metering node, …]
+    const meterUnplaced = [];           // metering positions left in the out row
+    const boardKids = new Set();
+    busbars.forEach(bb => (S._kids.get(bb.tag) || []).forEach(k => boardKids.add(k.tag)));
+    busbars.forEach(bb => (S._kids.get(bb.tag) || []).forEach(p => {
+      if (!isMeterPos(p)) return;
+      if (p.measures_tag && boardKids.has(p.measures_tag)) {
+        if (!meterOn.has(p.measures_tag)) meterOn.set(p.measures_tag, []);
+        meterOn.get(p.measures_tag).push(p);
+      } else meterUnplaced.push(p);
+    }));
+    const placedMeters = new Set();
+    meterOn.forEach(list => list.forEach(m => placedMeters.add(m.tag)));
+
     /* classify each position on each busbar */
     const bands = busbars.map(bb => {
       const kids = (S._kids.get(bb.tag) || []).slice().sort(byRank);
       const inc = [], out = [], cpl = [];
       kids.forEach(p => {
+        if (placedMeters.has(p.tag)) return;      /* drawn on its measured circuit */
         if (p.symbol_kind === "BUS_COUPLER") { cpl.push(p); return; }
         /* an incomer is a position that FEEDS a busbar of this board */
         const feedsBus = sldOut(S, p.tag).some(e => e.edge_kind === "FEEDS" && busSet.has(e.to_tag));
         (feedsBus ? inc : out).push(p);
       });
       return { bus: bb, inc, out: out.concat(cpl), cplCount: cpl.length };
+    });
+    /* a band needs a longer conductor on the side that carries an assembly */
+    bands.forEach(b => {
+      b.dyIn  = b.inc.some(p => meterOn.has(p.tag)) ? SLD_MTR_DY : 0;
+      b.dyOut = b.out.some(p => meterOn.has(p.tag)) ? SLD_MTR_DY : 0;
     });
 
     const cols = Math.max(4, ...bands.map(b => Math.max(b.inc.length, b.out.length)));
@@ -973,7 +1028,22 @@
       sldOut(S, p.tag).some(e => e.edge_kind === "FEEDS" && isLoadHere(S._byTag.get(e.to_tag)) &&
         secondLevel(S._byTag.get(e.to_tag)).length)));
     const BAND = SLD_BAND + (hasL2 ? SLD_L2_DY + 26 : 0);
-    const H = 74 + bands.length * BAND + 34;
+    /* v1.3.0 — band tops are CUMULATIVE, not `74 + bi * BAND`: a band carrying a
+       metering assembly is taller than one that does not, and only the bands
+       that carry one grow. With no meters every band height is BAND and the
+       positions are identical to v1.2.0. */
+    const bandY = []; let _acc = 74;
+    bands.forEach(b => { bandY.push(_acc); _acc += BAND + b.dyIn + b.dyOut; });
+    /* v1.3.0 — the bottom margin now sizes itself to the footer.
+       DEFECT FOUND WHILE ADDING THE METERING LINE: the margin was a flat 34,
+       the legend already used two rows of it, and the "N edges in v_sld_edges
+       not drawable" chip was being emitted at y = H + 7 — OUTSIDE the viewBox,
+       so it has never been visible on any board that had one. A footer whose
+       honesty line is clipped is worse than no honesty line, because the
+       diagram then looks complete (rule G-4). One row per optional line. */
+    const _footRows = ((S._skipped.length ? 1 : 0) +
+                       ((placedMeters.size || meterUnplaced.length) ? 1 : 0));
+    const H = _acc + 34 + _footRows * 11;
     const colX = i => SLD_PADX + i * SLD_COL + SLD_COL / 2;
 
     let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">`;
@@ -984,13 +1054,64 @@
       `<text x="${SLD_PADX}" y="30" font-family="${MONO}" font-size="15" font-weight="700" fill="${CRIMSON}">${esc(board.tag)}</text>` +
       `<text x="${SLD_PADX}" y="46" font-family="${MONO}" font-size="8.6" fill="${SOFT}">${esc(board.doc_no || "")}` +
       (board.voltage_v != null ? `  ·  ${esc(n0(board.voltage_v))} V` : "") +
-      `  ·  ${bands.length} busbar${bands.length > 1 ? "s" : ""}  ·  ${bands.reduce((n, b) => n + b.inc.length + b.out.length, 0)} positions</text>`;
+      `  ·  ${bands.length} busbar${bands.length > 1 ? "s" : ""}  ·  ${bands.reduce((n, b) => n + b.inc.length + b.out.length, 0)} positions` +
+      /* v1.3.0 — metering positions are counted separately, not dropped. They
+         are still cubicles on this board; they just no longer stand in the
+         outgoing row pretending to carry load. */
+      (placedMeters.size ? `  ·  ${placedMeters.size} metering` : "") + `</text>`;
 
-    const drawn = { inc: 0, out: 0, load: 0, src: 0, cpl: 0, offsheet: 0 };
+    const drawn = { inc: 0, out: 0, load: 0, src: 0, cpl: 0, offsheet: 0, meter: 0 };
+
+    /* ── the metering assembly (v1.3.0) ───────────────────────────────────
+       Three connections, drawn as three connections:
+
+           conductor ──╫── CT ────●  Ⓐ  .MG1     current, from the CT tap
+                       │              ┊
+           ════════════╪══════════════╪═══ BUSBAR    voltage, dashed, direct
+
+       `my` is the centre of the CT on the conductor, 30 px from the busbar on
+       whichever side the position sits. The auxiliary supply is deliberately
+       NOT drawn: the ELD03 does not draw it either — it says "see aux wiring
+       diagram for details" — and inventing a connection is rule G-3.        */
+    function meterAssembly(cx, busY, above, list) {
+      let g = "";
+      list.forEach((m, k) => {
+        const my = busY + (above ? -1 : 1) * (30 + k * 34);
+        drawn.meter++;
+        /* The analyser sits at cx+30, INSIDE the half-column (48), so its
+           voltage reference always lands on the busbar even in the last
+           column. The ratio goes to the RIGHT of the instrument: putting it on
+           the tap, where the CT spec would place it, runs it under the
+           analyser and the scale factor is the one number here that must stay
+           readable. */
+        g += sldSymDirect("CT", { x: cx, y: my, color: INK, scale: 0.92 });
+        g += `<line x1="${cx + 11}" y1="${my}" x2="${cx + 18}" y2="${my}" stroke="${INK}" stroke-width="1.3"/>`;
+        /* the instrument tag goes on the side AWAY from the busbar, so it never
+           shares space with the voltage reference that runs towards it */
+        g += sldSymDirect("NETWORK_ANALYZER", {
+          x: cx + 30, y: my, color: INK, scale: 0.92, labelPos: above ? "above" : "below",
+          label: sldPosCode(m.tag, boardTag), dq: m.data_status,
+          title: [m.meter_tag || m.tag, "measures " + m.measures_tag,
+                  "U ref " + (m.voltage_ref_tag || "?"), m.ct_ratio_raw].filter(Boolean).join(" · ")
+        });
+        g += `<text x="${cx + 43}" y="${my + 3}" font-family="${MONO}" font-size="6.4" fill="${SOFT}"${HALO}>` +
+          `${esc(m.ct_ratio_raw || "ratio not printed")}</text>`;
+        /* the voltage reference — dashed, because it carries no load current.
+           It leaves the instrument on the side FACING the busbar, which is
+           below it for an incomer and above it for an outgoing position. */
+        const vy = my + (above ? 10 : -10);
+        g += `<line x1="${cx + 30}" y1="${vy}" x2="${cx + 30}" y2="${busY}" stroke="${SOFT}" ` +
+          `stroke-width="1.1" stroke-dasharray="3 3"/>`;
+        g += `<text x="${cx + 34}" y="${(vy + busY) / 2}" font-family="${MONO}" font-size="6.2" ` +
+          `fill="${SOFT}"${HALO}>U</text>`;
+      });
+      return g;
+    }
 
     bands.forEach((band, bi) => {
-      const y0 = 74 + bi * BAND;
-      const busY = y0 + SLD_BUS_Y;
+      const y0 = bandY[bi];
+      const dy2 = band.dyIn + band.dyOut;
+      const busY = y0 + SLD_BUS_Y + band.dyIn;
       const nWide = Math.max(band.inc.length, band.out.length);
       const busX1 = SLD_PADX - 22, busX2 = SLD_PADX + Math.max(2, nWide) * SLD_COL;
 
@@ -1027,6 +1148,7 @@
             s += `<text x="${cx + 4}" y="${y0 + SLD_SRC_Y + SLD_BOXH + 13}" font-family="${MONO}" font-size="6.6" fill="${SOFT}"${HALO}>${esc(up[0].cable_tag)}</text>`;
         }
         s += `<line x1="${cx}" y1="${cy + 13}" x2="${cx}" y2="${busY - 2}" stroke="${INK}" stroke-width="1.4"/>`;
+        if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, true, meterOn.get(p.tag));
         s += sldGlyph(p.symbol_kind, cx, cy, INK, false);
         s += `<text x="${cx}" y="${cy + 32}" text-anchor="middle" font-family="${MONO}" font-size="8.4" font-weight="700" fill="${INK}"${HALO}` +
           (nav ? ` style="cursor:pointer" onclick="${nav}('sld/${esc(p.tag)}')"` : "") +
@@ -1037,7 +1159,7 @@
 
       /* ── outgoing positions + couplers, below the bar ── */
       band.out.forEach((p, i) => {
-        const cx = colX(i), cy = y0 + SLD_OUT_Y;
+        const cx = colX(i), cy = y0 + SLD_OUT_Y + dy2;
         const isCpl = p.symbol_kind === "BUS_COUPLER";
         const edges = sldOut(S, p.tag).filter(e => e.edge_kind === "FEEDS");
         const openEdge = edges.some(e => e.normally_open);
@@ -1051,7 +1173,8 @@
         const t = targets[0], tn = t && t.n;
 
         s += `<line x1="${cx}" y1="${busY + 2}" x2="${cx}" y2="${cy - 13}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
-        if (t) s += `<line x1="${cx}" y1="${cy + 15}" x2="${cx}" y2="${y0 + SLD_LOAD_Y - 2}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, false, meterOn.get(p.tag));
+        if (t) s += `<line x1="${cx}" y1="${cy + 15}" x2="${cx}" y2="${y0 + SLD_LOAD_Y + dy2 - 2}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         s += sldGlyph(p.symbol_kind, cx, cy, isCpl ? SLD_BUSCOL : INK, openEdge);
         s += `<text x="${cx}" y="${cy + 30}" text-anchor="middle" font-family="${MONO}" font-size="8.4" font-weight="700" fill="${INK}"${HALO}` +
           (nav ? ` style="cursor:pointer" onclick="${nav}('sld/${esc(p.tag)}')"` : "") +
@@ -1067,11 +1190,19 @@
           if (tie) {
             const other = S._byTag.get(tie.from_tag === p.tag ? tie.to_tag : tie.from_tag);
             const ob = other ? (sldBoardOf(S, other) || "") : "";
-            s += `<line x1="${cx}" y1="${cy + 15}" x2="${cx}" y2="${y0 + SLD_LOAD_Y - 2}" stroke="${SOFT}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
-            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 8}" text-anchor="middle" font-family="${MONO}" font-size="7.4" font-weight="700" fill="${SOFT}">⇢ ${esc(ob || "tie")} ${esc(other ? sldPosCode(other.tag, ob) : "")}</text>`;
-            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 19}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">cable tie · ${esc(tie.cable_tag)}</text>`;
-          } else if (p.symbol_kind !== "SPARE" && p.symbol_kind !== "NETWORK_ANALYZER") {
-            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 16}" text-anchor="middle" font-family="${MONO}" font-size="6.8" fill="${SOFT}">— no load linked —</text>`;
+            s += `<line x1="${cx}" y1="${cy + 15}" x2="${cx}" y2="${y0 + SLD_LOAD_Y + dy2 - 2}" stroke="${SOFT}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + dy2 + 8}" text-anchor="middle" font-family="${MONO}" font-size="7.4" font-weight="700" fill="${SOFT}">⇢ ${esc(ob || "tie")} ${esc(other ? sldPosCode(other.tag, ob) : "")}</text>`;
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + dy2 + 19}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">cable tie · ${esc(tie.cable_tag)}</text>`;
+          } else if (p.symbol_kind === "NETWORK_ANALYZER") {
+            /* v1.3.0 — a metering position still in the outgoing row is one this
+               diagram could NOT attach to its circuit. Say which of the two
+               reasons it is; never let it look like a normal feeder (G-4). */
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + dy2 + 8}" text-anchor="middle" font-family="${MONO}" font-size="7" font-weight="700" fill="${CRIMSON}">` +
+              (p.measures_tag ? `⇢ ${esc(clip(p.measures_tag, 14))}` : "⚠ not attached") + `</text>`;
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + dy2 + 19}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">` +
+              (p.measures_tag ? "not on this board" : "no measured circuit") + `</text>`;
+          } else if (p.symbol_kind !== "SPARE") {
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + dy2 + 16}" text-anchor="middle" font-family="${MONO}" font-size="6.8" fill="${SOFT}">— no load linked —</text>`;
           }
           return;
         }
@@ -1081,21 +1212,21 @@
         if (isBusbar(tn)) {                       /* coupler → another busbar */
           const here = busSet.has(tn.tag);
           const tBoard = here ? boardTag : (sldBoardOf(S, tn) || String(tn.parent_tag || ""));
-          s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 12}" text-anchor="middle" font-family="${MONO}" font-size="7.6" font-weight="700" fill="${SLD_BUSCOL}">` +
+          s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + dy2 + 12}" text-anchor="middle" font-family="${MONO}" font-size="7.6" font-weight="700" fill="${SLD_BUSCOL}">` +
             `⇢ BUSBAR ${esc(sldBusCode(tn.tag, tBoard))}</text>`;
           if (!here) { drawn.offsheet++;
-            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + 23}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">off-sheet · ${esc(tBoard)}</text>`; }
+            s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + dy2 + 23}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">off-sheet · ${esc(tBoard)}</text>`; }
         } else if (sldBoardOf(S, tn) && sldBoardOf(S, tn) !== boardTag) {
           /* the target is a POSITION on another Power Center (.210 → PC3 .300,
              .211 → PC4 .400) — that is a board-to-board tie, not a load.       */
           drawn.offsheet++;
           const tb = sldBoardOf(S, tn);
-          s += sldCard(cx, y0 + SLD_LOAD_Y, { tag: tb, data_status: tn.data_status },
+          s += sldCard(cx, y0 + SLD_LOAD_Y + dy2, { tag: tb, data_status: tn.data_status },
                        sldPosCode(tn.tag, tb) + (t.e.cable_tag ? " · " + t.e.cable_tag : ""), false);
-          s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + SLD_BOXH + 11}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">off-sheet · Power Center tie</text>`;
+          s += `<text x="${cx}" y="${y0 + SLD_LOAD_Y + dy2 + SLD_BOXH + 11}" text-anchor="middle" font-family="${MONO}" font-size="6.6" fill="${SOFT}">off-sheet · Power Center tie</text>`;
         } else {                                   /* a served load */
           drawn.load++;
-          const cyL = y0 + SLD_LOAD_Y;
+          const cyL = y0 + SLD_LOAD_Y + dy2;
           s += sldGlyph(tn.symbol_kind, cx, cyL + 14, INK, false);
           s += `<text x="${cx}" y="${cyL + 42}" text-anchor="middle" font-family="${MONO}" font-size="8" font-weight="700" fill="${INK}"` +
             (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(tn.tag)}')"` : "") +
@@ -1138,14 +1269,19 @@
     /* footer: legend + an honest account of what was not drawn.
        The legend is GENERATED from the symbols this board actually used, so a
        symbol added to the pack can never leave a stale key behind (rule G-7).  */
-    const fy = H - 14;
+    const fy = H - 14 - _footRows * 11;
     const skipped = S._skipped.length;
     const Sym = (typeof window !== "undefined" ? window : globalThis).TamSym;
     const used = _symUsed || new Set();
     if (Sym && Sym.ELEC_MAP && used.size) {
       const seen = [], names = [];
       used.forEach(k => {
-        let m = Sym.ELEC_MAP[String(k).toUpperCase()] || "UNKNOWN";
+        /* v1.3.0 — a kind the renderer placed directly (CT) is already a
+           registered symbol and must legend under its own name rather than
+           fall through to UNKNOWN. ELEC_MAP still wins for anything the
+           DATABASE names, so the audit surface is unchanged. */
+        let m = Sym.ELEC_MAP[String(k).toUpperCase()] ||
+                (Sym.spec && Sym.spec(String(k).toUpperCase()) ? String(k).toUpperCase() : "UNKNOWN");
         if (sldSymbolStyle === "BOX" && (m === "CIRCUIT_BREAKER" || m === "ACB_DRAWOUT"))
           m = "CIRCUIT_BREAKER_BOX";
         if (seen.indexOf(m) < 0 && m !== "BUSBAR" && m !== "BUSBAR_INVERTER" &&
@@ -1158,14 +1294,33 @@
         lx += 22 + names[i].length * 4.6;
       });
       s += `<text x="${SLD_PADX}" y="${fy + 10}" font-family="${MONO}" font-size="7.4" fill="${SOFT}">` +
-        `dashed = NORMALLY OPEN (bus coupler)  ·  dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.1.0</text>`;
+        `dashed = NORMALLY OPEN (bus coupler)  ·  dotted from an analyser = voltage reference, not a load  ·  ` +
+        `dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.1.0</text>`;
     } else {
       s += `<text x="${SLD_PADX}" y="${fy}" font-family="${MONO}" font-size="7.4" fill="${SOFT}">` +
         `□ breaker  ⊘ disconnector  Ⓐ analyser  ◎◎ transformer  Ⓜ motor  Ⓖ generator  ` +
         `dashed = NORMALLY OPEN (bus coupler)  ·  dot = data status  ·  order = display_rank (paper column order)</text>`;
     }
-    if (skipped) s += `<text x="${SLD_PADX}" y="${fy + (Sym && Sym.ELEC_MAP && used.size ? 21 : 11)}" font-family="${MONO}" font-size="7.4" fill="${CRIMSON}">` +
-      `${skipped} edge${skipped > 1 ? "s" : ""} in v_sld_edges not drawable — endpoint absent from v_sld_nodes (network links, and the 690-JG-695/696 flash-compressor motors)</text>`;
+    let fy2 = fy + (Sym && Sym.ELEC_MAP && used.size ? 21 : 11);
+    if (skipped) {
+      /* v1.3.0 — the breakdown is COUNTED, not narrated. The old sentence named
+         the flash-compressor motors as the example; migration 154 put them in
+         the view and the sentence kept claiming them anyway. A footer that
+         explains the data has to be derived from the data. */
+      const nNet = S._skipped.filter(e => e.edge_kind === "CONNECTED_TO").length;
+      const nPwr = skipped - nNet;
+      s += `<text x="${SLD_PADX}" y="${fy2}" font-family="${MONO}" font-size="7.4" fill="${nPwr ? CRIMSON : SOFT}">` +
+        `${skipped} edge${skipped > 1 ? "s" : ""} in v_sld_edges not drawable — endpoint absent from v_sld_nodes: ` +
+        `${nNet} network link${nNet === 1 ? "" : "s"} (expected — their endpoints are not electrical nodes)` +
+        `${nPwr ? `, ${nPwr} POWER edge${nPwr === 1 ? "" : "s"} ← this is a gap` : ""}</text>`;
+      fy2 += 11; }
+    /* v1.3.0 — the metering account. Both numbers are stated even when the
+       second is zero: "11 drawn" alone would not say whether any were left. */
+    if (drawn.meter || meterUnplaced.length)
+      s += `<text x="${SLD_PADX}" y="${fy2}" font-family="${MONO}" font-size="7.4" fill="${meterUnplaced.length ? CRIMSON : SOFT}">` +
+        `${drawn.meter} metering assembl${drawn.meter === 1 ? "y" : "ies"} drawn on the measured circuit  ·  ` +
+        `${meterUnplaced.length} analyser${meterUnplaced.length === 1 ? "" : "s"} left in the outgoing row` +
+        `${meterUnplaced.length ? " — " + meterUnplaced.map(m => sldPosCode(m.tag, boardTag)).join(", ") : ""}</text>`;
     s += `</svg>`;
     return `<div style="overflow-x:auto">${s}</div>`;
   }
@@ -1175,7 +1330,7 @@
                 loadSld, sldFromViewer, indexSld, sldBoards, sld,
                 get sldSymbolStyle() { return sldSymbolStyle; },
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
-                version: "1.2.0" };
+                version: "1.3.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;

@@ -470,7 +470,7 @@
      Bump ?v= on every release — same cache rule as tam-flow.js. -->
 <script src="tam-sym.js?v=0.1"></script>
 <script src="tam-sym-elec.js?v=0.1"></script>
-<script src="tam-flow.js?v=1.8"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
+<script src="tam-flow.js?v=1.9"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
@@ -5265,6 +5265,75 @@ async function renderFeederCard(asset, reqTag){
 
   $("#instBody").innerHTML=h;
   $("#instOvl").classList.add("open");
+
+  /* ── metering (migrations 162-168, tam-flow v1.3.0) ─────────────────────
+     A position card that showed a breaker, a cable and its findings still could
+     not answer the two questions the metering model exists to answer: what does
+     this analyser measure, and who measures this circuit. Both directions are
+     rendered, and BOTH are lazy - plant_power_meters and
+     plant_instrument_transformers are 11 rows each and only this card reads them.
+     Guarded: if either table is absent, fetchOpt yields [] and the section is
+     simply not drawn, exactly like the findings block below. */
+  try{
+    const M = await lazyViews(["plant_power_meters","plant_instrument_transformers"]);
+    const meters = M.plant_power_meters||[], cts = M.plant_instrument_transformers||[];
+    const ctById = new Map(cts.map(c=>[c.id,c]));
+    const ratio  = ct => ct ? (ct.ratio_raw || ((ct.ratio_primary||"?")+"/"+(ct.ratio_secondary||"?"))) : null;
+
+    /* direction 1 - this cubicle HOLDS an instrument */
+    const mine = meters.filter(m=>m.mounted_in_asset_id===asset.id);
+    /* direction 2 - this circuit IS measured by one */
+    const watchers = meters.filter(m=>m.current_source_asset_id===asset.id);
+
+    let mh="";
+    mine.forEach(m=>{
+      const ma  = IDX.assetById.get(m.asset_id);
+      const ct  = m.ct_id!=null ? ctById.get(m.ct_id) : null;
+      const src = m.current_source_asset_id!=null ? IDX.assetById.get(m.current_source_asset_id) : null;
+      const vsr = m.voltage_source_asset_id!=null ? IDX.assetById.get(m.voltage_source_asset_id) : null;
+      const mdl = m.model_id!=null ? IDX.modelById.get(m.model_id) : null;
+      mh+=`<div class="kicker" style="margin-top:8px">INSTRUMENT IN THIS CUBICLE`
+        + (ma?` <span class="sub">· ${esc(ma.official_tag)}</span>`:"")+`</div>`;
+      mh+=card([
+        kv("Measures", src?tagChip(src.official_tag):`<span class="dim">— not declared —</span>`),
+        kv("Voltage reference", vsr?tagChip(vsr.official_tag):`<span class="dim">— not declared —</span>`),
+        kv("Voltage connection", esc(nz2(m.voltage_connection))),
+        kv("CT ratio", ct?esc(ratio(ct)):`<span class="dim">— no CT —</span>`),
+        kv("CT class · burden", ct?esc(nz2(ct.accuracy_class))+" · "+(ct.burden_va!=null?ct.burden_va+" VA":"—"):"—"),
+        kv("Model", mdl?esc(mdl.model_code):`<span class="dim">— not registered —</span>`),
+        kv("Accuracy", esc(nz2(m.accuracy_class))+(m.accuracy_standard?" · "+esc(m.accuracy_standard):"")),
+        kv("Quantities", esc(nz2(m.measured_quantities))),
+        kv("Comms", esc(nz2(m.comms_protocol))+(m.comms_address?" · "+esc(m.comms_address):"")),
+        kv("Review", esc(nz2(m.review_status)))
+      ]);
+      /* the scale factor, said in words - it is the reason the ratio is stored */
+      if(ct && ct.ratio_primary && ct.ratio_secondary)
+        mh+=`<div style="${SOFTOUT}">The instrument reads <b>${num(ct.ratio_secondary)} A</b> at full
+            scale; the circuit carries <b>${num(ct.ratio_primary)} A</b>. Every current, power and energy
+            figure read from this device is scaled by <b>${num(ct.ratio_primary/ct.ratio_secondary)}</b>.</div>`;
+      if(!ct || !src)
+        mh+=`<div style="${CALLOUT}">This measuring point is incomplete - see check <b>V-19</b>. A meter
+            needs the measured circuit, the CT that scales it and a voltage reference before its reading
+            can enter an energy balance.</div>`;
+    });
+    watchers.forEach(m=>{
+      const ma = IDX.assetById.get(m.asset_id);
+      const ct = m.ct_id!=null ? ctById.get(m.ct_id) : null;
+      const pos= m.mounted_in_asset_id!=null ? IDX.assetById.get(m.mounted_in_asset_id) : null;
+      mh+=`<div class="kicker" style="margin-top:8px">MEASURED BY</div>`;
+      mh+=card([
+        kv("Analyser", ma?tagChip(ma.official_tag):"—"),
+        kv("In position", pos?tagChip(pos.official_tag):"—"),
+        kv("CT on this circuit", ct?esc(ratio(ct)):"—"),
+        kv("Accuracy", esc(nz2(m.accuracy_class)))
+      ]);
+    });
+    if(mh) $("#instBody").insertAdjacentHTML("beforeend",`<h4>Metering</h4>`+mh);
+    else if(String(f.feeder_kind||"")==="METERING")
+      $("#instBody").insertAdjacentHTML("beforeend",
+        `<h4>Metering</h4><div class="empty">This position is a metering cubicle but no instrument is
+         recorded against it — check <b>V-19</b>.</div>`);
+  }catch(e){ console.warn("feeder card metering: "+e.message); }
 
   /* findings are lazy: v_mcc_validation is 525 rows and only this card needs it */
   try{
