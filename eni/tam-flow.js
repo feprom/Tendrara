@@ -950,6 +950,43 @@
       default: return box(10);   // INCOMER · FEEDER · everything else = breaker
     }
   }
+  /* ── v1.5.0 · the label pass ────────────────────────────────────────────
+     Mario, 2026-07-26: "for breakers to have a clean look, move the label to
+     the left or right … below the breaker leave blank, also in feeders remove
+     characteristics … below the tag of the load put the power and below the
+     current … the power and current of generators in the generator icon".
+
+     Three rules, and they are all the same rule: a number belongs to the
+     object that owns it.
+
+       · A POSITION is a cubicle. Its code is its identity, so it sits BESIDE
+         the symbol — to the RIGHT, on the centre line, where nothing else is.
+         Under it stays EMPTY: the conductor, the cable tag and the load all
+         use that column, and the kW/A block printed there was the RATING OF
+         THE LOAD wearing the breaker's clothes.
+       · A LOAD owns its power and its current. They go under its tag.
+       · A GENERATOR owns its rating. It goes on the machine symbol.
+
+     Nothing is invented and nothing is derived: a value absent from
+     v_sld_nodes prints nothing at all (rule G-3).                          */
+  function sldPosLabel(cx, cy, code, nav, tag) {
+    return `<text x="${cx + zy(15)}" y="${cy + zy(3.4)}" text-anchor="start" font-family="${MONO}" ` +
+      `font-size="${ts(8.4)}" font-weight="700" fill="${INK}"${HALO}` +
+      (nav ? ` style="cursor:pointer" onclick="${nav}('sld/${esc(tag)}')"` : "") +
+      `>${esc(clip(code, 14))}</text>`;
+  }
+  /* the two rating lines under a load's tag: power first, current below it.
+     Returns the y of the next free line so a caller can keep stacking. */
+  function sldRating(cx, y, node) {
+    let s = "", yy = y;
+    [sldKw(node), sldAmp(node)].filter(Boolean).forEach(v => {
+      s += `<text x="${cx}" y="${yy}" text-anchor="middle" font-weight="600" font-family="${MONO}" ` +
+        `font-size="${ts(6.8)}" fill="${SOFT}">${esc(v)}</text>`;
+      yy += zy(10);
+    });
+    return { svg: s, y: yy };
+  }
+
   /* small labelled card used for sources and for served loads */
   function sldCard(cx, y, node, sub, dim) {
     const x = cx - gx(SLD_BOXW) / 2;
@@ -959,6 +996,7 @@
       `<text x="${cx}" y="${y + zy(26)}" text-anchor="middle" font-family="${MONO}" font-size="7" fill="${SOFT}">${esc(clip(sub || "", 16))}</text></g>`;
   }
   const sldKw = n => n && n.power_kw != null ? n1(n.power_kw) + " kW" : "";
+  const sldAmp = n => n && n.current_a != null ? n0(n.current_a) + " A" : "";
 
   /* ── renderer ─────────────────────────────────────────────────────────── */
   function sld(sldData, boardTag, opts) {
@@ -1198,21 +1236,48 @@
             : (off ? sldPosCode(srcNode.tag, srcBoard) + (up[0].cable_tag ? " · " + up[0].cable_tag : "")
                    : ([srcNode && srcNode.parent_tag ? "via " + sldPosCode(srcNode.parent_tag, boardTag) : "",
                        up[0].cable_tag || ""].filter(Boolean).join(" · ")));
-          s += sldCard(cx, y0 + gx(SLD_SRC_Y), shown, sub, false);
+          /* v1.5.0 — a machine is drawn as a machine. A generator feeding this
+             board used to be a card: a rounded box with its tag and one line of
+             sub-text. That is the shape this renderer uses for something it can
+             only NAME (an off-sheet board, a PC tie). A generator is on the
+             sheet, it has a symbol in the pack, and it carries both a rating
+             and a current — so it is drawn as the rotary symbol with its tag
+             above and its two figures beside it (Mario's third instruction). */
+          const isGen = srcNode && srcNode.symbol_kind === "GENERATOR" && !off;
+          let srcBottom;
+          if (isGen) {
+            /* the card carried its tag INSIDE the box; the symbol carries it
+               ABOVE, so the machine has to drop by that line's height or the
+               label climbs into the band overhead — `check_sld_layout.js`
+               caught exactly that ("710 kW" ∩ "GE-004" on PC1). */
+            const cyS = y0 + gx(SLD_SRC_Y) + gx(SLD_BOXH) / 2 + zy(9);
+            s += sldSymDirect("GENERATOR", {
+              x: cx, y: cyS, color: INK, scale: 1.05 * Z(), labelPos: "above",
+              label: clip(srcNode.tag, 14), dq: srcNode.data_status,
+              /* the kernel's badge FORMATS the value, so it takes the NUMBER.
+                 Passing it a pre-formatted "1,822" printed "NaN kW" — invisible
+                 at the shipping zoom because the two lines only collided at
+                 1.5, which is the only reason the sweep found it. */
+              values: [srcNode.power_kw  != null ? { v: +srcNode.power_kw,  u: "kW" } : null,
+                       srcNode.current_a != null ? { v: +srcNode.current_a, u: "A" }  : null].filter(Boolean),
+              title: [srcNode.tag, sldKw(srcNode), sldAmp(srcNode),
+                      srcNode.voltage_v != null ? n0(srcNode.voltage_v) + " V" : ""].filter(Boolean).join(" · ")
+            });
+            srcBottom = cyS + zy(13);
+          } else {
+            s += sldCard(cx, y0 + gx(SLD_SRC_Y), shown, sub, false);
+            srcBottom = y0 + gx(SLD_SRC_Y) + gx(SLD_BOXH);
+          }
           if (off) drawn.offsheet++;
           drawn.src++;
-          s += `<line x1="${cx}" y1="${y0 + gx(SLD_SRC_Y) + gx(SLD_BOXH)}" x2="${cx}" y2="${cy - zy(13)}" stroke="${INK}" stroke-width="1.4"/>`;
+          s += `<line x1="${cx}" y1="${srcBottom}" x2="${cx}" y2="${cy - zy(13)}" stroke="${INK}" stroke-width="1.4"/>`;
           if (up[0].cable_tag)
-            s += `<text x="${cx + 4}" y="${y0 + gx(SLD_SRC_Y) + gx(SLD_BOXH) + 13}" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}"${HALO}>${esc(up[0].cable_tag)}</text>`;
+            s += `<text x="${cx + 4}" y="${srcBottom + 13}" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}"${HALO}>${esc(up[0].cable_tag)}</text>`;
         }
         s += `<line x1="${cx}" y1="${cy + zy(13)}" x2="${cx}" y2="${busY - 2}" stroke="${INK}" stroke-width="1.4"/>`;
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, true, meterOn.get(p.tag));
         s += sldGlyph(p.symbol_kind, cx, cy, INK, false);
-        s += `<text x="${cx}" y="${cy + zy(32)}" text-anchor="middle" font-family="${MONO}" font-size="${ts(8.4)}" font-weight="700" fill="${INK}"${HALO}` +
-          (nav ? ` style="cursor:pointer" onclick="${nav}('sld/${esc(p.tag)}')"` : "") +
-          `>${esc(clip(sldPosCode(p.tag, boardTag), 14))}</text>`;
-        const meta = [sldKw(p), p.current_a != null ? n0(p.current_a) + " A" : ""].filter(Boolean).join(" · ");
-        if (meta) s += `<text x="${cx}" y="${cy + zy(42)}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}"${HALO}>${esc(meta)}</text>`;
+        s += sldPosLabel(cx, cy, sldPosCode(p.tag, boardTag), nav, p.tag);
       });
 
       /* ── outgoing positions + couplers, below the bar ── */
@@ -1234,11 +1299,7 @@
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, false, meterOn.get(p.tag));
         if (t) s += `<line x1="${cx}" y1="${cy + zy(15)}" x2="${cx}" y2="${y0 + gx(SLD_LOAD_Y) + dy2 - 2}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         s += sldGlyph(p.symbol_kind, cx, cy, isCpl ? SLD_BUSCOL : INK, openEdge);
-        s += `<text x="${cx}" y="${cy + zy(30)}" text-anchor="middle" font-family="${MONO}" font-size="${ts(8.4)}" font-weight="700" fill="${INK}"${HALO}` +
-          (nav ? ` style="cursor:pointer" onclick="${nav}('sld/${esc(p.tag)}')"` : "") +
-          `>${esc(clip(sldPosCode(p.tag, boardTag), 14))}</text>`;
-        const meta = [sldKw(p), p.current_a != null ? n0(p.current_a) + " A" : ""].filter(Boolean).join(" · ");
-        if (meta) s += `<text x="${cx}" y="${cy + zy(40)}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}"${HALO}>${esc(meta)}</text>`;
+        s += sldPosLabel(cx, cy, sldPosCode(p.tag, boardTag), nav, p.tag);
 
         if (!t) {
           /* no power edge — but the position may still carry a documented
@@ -1291,10 +1352,10 @@
             `>${esc(clip(tn.tag, 15))}</text>`;
           const st = SLD_STATUS[tn.data_status] || SOFT;
           s += `<circle cx="${cx - zy(26)}" cy="${cyL + zy(14)}" r="3" fill="${st}"><title>${esc(tn.data_status || "")}</title></circle>`;
-          const lk = sldKw(tn); if (lk)
-            s += `<text x="${cx}" y="${cyL + zy(52)}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(lk)}</text>`;
+          /* v1.5.0 — power, then current, under the load's own tag */
+          const rt = sldRating(cx, cyL + zy(52), tn); s += rt.svg;
           if (targets.length > 1)
-            s += `<text x="${cx}" y="${cyL + zy(62)}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.4)}" fill="${CRIMSON}">+${targets.length - 1} more</text>`;
+            s += `<text x="${cx}" y="${rt.y}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.4)}" fill="${CRIMSON}">+${targets.length - 1} more</text>`;
 
           /* SECOND LEVEL (v1.2.0) — this load is itself a board that feeds
              something. Migration 154 put those nodes in v_sld_nodes; without
@@ -1314,10 +1375,9 @@
             s += `<text x="${cx}" y="${cyK + zy(38)}" text-anchor="middle" font-family="${MONO}" font-size="${ts(8)}" font-weight="700" fill="${INK}"` +
               (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(kn.tag)}')"` : "") +
               `>${esc(clip(kn.tag, 15))}</text>`;
-            const kk = sldKw(kn); if (kk)
-              s += `<text x="${cx}" y="${cyK + zy(48)}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(kk)}</text>`;
+            const rk = sldRating(cx, cyK + zy(48), kn); s += rk.svg;
             if (kids.length > 1)
-              s += `<text x="${cx}" y="${cyK + zy(58)}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.4)}" fill="${CRIMSON}">+${kids.length - 1} more</text>`;
+              s += `<text x="${cx}" y="${rk.y}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.4)}" fill="${CRIMSON}">+${kids.length - 1} more</text>`;
             drawn.load++;
           }
         }
@@ -1390,7 +1450,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.4.0" };
+                version: "1.5.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
