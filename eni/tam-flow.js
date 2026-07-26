@@ -750,7 +750,15 @@
       · Nothing is invented. A position with no busbar edge and no load edge is
         drawn as it stands; an off-sheet target is labelled as off-sheet.      */
 
-  const SLD_COL = 108, SLD_PADX = 148, SLD_BAND = 312;
+  /* v1.7.0 — PADX is the LEFT GUTTER, and it only has to hold the busbar name
+     ("BUSBAR IA" at 12 px ≈ 66 px) and its tag underneath (≈ 74 px), both
+     printed from x = 8. At 148 it held ~70 px of nothing and the drawing
+     started well right of the page edge; Mario bracketed exactly that. */
+  const SLD_COL = 108, SLD_PADX = 112, SLD_BAND = 312;
+  /* how far past the last column a bus-to-bus tie stands. Measured against the
+     CT ratio of a metering assembly, which is the thing that reaches furthest
+     out of a column (~45 px) — see v1.7.0 note in the band pre-pass. */
+  const SLD_TIE_DX = 46;
   const SLD_L2_DY = 62;                 // drop from a served board to what IT feeds   // PADX = left gutter for the busbar label
   const SLD_SRC_Y = 14, SLD_INC_Y = 78, SLD_BUS_Y = 146, SLD_OUT_Y = 182, SLD_LOAD_Y = 250;
   /* v1.3.0 — extra conductor length between a position and the busbar when a
@@ -1061,6 +1069,32 @@
        names the bar the link actually reaches. A tie whose far end cannot be
        resolved is NOT promoted — it stays in the outgoing row, where a gap is
        visible (rule G-4). Nothing was added to the database for any of this. */
+    /* ── v1.7.0 · which SIDE a tie leaves from ─────────────────────────────
+       Mario: *"al busbar C llega desde B por la izquierda, sale a D por la
+       derecha, igual que en B."*
+
+       v1.6.0 decided the side by OWNERSHIP — the bar that owns the coupler
+       drew it going out. Busbar C owns both `.MCG2` (to B) and `.MCG3` (to D),
+       so C showed two departures and the chain read as if it started there.
+       Ownership says whose cubicle it is, not which way the line runs.
+
+       The order is ALREADY IN THE DATABASE and needed no correction:
+       `v_sld_nodes.display_rank` on the busbars is 165 · 166 · 167 · 168 for
+       A · B · C · D — the paper order of the sections. A tie to an EARLIER bar
+       arrives on the LEFT; to a LATER bar it leaves on the RIGHT. The four
+       inverter busbars all carry rank 173, so board tag and then node tag
+       break the tie deterministically (BBIA < BBIB < BBIC < BBID); that shared
+       rank is a data smell worth a CR, not a blocker.                        */
+    const busOrd = t => {
+      const n = S._byTag.get(t);
+      return [n && n.display_rank != null ? +n.display_rank : 0,
+              (n && sldBoardOf(S, n)) || "", String(t)];
+    };
+    const isLater = (a, b) => {           /* is bar `a` after bar `b`? */
+      const A = busOrd(a), B = busOrd(b);
+      for (let i = 0; i < 3; i++) if (A[i] !== B[i]) return A[i] > B[i];
+      return false;
+    };
     const farBusOf = (cplNode, ownTag) => sldOut(S, cplNode.tag)
       .filter(e => e.edge_kind === "FEEDS" && e.to_tag !== ownTag &&
                    isBusbar(S._byTag.get(e.to_tag)))[0] || null;
@@ -1093,14 +1127,34 @@
         const feedsBus = sldOut(S, p.tag).some(e => e.edge_kind === "FEEDS" && busSet.has(e.to_tag));
         (feedsBus ? inc : out).push(p);
       });
-      return { bus: bb, inc, out: out.concat(cpl), cplCount: cpl.length, tie: tie };
+      return { bus: bb, inc, out: out.concat(cpl), cplCount: cpl.length,
+               tie: tie.filter(t => isLater(t.farTag, bb.tag)),
+               tieL: tie.filter(t => !isLater(t.farTag, bb.tag)) };
     });
-    /* v1.6.0 — a bar carrying a tie is ONE COLUMN LONGER. The stub sits at the
-       far end, and the end used to be the edge of the last column: its vertical
-       ran straight through the CT ratio of the last incomer's metering
-       assembly. A tie needs a column of its own, exactly as a feeder does. */
-    bands.forEach(b => { b.base = Math.max(b.inc.length, b.out.length);
-                         b.nWide = b.base + b.tie.length; });
+    /* ── v1.7.0 · the tie sits just past the last column, not a column past it ──
+       v1.6.0 gave every tie a full column so its vertical would clear the CT
+       ratio of the last incomer's metering assembly. That ratio only reaches
+       ~45 px past the column edge, so a full 126 px column bought 80 px of
+       white space at the right-hand end of every bar — Mario circled exactly
+       that. SLD_TIE_DX is measured against what actually sticks out, not
+       rounded up to the grid. The bar still ends AT the tie. */
+    bands.forEach(b => {
+      b.base = Math.max(b.inc.length, b.out.length);
+      b.nWide = b.base;
+      /* the labels are built here, not in the draw loop, because the page
+         width has to know how far the widest one reaches (trap T-14: what
+         leaves the viewBox is silently clipped) */
+      b.tie.concat(b.tieL).forEach((t, i) => {
+        const fb = sldBoardOf(S, S._byTag.get(t.farTag)) || boardTag;
+        const viaBoard = t.via ? (sldBoardOf(S, t.via) || boardTag) : boardTag;
+        t.farCode = sldBusCode(t.farTag, fb) + (fb !== boardTag ? " · " + fb : "");
+        t.offBoard = fb !== boardTag;
+        t.sub = [sldPosCode(t.pos.tag, boardTag),
+                 t.via ? "via " + (viaBoard !== boardTag ? viaBoard + " " : "") + sldPosCode(t.via.tag, viaBoard) : "",
+                 t.cable || "", t.open ? "N.O." : ""].filter(Boolean).join(" · ");
+      });
+      b.tie.forEach((t, i) => { t.dx = gx(SLD_TIE_DX) * (i + 1); });
+    });
     /* a band needs a longer conductor on the side that carries an assembly */
     bands.forEach(b => {
       b.dyIn  = b.inc.some(p => meterOn.has(p.tag)) ? zy(SLD_MTR_DY) : 0;
@@ -1108,7 +1162,19 @@
     });
 
     const cols = Math.max(4, ...bands.map(b => b.nWide));
-    const W = gx(SLD_PADX) * 2 + cols * gx(SLD_COL);
+    /* v1.7.0 — the right margin is SIZED TO THE WIDEST TIE LABEL rather than
+       assumed. A tie label runs rightward out of the last column; with the
+       page width fixed at 2·PADX + cols·COL it was the tie column that kept it
+       inside, and removing that column would have pushed it off the edge. */
+    const tw = (txt, fs) => String(txt || "").length * fs * 0.6;
+    let tieRight = 0;
+    bands.forEach(b => b.tie.forEach(t => {
+      const w = Math.max(tw("⇢ BUSBAR " + t.farCode, ts(7.6)),
+                         ...String(t.sub).split(" · ").map(x => tw(x, ts(6.6))));
+      tieRight = Math.max(tieRight, gx(SLD_PADX) + b.base * gx(SLD_COL) + t.dx +
+                                    gx(26) + gx(5) + w);
+    }));
+    const W = Math.max(gx(SLD_PADX) * 2 + cols * gx(SLD_COL), tieRight + gx(16));
     /* v1.2.0 — a served BOARD can itself feed a load (migration 154: the flash
        compressors 690-JG-695/696 → PK-361-MC1A/B). When any position on this
        switchboard has that second level, every band grows by one load row so
@@ -1167,7 +1233,7 @@
       (board.voltage_v != null ? `  ·  ${esc(n0(board.voltage_v))} V` : "") +
       /* v1.6.0 — a tie is still a CUBICLE on this board; moving it to the end
          of the bar must not quietly drop it from the count. */
-      `  ·  ${bands.length} busbar${bands.length > 1 ? "s" : ""}  ·  ${bands.reduce((n, b) => n + b.inc.length + b.out.length + b.tie.length, 0)} positions` +
+      `  ·  ${bands.length} busbar${bands.length > 1 ? "s" : ""}  ·  ${bands.reduce((n, b) => n + b.inc.length + b.out.length + b.tie.length + b.tieL.length, 0)} positions` +
       /* v1.3.0 — metering positions are counted separately, not dropped. They
          are still cubicles on this board; they just no longer stand in the
          outgoing row pretending to carry load. */
@@ -1288,13 +1354,20 @@
       const dy2 = band.dyIn + band.dyOut;
       const busY = y0 + gx(SLD_BUS_Y) + band.dyIn;
       const nWide = band.nWide;
-      const busX1 = gx(SLD_PADX) - 22, busX2 = gx(SLD_PADX) + Math.max(2, nWide) * gx(SLD_COL);
+      const busX1 = gx(SLD_PADX) - 22;
+      /* the bar ends AT the last tie when it carries one, not a column beyond */
+      const busX2 = gx(SLD_PADX) + Math.max(2, nWide) * gx(SLD_COL) +
+                    (band.tie.length ? band.tie[band.tie.length - 1].dx : 0);
 
       /* ── busbar ── */
       s += `<line x1="${busX1}" y1="${busY}" x2="${busX2}" y2="${busY}" stroke="${SLD_BUSCOL}" stroke-width="${zy(5)}" stroke-linecap="round"/>`;
-      s += `<text x="10" y="${busY + 1}" font-family="${MONO}" font-size="12" font-weight="700" fill="${SLD_BUSCOL}">` +
+      /* v1.7.0 — the name sits ABOVE the bar, not across it. It used to straddle
+         the conductor (first line on the centre line, tag below it), which put
+         the tag in the outgoing half where the drop lines start. Both lines
+         now clear the bar upward. */
+      s += `<text x="8" y="${busY - zy(13)}" font-family="${MONO}" font-size="12" font-weight="700" fill="${SLD_BUSCOL}">` +
         `BUSBAR ${esc(sldBusCode(band.bus.tag, boardTag))}</text>`;
-      s += `<text x="10" y="${busY + 13}" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(band.bus.tag)}` +
+      s += `<text x="8" y="${busY - zy(3)}" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(band.bus.tag)}` +
         `${band.bus.symbol_kind === "BUSBAR_INVERTER" ? " · inverter bus" : ""}</text>`;
 
       /* ── v1.4.0 · where else this section can be fed from ────────────────
@@ -1313,23 +1386,33 @@
          would claim a feed that does not normally exist (rule G-3). */
       /* v1.6.0 — the OUT end: at the RIGHT end of the bar, above it. */
       band.tie.forEach((t, i) => {
-        const fb = sldBoardOf(S, S._byTag.get(t.farTag)) || boardTag;
-        const viaBoard = t.via ? (sldBoardOf(S, t.via) || boardTag) : boardTag;
-        s += tieStub(gx(SLD_PADX) + (band.base + i + 1) * gx(SLD_COL), busY, y0 + gx(SLD_INC_Y), +1, i, {
+        s += tieStub(gx(SLD_PADX) + band.base * gx(SLD_COL) + t.dx, busY,
+                     y0 + gx(SLD_INC_Y), +1, i, {
           kind: t.pos.symbol_kind, open: !!t.open, n: band.tie.length,
-          farCode: sldBusCode(t.farTag, fb) + (fb !== boardTag ? " · " + fb : ""),
-          sub: [sldPosCode(t.pos.tag, boardTag),
-                t.via ? "via " + (viaBoard !== boardTag ? viaBoard + " " : "") + sldPosCode(t.via.tag, viaBoard) : "",
-                t.cable || "", t.open ? "N.O." : ""].filter(Boolean).join(" · ")
+          farCode: t.farCode, sub: t.sub
         });
-        if (fb !== boardTag) drawn.offsheet++;
+        if (t.offBoard) drawn.offsheet++;
         drawn.cpl++;
       });
 
-      /* v1.6.0 — the IN end: at the LEFT end of the bar, above it. A tie this
-         bar already draws OUT is not drawn again as an arrival: it is one link,
-         and the outgoing end is the one that carries this board's own cubicle. */
+      /* ── the IN end: at the LEFT end of the bar, above it ──────────────
+         Two kinds arrive here. First this bar's OWN cubicle pointing back up
+         the chain (busbar C's `.MCG2` → busbar B) — v1.7.0; it knows the
+         cubicle code, so it is the better of the two. Then a coupler owned by
+         ANOTHER bar that reaches this one (busbar B's arrival from A, whose
+         cubicle `.MCG1` belongs to A). A link already drawn from this bar in
+         either direction is not drawn a second time. */
+      let li = 0;
       const outFar = new Set(band.tie.map(t => t.farTag));
+      band.tieL.forEach(t => {
+        outFar.add(t.farTag);
+        s += tieStub(busX1, busY, y0 + gx(SLD_INC_Y), -1, li++, {
+          kind: t.pos.symbol_kind, open: !!t.open, n: band.tieL.length,
+          farCode: t.farCode, sub: t.sub
+        });
+        if (t.offBoard) drawn.offsheet++;
+        drawn.cpl++;
+      });
       const fedFrom = sldIn(S, band.bus.tag)
         .filter(e => e.edge_kind === "FEEDS")
         .map(e => ({ e: e, n: S._byTag.get(e.from_tag) }))
@@ -1337,10 +1420,10 @@
                      x.n.parent_tag && x.n.parent_tag !== band.bus.tag)
         .map(x => ({ e: x.e, cpl: x.n, src: S._byTag.get(x.n.parent_tag) }))
         .filter(x => x.src && !outFar.has(x.src.tag));
-      fedFrom.forEach((x, i) => {
+      fedFrom.forEach(x => {
         const srcBoard = sldBoardOf(S, x.src) || boardTag;
         const off = srcBoard !== boardTag;
-        s += tieStub(busX1, busY, y0 + gx(SLD_INC_Y), -1, i, {
+        s += tieStub(busX1, busY, y0 + gx(SLD_INC_Y), -1, li++, {
           kind: "BUS_COUPLER", open: !!x.e.normally_open,
           farCode: sldBusCode(x.src.tag, srcBoard) + (off ? " · " + srcBoard : ""),
           sub: [(off ? srcBoard + " " : "") + sldPosCode(x.cpl.tag, srcBoard),
@@ -1581,7 +1664,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.6.0" };
+                version: "1.7.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
