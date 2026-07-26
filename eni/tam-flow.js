@@ -766,6 +766,9 @@
      per band and only on the side that actually carries one, so a board with no
      meters is byte-identical to v1.2.0. */
   const SLD_MTR_DY = 40;
+  /* extra conductor between an outgoing way and its load when a starting
+     device (contactor / soft starter / drive) has to be drawn on it */
+  const SLD_START_DY = 40;
 
   /* ── v1.4.0 · ONE ZOOM KNOB ──────────────────────────────────────────────
      Mario: "all the icons, it is too small" and "make the small text bold and
@@ -792,6 +795,10 @@
   const SLD_STATUS = { VERIFIED: "#1F8A4C", NEEDS_REVIEW: "#B26A00", CONFLICT: CRIMSON };
   const SLD_BUSCOL = "#0B5CAD";          // busbar / power path
   const SLD_ROTARY = new Set(["MOTOR", "PUMP", "COMPRESSOR", "GENERATOR", "FAN", "BLOWER"]);
+  /* v1.10.0 — the starting methods v_sld_nodes can name, and how to say them.
+     A value outside this map draws nothing rather than guessing a symbol. */
+  const SLD_START = new Map([["CONTACTOR", "Contactor"], ["SOFT_STARTER", "Soft starter"],
+                             ["VFD", "Variable-frequency drive"]]);
 
   /* ── data ─────────────────────────────────────────────────────────────── */
   async function loadSld(sb) {
@@ -921,6 +928,17 @@
       if (sldSymbolStyle === "BOX" && (k === "CIRCUIT_BREAKER" || k === "ACB_DRAWOUT"))
         k = "CIRCUIT_BREAKER_BOX";
       const p = S.ports(k, { x: cx, y: cy, scale: 0.92 * Z() });
+      if (p && p[key]) return p[key].y;
+    }
+    return cy + (key === "A" ? -zy(13) : zy(13));
+  }
+
+  /* the same port question for a kind the renderer places directly (CT, and
+     from v1.10.0 the starting device), which has no ELEC_MAP entry */
+  function sldPortYDirect(kind, cx, cy, key) {
+    const S = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (S && S.ports && S.spec && S.spec(kind)) {
+      const p = S.ports(kind, { x: cx, y: cy, scale: 0.92 * Z() });
       if (p && p[key]) return p[key].y;
     }
     return cy + (key === "A" ? -zy(13) : zy(13));
@@ -1192,6 +1210,11 @@
     bands.forEach(b => {
       b.dyIn  = b.inc.some(p => meterOn.has(p.tag)) ? zy(SLD_MTR_DY) : 0;
       b.dyOut = b.out.some(p => meterOn.has(p.tag)) ? zy(SLD_MTR_DY) : 0;
+      /* v1.10.0 — a starting device stands ON the conductor between the way and
+         its load, so the load row has to move down to make room for it AND for
+         the cable label. Applied per band and only where one exists, so a board
+         with no starting device is byte-identical to v1.9.0. */
+      b.dySt  = b.out.some(p => p.start_kind && SLD_START.has(p.start_kind)) ? zy(SLD_START_DY) : 0;
     });
 
     const cols = Math.max(4, ...bands.map(b => b.nWide));
@@ -1243,7 +1266,7 @@
        that carry one grow. With no meters every band height is BAND and the
        positions are identical to v1.2.0. */
     const bandY = []; let _acc = 74;
-    bands.forEach(b => { bandY.push(_acc); _acc += BAND + b.dyIn + b.dyOut; });
+    bands.forEach(b => { bandY.push(_acc); _acc += BAND + b.dyIn + b.dyOut + b.dySt; });
     /* v1.3.0 — the bottom margin now sizes itself to the footer.
        DEFECT FOUND WHILE ADDING THE METERING LINE: the margin was a flat 34,
        the legend already used two rows of it, and the "N edges in v_sld_edges
@@ -1256,8 +1279,14 @@
     const H = _acc + gx(34) + zy(24) + _footRows * zy(13);
     const colX = i => gx(SLD_PADX) + i * gx(SLD_COL) + gx(SLD_COL) / 2;
 
-    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">`;
-    s += `<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`;
+    /* v1.10.0 — the page height is a TOKEN, resolved after the footer is known.
+       The legend is generated from the symbols the board actually used, so it
+       grows when a symbol is added: the contactor pushed it past the right edge
+       and it wrapped into nothing, because H had been fixed before anything was
+       drawn. Trap T-14 has now bitten three times; measuring the footer and
+       then sizing the page ends the whole class. */
+    let s = `<svg viewBox="0 0 ${W} %H%" width="${W}" height="%H%" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">`;
+    s += `<rect x="0" y="0" width="${W}" height="%H%" fill="#fff"/>`;
 
     /* title block */
     s += `<rect x="0" y="0" width="${W}" height="4" fill="${CRIMSON}"/>` +
@@ -1554,10 +1583,29 @@
 
         s += `<line x1="${cx}" y1="${busY + 2}" x2="${cx}" y2="${sldPortY(p.symbol_kind, cx, cy, "A")}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, false, meterOn.get(p.tag));
-        if (t) s += `<line x1="${cx}" y1="${sldPortY(p.symbol_kind, cx, cy, "B")}" x2="${cx}" y2="${
-          (tn && !isBusbar(tn) && !(sldBoardOf(S, tn) && sldBoardOf(S, tn) !== boardTag))
-            ? sldPortY(tn.symbol_kind, cx, y0 + gx(SLD_LOAD_Y) + dy2 + zy(14), "A")
-            : y0 + gx(SLD_LOAD_Y) + dy2 - 2}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        /* ── v1.10.0 · the STARTING DEVICE, between the breaker and the load ──
+           Mario: "all contactors have coils, include a contactor with coil".
+           Migration 174 puts `start_kind` in v_sld_nodes — VFD, SOFT_STARTER or
+           CONTACTOR, in that priority, and only on OUTGOING ways: an incomer
+           starts nothing, and restricting it also keeps out the nine bogus
+           CONTACTOR rows on the analysers (CR-00238, still open).
+           The conductor is BROKEN at the device's terminals, like every other
+           symbol on the sheet — a line through a device says it is not in the
+           circuit. A way with no start_kind draws exactly as before. */
+        const yTop = sldPortY(p.symbol_kind, cx, cy, "B");
+        const yBot = (tn && !isBusbar(tn) && !(sldBoardOf(S, tn) && sldBoardOf(S, tn) !== boardTag))
+            ? sldPortY(tn.symbol_kind, cx, y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + zy(14), "A")
+            : y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt - 2;
+        const stKind = p.start_kind && SLD_START.has(p.start_kind) ? p.start_kind : null;
+        const stY = cy + zy(40);
+        if (t && stKind) {
+          s += `<line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${sldPortYDirect(stKind, cx, stY, "A")}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+          s += sldSymDirect(stKind, { x: cx, y: stY, color: INK, scale: 0.92 * Z(),
+            title: SLD_START.get(stKind) + (p.start_model ? " · " + p.start_model : "") });
+          s += `<line x1="${cx}" y1="${sldPortYDirect(stKind, cx, stY, "B")}" x2="${cx}" y2="${yBot}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        } else if (t) {
+          s += `<line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${yBot}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        }
         s += sldGlyph(p.symbol_kind, cx, cy, isCpl ? SLD_BUSCOL : INK, openEdge);
         s += sldPosLabel(cx, cy, sldPosCode(p.tag, boardTag), nav, p.tag);
 
@@ -1569,42 +1617,42 @@
           if (tie) {
             const other = S._byTag.get(tie.from_tag === p.tag ? tie.to_tag : tie.from_tag);
             const ob = other ? (sldBoardOf(S, other) || "") : "";
-            s += `<line x1="${cx}" y1="${cy + zy(15)}" x2="${cx}" y2="${y0 + gx(SLD_LOAD_Y) + dy2 - 2}" stroke="${SOFT}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
-            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + 8}" text-anchor="middle" font-family="${MONO}" font-size="${ts(7.4)}" font-weight="700" fill="${SOFT}">⇢ ${esc(ob || "tie")} ${esc(other ? sldPosCode(other.tag, ob) : "")}</text>`;
-            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + 19}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">cable tie · ${esc(tie.cable_tag)}</text>`;
+            s += `<line x1="${cx}" y1="${cy + zy(15)}" x2="${cx}" y2="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt - 2}" stroke="${SOFT}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
+            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + 8}" text-anchor="middle" font-family="${MONO}" font-size="${ts(7.4)}" font-weight="700" fill="${SOFT}">⇢ ${esc(ob || "tie")} ${esc(other ? sldPosCode(other.tag, ob) : "")}</text>`;
+            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + 19}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">cable tie · ${esc(tie.cable_tag)}</text>`;
           } else if (p.symbol_kind === "NETWORK_ANALYZER") {
             /* v1.3.0 — a metering position still in the outgoing row is one this
                diagram could NOT attach to its circuit. Say which of the two
                reasons it is; never let it look like a normal feeder (G-4). */
-            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + 8}" text-anchor="middle" font-family="${MONO}" font-size="${ts(7)}" font-weight="700" fill="${CRIMSON}">` +
+            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + 8}" text-anchor="middle" font-family="${MONO}" font-size="${ts(7)}" font-weight="700" fill="${CRIMSON}">` +
               (p.measures_tag ? `⇢ ${esc(clip(p.measures_tag, 14))}` : "⚠ not attached") + `</text>`;
-            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + 19}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">` +
+            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + 19}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">` +
               (p.measures_tag ? "not on this board" : "no measured circuit") + `</text>`;
           } else if (p.symbol_kind !== "SPARE") {
-            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + 16}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">— no load linked —</text>`;
+            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + 16}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">— no load linked —</text>`;
           }
           return;
         }
-        s += sldCable(cx, cy + zy(50), t.e);
+        s += sldCable(cx, stKind ? stY + zy(24) : cy + zy(50), t.e);
 
         if (isBusbar(tn)) {                       /* coupler → another busbar */
           const here = busSet.has(tn.tag);
           const tBoard = here ? boardTag : (sldBoardOf(S, tn) || String(tn.parent_tag || ""));
-          s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + 12}" text-anchor="middle" font-family="${MONO}" font-size="${ts(7.6)}" font-weight="700" fill="${SLD_BUSCOL}">` +
+          s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + 12}" text-anchor="middle" font-family="${MONO}" font-size="${ts(7.6)}" font-weight="700" fill="${SLD_BUSCOL}">` +
             `⇢ BUSBAR ${esc(sldBusCode(tn.tag, tBoard))}</text>`;
           if (!here) { drawn.offsheet++;
-            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + 23}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">off-sheet · ${esc(tBoard)}</text>`; }
+            s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + 23}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">off-sheet · ${esc(tBoard)}</text>`; }
         } else if (sldBoardOf(S, tn) && sldBoardOf(S, tn) !== boardTag) {
           /* the target is a POSITION on another Power Center (.210 → PC3 .300,
              .211 → PC4 .400) — that is a board-to-board tie, not a load.       */
           drawn.offsheet++;
           const tb = sldBoardOf(S, tn);
-          s += sldCard(cx, y0 + gx(SLD_LOAD_Y) + dy2, { tag: tb, data_status: tn.data_status },
+          s += sldCard(cx, y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt, { tag: tb, data_status: tn.data_status },
                        sldPosCode(tn.tag, tb) + (t.e.cable_tag ? " · " + t.e.cable_tag : ""), false);
-          s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + gx(SLD_BOXH) + 11}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">off-sheet · PC tie</text>`;
+          s += `<text x="${cx}" y="${y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + gx(SLD_BOXH) + 11}" text-anchor="middle" font-weight="600" font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}">off-sheet · PC tie</text>`;
         } else {                                   /* a served load */
           drawn.load++;
-          const cyL = y0 + gx(SLD_LOAD_Y) + dy2;
+          const cyL = y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt;
           s += sldGlyph(tn.symbol_kind, cx, cyL + zy(14), INK, false);
           s += `<text x="${cx}" y="${cyL + zy(42)}" text-anchor="middle" font-family="${MONO}" font-size="${ts(8)}" font-weight="700" fill="${INK}"` +
             (nav ? ` style="cursor:pointer" onclick="${nav}('asset/${esc(tn.tag)}')"` : "") +
@@ -1646,7 +1694,8 @@
     /* footer: legend + an honest account of what was not drawn.
        The legend is GENERATED from the symbols this board actually used, so a
        symbol added to the pack can never leave a stale key behind (rule G-7).  */
-    const fy = H - gx(14) - zy(14) - _footRows * zy(13);
+    let fy = H - gx(14) - zy(14) - _footRows * zy(13);
+    let legendRows = 0;
     const skipped = S._skipped.length;
     const Sym = (typeof window !== "undefined" ? window : globalThis).TamSym;
     const used = _symUsed || new Set();
@@ -1664,12 +1713,19 @@
         if (seen.indexOf(m) < 0 && m !== "BUSBAR" && m !== "BUSBAR_INVERTER" &&
             m !== "SWITCHBOARD") { seen.push(m); names.push((Sym.spec(m) || {}).name || m); }
       });
-      let lx = gx(SLD_PADX);
+      let lx = gx(SLD_PADX), ly = fy;
       seen.forEach((m, i) => {
-        s += Sym.draw(m, { x: lx + zy(7), y: fy - zy(4), scale: 0.62 * Z() });
-        s += `<text x="${lx + zy(17)}" y="${fy - 1}" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(names[i])}</text>`;
-        lx += gx(30) + names[i].length * ts(4.6);
+        /* the item width has to include the SYMBOL's own width, not a constant:
+           the contactor is 52 units wide against the usual 22, so a flat gx(30)
+           ran its glyph under the previous item's text. */
+        const sw = ((Sym.spec(m) || {}).w || 24) * 0.62 * Z();
+        const wItem = sw + gx(8) + names[i].length * ts(4.6) + gx(10);
+        if (lx > gx(SLD_PADX) && lx + wItem > W - gx(8)) { lx = gx(SLD_PADX); ly += zy(13); legendRows++; }
+        s += Sym.draw(m, { x: lx + sw / 2, y: ly - zy(4), scale: 0.62 * Z() });
+        s += `<text x="${lx + sw + gx(4)}" y="${ly - 1}" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(names[i])}</text>`;
+        lx += wItem;
       });
+      fy = ly;
       s += `<text x="${gx(SLD_PADX)}" y="${fy + zy(14)}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${SOFT}">` +
         `dashed = NORMALLY OPEN (bus coupler)  ·  dotted from an analyser = voltage reference, not a load  ·  ` +
         `dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.1.0</text>`;
@@ -1699,6 +1755,9 @@
         `${meterUnplaced.length} analyser${meterUnplaced.length === 1 ? "" : "s"} left in the outgoing row` +
         `${meterUnplaced.length ? " — " + meterUnplaced.map(m => sldPosCode(m.tag, boardTag)).join(", ") : ""}</text>`;
     s += `</svg>`;
+    /* the page ends below whatever the footer actually reached */
+    const HH = Math.max(H, fy2 + gx(12), fy + legendRows * zy(13) + gx(12));
+    s = s.split("%H%").join(String(+HH.toFixed(1)));
     return `<div style="overflow-x:auto">${s}</div>`;
   }
 
@@ -1709,7 +1768,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.9.0" };
+                version: "1.10.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
