@@ -901,13 +901,30 @@
   let sldSymbolStyle = "IEC";
   let _symUsed = null;                 // symbol kinds drawn in the current sld() call
 
-  function sldGlyph(kind, cx, cy, col, open) {
+  /* v1.12.0 — `fam` is v_sld_nodes.breaker_family (migration 177): 'ACB' for a
+     3WA/3WL air circuit breaker, 'MCCB' for a 3VA moulded-case one. Fourteen
+     positions carry an ACB — the gas and diesel incomers, the three couplers
+     and the two transformer feeders .212 / .213 — and every one of them was
+     drawing as a moulded-case breaker, because ELEC_MAP keys on symbol_kind and
+     symbol_kind only knows that the row is a FEEDER.
+     The view names the FAMILY, a fact off the type code; which symbol that
+     deserves is decided here, in the one place a column value meets a symbol. */
+  function sldGlyph(kind, cx, cy, col, open, fam) {
     if (_symUsed) _symUsed.add(String(kind || "").toUpperCase());
     const S = (typeof window !== "undefined" ? window : globalThis).TamSym;
     if (S && S.ELEC_MAP && S.draw) {
       let k = S.ELEC_MAP[String(kind || "").toUpperCase()] || "UNKNOWN";
+      /* A POSITION IS ITS DEVICE, NOT ITS LOAD. `.212` and `.213` carry
+         feeder_kind='TRANSFORMER' — which says what the way SERVES — so they
+         were drawn as transformers, with the transformer 480-TR-001 drawn
+         again underneath as the load. The same object twice, and the 3WA1120
+         air circuit breaker that is actually in the cubicle appeared nowhere.
+         A cubicle that holds a MAIN_BREAKER is drawn as that breaker. */
+      if (fam && k === "TRANSFORMER") k = "CIRCUIT_BREAKER";
+      if (k === "CIRCUIT_BREAKER" && fam === "ACB") k = "ACB_DRAWOUT";
       if (sldSymbolStyle === "BOX" && (k === "CIRCUIT_BREAKER" || k === "ACB_DRAWOUT"))
         k = "CIRCUIT_BREAKER_BOX";
+      if (_symUsed && k === "ACB_DRAWOUT") _symUsed.add("ACB_DRAWOUT");
       return S.draw(k, { x: cx, y: cy, color: col, open: !!open,
                          state: open ? "OPEN" : "DESIGN", scale: 0.92 * Z() });
     }
@@ -921,10 +938,12 @@
      unconnected. The pack already publishes every symbol's ports; ask it,
      rather than guessing an offset that is right for one symbol and wrong for
      the rest. Falls back to the old constant if the packs are absent (G-8). */
-  function sldPortY(kind, cx, cy, key) {
+  function sldPortY(kind, cx, cy, key, fam) {
     const S = (typeof window !== "undefined" ? window : globalThis).TamSym;
     if (S && S.ELEC_MAP && S.ports) {
       let k = S.ELEC_MAP[String(kind || "").toUpperCase()] || "UNKNOWN";
+      if (fam && k === "TRANSFORMER") k = "CIRCUIT_BREAKER";
+      if (k === "CIRCUIT_BREAKER" && fam === "ACB") k = "ACB_DRAWOUT";
       if (sldSymbolStyle === "BOX" && (k === "CIRCUIT_BREAKER" || k === "ACB_DRAWOUT"))
         k = "CIRCUIT_BREAKER_BOX";
       const p = S.ports(k, { x: cx, y: cy, scale: 0.92 * Z() });
@@ -1395,7 +1414,7 @@
         `stroke-width="1.6"${dash}/>` +
         `<line x1="${x}" y1="${busY - h}" x2="${x + e}" y2="${busY - h}" stroke="${col}" ` +
         `stroke-width="1.6"${dash}/>`;
-      g += sldGlyph(o.kind, x, sy, col, !!o.open);
+      g += sldGlyph(o.kind, x, sy, col, !!o.open, o.fam);
       /* The OUT label runs right, into the page margin, where there is room.
          The IN label cannot: anchored at the elbow it ran OFF THE LEFT EDGE of
          the viewBox and SVG clipped it silently — trap T-14, the third time.
@@ -1461,7 +1480,7 @@
       band.tie.forEach((t, i) => {
         s += tieStub(gx(SLD_PADX) + band.base * gx(SLD_COL) + t.dx, busY,
                      y0 + gx(SLD_INC_Y), +1, i, {
-          kind: t.pos.symbol_kind, open: !!t.open, n: band.tie.length,
+          kind: t.pos.symbol_kind, open: !!t.open, n: band.tie.length, fam: t.pos.breaker_family,
           farCode: t.farCode, sub: t.sub
         });
         if (t.offBoard) drawn.offsheet++;
@@ -1480,7 +1499,7 @@
       band.tieL.forEach(t => {
         outFar.add(t.farTag);
         s += tieStub(busX1, busY, y0 + gx(SLD_INC_Y), -1, li++, {
-          kind: t.pos.symbol_kind, open: !!t.open, n: band.tieL.length,
+          kind: t.pos.symbol_kind, open: !!t.open, n: band.tieL.length, fam: t.pos.breaker_family,
           farCode: t.farCode, sub: t.sub
         });
         if (t.offBoard) drawn.offsheet++;
@@ -1497,7 +1516,7 @@
         const srcBoard = sldBoardOf(S, x.src) || boardTag;
         const off = srcBoard !== boardTag;
         s += tieStub(busX1, busY, y0 + gx(SLD_INC_Y), -1, li++, {
-          kind: "BUS_COUPLER", open: !!x.e.normally_open,
+          kind: "BUS_COUPLER", open: !!x.e.normally_open, fam: x.cpl.breaker_family,
           farCode: sldBusCode(x.src.tag, srcBoard) + (off ? " · " + srcBoard : ""),
           sub: [(off ? srcBoard + " " : "") + sldPosCode(x.cpl.tag, srcBoard),
                 x.e.cable_tag || "", x.e.normally_open ? "N.O." : ""].filter(Boolean).join(" · ")
@@ -1557,12 +1576,12 @@
           }
           if (off) drawn.offsheet++;
           drawn.src++;
-          s += `<line x1="${cx}" y1="${srcBottom}" x2="${cx}" y2="${sldPortY(p.symbol_kind, cx, cy, "A")}" stroke="${INK}" stroke-width="1.4"/>`;
+          s += `<line x1="${cx}" y1="${srcBottom}" x2="${cx}" y2="${sldPortY(p.symbol_kind, cx, cy, "A", p.breaker_family)}" stroke="${INK}" stroke-width="1.4"/>`;
           s += sldCable(cx, srcBottom + 13, up[0]);
         }
-        s += `<line x1="${cx}" y1="${sldPortY(p.symbol_kind, cx, cy, "B")}" x2="${cx}" y2="${busY - 2}" stroke="${INK}" stroke-width="1.4"/>`;
+        s += `<line x1="${cx}" y1="${sldPortY(p.symbol_kind, cx, cy, "B", p.breaker_family)}" x2="${cx}" y2="${busY - 2}" stroke="${INK}" stroke-width="1.4"/>`;
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, true, meterOn.get(p.tag));
-        s += sldGlyph(p.symbol_kind, cx, cy, INK, false);
+        s += sldGlyph(p.symbol_kind, cx, cy, INK, false, p.breaker_family);
         s += sldPosLabel(cx, cy, sldPosCode(p.tag, boardTag), nav, p.tag);
       });
 
@@ -1581,7 +1600,7 @@
           .filter(t => t.n && t.n.tag !== band.bus.tag);
         const t = targets[0], tn = t && t.n;
 
-        s += `<line x1="${cx}" y1="${busY + 2}" x2="${cx}" y2="${sldPortY(p.symbol_kind, cx, cy, "A")}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        s += `<line x1="${cx}" y1="${busY + 2}" x2="${cx}" y2="${sldPortY(p.symbol_kind, cx, cy, "A", p.breaker_family)}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, false, meterOn.get(p.tag));
         /* ── v1.10.0 · the STARTING DEVICE, between the breaker and the load ──
            Mario: "all contactors have coils, include a contactor with coil".
@@ -1592,7 +1611,7 @@
            The conductor is BROKEN at the device's terminals, like every other
            symbol on the sheet — a line through a device says it is not in the
            circuit. A way with no start_kind draws exactly as before. */
-        const yTop = sldPortY(p.symbol_kind, cx, cy, "B");
+        const yTop = sldPortY(p.symbol_kind, cx, cy, "B", p.breaker_family);
         const yBot = (tn && !isBusbar(tn) && !(sldBoardOf(S, tn) && sldBoardOf(S, tn) !== boardTag))
             ? sldPortY(tn.symbol_kind, cx, y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt + zy(14), "A")
             : y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt - 2;
@@ -1606,7 +1625,7 @@
         } else if (t) {
           s += `<line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${yBot}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         }
-        s += sldGlyph(p.symbol_kind, cx, cy, isCpl ? SLD_BUSCOL : INK, openEdge);
+        s += sldGlyph(p.symbol_kind, cx, cy, isCpl ? SLD_BUSCOL : INK, openEdge, p.breaker_family);
         s += sldPosLabel(cx, cy, sldPosCode(p.tag, boardTag), nav, p.tag);
 
         if (!t) {
@@ -1790,7 +1809,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.11.0" };
+                version: "1.12.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
