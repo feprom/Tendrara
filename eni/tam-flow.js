@@ -907,6 +907,25 @@
     return sldGlyphLegacy(kind, cx, cy, col, open);
   }
 
+  /* v1.9.0 — where a conductor must STOP so it touches the symbol.
+     Mario: "los motores tampoco llegan a conectarse con el cable". The drop
+     line ended at a hard-coded offset while the glyph was drawn at 0.92·Z with
+     its own radius, so a motor (r = 12) left a ~6 px gap and the load looked
+     unconnected. The pack already publishes every symbol's ports; ask it,
+     rather than guessing an offset that is right for one symbol and wrong for
+     the rest. Falls back to the old constant if the packs are absent (G-8). */
+  function sldPortY(kind, cx, cy, key) {
+    const S = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (S && S.ELEC_MAP && S.ports) {
+      let k = S.ELEC_MAP[String(kind || "").toUpperCase()] || "UNKNOWN";
+      if (sldSymbolStyle === "BOX" && (k === "CIRCUIT_BREAKER" || k === "ACB_DRAWOUT"))
+        k = "CIRCUIT_BREAKER_BOX";
+      const p = S.ports(k, { x: cx, y: cy, scale: 0.92 * Z() });
+      if (p && p[key]) return p[key].y;
+    }
+    return cy + (key === "A" ? -zy(13) : zy(13));
+  }
+
   /* draw a REGISTERED symbol kind directly, bypassing ELEC_MAP.
      v1.3.0. Used by the metering assembly: "CT" is a shape the renderer places
      from `ct_ratio_raw` on a metering node — it is NOT a `symbol_kind` any row
@@ -1509,10 +1528,10 @@
           }
           if (off) drawn.offsheet++;
           drawn.src++;
-          s += `<line x1="${cx}" y1="${srcBottom}" x2="${cx}" y2="${cy - zy(13)}" stroke="${INK}" stroke-width="1.4"/>`;
+          s += `<line x1="${cx}" y1="${srcBottom}" x2="${cx}" y2="${sldPortY(p.symbol_kind, cx, cy, "A")}" stroke="${INK}" stroke-width="1.4"/>`;
           s += sldCable(cx, srcBottom + 13, up[0]);
         }
-        s += `<line x1="${cx}" y1="${cy + zy(13)}" x2="${cx}" y2="${busY - 2}" stroke="${INK}" stroke-width="1.4"/>`;
+        s += `<line x1="${cx}" y1="${sldPortY(p.symbol_kind, cx, cy, "B")}" x2="${cx}" y2="${busY - 2}" stroke="${INK}" stroke-width="1.4"/>`;
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, true, meterOn.get(p.tag));
         s += sldGlyph(p.symbol_kind, cx, cy, INK, false);
         s += sldPosLabel(cx, cy, sldPosCode(p.tag, boardTag), nav, p.tag);
@@ -1533,9 +1552,12 @@
           .filter(t => t.n && t.n.tag !== band.bus.tag);
         const t = targets[0], tn = t && t.n;
 
-        s += `<line x1="${cx}" y1="${busY + 2}" x2="${cx}" y2="${cy - zy(13)}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        s += `<line x1="${cx}" y1="${busY + 2}" x2="${cx}" y2="${sldPortY(p.symbol_kind, cx, cy, "A")}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         if (meterOn.has(p.tag)) s += meterAssembly(cx, busY, false, meterOn.get(p.tag));
-        if (t) s += `<line x1="${cx}" y1="${cy + zy(15)}" x2="${cx}" y2="${y0 + gx(SLD_LOAD_Y) + dy2 - 2}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+        if (t) s += `<line x1="${cx}" y1="${sldPortY(p.symbol_kind, cx, cy, "B")}" x2="${cx}" y2="${
+          (tn && !isBusbar(tn) && !(sldBoardOf(S, tn) && sldBoardOf(S, tn) !== boardTag))
+            ? sldPortY(tn.symbol_kind, cx, y0 + gx(SLD_LOAD_Y) + dy2 + zy(14), "A")
+            : y0 + gx(SLD_LOAD_Y) + dy2 - 2}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         s += sldGlyph(p.symbol_kind, cx, cy, isCpl ? SLD_BUSCOL : INK, openEdge);
         s += sldPosLabel(cx, cy, sldPosCode(p.tag, boardTag), nav, p.tag);
 
@@ -1603,7 +1625,8 @@
           if (kids.length) {
             const cyK = cyL + gx(SLD_L2_DY) + (targets.length > 1 ? 8 : 0);
             const kn = S._byTag.get(kids[0].to_tag);
-            s += `<line x1="${cx}" y1="${cyL + zy(56)}" x2="${cx}" y2="${cyK - zy(4)}" stroke="${SLD_BUSCOL}" stroke-width="1.3"/>`;
+            s += `<line x1="${cx}" y1="${cyL + zy(56)}" x2="${cx}" y2="${
+              sldPortY(kn.symbol_kind, cx, cyK + zy(12), "A")}" stroke="${SLD_BUSCOL}" stroke-width="1.3"/>`;
             s += sldCable(cx, cyK - zy(28), kids[0]);
             s += sldGlyph(kn.symbol_kind, cx, cyK + zy(12), INK, false);
             s += `<circle cx="${cx - zy(26)}" cy="${cyK + zy(12)}" r="3" fill="${SLD_STATUS[kn.data_status] || SOFT}">` +
@@ -1686,7 +1709,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.8.0" };
+                version: "1.9.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
