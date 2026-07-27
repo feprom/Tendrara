@@ -86,6 +86,18 @@
   .fact.link{cursor:pointer;transition:border-color .12s,background .12s,transform .06s;}
   .fact.link:hover{border-color:var(--crimson);background:var(--bg-soft);}
   .fact.link:active{transform:translateY(1px);}
+  /* [EI00 v1.18] the same .fact card, tightened for life inside a discipline box:
+     it no longer stretches (flex:1 made five cards claim 810 px and pushed the
+     boxes onto separate rows) and it gives back the padding it does not need at
+     this density. Everything else — icon, hover, click target — is untouched,
+     because Mario said the cards themselves were right. */
+  .dband{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px;align-items:flex-start;}
+  .dband .facts{margin:0;gap:7px;}
+  .dband .fact{flex:0 0 auto;min-width:0;padding:7px 10px;gap:8px;background:#fff;}
+  .dband .fact .ficon{width:26px;height:26px;}
+  .dband .fact .ficon svg{width:15px;height:15px;}
+  .dband .fact .n{font-size:18px;}
+  .dband .fact .l{font-size:9px;margin-top:2px;white-space:nowrap;}
   /* discipline card — collapsible group of area cards by engineering discipline */
   .disc-card{border:1px solid var(--line-strong);border-radius:8px;margin-top:14px;background:#fff;overflow:hidden;}
   .disc-h{display:flex;align-items:center;gap:9px;padding:10px 13px;cursor:pointer;user-select:none;
@@ -1665,6 +1677,34 @@ function fact(kind,n,label,opts){
   </div>`;
 }
 // discipline card (Mechanical / Electrical / Instrumentation / Control) — collapsible, starts collapsed
+/* ── [EI00] v1.18 · KPI cards, GROUPED BY DISCIPLINE, still individually live ─
+   First attempt merged each discipline into ONE tile. Mario, immediately:
+   *"las etiquetas estaban bien, necesito que al hacer click me lleve al
+   resumen, así que no me sirven agrupadas, sólo ordenadas"*. Exactly right —
+   the grouping was bought with the thing the strip was FOR. A KPI you cannot
+   click is a decoration.
+
+   So the cards come back, one per figure, each with its own destination; the
+   discipline is a BOX AROUND them with a coloured rule and a name. Order and
+   grouping without giving up a single click.
+
+   The breakdown follows ISO 14224's equipment classes — the standard the
+   industry already uses to file plant equipment for reliability data: rotating
+   (pumps, compressors, motors), static (exchangers, vessels and tanks),
+   electrical (generators, switchgear, loads), and safety (F&G, fire, SCEs).
+   Every count is read from the asset registry by class code or from the domain
+   list it belongs to; none is typed in. */
+function discBand(groups){
+  const box = ([title,col,items]) => {
+    if(!items || !items.length) return "";
+    const cards = items.map(([icon,n,label,link]) => fact(icon,n,label,link?{link:link}:{})).join("");
+    return `<div style="border:1px solid var(--line);border-top:3px solid ${col};border-radius:8px;padding:7px 9px 9px;background:var(--paper,#FBFCFD)">`
+      + `<div style="font:700 9px Consolas,monospace;color:${col};letter-spacing:.09em;margin:0 0 6px 2px">${esc(title)}</div>`
+      + `<div class="facts" style="margin:0">${cards}</div></div>`;
+  };
+  return `<div class="dband">` + groups.map(box).join("") + `</div>`;
+}
+
 function discCard(key,icon,color,title,sub,content){
   return `<div class="disc-card" id="disc-${key}">
     <div class="disc-h" style="border-left-color:${color}" onclick="toggleDisc('${key}')">
@@ -1798,38 +1838,53 @@ function renderHome(c){
   const verified=DB.vers.filter(v=>v.check_kind==="FIELD_VERIFY"&&v.result==="OK").length;
   const proc=PROC_ORDER.filter(areaExists), util=UTIL_ORDER.filter(areaExists);
   const cnt=code=>areaCounts(code);
+  const ec=code=>(DB.elecUi||[]).filter(r=>r.class_code===code).length;
+  /* counted from the asset registry, never typed in. The first draft of this
+     strip carried a hand-written "POWER CENTERS 4" — true of the single-line
+     sheets and FALSE of the plant, which registers 7 SWITCHGEAR assets. A
+     number nobody can trace is worse than no number: it looks exactly like one
+     that came from the data. */
+  const ac=code=>(DB.assets||[]).filter(a=>{
+    const cl=IDX.aclassById.get(a.asset_class_id); return cl && cl.code===code; }).length;
   const legendItems=[["EQ","EQ"],["INST","INST"],["IO","IO"],["VLV","VLV"],["ST","ST"],["ALM","ALM"]];
   const legend=legendItems.map(([k,lbl])=>`<span>${ICON(k)}${lbl} · ${PV_LABELS[k]}</span>`).join("");
   c.innerHTML=`
   <div class="kicker">TX EI00 <span class="sub">· PROCESS VIEW · AREAS &amp; UTILITIES</span></div>
   <h1>Tendrara Micro-LNG — Process View</h1>
-  <p class="lead">Areas and utilities as per the process description (<span class="mono">PRO02-ING-FR02</span>),
-  laid out as the process flow. Each block is a unit card showing its digitized inventory — click a block
-  to drill into stations, IO lists, instruments, valves and alarms.</p>
-  <div class="facts">
-    ${fact("AREA",proc.length+util.length,"AREAS & UTILITIES")}
-    ${fact("ST",IDX.stations.size,"IO STATIONS (RIO / JB)")}
-    ${fact("IO",DB.io.length,"IO CHANNELS")}
-    ${fact("INST",DB.inst.length,"INSTRUMENTS")}
-    ${fact("VLV",DB.valves.length,"ACTUATED VALVES")}
-    ${fact("MOT",(DB.elecUi||[]).filter(r=>r.class_code==="MOTOR").length,"MOTORS",{link:"nav('report/motors')"})}
-    ${fact("ALM",DB.alarms.length,"ALARMS",{link:"nav('alarms')"})}
-    ${fact("DWG",DB.drawings.length,"P&ID DRAWINGS",{link:"nav('drawings')"})}
-    ${fact("VERIFY",Math.round(100*verified/Math.max(1,DB.io.length))+"%","IO FIELD-VERIFIED ("+verified+"/"+DB.io.length+")")}
-  </div>
+  ${discBand([
+    ["MECHANICAL", "#B26A00", [
+      ["EQ",   DB.equip.length,        "EQUIPMENT",       "nav('report/equipment')"],
+      ["MECH", ac("PUMP"),             "PUMPS",           "nav('report/equipment')"],
+      ["MECH", ac("COMPRESSOR"),       "COMPRESSORS",     "nav('report/equipment')"],
+      ["MECH", ac("HEAT_EXCHANGER"),   "HEAT EXCHANGERS", "nav('report/equipment')"],
+      ["MECH", ac("VESSEL")+ac("SEPARATOR")+ac("PROCESS_TANK")+ac("STORAGE_TANK"),
+                                        "VESSELS & TANKS", "nav('report/equipment')"]]],
+    ["ELECTRICAL", "#C8102E", [
+      ["MOT",  ec("MOTOR"),            "MOTORS",          "nav('report/motors')"],
+      ["MOT",  ec("GENERATOR"),        "GENERATORS",      "nav('report/motors')"],
+      ["MCC",  ac("SWITCHGEAR"),       "SWITCHGEAR",      "nav('sld')"],
+      ["LOAD", (DB.elecUi||[]).length, "ELECTRICAL LOADS","nav('report/loads')"]]],
+    ["INSTRUMENTATION & CONTROL", "#0B5CAD", [
+      ["INST", DB.inst.length,         "INSTRUMENTS",     "nav('report/instruments')"],
+      ["VLV",  DB.valves.length,       "ACTUATED VALVES", "nav('report/valves')"],
+      ["IO",   DB.io.length,           "IO CHANNELS",     "nav('report/io')"],
+      ["ST",   IDX.stations.size,      "IO STATIONS",     "nav('report/panels')"],
+      ["ALM",  DB.alarms.length,       "ALARMS",          "nav('alarms')"]]],
+    ["SAFETY", "#B23A00", [
+      ["INST", ac("FG_DETECTOR"),              "F&G DETECTORS",  "nav('safety')"],
+      ["EQ",   ac("FIRE_EQUIPMENT"),           "FIRE EQUIPMENT", "nav('safety')"],
+      ["CE",   ac("SAFETY_CRITICAL_ELEMENT"),  "SAFETY-CRITICAL","nav('safety')"]]],
+    ["PLANT & DOCUMENTS", "#4A4F57", [
+      ["AREA",   proc.length+util.length, "AREAS & UTILITIES", null],
+      ["EQ",     (DB.skids||[]).length,   "SKIDS",             "nav('report/skids')"],
+      ["DWG",    DB.drawings.length,      "P&ID DRAWINGS",     "nav('drawings')"],
+      ["VERIFY", Math.round(100*verified/Math.max(1,DB.io.length))+"%",
+                 "IO FIELD-VERIFIED ("+verified+"/"+DB.io.length+")", null]]]
+  ])}
   <div class="pv-toolbar">
-    <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">Process flow · feed gas → LNG. Click any block to open its area.</span>
+    <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">Process flow · feed gas → LNG. Click any block to open its area. · <span class="chip esd">ESD</span> tinted yellow throughout (E2023040); PCS panels <span class="mono">P-PN-*</span>, ESD boxes <span class="mono">E-PB-*</span>.</span>
     <span style="flex:1"></span>
     <span class="pv-legend" style="margin:0">${legend}</span>
-  </div>
-  <div class="note" style="border-left:3px solid var(--esd-line);background:var(--esd-row)">
-    <b>Two control systems.</b> The <span class="chip dim">PCS</span> process control system
-    (contract <span class="mono">IE24090 / IE25072</span>, ESA Elettromeccanica) and the
-    <span class="chip esd">ESD</span> emergency shutdown system
-    (contract <span class="mono">E2023040</span>, Enermove) run <b>in parallel</b>.
-    Anything belonging to the ESD — its cabinet, its junction boxes, its IO channels and the
-    instruments wired to them — is shown <b>tinted yellow</b> throughout this application.
-    ESD junction boxes are tagged <span class="mono">E-PB-*</span>; PCS panels <span class="mono">P-PN-*</span>.
   </div>
   <div class="bfd">${bfdSvg(cnt)}</div>
   <div class="note">Transactions: <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
