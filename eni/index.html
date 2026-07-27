@@ -470,7 +470,7 @@
      Bump ?v= on every release — same cache rule as tam-flow.js. -->
 <script src="tam-sym.js?v=0.2.3"></script>
 <script src="tam-sym-elec.js?v=0.3.4"></script>
-<script src="tam-flow.js?v=1.15.1"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
+<script src="tam-flow.js?v=1.15.2"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
@@ -3786,12 +3786,6 @@ async function renderSld(c, board){
   c.innerHTML = `
   <div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · SINGLE-LINE DIAGRAM</span></div>
   <h1>Electrical single-line</h1>
-  <p class="lead">The ELD03 Power Center schedules as a drawing, generated from
-  <span class="mono">v_sld_nodes</span> / <span class="mono">v_sld_edges</span> — nothing is drawn that the
-  database does not hold. Positions run left to right in <b>display_rank</b> order
-  (<span class="mono">1000 + sheet_no×100 + column_index</span>), which reproduces each sheet's own column
-  sequence. Bus couplers are <b>NORMALLY OPEN</b> and drawn dashed. The dot beside a load is its
-  <span class="mono">data_status</span>. A position with no power edge says so rather than showing nothing.</p>
   <div class="facts">
     <div class="fact" style="border-color:var(--crimson)"><div class="fbody"><div class="n" style="color:var(--blue)">${boards.length}</div><div class="l">POWER CENTERS</div></div></div>
     <div class="fact"><div class="fbody"><div class="n">${totPos}</div><div class="l">POSITIONS</div></div></div>
@@ -3804,8 +3798,8 @@ async function renderSld(c, board){
       <span class="dim">${b.positions}p</span></span>`).join("")}
   </div>
   <div id="sldbox" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px"></div>
-  <p class="lead" style="margin-top:10px">Click any load tag to open its asset card. The diagram scrolls
-  horizontally — PC3 is 42 columns wide.</p>
+  <p class="lead" style="margin-top:10px">Click any load tag to open its asset card. A busbar wider than
+  the page is cut into rows, each end marked with the row it continues into.</p>
   ${dataTable("sldcov","SC","Coverage per Power Center",[
     {label:"BOARD", get:r=>r.tag, cls:"mono",
       html:(r,v)=>`<span class="tag" onclick="event.stopPropagation();nav('sld/'+encodeURIComponent('${esc(r.tag)}'))">${esc(v)}</span>`},
@@ -3817,7 +3811,24 @@ async function renderSld(c, board){
   ], boards)}`;
 
   const box=document.getElementById("sldbox");
-  if(box) box.innerHTML = TamFlow.sld(S, cur, {onNavigate:"sldNav"});
+  /* The drawing must fit THIS BOX, not the window. tam-flow falls back to
+     window.innerWidth when nobody tells it, and innerWidth knows nothing about
+     the 280 px navigator rail on the left — so PC3 was laid out 1762 px wide
+     inside a ~1590 px box and the horizontal scrollbar survived every attempt
+     to trim the margin. clientWidth is the answer the DOM already has.
+     Re-measured on resize, debounced, so dragging the window re-cuts the bars. */
+  const sldDraw = () => { const b=document.getElementById("sldbox");
+    if(b) b.innerHTML = TamFlow.sld(S, cur, {onNavigate:"sldNav",
+                                             wrapWidth: Math.max(320, b.clientWidth - 12)}); };
+  if(box) sldDraw();
+  /* the listener is registered ONCE but must always redraw the board that is on
+     screen NOW — so it calls through a slot that each render overwrites, not the
+     closure it happened to see first. Captured directly, resizing after
+     switching boards would have redrawn the previous one. */
+  window._sldDraw = sldDraw;
+  if(!window._sldResize){ window._sldResize = true;
+    let t=null; window.addEventListener("resize", ()=>{ clearTimeout(t);
+      t=setTimeout(()=>{ if(ROUTE.view==="sld" && window._sldDraw) window._sldDraw(); }, 180); }); }
 }
 
 function renderStructure(c){

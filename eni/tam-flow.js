@@ -1441,8 +1441,12 @@
        so it has never been visible on any board that had one. A footer whose
        honesty line is clipped is worse than no honesty line, because the
        diagram then looks complete (rule G-4). One row per optional line. */
-    const _footRows = ((S._skipped.length ? 1 : 0) +
-                       ((placedMeters.size || meterUnplaced.length) ? 1 : 0));
+    /* v1.15.2 — the reserve follows the same rule as the footer itself. It used
+       to reserve a row for every account line that COULD print; now only the
+       two that actually do, so a clean board reclaims the page it was leaving
+       empty at the bottom. */
+    const _footRows = ((S._skipped.some(e => e.edge_kind !== "CONNECTED_TO") ? 1 : 0) +
+                       (meterUnplaced.length ? 1 : 0));
     const H = _acc + gx(34) + zy(24) + _footRows * zy(13);
     const colX = i => gx(SLD_PADX) + i * gx(SLD_COL) + gx(SLD_COL) / 2;
 
@@ -1980,42 +1984,40 @@
       });
     });
 
-    /* ── v1.15.0 · footer: THE ACCOUNT ONLY ────────────────────────────────
-       Mario: "eliminar la lista del fondo". The generated symbol legend and the
-       conventions sentence are gone — on a sheet whose symbols are IEC and
-       whose reader is an electrical engineer, a key naming "Contactor" under a
-       contactor is furniture, and it was the tallest thing on the page after
-       the drawing itself.
+    /* ── v1.15.2 · footer: SILENT UNLESS SOMETHING IS WRONG ────────────────
+       v1.15.0 dropped the symbol legend and kept the account. Mario circled the
+       account too — and on the boards as they stand it was reporting the
+       ALL-CLEAR: "14 network links (expected)" and "0 analysers left in the
+       outgoing row". Two lines of page, every board, to say nothing happened.
 
-       What STAYS is the account: how many edges could not be drawn, and how
-       many analysers ended up where they should not. That is not a legend, it
-       is the drawing admitting what it left out — drop it and an incomplete
-       sheet becomes indistinguishable from a complete one (rule G-4). The two
-       lines only appear when they have something to report, so a clean board
-       now ends at its last busbar with nothing underneath.                    */
+       So the rule tightens rather than the honesty loosening: the footer speaks
+       only when there is a GAP.
+
+         · edges not drawable — only the POWER ones. A CONNECTED_TO edge whose
+           endpoint is not an electrical node is expected and always will be;
+           and the raw count is on the page anyway, in the EDGES NOT DRAWABLE
+           fact card above the drawing, which is where a number belongs.
+         · analysers — only the ones left stranded in the outgoing row. How many
+           were placed correctly is not news.
+
+       Everything clean, and the sheet ends at its last busbar. Something wrong,
+       and the line is there in red with nothing else competing for the eye —
+       which is more visible than it ever was buried in an all-clear paragraph.
+       Rule G-4 is about a gap staying visible, not about narrating success.   */
     let fy = H - gx(14) - zy(14) - _footRows * zy(13);
     const legendRows = 0;
-    const skipped = S._skipped.length;
     let fy2 = fy + zy(13);
-    if (skipped) {
-      /* v1.3.0 — the breakdown is COUNTED, not narrated. The old sentence named
-         the flash-compressor motors as the example; migration 154 put them in
-         the view and the sentence kept claiming them anyway. A footer that
-         explains the data has to be derived from the data. */
-      const nNet = S._skipped.filter(e => e.edge_kind === "CONNECTED_TO").length;
-      const nPwr = skipped - nNet;
-      s += `<text x="${gx(SLD_PADX)}" y="${fy2}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${nPwr ? CRIMSON : SOFT}">` +
-        `${skipped} edge${skipped > 1 ? "s" : ""} in v_sld_edges not drawable — endpoint absent from v_sld_nodes: ` +
-        `${nNet} network link${nNet === 1 ? "" : "s"} (expected — their endpoints are not electrical nodes)` +
-        `${nPwr ? `, ${nPwr} POWER edge${nPwr === 1 ? "" : "s"} ← this is a gap` : ""}</text>`;
+    const nPwrSkipped = S._skipped.filter(e => e.edge_kind !== "CONNECTED_TO").length;
+    if (nPwrSkipped) {
+      s += `<text x="${gx(SLD_PADX)}" y="${fy2}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${CRIMSON}">` +
+        `${nPwrSkipped} POWER edge${nPwrSkipped === 1 ? "" : "s"} in v_sld_edges not drawable — ` +
+        `endpoint absent from v_sld_nodes ← this is a gap</text>`;
       fy2 += zy(13); }
-    /* v1.3.0 — the metering account. Both numbers are stated even when the
-       second is zero: "11 drawn" alone would not say whether any were left. */
-    if (drawn.meter || meterUnplaced.length)
-      s += `<text x="${gx(SLD_PADX)}" y="${fy2}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${meterUnplaced.length ? CRIMSON : SOFT}">` +
-        `${drawn.meter} metering assembl${drawn.meter === 1 ? "y" : "ies"} drawn on the measured circuit  ·  ` +
-        `${meterUnplaced.length} analyser${meterUnplaced.length === 1 ? "" : "s"} left in the outgoing row` +
-        `${meterUnplaced.length ? " — " + meterUnplaced.map(m => sldPosCode(m.tag, boardTag)).join(", ") : ""}</text>`;
+    if (meterUnplaced.length)
+      s += `<text x="${gx(SLD_PADX)}" y="${fy2}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${CRIMSON}">` +
+        `${meterUnplaced.length} analyser${meterUnplaced.length === 1 ? "" : "s"} could not be attached to a ` +
+        `measured circuit and stayed in the outgoing row — ` +
+        `${meterUnplaced.map(m => sldPosCode(m.tag, boardTag)).join(", ")}</text>`;
     s += `</svg>`;
     /* the page ends below whatever the footer actually reached */
     const HH = Math.max(H, fy2 + gx(12), fy + legendRows * zy(13) + gx(12));
@@ -2030,13 +2032,15 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                /* v1.15.0 — 0 means MEASURE THE WINDOW at draw time, which is
-                   what a screen wants. A number is a fixed page width in CSS px,
+                /* 0 = let each call decide (it should pass `wrapWidth`,
+                   measured off its own container — see index.html; the window is
+                   only the last-resort fallback, and it does not know about the
+                   page's navigator rail). A number here OVERRIDES every caller,
                    which is what a reproducible export or a print wants: set it
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.15.1" };
+                version: "1.15.2" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
