@@ -91,13 +91,18 @@
      boxes onto separate rows) and it gives back the padding it does not need at
      this density. Everything else — icon, hover, click target — is untouched,
      because Mario said the cards themselves were right. */
-  .dband{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px;align-items:flex-start;}
-  .dband .facts{margin:0;gap:7px;}
-  .dband .fact{flex:0 0 auto;min-width:0;padding:7px 10px;gap:8px;background:#fff;}
-  .dband .fact .ficon{width:26px;height:26px;}
-  .dband .fact .ficon svg{width:15px;height:15px;}
-  .dband .fact .n{font-size:18px;}
-  .dband .fact .l{font-size:9px;margin-top:2px;white-space:nowrap;}
+  /* [EI00 v1.18] fourteen cards across four boxes in ONE row: the card keeps its
+     icon, its hover and its click, and gives back only padding and a couple of
+     px of type. nowrap on the label is what makes the row predictable — a label
+     that wraps makes its box taller than its neighbours and the row stops
+     reading as a row. */
+  .dband{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px;align-items:stretch;}
+  .dband .facts{margin:0;gap:6px;flex-wrap:nowrap;}
+  .dband .fact{flex:0 0 auto;min-width:0;padding:6px 8px;gap:7px;background:#fff;}
+  .dband .fact .ficon{width:24px;height:24px;}
+  .dband .fact .ficon svg{width:14px;height:14px;}
+  .dband .fact .n{font-size:17px;}
+  .dband .fact .l{font-size:8.5px;margin-top:2px;white-space:nowrap;}
   /* discipline card — collapsible group of area cards by engineering discipline */
   .disc-card{border:1px solid var(--line-strong);border-radius:8px;margin-top:14px;background:#fff;overflow:hidden;}
   .disc-h{display:flex;align-items:center;gap:9px;padding:10px 13px;cursor:pointer;user-select:none;
@@ -1695,11 +1700,18 @@ function fact(kind,n,label,opts){
    Every count is read from the asset registry by class code or from the domain
    list it belongs to; none is typed in. */
 function discBand(groups){
-  const box = ([title,col,items]) => {
+  /* Two colours per group, not one. Mario asked for a Mario-Bros palette — red,
+     yellow, green, blue — and a 9 px bold label in #FBD000 on white is simply
+     not readable. The RULE carries the bright colour, the LABEL a darker tone of
+     the same hue. The palette reads as asked and the type stays legible; using
+     one value for both would have meant either a muddy rule or an unreadable
+     word, and neither is a choice worth making. */
+  const box = ([title,rule,ink,items]) => {
     if(!items || !items.length) return "";
     const cards = items.map(([icon,n,label,link]) => fact(icon,n,label,link?{link:link}:{})).join("");
-    return `<div style="border:1px solid var(--line);border-top:3px solid ${col};border-radius:8px;padding:7px 9px 9px;background:var(--paper,#FBFCFD)">`
-      + `<div style="font:700 9px Consolas,monospace;color:${col};letter-spacing:.09em;margin:0 0 6px 2px">${esc(title)}</div>`
+    return `<div style="flex:1 1 auto;border:1px solid var(--line);border-top:3px solid ${rule};border-radius:8px;`
+      + `padding:6px 8px 8px;background:var(--paper,#FBFCFD)">`
+      + `<div style="font:700 9px Consolas,monospace;color:${ink};letter-spacing:.09em;margin:0 0 5px 2px">${esc(title)}</div>`
       + `<div class="facts" style="margin:0">${cards}</div></div>`;
   };
   return `<div class="dband">` + groups.map(box).join("") + `</div>`;
@@ -1727,8 +1739,13 @@ const TCI={"350":32.89,"340":14.02,"330":8.29,"360":7.23,"220":6.38,"310":3.68,"
            "410":2.20,"370":1.50,"230":1.33,"530":1.10,"500":0.90,"540":0.45,"550":0.40,"120":0.20,"430":0.15,"600":0.30};
 const TCI_EST=new Set(["410","530","500","540","550","120","430","600"]);
 // vertical growth factor for the flow diagram: rows/heights scale ×VS, while
-// font-size and icon-size stay constant → 30% taller, no text distortion.
-const VS=1.3, vy=n=>+(n*VS).toFixed(2);
+// font-size and icon-size stay constant → taller blocks, no text distortion.
+// 1.3 → 1.15 (v1.18): ~12% off the height of the whole diagram, width untouched
+// because the viewBox is a fixed 1000 wide and the SVG fills its container. Not
+// picked by taste — rendered at 1.30 / 1.15 / 1.12 and checked that the block
+// contents (two stat rows + the TCI bar) still clear each other. 1.12 starts to
+// crowd the bar; 1.15 is the last clean step.
+const VS=1.15, vy=n=>+(n*VS).toFixed(2);
 function tciColor(v){
   const t=Math.min(1,Math.pow((v||0)/33,0.42));
   const stops=[[22,80,200],[24,160,90],[229,196,28],[232,66,92]];
@@ -1846,46 +1863,30 @@ function renderHome(c){
      that came from the data. */
   const ac=code=>(DB.assets||[]).filter(a=>{
     const cl=IDX.aclassById.get(a.asset_class_id); return cl && cl.code===code; }).length;
-  const legendItems=[["EQ","EQ"],["INST","INST"],["IO","IO"],["VLV","VLV"],["ST","ST"],["ALM","ALM"]];
-  const legend=legendItems.map(([k,lbl])=>`<span>${ICON(k)}${lbl} · ${PV_LABELS[k]}</span>`).join("");
   c.innerHTML=`
   <div class="kicker">TX EI00 <span class="sub">· PROCESS VIEW · AREAS &amp; UTILITIES</span></div>
   <h1>Tendrara Micro-LNG — Process View</h1>
   ${discBand([
-    ["MECHANICAL", "#B26A00", [
-      ["EQ",   DB.equip.length,        "EQUIPMENT",       "nav('report/equipment')"],
-      ["MECH", ac("PUMP"),             "PUMPS",           "nav('report/equipment')"],
-      ["MECH", ac("COMPRESSOR"),       "COMPRESSORS",     "nav('report/equipment')"],
-      ["MECH", ac("HEAT_EXCHANGER"),   "HEAT EXCHANGERS", "nav('report/equipment')"],
+    ["MECHANICAL", "#E52521", "#C8102E", [
+      ["EQ",   DB.equip.length,      "EQUIPMENT",   "nav('report/equipment')"],
+      ["MECH", ac("PUMP"),           "PUMPS",       "nav('report/equipment')"],
+      ["MECH", ac("COMPRESSOR"),     "COMPRESSORS", "nav('report/equipment')"],
+      ["MECH", ac("HEAT_EXCHANGER"), "EXCHANGERS",  "nav('report/equipment')"],
       ["MECH", ac("VESSEL")+ac("SEPARATOR")+ac("PROCESS_TANK")+ac("STORAGE_TANK"),
-                                        "VESSELS & TANKS", "nav('report/equipment')"]]],
-    ["ELECTRICAL", "#C8102E", [
-      ["MOT",  ec("MOTOR"),            "MOTORS",          "nav('report/motors')"],
-      ["MOT",  ec("GENERATOR"),        "GENERATORS",      "nav('report/motors')"],
-      ["MCC",  ac("SWITCHGEAR"),       "SWITCHGEAR",      "nav('sld')"],
-      ["LOAD", (DB.elecUi||[]).length, "ELECTRICAL LOADS","nav('report/loads')"]]],
-    ["INSTRUMENTATION & CONTROL", "#0B5CAD", [
-      ["INST", DB.inst.length,         "INSTRUMENTS",     "nav('report/instruments')"],
-      ["VLV",  DB.valves.length,       "ACTUATED VALVES", "nav('report/valves')"],
-      ["IO",   DB.io.length,           "IO CHANNELS",     "nav('report/io')"],
-      ["ST",   IDX.stations.size,      "IO STATIONS",     "nav('report/panels')"],
-      ["ALM",  DB.alarms.length,       "ALARMS",          "nav('alarms')"]]],
-    ["SAFETY", "#B23A00", [
-      ["INST", ac("FG_DETECTOR"),              "F&G DETECTORS",  "nav('safety')"],
-      ["EQ",   ac("FIRE_EQUIPMENT"),           "FIRE EQUIPMENT", "nav('safety')"],
-      ["CE",   ac("SAFETY_CRITICAL_ELEMENT"),  "SAFETY-CRITICAL","nav('safety')"]]],
-    ["PLANT & DOCUMENTS", "#4A4F57", [
-      ["AREA",   proc.length+util.length, "AREAS & UTILITIES", null],
-      ["EQ",     (DB.skids||[]).length,   "SKIDS",             "nav('report/skids')"],
-      ["DWG",    DB.drawings.length,      "P&ID DRAWINGS",     "nav('drawings')"],
-      ["VERIFY", Math.round(100*verified/Math.max(1,DB.io.length))+"%",
-                 "IO FIELD-VERIFIED ("+verified+"/"+DB.io.length+")", null]]]
+                                      "VESSELS",     "nav('report/equipment')"]]],
+    ["ELECTRICAL", "#FBD000", "#9A6B00", [
+      ["MOT",  ec("MOTOR"),          "MOTORS",      "nav('report/motors')"],
+      ["MOT",  ec("GENERATOR"),      "GENERATORS",  "nav('report/motors')"],
+      ["MCC",  ac("SWITCHGEAR"),     "SWITCHGEAR",  "nav('sld')"],
+      ["LOAD", (DB.elecUi||[]).length,"LOADS",      "nav('report/loads')"]]],
+    ["INSTRUMENTATION", "#43B047", "#1F8A4C", [
+      ["INST", DB.inst.length,       "INSTRUMENTS", "nav('report/instruments')"],
+      ["VLV",  DB.valves.length,     "VALVES",      "nav('report/valves')"]]],
+    ["CONTROL", "#049CD8", "#0B5CAD", [
+      ["IO",   DB.io.length,         "IO CHANNELS", "nav('report/io')"],
+      ["ST",   IDX.stations.size,    "IO STATIONS", "nav('report/panels')"],
+      ["ALM",  DB.alarms.length,     "ALARMS",      "nav('alarms')"]]]
   ])}
-  <div class="pv-toolbar">
-    <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">Process flow · feed gas → LNG. Click any block to open its area. · <span class="chip esd">ESD</span> tinted yellow throughout (E2023040); PCS panels <span class="mono">P-PN-*</span>, ESD boxes <span class="mono">E-PB-*</span>.</span>
-    <span style="flex:1"></span>
-    <span class="pv-legend" style="margin:0">${legend}</span>
-  </div>
   <div class="bfd">${bfdSvg(cnt)}</div>
   <div class="note">Transactions: <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
   <span class="mono">TAG PT-3411.1</span> instrument · <span class="mono">EI30/EI40/EI50</span> reports.
