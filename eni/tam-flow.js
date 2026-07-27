@@ -2143,10 +2143,20 @@
   const SUM_START = [["VFD", "VFD"], ["SOFT_STARTER", "SOFT STARTER"],
                      ["SOFT_STARTER_2C", "SOFT STARTER · 2 CONT."], ["CONTACTOR", "DOL"]];
 
+  /* v1.17.0 — the two halves are addressable on their own. The page keeps the
+     CARDS on screen the whole time and swaps only what is under them: the
+     schematic when nothing is picked, the board's sheet when something is.
+     Mario: *"switchboard cards remain in the view, when I click in one it is
+     highlighted and below the SLD detail appears"*. That is one page with a
+     selection, not two pages — you never lose the row you are choosing from. */
   function sldSummary(S, o) {
+    return sldSummaryCards(S, o) + sldSummarySchematic(S, o);
+  }
+
+  function sldSummaryCards(S, o) {
     o = o || {};
     if (!S || !S._byTag) return "";
-    const nav = o.onNavigate;
+    const nav = o.onNavigate, sel = o.selected || null;
     const stats = sldBoards(S).map(b => sldBoardStats(S, b.tag));
     if (!stats.length) return "";
     const byTag = new Map(stats.map(x => [x.tag, x]));
@@ -2177,8 +2187,17 @@
         `<span style="display:inline-block;border:1px solid ${LINE};border-radius:3px;padding:1px 6px;` +
         `margin:0 4px 4px 0;font:700 10px ${MONO};color:${INK}">${k[1]} <span style="color:${CRIMSON}">${st.start[k[0]]}</span></span>`).join("");
 
-      return `<div${nav ? ` onclick="${nav}('sld/'+encodeURIComponent('${esc(st.tag)}'))" style="cursor:pointer;` : ` style="`}` +
-        `border:1px solid ${LINE};border-top:3px solid ${CRIMSON};border-radius:6px;padding:10px 12px;background:#fff">` +
+      /* A selected card is not a card with a highlight bolted on: it is the
+         open one. Heavier border, tinted background, and its own ✕ — clicking
+         the card again also closes it, so the gesture that opened it is the
+         gesture that closes it. */
+      const on = sel === st.tag;
+      const go = on ? "sld" : "sld/'+encodeURIComponent('" + esc(st.tag) + "')+'";
+      return `<div${nav ? ` onclick="${nav}('${go}')" style="cursor:pointer;` : ` style="`}` +
+        `border:1px solid ${on ? CRIMSON : LINE};border-top:3px solid ${CRIMSON};border-radius:6px;` +
+        `padding:10px 12px;background:${on ? "#FFF7F8" : "#fff"};` +
+        `box-shadow:${on ? "0 2px 10px rgba(200,16,46,.16)" : "none"};position:relative">` +
+        (on ? `<div style="position:absolute;top:6px;right:8px;font:700 13px ${MONO};color:${CRIMSON}" title="close">✕</div>` : "") +
         `<div style="font:700 13px ${MONO};color:${CRIMSON}">${esc(st.tag)}</div>` +
         /* the drawing number is gone from the card. Mario: it is the ELD03
            sheet reference, it is the same four times over, and on a card whose
@@ -2220,6 +2239,18 @@
         (chips || `<span style="font:600 10px ${MONO};color:${SOFT}">no starting method declared</span>`) +
         `</div>`;
     };
+
+    return `<div id="sldcards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px">` +
+      stats.map(card).join("") + `</div>`;
+  }
+
+  function sldSummarySchematic(S, o) {
+    o = o || {};
+    if (!S || !S._byTag) return "";
+    const nav = o.onNavigate;
+    const stats = sldBoards(S).map(b => sldBoardStats(S, b.tag));
+    if (!stats.length) return "";
+    const mw = k => (k >= 1000 ? (k / 1000).toFixed(1) + " MW" : Math.round(k) + " kW");
 
     /* ── the mini schematic: WHO FEEDS WHOM, and nothing else ────────────
        Depth is derived, not assumed: a board with no upstream board is a
@@ -2323,15 +2354,13 @@
     }));
     g += `</svg>`;
 
-    return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px">` +
-      stats.map(card).join("") + `</div>` +
-      `<div style="margin-top:12px;border:1px solid ${LINE};border-radius:6px;background:#fff;padding:10px;overflow-x:auto;text-align:center">${g}</div>`;
+    return `<div style="margin-top:12px;border:1px solid ${LINE};border-radius:6px;background:#fff;padding:10px;overflow-x:auto;text-align:center">${g}</div>`;
   }
 
   /* ── export ───────────────────────────────────────────────────────────── */
   const API = { load, fromViewer, plantMap, areaBlock, unitSummary, hmbCards, svcClass, hmbChip, indexData,
                 loadSld, sldFromViewer, indexSld, sldBoards, sld,
-                sldSummary, sldBoardStats,
+                sldSummary, sldSummaryCards, sldSummarySchematic, sldBoardStats,
                 get sldSymbolStyle() { return sldSymbolStyle; },
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
@@ -2344,7 +2373,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.16.3" };
+                version: "1.17.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
