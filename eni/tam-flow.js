@@ -50,8 +50,49 @@
   const n1 = v => v == null ? "—" : (+v).toLocaleString("en-US", { maximumFractionDigits: 1 });
   const n0 = v => v == null ? "—" : Math.round(+v).toLocaleString("en-US");
 
+  /* ── v1.30.0 · el suelo de legibilidad ───────────────────────────────────
+     La paleta oficial de Tendrara ya vive en plant_service_classes.color —
+     muestreada de la leyenda del cliente, no aproximada a ojo. Pero una leyenda
+     de P&ID se dibuja para RELLENOS sobre un plano con trazo negro, y aquí
+     los colores son LÍNEAS sobre papel blanco. Tres de ellos no sobreviven:
+
+       LNG        #DCDCDC   luminancia .86 — invisible
+       AMONIACO   #00FFFF   .79
+       GAS INERTE #BFFF00   .87
+       GAS        #FFBF00   .75 — legible en pantalla, malo en proyector
+
+     La respuesta NO es retocar la paleta en la base: ahí está el estándar de
+     planta y tiene que seguir estándolo. readable() baja la luminancia al
+     máximo dibujable **conservando el tono**, escalando los tres canales por
+     igual. El dato guarda lo que dice el cliente; el renderer garantiza que se
+     vea. Misma separación que design-vs-live: una fuente, dos presentaciones. */
+  const LUM_MAX = 0.55;
+  const _readCache = new Map();
+  function readable(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+    if (!m) return hex;
+    if (_readCache.has(hex)) return _readCache.get(hex);
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    let out = hex;
+    if (lum > LUM_MAX) {
+      const k = LUM_MAX / lum;
+      out = "#" + [r, g, b].map(v => Math.round(v * k).toString(16).padStart(2, "0")).join("");
+    }
+    _readCache.set(hex, out);
+    return out;
+  }
+
   function svcClass(data, code) {
-    return (data._svcIdx && data._svcIdx.get(code)) || FALLBACK_CLASS;
+    const c = (data._svcIdx && data._svcIdx.get(code)) || FALLBACK_CLASS;
+    /* one wrap, cached, so the LINE and its LEGEND swatch can never disagree */
+    if (c && c.color && !c._readable) {
+      c._readable = true;
+      c._rawColor = c.color;
+      c.color = readable(c.color);
+    }
+    return c;
   }
   function areaName(data, code) {
     const a = (data._areaIdx && data._areaIdx.get(String(code)));
@@ -84,13 +125,97 @@
       pri.map(c => rows.find(f => f.direction === dir && f.category === c && f.hmb) ||
                    rows.find(f => f.direction === dir && f.category === c)).find(Boolean);
   }
+  /* v1.18.0 — markerUnits="userSpaceOnUse".
+     SVG's DEFAULT is markerUnits="strokeWidth", so an arrowhead is scaled by
+     the line it terminates. The main process path is drawn at stroke-width 3
+     and the side routes at 1.6, which meant the plant map printed arrowheads
+     at two different sizes — the fat ones on the main path being roughly the
+     size of a unit label. An arrowhead is punctuation: it says "direction",
+     not "importance", and it has no business changing size with the pipe.
+     Fixed geometry, one size everywhere. */
   function arrowMarker(id, color) {
-    return `<marker id="${id}" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="${color}"/></marker>`;
+    /* v1.24.0 — 9→7.4. This marker terminates the SIDE routes; the main path
+       draws its own head explicitly and keeps the larger one. That difference
+       is the point: a 9-unit head on a 1.5-unit context line is a blob, and
+       when every arrow on the sheet is the same size nothing is subordinate. */
+    return `<marker id="${id}" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="8" refX="7.4" refY="3.4" orient="auto"><path d="M0,0 L7.4,3.4 L0,6.8 Z" fill="${color}"/></marker>`;
   }
   function markerDefs(colors) {
     return `<defs>${[...new Set(colors)].map(c => arrowMarker("tf-" + c.replace("#", ""), c)).join("")}</defs>`;
   }
   const mref = c => `url(#tf-${c.replace("#", "")})`;
+
+  /* ── v1.27.0 · tint(): the fluid's own colour, at the quiet level ─────────
+     v1.26.0 muted every secondary line to ONE grey, which fixed the noise but
+     threw the fluid away with it. Mario: "las líneas secundarias con el mismo
+     % de blanco, ponle el color de proceso que le toca."
+
+     Exactly right, and it is the better answer: the thing that made the sheet
+     shout was VALUE, not hue. Mixing each service colour toward white by a
+     fixed fraction keeps every secondary line at the same quiet value — so
+     nothing competes with the product path — while the hue still says which
+     fluid it is. One knob, applied identically to all of them, so no line can
+     end up louder than its neighbours by accident.
+
+     SIDE_TINT = 0.38 is the fraction that takes the house ink #4A4F57 to the
+     #8B939C of v1.26.0, so the sheet keeps exactly the weight Mario approved. */
+  function tint(hex, t) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    const mix = v => Math.round(v + (255 - v) * t);
+    const r = mix((n >> 16) & 255), g = mix((n >> 8) & 255), b = mix(n & 255);
+    return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
+  }
+  const SIDE_TINT = 0.38;
+
+  /* ── v1.18.0 · orthogonal routing with LINE HOPS ─────────────────────────
+     Two pipes that cross on a block diagram and simply overlap are ambiguous:
+     the reader cannot tell a crossing from a tee. Every drafting standard
+     answers it the same way — one of them hops. The convention adopted here,
+     and it has to be ONE convention or it is worse than none:
+
+         the HORIZONTAL run hops over the VERTICAL run.
+
+     This is what Mario circled twice on the plant map: the BOG recycle coming
+     down into U310 crossing the U340 run, and the fuel-gas bypass crossing the
+     drop into U370. Neither was wrong data — both were unreadable geometry.
+
+     hopPath() takes an orthogonal point list and the vertical segments of
+     EVERY OTHER route, and returns one <path> d-string with a 4-unit arc at
+     each genuine crossing. It walks the points in order, so the direction —
+     and therefore the marker-end — survives; a right-to-left run flips the
+     sweep flag so the arc still bulges upward. Crossings within CORNER units
+     of the segment's own ends are ignored: that is a corner, not a crossing. */
+  const HOP_R = 4, HOP_CORNER = 7;
+  function segmentsOf(pts) {
+    const v = [], h = [];
+    for (let i = 1; i < pts.length; i++) {
+      const [xa, ya] = pts[i - 1], [xb, yb] = pts[i];
+      if (Math.abs(xa - xb) < 0.5 && Math.abs(ya - yb) > 0.5) v.push({ x: xa, y1: Math.min(ya, yb), y2: Math.max(ya, yb) });
+      else if (Math.abs(ya - yb) < 0.5 && Math.abs(xa - xb) > 0.5) h.push({ y: ya, x1: Math.min(xa, xb), x2: Math.max(xa, xb) });
+    }
+    return { v, h };
+  }
+  function hopPath(pts, others) {
+    let d = `M ${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) {
+      const [xa, ya] = pts[i - 1], [xb, yb] = pts[i];
+      if (Math.abs(ya - yb) > 0.5 || Math.abs(xa - xb) < 0.5) { d += ` L ${xb},${yb}`; continue; }
+      const lo = Math.min(xa, xb) + HOP_CORNER, hi = Math.max(xa, xb) - HOP_CORNER;
+      let xs = others
+        .filter(sg => sg.x > lo && sg.x < hi && ya > sg.y1 + 0.5 && ya < sg.y2 - 0.5)
+        .map(sg => sg.x);
+      xs = [...new Set(xs)].sort((p, q) => (xb > xa ? p - q : q - p));
+      /* y is down, so sweep 1 bulges up when travelling left→right */
+      const sweep = xb > xa ? 1 : 0, dir = xb > xa ? 1 : -1;
+      xs.forEach(cx => {
+        d += ` L ${cx - HOP_R * dir},${ya} A ${HOP_R},${HOP_R} 0 0 ${sweep} ${cx + HOP_R * dir},${ya}`;
+      });
+      d += ` L ${xb},${yb}`;
+    }
+    return d;
+  }
 
   /* ── data loading ─────────────────────────────────────────────────────── */
   async function load(sb) {
@@ -118,18 +243,85 @@
   }
 
   /* ── ESD / safety symbology ─────────────────────────────────────────────
-     ESD-actuated valves (SDV/BDV/XV/UV…) draw as SMALL YELLOW diamonds;
-     process control valves (FV/PV/LV/TV/PCV…) stay white. */
+     ESD-actuated valves (SDV/BDV/XV/UV…) draw in the ESD yellow family;
+     process control valves (FV/PV/LV/TV/PCV…) stay white. The COLOUR rule is
+     unchanged since v1.0; what changed in v1.18.0 is the SHAPE. */
   const ESD_YELLOW = "#F7C600";
   const isEsd = s => /^(SDV|BDV|XV|XEV|UV|SDEV|BDEV|ESD)/.test(String(s || "").trim());
-  function diamond(x, y, label, labelPos) {   // labelPos: 'above' | 'below'
-    const esd = isEsd(label);
-    const r = esd ? 6 : 8;                     // ESD diamonds smaller
-    const ly = labelPos === "below" ? y + r + 22 : y - r - 12;   // breathing room from the arrow
+
+  /* ── v1.18.0 · valves are ISO bow-ties, drawn by the process pack ────────
+     WHAT WAS WRONG, and why it was worth a version
+     Every valve on every process diagram was a ROTATED SQUARE. A diamond says
+     "some valve is here"; it cannot say whether the thing closing on you is a
+     modulating control valve or an ESD valve, because a diamond has nowhere to
+     put an actuator. On a training slide that distinction IS the lesson.
+     The pack (tam-sym-proc.js) draws the ISO 14617-8 body — bow-tie on the
+     pipe axis — with the actuator that says what moves it.
+
+     DELEGATION, NOT A FORK (G-1/G-2)
+     If the pack is loaded we call it. If it is not, we fall back to the legacy
+     diamond, byte-identical to v1.17.0, so no page that has not yet added the
+     <script> can break. That is the same pattern phase 2 used for sldGlyph().
+
+     THE LABEL IS SPLIT, NOT CLIPPED
+     `inline_element` carries things like "PV-2001 · 45 barg". Printed as one
+     centred string under a valve it overran the neighbouring equipment box —
+     the defect Mario circled on slide 7. The tag and its datum are two
+     different things, so they go in the kernel's two different slots: label
+     (tag, bold) and sub (datum, small). Half the width, and the datum now
+     reads as a datum. */
+  function valveGlyph(x, y, label, labelPos) {   // labelPos: 'above' | 'below'
+    const raw = String(label == null ? "" : label).trim();
+    const tag = raw.split(" · ")[0].split(" ")[0];
+    const sub = raw.slice(tag.length).replace(/^\s*·?\s*/, "") || null;
+    const P = (typeof TamSymProc !== "undefined") ? TamSymProc : null;
+    const S = (typeof TamSym !== "undefined") ? TamSym : null;
+    if (P && S) {
+      const f = P.fromTag(tag, { labelPos: labelPos === "below" ? "below" : "above", sub });
+      /* the tag stays machine-findable for the live layer, exactly as before */
+      return `<g data-live-kind="valve" data-tag="${esc(tag)}">` +
+        S.draw(f.kind, Object.assign({ x, y }, f.opts)) + `</g>`;
+    }
+    const esd = isEsd(tag), r = esd ? 6 : 8;
+    const ly = labelPos === "below" ? y + r + 22 : y - r - 12;
     return `<rect x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}" transform="rotate(45 ${x} ${y})"
       fill="${esd ? ESD_YELLOW : "#fff"}" stroke="${esd ? "#8A6D00" : "#333"}" stroke-width="1.4"/>
       <text x="${x}" y="${ly}" text-anchor="middle" font-family="${MONO}" font-size="7.4"
-        font-weight="${esd ? 700 : 400}" fill="${esd ? "#8A6D00" : "#333"}" data-live-kind="valve" data-tag="${esc(String(label).split(" ")[0])}">${esc(label)}</text>`;
+        font-weight="${esd ? 700 : 400}" fill="${esd ? "#8A6D00" : "#333"}" data-live-kind="valve" data-tag="${esc(tag)}">${esc(raw)}</text>`;
+  }
+  const diamond = valveGlyph;                  // legacy name, one call site left
+
+  /* ── v1.18.0 · a valve is INSERTED IN the line, never laid ON it ──────────
+     The old code drew one straight line across the whole gap and then painted
+     the diamond on top of it, so the pipe ran visibly through the valve body
+     and the arrowhead of the run landed inside the symbol. Both are drawing
+     errors an operator reads as "the valve is not in this line".
+
+     procLine() breaks the run at the valve's own ports (which is the only
+     reason the pack guarantees ports on the pipe axis), and gives the
+     arrowhead its clearance from the box it points at.
+
+     valveW is read from the pack's geometry, not hardcoded: a redrawn symbol
+     of a different width re-spaces the line by itself. Same rule the SLD
+     learned the hard way when stY was pinned to 26 units.                   */
+  const ARROW_GAP = 6;                         // tip-to-box clearance, main path
+  /* v1.24.0 — the side routes carry a smaller head (7.4 vs 9.2) and a thinner
+     line, so the main path's clearance left them visibly short of the box. Side
+     by side with a headless branch, which touches the box, that reads as a
+     drawing error rather than as breathing room. The clearance has to scale
+     with the head it is clearing. */
+  const SIDE_GAP = 2;
+  function procLine(x1, x2, y, color, valveTag, labelPos) {
+    const P = (typeof TamSymProc !== "undefined") ? TamSymProc : null;
+    const halfW = P ? P.A : 8;
+    const end = x2 - ARROW_GAP;
+    if (!valveTag) return `<line x1="${x1}" y1="${y}" x2="${end}" y2="${y}" stroke="${color}" stroke-width="3" marker-end="${mref(color)}"/>`;
+    /* keep the symbol off both ends: a valve hard against a box reads as part
+       of it. 14 units minimum on each side, centred when the gap allows. */
+    const vx = Math.max(x1 + halfW + 14, Math.min(end - halfW - 14, (x1 + end) / 2));
+    return `<line x1="${x1}" y1="${y}" x2="${vx - halfW}" y2="${y}" stroke="${color}" stroke-width="3"/>` +
+      `<line x1="${vx + halfW}" y1="${y}" x2="${end}" y2="${y}" stroke="${color}" stroke-width="3" marker-end="${mref(color)}"/>` +
+      valveGlyph(vx, y, valveTag, labelPos);
   }
   /* instrument TAP: dot on the pipe + leader + tag — unambiguous line association */
   function tap(x, y, tag, below, color) {
@@ -247,19 +439,116 @@
     });
 
     /* geometry */
-    const W = 1000, H = 380, BW = 118, BH = 58, mainY = 196;
+    /* v1.18.0 — the side bands were 130px tall and carrying five lanes, so
+       every crossing landed on top of a unit label. Taller sheet, wider
+       bands: the routes did not change, the room they get did. */
+    const W = 1000, H = 452, BW = 108, BH = 58, mainY = 236;
+    const SIDE_W = 1.5;          // context lines
+    /* ── v1.26.0 · overview draws the context in ONE muted ink ──────────────
+       Mario: "todas las líneas que no sean del proceso principal deben ser de
+       color tenue… un plomo oscuro pero que no llene la visión."
+
+       Colour is the loudest channel there is, and seven fluids each shouting
+       their own hue drowned the one line the slide is about. Muting them costs
+       nothing NOW — and only now — because since v1.25 every trunk is labelled
+       with its fluid IN WORDS: HOT OIL, PROCESS WATER, NH3, CORROSION
+       INHIBITOR. The colour had become a second, weaker copy of the label.
+       Say it once, in the channel that survives a projector and a photocopy.
+
+       This is a PRESENTATION rule and it lives only in the overview branch.
+       `full` — what the viewer draws — keeps the fluid colours from
+       plant_service_classes untouched. The data did not change. */
+    const SIDE_INK = "#8B939C";
+    const MAIN_W = 2.6;          // the plant's product path — the subject
+    const BOX_SW = 1.2;          // box outline: a frame, not a pipe
     const nodePos = new Map();
-    const nMain = chain.length;
-    const slot = (W - 60) / nMain;
-    chain.forEach((c, i) => {
-      const x = 30 + slot * i + (slot - BW) / 2;
-      if (!nodePos.has(c.label)) nodePos.set(c.label, { x, y: mainY, kind: c.kind });
+    /* ── v1.21.0 · the battery limits stop eating a full slot ────────────────
+       Every chain node used to get the same width, including the two EXTERNAL
+       endpoints — which are a right-aligned label and a dashed tick, not a box.
+       Two of the seven slots were paying box rent for a caption, and the five
+       real units were squeezed to a 16-unit gap because of it.
+       An ext endpoint now gets EXTW, and everything it gives back goes to the
+       process units, where the pipe actually needs the room. */
+    const EXTW = 92;
+    const nExt = chain.filter(c => c.kind === "ext").length;
+    const nBox = chain.length - nExt;
+    const slot = nBox ? (W - 60 - nExt * EXTW) / nBox : 0;
+    let cx0 = 30;
+    chain.forEach(c => {
+      const wSlot = c.kind === "ext" ? EXTW : slot;
+      if (!nodePos.has(c.label))
+        nodePos.set(c.label, { x: cx0 + (wSlot - BW) / 2, y: mainY, kind: c.kind });
+      cx0 += wSlot;
     });
-    /* side rows: REFRIGERANT/PRODUCT → top, everything else → bottom */
-    const tops = [], bots = [];
-    [...sideAreas.entries()].forEach(([a, s]) => {
-      (s.cats.has("REFRIGERANT") || s.cats.has("PRODUCT") ? tops : bots).push([a, s]);
-    });
+    /* ── v1.24.0 · which row a side unit goes on ──────────────────────────
+       Mario, looking at the crowded top band: "bajando 370 talvez".
+
+       The row used to be decided by the FLUID CATEGORY — PRODUCT and
+       REFRIGERANT up, everything else down. That is a property of what flows,
+       and it has nothing to do with whether the drawing works: it put U370,
+       whose trunk spans almost the whole sheet, on the same band as U410, U340
+       and U360, so four wide runs stacked in one place and every one of them
+       crossed the others.
+
+       The row is a LAYOUT decision, so it is decided by layout: a unit goes on
+       the row where its horizontal span overlaps FEWER trunks already placed
+       there. Widest spans are placed first, because they are the ones with no
+       freedom left once the band is full. The category survives only as the
+       tie-break, which is the right weight for it — it is a preference, not a
+       constraint.
+
+       A span is [min, max] of its partners' x, and those come from the chain,
+       which is already positioned. So the cost is knowable before placing —
+       no iteration, no guessing. */
+    const spanOf = st => {
+      const xs = st.partners.map(pp => (nodePos.get(pp) || { x: W / 2 }).x);
+      return xs.length ? [Math.min(...xs), Math.max(...xs)] : [W / 2, W / 2];
+    };
+    const overlaps = (arr, sp) => arr.filter(o => o[0] < sp[1] && sp[0] < o[1]).length;
+    /* ── v1.28.0 · el PAPEL manda la banda, el solapamiento manda el sitio ──
+       Mario, on the tangle under U310: "BOG entering 310 should be in the
+       middle, too many lines together."
+
+       He is pointing at a symptom of v1.24. That version replaced "row by
+       fluid category" with "row by span overlap", which fixed crowding but
+       threw out meaning with it — so U360, whose BOG is a PROCESS RECYCLE back
+       into 310, was filed at the bottom among the sinks (water, flare,
+       inhibitor), and its trunk had to climb the full height of the sheet to
+       reach U310 exactly where the process water comes down. Four lines in one
+       place, and none of them related.
+
+       Neither rule was right alone. A unit's ROLE says which BAND it belongs
+       in; the span overlap says WHERE IN THAT BAND it sits. v1.24 was letting
+       one criterion answer both questions and only one of them was its own.
+
+         above the chain — what the process gives back: recycles and
+                           refrigerant (PRODUCT / REFRIGERANT)
+         below the chain — what leaves it and does not come back: energy,
+                           water, chemicals, sinks
+
+       So BOG joins NH3 on the cold side, which is where an operator already
+       thinks it lives, and U310's underside is left to the process water alone.
+       Overlap still breaks ties and still orders each band, so the crossing
+       count v1.24 bought is not given back. */
+    const roleTop = st => {
+      const c = st.cats;
+      if (c.has("REFRIGERANT")) return true;
+      if (c.has("ENERGY") || c.has("WATER") || c.has("CHEMICAL")) return false;
+      return c.has("PRODUCT");
+    };
+    const tops = [], bots = [], tSpan = [], bSpan = [];
+    [...sideAreas.entries()]
+      .map(([a, st]) => ({ a, st, sp: spanOf(st) }))
+      .sort((p, q) => (q.sp[1] - q.sp[0]) - (p.sp[1] - p.sp[0]))     // widest first
+      .forEach(({ a, st, sp }) => {
+        const band = roleTop(st);
+        /* overlap only gets a vote when the role is genuinely mixed */
+        const mixed = st.cats.has("PRODUCT") && (st.cats.has("ENERGY") || st.cats.has("WATER"));
+        const ct = overlaps(tSpan, sp), cb = overlaps(bSpan, sp);
+        const useTop = mixed && ct !== cb ? ct < cb : band;
+        (useTop ? tops : bots).push([a, st]);
+        (useTop ? tSpan : bSpan).push(sp);
+      });
     const place = (arr, y) => {
       arr.map(([a, s]) => {
         const xs = s.partners.map(p => (nodePos.get(p) || { x: W / 2 }).x);
@@ -270,11 +559,14 @@
         nodePos.set(a, { x: px, y, kind: "area" });
       });
     };
-    place(tops, 60); place(bots, 306);
+    place(tops, 42); place(bots, 372);
 
     let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
-    const colors = new Set(["#4A4F57"]);
-    sideLinks.forEach(l => colors.add(svcClass(data, l.service_code).color));
+    const colors = new Set(["#4A4F57", SOFT, SIDE_INK]);
+    sideLinks.forEach(l => {
+      const c = svcClass(data, l.service_code).color;
+      colors.add(c); colors.add(tint(c, SIDE_TINT));       // overview draws the tint
+    });
     mains.forEach(l => colors.add(svcClass(data, l.service_code).color));
     s += markerDefs([...colors]);
 
@@ -288,49 +580,471 @@
       const f = nodePos.get(l.from_area || l.from_ext), t = nodePos.get(l.to_area || l.to_ext);
       if (!f || !t) return;
       const st = svcClass(data, l.service_code);
-      const y = mainY + BH / 2, x1 = f.x + BW + 2, x2 = t.x - 3;
-      s += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${st.color}" stroke-width="3" marker-end="${mref(st.color)}"/>`;
+      /* ── v1.21.0 · the main path is a SPINE, not six stubs ──────────────
+         Chain boxes sit ~16 units apart. The run was drawn edge-to-edge inside
+         that gap, so after subtracting the arrow clearance there were 8 units
+         of line carrying an 11-unit arrowhead: the head was LONGER than the
+         pipe it terminated. Every one of those six gaps is what Mario ringed
+         in yellow, and he ringed them because they do not read as a process
+         line — they read as loose triangles between boxes.
+
+         A process line does not stop at a box, it goes THROUGH it. So the
+         segment is now drawn centre-to-centre and the boxes, which are opaque
+         and painted afterwards, cover the middle. What is left visible in the
+         gap is one continuous pipe with a head on it. The head is placed
+         explicitly at the gap centre instead of riding marker-end, because
+         marker-end lands where the LINE ends and the line now ends under a box.
+
+         v1.18.0's battery-limit fix survives: an external endpoint still
+         departs from its drawn tick, not from a box that is not there. */
+      const y = mainY + BH / 2;
+      const x1 = f.kind === "ext" ? f.x + BW - 4 : f.x + BW / 2;
+      const x2 = t.kind === "ext" ? t.x + 4 : t.x + BW / 2;
+      s += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${st.color}" stroke-width="${MAIN_W}"/>`;
+      /* arrowhead centred in the visible gap between the two boxes */
+      const gA = f.kind === "ext" ? f.x + BW - 4 : f.x + BW;
+      const gB = t.kind === "ext" ? t.x + 4 : t.x;
+      s += `<path d="M0,-4.6 L9.2,0 L0,4.6 Z" fill="${st.color}" transform="translate(${(gA + gB) / 2 - 4.6},${y})"/>`;
       const chip = hmbChip(flowById.get(l.id), kase).split(" · ")[0];   // short: flow only
       if (chip) chips.push([(x1 + x2) / 2, mainY + BH + 13, (l.stream_code ? l.stream_code + " · " : "") + chip]);
     });
 
-    /* side arrows (orthogonal) */
-    sideLinks.forEach((l, i) => {
+    /* side routes (orthogonal) — geometry first, ink second.
+       v1.18.0: the routes are COMPUTED into a list, then drawn, because a hop
+       needs to know about every other route and you cannot know that while you
+       are still emitting strings one at a time. */
+    /* ═══ v1.19.0 · detail:'overview' — TRUNK BUNDLING ═══════════════════════
+       Mario, on the v1.18.0 map: "demasiado detalle para un overview".
+       He is right, and the fix is NOT to hide links — it is to stop drawing a
+       separate polyline for every one of them.
+
+       33 side links between 7 side areas and the chain became 19 polylines,
+       and 19 polylines fanning across one sheet is a hairball no matter how
+       clean each individual route is. But look at what those 19 actually are:
+       U410 feeds 200 AND 330; U530 receives from 200, 310 AND 330. That is not
+       19 relationships. That is 7 units, each with a bundle.
+
+       So an overview draws ONE TRUNK per (side area, direction): a single stem
+       out of the side box, one horizontal run, and a short branch into each
+       chain unit it actually touches. Every link is still on the drawing —
+       nothing is filtered, nothing is dropped, G-4 intact — but the eye reads
+       "U410 serves these two units" as one gesture instead of two crossings.
+
+       'full' (the default) keeps the v1.18.0 behaviour, so the viewer does not
+       change under anyone. The training deck asks for 'overview'.            */
+    if (opts.detail === "overview") {
+      /* ═══ OVERVIEW — one trunk per side area ════════════════════════════════
+         Three rules, each of them a defect Mario found and none of them
+         cosmetic. They are listed in the order they were learned.
+
+         1 · ONE TRUNK PER AREA (v1.19/1.20). plant_process_links is a table of
+             LINES; 33 side links became 19 polylines because the map drew one
+             per line. But U410 feeding 200 AND 330 is not two relationships,
+             it is one bundle. Keying by (area, direction) still gave U410 two
+             parallel gold trunks, so the key is the AREA and direction moved
+             onto the terminals:  AN ARROWHEAD MARKS A DESTINATION.  A branch
+             is headed at its chain box when that unit receives; the stem is
+             headed at the side box when the side unit receives. Never a head
+             at the lane — a corner is not a destination. Heads at both ends
+             means bidirectional, on ONE line.
+
+         2 · ONE DESTINATION → A STRAIGHT DROP (v1.22). U120 feeds exactly one
+             unit and was still drawn as a bundle: stem, corner, run, corner,
+             branch. A dog-leg between two boxes that are nearly in line invites
+             the reader to look for the reason the pipe turns, and there is
+             none. The side box slides under its entry point first — only if
+             the seat is free, otherwise the honest dog-leg stays.
+
+         3 · THE HORIZONTAL HOPS (v1.22). Making the drops straight put them
+             across other trunks' lanes, which re-introduced the very ambiguity
+             hopPath() was written for. Same convention as everywhere else:
+             the horizontal hops over the vertical. Which is why this branch is
+             TWO passes — you cannot know what to hop over while you are still
+             emitting the thing that has to hop.
+
+         Nothing is filtered. Every one of the 33 links is on the sheet; what
+         changed is that they are grouped. G-4 intact — the footer prints the
+         count, so the grouping is visible rather than assumed.               */
+      /* ── v1.29.0 · un haz se nombra por su SERVICIO DOMINANTE ─────────────
+         Mario: "¿BOG y fuel gas son lo mismo? revisar el concepto."
+
+         No lo son, y la base nunca dijo que lo fueran. Son tres clases
+         distintas, con categoría y color propios:
+
+           BG · BOIL-OFF GAS   · PRODUCT   verde   — lo que se evapora del LNG
+           FG · FUEL GAS       · ENERGY    naranja — gas que se quema
+           NG · NATURAL GAS    · PRODUCT   carmesí
+
+         Están emparentados —el BOG acaba en parte en la red de fuel gas— pero
+         uno es una CORRIENTE y el otro un SERVICIO. El que los hacía parecer
+         intercambiables era el dibujo, y el defecto lo metí yo en v1.25.0:
+         trunkLabel() bautizaba un haz entero con UNA de sus descripciones, la
+         primera que casara con una lista de patrones. Resultado:
+
+           · el haz de U360 lleva BG×2 (al sobrecalentador) y NG×2 (el reciclo
+             de vuelta a U310) y se imprimía "BOG" — la mitad no lo es;
+           · el de U370 lleva NG×6 y DC×2 y se imprimía "FUEL GAS" porque UNA de
+             las seis descripciones empieza por "Fuel gas" — y entre las otras
+             hay "N2-rich gas to E-372", que no es fuel gas de ninguna manera.
+
+         Y el color lo elegía `[...codes][0]`, o sea el ORDEN DE INSERCIÓN del
+         Set: U360 salía carmesí (NG) cuando su clase dominante es BG (verde).
+
+         Ahora: la clase DOMINANTE del haz por número de líneas, desempate por
+         sort_order. Su `name` es la etiqueta —está en la tabla, no hay que
+         adivinarlo de una descripción— y su `color` es el tono. Si el haz
+         lleva más clases, se imprime "+N": un haz mixto no puede presentarse
+         como si fuera puro. */
+      function domCode(codes, links) {
+        const cnt = new Map();
+        (links || []).forEach(l => { if (l.service_code) cnt.set(l.service_code, (cnt.get(l.service_code) || 0) + 1); });
+        const list = [...(codes || [])];
+        if (!list.length) return null;
+        return list.sort((x, y) =>
+          (cnt.get(y) || 0) - (cnt.get(x) || 0) ||
+          ((svcClass(data, x).sort_order || 99) - (svcClass(data, y).sort_order || 99)))[0];
+      }
+      function trunkLabel(links, codes, dom) {
+        const st = svcClass(data, dom);
+        const nm = (st && st.name) ? String(st.name) : (dom || "");
+        const extra = Math.max(0, [...(codes || [])].length - 1);
+        return clip(nm, 22) + (extra ? " +" + extra : "");
+      }
+
+      const trunks = new Map();          // sideArea → {partners: Map(chainA→{out,in}), codes}
+      sideLinks.forEach(l => {
+        const sideA = chainAreas.has(l.from_area) ? l.to_area : l.from_area;
+        const chainA = chainAreas.has(l.from_area) ? l.from_area : l.to_area;
+        if (!trunks.has(sideA)) trunks.set(sideA, { sideA, partners: new Map(), codes: new Set(), links: [] });
+        trunks.get(sideA).links.push(l);
+        const tr = trunks.get(sideA);
+        if (!tr.partners.has(chainA)) tr.partners.set(chainA, { out: false, in: false, codes: new Set() });
+        tr.partners.get(chainA)[l.from_area === sideA ? "out" : "in"] = true;
+        if (l.service_code) { tr.codes.add(l.service_code); tr.partners.get(chainA).codes.add(l.service_code); }
+      });
+
+      /* ── v1.23.0 · PORTS BY FLUID ────────────────────────────────────────
+         Mario: "la conexión de la unidad 530 entra a cada unidad por el mismo
+         puerto; correspondería crearle a cada unit puertos de entrada por tipo
+         de fluido que se intercambia."
+
+         Right, and it is a modelling gap rather than a drawing one. Every
+         connection entered its box at the centre, so on U310 the oily water
+         and the natural gas arrived at the same point. A box with one hole in
+         it says every fluid is the same fluid.
+
+         A unit now has PORTS, and the position of a port is decided by the
+         FLUID, from `plant_service_classes.sort_order` — the same table that
+         already decides the colour. Not by drawing order, which would move a
+         port whenever an unrelated link was added, and not hardcoded, which is
+         the rule the process side has held since the service classes landed.
+
+         The allocation is PER BOX over the fluids that actually reach it,
+         ordered by that global sort_order. So the ORDER is canonical
+         everywhere — hydrocarbon before utility before water, left to right,
+         on every unit — while a box with two connections still gets two
+         well-separated ports instead of eight slivers. Consistency of
+         sequence, not of absolute position: a diagram is not a nozzle
+         orientation drawing.
+
+         The highlighted unit allocates its top ports in the right 58 % of the
+         edge, because the "you are here" tab owns the left 86 units and an
+         arrowhead underneath it is an arrowhead nobody sees (v1.20.0). */
+      const svcRank = c => {
+        const k = (data._svcIdx || new Map()).get(c);
+        return k && k.sort_order != null ? +k.sort_order : 999;
+      };
+      const bestCode = set => [...(set || [])].sort((a, b) => svcRank(a) - svcRank(b))[0] || "XX";
+      /* edge → ordered list of fluid codes reaching that box on that edge */
+      const portsOf = new Map();                 // "label|top"|"label|bot" → [code,…]
+      const addPort = (label, top, code) => {
+        const k = label + "|" + (top ? "T" : "B");
+        if (!portsOf.has(k)) portsOf.set(k, new Set());
+        portsOf.get(k).add(code);
+      };
+      trunks.forEach(tr => {
+        const sp = nodePos.get(tr.sideA); if (!sp) return;
+        const top = sp.y < mainY;
+        tr.partners.forEach((d, chainA) => addPort(chainA, top, bestCode(d.codes)));
+      });
+      const portList = (label, top) => {
+        const k = label + "|" + (top ? "T" : "B");
+        return [...(portsOf.get(k) || new Set())].sort((a, b) => svcRank(a) - svcRank(b));
+      };
+      /* x of a fluid's port on a box edge */
+      const portX = (p, label, top, code) => {
+        const list = portList(label, top);
+        const i = Math.max(0, list.indexOf(code));
+        const x0 = p.x + 14, x1 = p.x + BW - 14;
+        return list.length <= 1 ? (x0 + x1) / 2
+          : x0 + (x1 - x0) * (i + 0.5) / list.length;
+      };
+
+
+      /* slide single-partner side boxes under their entry point (rule 2) */
+      trunks.forEach(tr => {
+        if (tr.partners.size !== 1) return;
+        const sp = nodePos.get(tr.sideA), [pa] = [...tr.partners.keys()], pp = nodePos.get(pa);
+        if (!sp || !pp) return;
+        /* line the box up with ITS OWN PORT, not with the box centre — the two
+           stopped being the same thing in v1.23.0 */
+        const want = portX(pp, pa, sp.y < mainY, bestCode(tr.partners.get(pa).codes)) - BW / 2;
+        const clash = [...nodePos.entries()].some(([lb, q]) =>
+          lb !== tr.sideA && q.y === sp.y && Math.abs(q.x - want) < BW + 24);
+        if (!clash) sp.x = Math.max(8, Math.min(W - BW - 8, want));
+      });
+
+      /* ── pass 1 · geometry only ─────────────────────────────────────────── */
+      const items = [];
+      let laneT = 0, laneB = 0;
+      trunks.forEach(tr => {
+        const sp = nodePos.get(tr.sideA); if (!sp) return;
+        const px = [...tr.partners.entries()]
+          .map(([a, d]) => ({ a, p: nodePos.get(a), d })).filter(e => e.p);
+        if (!px.length) return;
+        const top = sp.y < mainY;
+        const dom = domCode(tr.codes, tr.links);
+        tr.dom = dom;
+        const st = svcClass(data, dom);
+        const sEdge = top ? sp.y + BH : sp.y;
+        const cEdge = top ? mainY : mainY + BH;
+        const it = { tr, st, top, sEdge, cEdge, px, v: [] };
+        if (px.length === 1) {
+          it.kind = "straight";
+          it.vx = Math.max(sp.x + 12, Math.min(sp.x + BW - 12,
+            portX(px[0].p, px[0].a, top, bestCode(px[0].d.codes))));
+          it.v.push({ x: it.vx, y1: Math.min(sEdge, cEdge), y2: Math.max(sEdge, cEdge) });
+        } else {
+          it.kind = "bundle";
+          const lane = top ? laneT++ : laneB++;
+          it.ym = top ? mainY - 26 - lane * 15 : mainY + BH + 34 + lane * 15;
+          it.lane = lane;
+          it.stemX = sp.x + BW / 2;
+          it.bx = px.map(e => portX(e.p, e.a, top, bestCode(e.d.codes)));
+          it.x1 = Math.min(it.stemX, ...it.bx);
+          it.x2 = Math.max(it.stemX, ...it.bx);
+          it.v.push({ x: it.stemX, y1: Math.min(sEdge, it.ym), y2: Math.max(sEdge, it.ym) });
+          it.bx.forEach(x => it.v.push({ x, y1: Math.min(cEdge, it.ym), y2: Math.max(cEdge, it.ym) }));
+        }
+        items.push(it);
+      });
+
+      /* ── pass 2 · ink, with the horizontals hopping every other vertical ── */
+      const allV = items.flatMap(it => it.v);
+      items.forEach(it => {
+        const st = it.st, top = it.top;
+        /* ── v1.24.0 · ink hierarchy ────────────────────────────────────────
+           Every line on the sheet was carrying the same weight, so the plant's
+           main product path — the thing the slide is about — competed with the
+           utility that feeds one exchanger. Side trunks drop to SIDE_W and the
+           main path keeps its own weight: the fluid colours are untouched
+           (they are data, from plant_service_classes), only the emphasis
+           changes. Subject at full strength, context one step back. */
+        /* no fluid dash here either: on this sheet DASH has exactly one
+           meaning — "aggregate, not a pipe" — and a channel carrying two
+           meanings is worth less than a channel carrying none. */
+        const ink = tint(st.color, SIDE_TINT);
+        const stroke = `stroke="${ink}" stroke-width="${SIDE_W}"`;
+        const head = `${stroke} marker-end="${mref(ink)}"`;
+        let g = `<g><title>${esc(it.tr.sideA + " ↔ " + [...it.tr.partners.keys()].join(", ") + " · " + [...it.tr.codes].join(" "))}</title>`;
+        if (it.kind === "straight") {
+          const e = it.px[0], vx = it.vx;
+          g += `<line x1="${vx}" y1="${it.sEdge}" x2="${vx}" y2="${it.cEdge}" ${stroke}/>`;
+          if (e.d.out) g += `<line x1="${vx}" y1="${it.sEdge}" x2="${vx}" y2="${it.cEdge + (top ? -SIDE_GAP : SIDE_GAP)}" ${head}/>`;
+          if (e.d.in) g += `<line x1="${vx}" y1="${it.cEdge}" x2="${vx}" y2="${it.sEdge + (top ? SIDE_GAP : -SIDE_GAP)}" ${head}/>`;
+          /* v1.28.0 — twice now this label has been positioned as a fraction
+             of the drop and twice the drop changed under it: first into the
+             lane band, then onto the row of HMB flow chips. Both times the
+             cause was the same — it was anchored to a length that other rules
+             are free to change.
+
+             It anchors to the SIDE BOX instead. That end is fixed (the side
+             row's y), it is below every lane and every chip by construction,
+             and it puts the name of the fluid right next to the unit that
+             sends it — CORROSION INHIBITOR beside UNIT 120. */
+          g += `<text x="${vx + 6}" y="${it.sEdge + (top ? 14 : -12)}" font-family="${MONO}" font-size="7.4" fill="${ink}"
+            paint-order="stroke" stroke="#fff" stroke-width="3">${esc(trunkLabel(it.tr.links, it.tr.codes, it.tr.dom))}</text>`;
+        } else {
+          const mine = new Set(it.v.map(sg => sg.x + ":" + sg.y1));
+          const others = allV.filter(sg => !mine.has(sg.x + ":" + sg.y1));
+          g += `<line x1="${it.stemX}" y1="${it.sEdge}" x2="${it.stemX}" y2="${it.ym}" ${stroke}/>`;
+          g += `<path d="${hopPath([[it.x1, it.ym], [it.x2, it.ym]], others)}" fill="none" ${stroke}/>`;
+          if (it.px.some(e => e.d.in))
+            g += `<line x1="${it.stemX}" y1="${it.ym}" x2="${it.stemX}" y2="${it.sEdge + (top ? SIDE_GAP : -SIDE_GAP)}" ${head}/>`;
+          it.px.forEach((e, k) => {
+            const bx2 = it.bx[k];
+            /* the arrow clearance is only owed when there IS an arrow; without
+               a head the branch has to reach the box or it reads as a stub */
+            const yEnd = it.cEdge + (e.d.out ? (top ? -SIDE_GAP : SIDE_GAP) : 0);
+            g += `<line x1="${bx2}" y1="${it.ym}" x2="${bx2}" y2="${yEnd}" ${e.d.out ? head : stroke}/>`;
+          });
+          const codes = trunkLabel(it.tr.links, it.tr.codes, it.tr.dom);
+          g += `<text x="${it.x1 + (it.x2 - it.x1) * (it.lane % 2 ? 0.66 : 0.34)}" y="${it.ym - 4}" text-anchor="middle" font-family="${MONO}" font-size="7.4" fill="${ink}"
+            paint-order="stroke" stroke="#fff" stroke-width="3">${esc(codes)}</text>`;
+        }
+        s += g + `</g>`;
+      });
+
+      /* ── v1.25.0 · the relief header, aggregated ─────────────────────────
+         The footer used to end with "utilities/relief/drains hidden", which was
+         honest but expensive: 99 of 179 links were off the sheet, and the
+         biggest group of them — 39 PSV discharges from 9 units into the flare —
+         is the one an operator most needs to know exists.
+
+         Drawing 39 lines is out of the question. So it is drawn as ONE line,
+         and the line is explicitly NOT a pipe: no fluid colour, grey, dashed,
+         and labelled with its own count. Dash is safe HERE and nowhere else —
+         plant_service_classes already assigns a dash to 5 fluids, so dash means
+         "this fluid" on any coloured line. A grey line carries no fluid, so a
+         grey dash cannot be confused with one: it reads "this is a summary".
+
+         That is the rule, and it is worth stating because it is the trap:
+             dash + fluid colour = that fluid's line style   (data)
+             dash + grey         = an aggregate, not a pipe  (drawing)         */
+      const reliefs = links.filter(l => l.category === "RELIEF" && l.to_area && nodePos.has(l.to_area));
+      const reliefUnits = new Set(reliefs.map(l => l.from_area).filter(Boolean)).size;
+      if (reliefs.length) {
+        const dest = reliefs[0].to_area, dp = nodePos.get(dest);
+        const from = [...new Set(reliefs.map(l => l.from_area).filter(Boolean))];
+        /* the chain units only say WHERE the line starts; the count is the
+           whole header, side units included — otherwise the label would
+           under-report the very thing it exists to report */
+        const xs = from.filter(a => chainAreas.has(a))
+          .map(a => nodePos.get(a)).filter(Boolean).map(q => q.x + BW / 2);
+        if (dp && xs.length) {
+          /* ONE line, and it starts in a GAP between two units — never on a
+             box. A dashed line leaving U330's edge would say "U330 relieves to
+             the flare", which is false: nine units do. Leaving from the gap
+             attributes it to the header, not to a unit, and the label carries
+             the count. This is the same reason the example sheet puts its
+             flare box off to one side. */
+          const top = dp.y < mainY;
+          const chainXs = chain.filter(c => c.kind !== "ext")
+            .map(c => nodePos.get(c.label)).filter(Boolean).sort((u, v) => u.x - v.x);
+          const gaps = chainXs.slice(1).map((q, i) => (chainXs[i].x + BW + q.x) / 2);
+          const mid = xs.reduce((u, v) => u + v, 0) / xs.length;
+          const sx = gaps.length ? gaps.reduce((g, h) => Math.abs(h - mid) < Math.abs(g - mid) ? h : g) : mid;
+          /* the lane band is bounded by the side row, and with three bundles
+             already on this side the naive lane fell BELOW the flare box: the
+             final drop became 3 units long and the arrowhead a stub. Clamp to
+             stay clear of the row it is heading for. */
+          const lane = (top ? laneT : laneB) + 1;
+          const raw = top ? mainY - 26 - lane * 15 : mainY + BH + 34 + lane * 15;
+          const ym = top ? Math.min(raw, dp.y + BH + 20) : Math.max(raw, 0) && Math.min(raw, dp.y - 22);
+          const dx = dp.x + BW - 22;
+          const g = `stroke="${SIDE_INK}" stroke-width="1.3" stroke-dasharray="5 3.5"`;
+          s += `<g opacity=".9"><title>${esc(reliefs.length + " PSV / relief lines · " + from.join(", ") + " → " + dest)}</title>
+            <line x1="${sx}" y1="${top ? mainY : mainY + BH}" x2="${sx}" y2="${ym}" ${g}/>
+            <path d="${hopPath([[sx, ym], [dx, ym]], allV)}" fill="none" ${g}/>
+            <line x1="${dx}" y1="${ym}" x2="${dx}" y2="${(top ? dp.y + BH : dp.y) + (top ? SIDE_GAP : -SIDE_GAP)}" ${g} marker-end="${mref(SIDE_INK)}"/>
+            <text x="${(sx + dx) / 2}" y="${ym - 4}" text-anchor="middle" font-family="${MONO}" font-size="7.2" fill="${SIDE_INK}"
+              paint-order="stroke" stroke="#fff" stroke-width="3">HP/LP RELIEFS</text></g>`;
+        }
+      }
+
+      s += drawNodes();
+      s += `<text x="20" y="${H - 8}" font-family="${MONO}" font-size="7.5" fill="${SOFT}">OVERVIEW · ${sideLinks.length} LINKS IN ${trunks.size} TRUNKS + ${reliefs.length} RELIEF LINES FROM ${reliefUnits} UNITS AGGREGATED · DASH = AGGREGATE, NOT A PIPE · HMB ${esc(kase)} · utilities &amp; drains hidden</text></svg>`;
+      return s;
+    }
+
+    /* ── v1.18.0 · one route per (pair, category), not one per LINE ──────────
+       plant_process_links is a LINE-level table: U310→U230 can be four relief
+       lines with four service codes, and the map was drawing four parallel
+       polylines between the same two boxes. On a block diagram that is noise —
+       the reader is being asked to count pipes on a drawing whose whole job is
+       to hide pipes. One route carries the pair, and its label lists the
+       service codes it stands for, so nothing is hidden, only merged.
+       G-4 still holds: what got merged is printed, never silently dropped. */
+    const byPair = new Map();
+    sideLinks.forEach(l => {
+      const k = l.from_area + "|" + l.to_area + "|" + (l.category || "");
+      if (!byPair.has(k)) byPair.set(k, []);
+      byPair.get(k).push(l);
+    });
+    const mergedLinks = [...byPair.values()].map(g => {
+      const rep = g.find(l => l.hmb) || g[0];
+      const codes = [...new Set(g.map(l => l.service_code).filter(Boolean))];
+      return Object.assign({}, rep, {
+        service_code: codes.slice(0, 2).join("/") + (codes.length > 2 ? "+" + (codes.length - 2) : ""),
+        _n: g.length
+      });
+    });
+
+    const routes = [];
+    let laneTop = 0, laneBot = 0;
+    mergedLinks.forEach((l, i) => {
       const f = nodePos.get(l.from_area), t = nodePos.get(l.to_area);
       if (!f || !t) return;
-      const st = svcClass(data, l.service_code);
+      const st = svcClass(data, (l.hmb ? l.service_code : l.service_code).split("/")[0]);
       const up = (chainAreas.has(l.from_area) ? t : f).y < mainY;
       const cx = a => a.x + BW / 2;
       const off = ((i % 5) - 2) * 11;
       const x1 = cx(f) + off, x2 = cx(t) + off;
       const y1 = f.y + (f.y < t.y ? BH : 0), y2 = t.y + (t.y < f.y ? BH : 0) + (t.y < f.y ? 2 : -2);
-      const ym = up ? Math.min(f.y, t.y) + BH + 22 + (i % 3) * 8 : Math.max(f.y, t.y) - 22 - (i % 3) * 8;
-      s += `<g><title>${esc((l.service_name || "") + " " + (l.description || ""))}</title>
-        <polyline points="${x1},${y1} ${x1},${ym} ${x2},${ym} ${x2},${y2}" fill="none" stroke="${st.color}"
-          stroke-width="${st.stroke_width || 1.6}" ${st.dash ? `stroke-dasharray="${st.dash}"` : ""} marker-end="${mref(st.color)}"/>
-        <text x="${(x1 + x2) / 2}" y="${ym - 3}" text-anchor="middle" font-family="${MONO}" font-size="7" fill="${st.color}">${esc(l.service_code)}</text></g>`;
+      /* lanes: one per route on each side, 13 apart. The old (i%3)*8 put three
+         routes on the same lane as soon as there were four of them, which is
+         exactly when you need them separated. */
+      const lane = up ? (laneTop++) : (laneBot++);
+      const ym = up ? Math.min(f.y, t.y) + BH + 20 + (lane % 5) * 13
+                    : Math.max(f.y, t.y) - 20 - (lane % 5) * 13;
+      routes.push({ pts: [[x1, y1], [x1, ym], [x2, ym], [x2, y2]], st, l, ym,
+        lx: x1 + (x2 - x1) * (i % 2 ? 0.68 : 0.32) });
+    });
+    /* every vertical run on the sheet, including the main-path verticals, so a
+       horizontal hops over anything it genuinely crosses */
+    const allV = routes.flatMap(r => segmentsOf(r.pts).v);
+    routes.forEach((r, i) => {
+      const mine = new Set(segmentsOf(r.pts).v.map(sg => sg.x + ":" + sg.y1));
+      const others = allV.filter(sg => !mine.has(sg.x + ":" + sg.y1));
+      s += `<g><title>${esc((r.l.service_name || "") + " " + (r.l.description || ""))}</title>
+        <path d="${hopPath(r.pts, others)}" fill="none" stroke="${r.st.color}"
+          stroke-width="${Math.min(SIDE_W, r.st.stroke_width || 1.6)}" ${r.st.dash ? `stroke-dasharray="${r.st.dash}"` : ""} marker-end="${mref(r.st.color)}"/>
+        <text x="${r.lx}" y="${r.ym - 4}" text-anchor="middle" font-family="${MONO}" font-size="7" fill="${r.st.color}"
+          paint-order="stroke" stroke="#fff" stroke-width="2.4">${esc(r.l.service_code)}${r.l._n > 1 ? " ×" + r.l._n : ""}</text></g>`;
     });
 
-    /* nodes */
-    nodePos.forEach((p, label) => {
-      if (p.kind === "ext") {
-        s += `<text x="${p.x + BW / 2}" y="${p.y + BH / 2 - 12}" text-anchor="middle" font-family="${MONO}" font-size="8.6" fill="${SOFT}">${esc(clip(label.split("(")[0].trim(), 18))}</text>
-              <text x="${p.x + BW / 2}" y="${p.y + BH / 2 - 2}" text-anchor="middle" font-family="${MONO}" font-size="7" fill="${SOFT}">battery limit</text>`;
-        return;
-      }
-      const isHi = hi === label;
-      s += `<g ${nav ? `style="cursor:pointer" onclick="${nav}('area/${esc(label)}')"` : ""}>
-        <rect x="${p.x}" y="${p.y}" width="${BW}" height="${BH}" rx="5" fill="${isHi ? CRIMSON : "#fff"}" stroke="${isHi ? CRIMSON : LINE}" stroke-width="1.5"/>
-        <text x="${p.x + BW / 2}" y="${p.y + 25}" text-anchor="middle" font-family="${SANS}" font-size="15" font-weight="700" fill="${isHi ? "#fff" : INK}">UNIT ${esc(label)}</text>
-        <text x="${p.x + BW / 2}" y="${p.y + 41}" text-anchor="middle" font-family="${SANS}" font-size="8" fill="${isHi ? "#ffd9df" : SOFT}">${esc(clip(areaName(data, label), 22))}</text>`;
-      if (isHi) s += `<text x="${p.x + BW / 2}" y="${p.y - 8}" text-anchor="middle" font-family="${MONO}" font-size="10" font-weight="700" fill="${CRIMSON}">▼ YOU ARE HERE</text>`;
-      s += `</g>`;
-    });
-    /* main-path value chips on top, with a soft halo so they stay readable */
-    chips.forEach(([x, y, txt]) => {
-      s += `<text x="${x}" y="${y}" text-anchor="middle" font-family="${MONO}" font-size="7.4" fill="${SOFT}" stroke="#fff" stroke-width="2.6" paint-order="stroke">${esc(txt)}</text>`;
-    });
+    /* nodes + chips — extracted in v1.19.0 so the 'overview' branch and the
+       'full' branch share one node layer instead of growing a second copy */
+    function drawNodes() {
+      let s = "";
+      nodePos.forEach((p, label) => {
+        if (p.kind === "ext") {
+          /* the battery limit is now DRAWN — a dashed boundary the run departs
+             from — instead of only being named. Same tick the P&IDs use. */
+          const bx0 = p.x + BW - 4, ym0 = p.y + BH / 2;
+          s += `<text x="${bx0 - 8}" y="${ym0 - 12}" text-anchor="end" font-family="${MONO}" font-size="8.6" fill="${SOFT}">${esc(clip(label.split("(")[0].trim(), 18))}</text>
+                <text x="${bx0 - 8}" y="${ym0 - 2}" text-anchor="end" font-family="${MONO}" font-size="7" fill="${SOFT}">battery limit</text>
+                <line x1="${bx0}" y1="${ym0 - 20}" x2="${bx0}" y2="${ym0 + 20}" stroke="${SOFT}" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+          return;
+        }
+        const isHi = hi === label;
+        s += `<g ${nav ? `style="cursor:pointer" onclick="${nav}('area/${esc(label)}')"` : ""}>
+          <rect x="${p.x}" y="${p.y}" width="${BW}" height="${BH}" rx="6" fill="${isHi ? CRIMSON : "#fff"}" stroke="${isHi ? CRIMSON : "#D6DAE0"}" stroke-width="${BOX_SW}"/>
+          <text x="${p.x + BW / 2}" y="${p.y + (isHi ? 23 : 25)}" text-anchor="middle" font-family="${SANS}" font-size="13.5" font-weight="700" fill="${isHi ? "#fff" : INK}">UNIT ${esc(label)}</text>
+          <text x="${p.x + BW / 2}" y="${p.y + (isHi ? 37 : 40)}" text-anchor="middle" font-family="${SANS}" font-size="7.4" fill="${isHi ? "#ffd9df" : SOFT}">${esc(clip(areaName(data, label), 24))}</text>`;
+      /* ── v1.23.0 · the marker moved INSIDE the box ──────────────────────
+           It started centred above (v1.19), which swallowed the arrowhead of
+           the branch entering this very box. It became a solid left tab
+           (v1.20), which held until the box grew PORTS (v1.23): an 86-unit tab
+           on a 108-unit edge left nowhere for them, so HO into U200 vanished
+           under it again, and NG with it. Two rounds of shuffling one label
+           around the same 20 px is the signal that the label is in the wrong
+           place entirely.
 
+           A "you are here" mark belongs TO the thing it marks, so it goes in
+           the box. The edge is now free for ports at any scale, and this
+           cannot regress: there is no geometry left for it to collide with. */
+        if (isHi) s += `<text x="${p.x + BW / 2}" y="${p.y + 51}" text-anchor="middle" font-family="${MONO}" font-size="7.6" font-weight="700" fill="#fff" opacity=".92">▼ YOU ARE HERE</text>`;
+        s += `</g>`;
+      });
+      /* main-path value chips on top, with a soft halo so they stay readable */
+      chips.forEach(([x, y, txt]) => {
+        s += `<text x="${x}" y="${y}" text-anchor="middle" font-family="${MONO}" font-size="7.4" fill="${SOFT}" stroke="#fff" stroke-width="3.6" paint-order="stroke">${esc(txt)}</text>`;
+      });
+      return s;
+    }
+
+    s += drawNodes();
     s += `<text x="20" y="${H - 8}" font-family="${MONO}" font-size="7.5" fill="${SOFT}">GENERATED FROM plant_process_links · HMB CASE ${esc(kase)} · utilities/relief/drains hidden</text></svg>`;
     return s;
   }
@@ -497,8 +1211,9 @@
     const bx = i => x0 + i * (bw + gap);
     const my = y0 + 32;
 
-    /* inlet arrow + optional inline element of step 1 */
-    s += `<line x1="66" y1="${my}" x2="${bx(0) - 2}" y2="${my}" stroke="${mc}" stroke-width="3" marker-end="${mref(mc)}"/>`;
+    /* inlet run — the inline element of step 1 (typically the plant inlet SDV)
+       is INSERTED in it by procLine, not painted over it (v1.18.0) */
+    s += procLine(66, bx(0), my, mc, train[0] && train[0].inline_element, "below");
     /* segment chips: outlet instruments of box i + inlet instruments of box i+1 share
        the same line segment (V-202 outlet ≡ E-201 inlet). Collected per segment k. */
     const ports = train.map(t => portInstruments(data, t.equipment_tags || []));
@@ -515,18 +1230,24 @@
       const cxSeg = (x1 + x2) / 2;
       chips.forEach((tag, ci) => {
         let fx = x1 + (x2 - x1) * (ci + 1) / (chips.length + 1);
-        if (hasDia && Math.abs(fx - cxSeg) < 15) fx += (fx <= cxSeg ? -17 : 17);   // clear the valve diamond
+        /* v1.18.0 — the ISO valve is wider than the old diamond AND carries a
+           two-line label, so the keep-out that cleared the diamond no longer
+           cleared the symbol. Read the width from the pack. */
+        const keep = ((typeof TamSymProc !== "undefined") ? TamSymProc.A : 8) + 17;
+        if (hasDia && Math.abs(fx - cxSeg) < keep) fx += (fx <= cxSeg ? -keep - 2 : keep + 2);
+        /* …and then clamp, because pushing a chip clear of the valve is what
+           pushed TT-2002 under the E-201 box and printed it as "2002". The tag
+           is centred, so the half-width has to stay inside the segment. */
+        const hw = String(tag).length * 2.1 + 3;
+        fx = Math.max(x1 + hw, Math.min(x2 - hw, fx));
         s += tap(fx, my, tag, true);           // dot ON the line, tag below with leader
       });
     });
     const lastSegChips = (segChips.find(([k]) => k === n) || [null, []])[1];
     train.forEach((t, i) => {
-      if (t.inline_element) {
-        const dx = i === 0 ? (66 + bx(0)) / 2 : bx(i - 1) + bw + gap / 2;
-        s += diamond(dx, my, t.inline_element, i === 0 ? "below" : "above");
-      }
       const x = bx(i);
-      if (i > 0) s += `<line x1="${x - gap}" y1="${my}" x2="${x - 2}" y2="${my}" stroke="${mc}" stroke-width="3" marker-end="${mref(mc)}"/>`;
+      /* segment BEFORE this box, with this step's inline element inserted in it */
+      if (i > 0) s += procLine(x - gap, x, my, mc, t.inline_element, "above");
       s += `<rect x="${x}" y="${y0}" width="${bw}" height="${bh}" rx="5" fill="#fff" stroke="${CRIMSON}" stroke-width="1.6"/>
             <text x="${x + bw / 2}" y="${y0 + 22}" text-anchor="middle" font-family="${SANS}" font-size="14" font-weight="700" fill="${INK}">${esc(t.display_tag)}</text>`;
       const svc = (data.equipment || []).find(e => (t.equipment_tags || []).includes((e.tag || "").trim()));
@@ -547,7 +1268,7 @@
       if (psvs.length)
         s += `<text x="${x + 2}" y="${y0 - 5}" font-family="${MONO}" font-size="6.8" font-weight="700" fill="#8A6D00"
           data-live-kind="psv" data-live-tags="${esc(psvs.join(","))}">⌃ ${esc(psvs.join(" · "))}</text>`;
-      if (t.caption) s += `<text x="${x + bw / 2}" y="${y0 + bh + 19}" text-anchor="middle" font-family="${MONO}" font-size="7.6" fill="${CRIMSON}">${esc(t.caption)}</text>`;
+      if (t.caption) s += `<text x="${x + bw / 2}" y="${y0 + bh + 19}" text-anchor="middle" font-family="${MONO}" font-size="7.6" fill="${CRIMSON}" paint-order="stroke" stroke="#fff" stroke-width="3">${esc(t.caption)}</text>`;
       /* ── exchanger media: medium IN (conditions) + medium OUT (conditions) ──
          One pattern for EVERY exchanger (plant_equipment_media / v_exchanger_media):
          supply arrow down, return arrow up, design conditions on each, duty chip.
@@ -594,9 +1315,8 @@
     const xEnd = bx(n - 1) + bw;
     const outSt = mainOut ? svcClass(data, mainOut.service_code) : null;
     const oc = outSt ? outSt.color : mc;
-    s += `<line x1="${xEnd}" y1="${my}" x2="${W - 92}" y2="${my}" stroke="${oc}" stroke-width="3" marker-end="${mref(oc)}"/>`;
     const ctrl = mainOut && (mainOut.control_tags || [])[0];
-    if (ctrl) s += diamond((xEnd + W - 92) / 2, my, ctrl, "above");
+    s += procLine(xEnd, W - 90, my, oc, ctrl, "above");
     if (mainOut) {
       s += `<rect x="${W - 90}" y="${my - 21}" width="82" height="42" rx="5" fill="#FBE9EC" stroke="${CRIMSON}" stroke-width="1.5"/>
             <text x="${W - 49}" y="${my - 2}" text-anchor="middle" font-family="${SANS}" font-size="12" font-weight="700" fill="${CRIMSON}">${esc(mainOut.other_area ? "U" + mainOut.other_area : clip(mainOut.other_label, 9))}</text>
@@ -2373,7 +3093,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.17.0" };
+                version: "1.30.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
