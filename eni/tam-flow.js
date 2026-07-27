@@ -167,6 +167,16 @@
     const r = mix((n >> 16) & 255), g = mix((n >> 8) & 255), b = mix(n & 255);
     return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
   }
+  /* tint() aclara; shade() oscurece. Hace falta desde que la etiqueta lleva
+     una celda de clave en negativo: sobre el rosa del servicio CHEMICAL el
+     texto blanco no se lee, y bajar el contraste de un identificador es
+     exactamente lo que no puede pasar en un plano. */
+  function shade(hex, t) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+    if (!m) return hex;
+    const n = parseInt(m[1], 16), mix = v => Math.round(v * (1 - t));
+    return "#" + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => mix(v).toString(16).padStart(2, "0")).join("");
+  }
   const SIDE_TINT = 0.38;
 
   /* ── v1.18.0 · orthogonal routing with LINE HOPS ─────────────────────────
@@ -225,20 +235,22 @@
       if (error) { console.warn("tam-flow: " + t + ": " + error.message); return []; }
       return data || [];
     };
-    const [areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves, media] = await Promise.all([
+    const [areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves, media, loops] = await Promise.all([
       all("plant_areas", "area_code"), all("plant_service_classes", "sort_order"),
       all("v_plant_block"), all("v_area_flows"), all("v_area_energy"),
       all("plant_area_trains", "seq"), all("plant_equipment", "tag"), all("plant_skids", "tag"),
-      all("plant_instruments", "tag"), all("plant_valves", "tag"), all("v_exchanger_media")
+      all("plant_instruments", "tag"), all("plant_valves", "tag"), all("v_exchanger_media"),
+      all("plant_control_loops", "loop_tag")
     ]);
-    return indexData({ areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves, media });
+    return indexData({ areas, classes, links, flows, energy, trains, equipment, skids, instruments, valves, media, loops });
   }
   function fromViewer(DB) {
     return indexData({
       areas: DB.areas || [], classes: DB.svcClasses || [], links: DB.plinks || [],
       flows: DB.aflows || [], energy: DB.aenergy || [], trains: DB.trains || [],
       equipment: DB.equip || [], skids: DB.skids || [],
-      instruments: DB.inst || [], valves: DB.valves || [], media: DB.xmedia || []
+      instruments: DB.inst || [], valves: DB.valves || [], media: DB.xmedia || [],
+      loops: DB.loops || DB.ctrlLoops || []
     });
   }
 
@@ -410,6 +422,60 @@
     const nav = opts.onNavigate;
     const links = data.links || [];
     const hideCat = new Set(opts.showAll ? [] : ["UTILITY", "DRAIN", "RELIEF", "OTHER"]);
+    /* ── v1.34.0 · opts.tagLinks — un enlace suelto se dibuja como ETIQUETA ──
+       Formato "200>370": el enlace sale del haz y se dibuja como conector
+       off-page en el borde de la unidad de la cadena. Sin la opción, todo
+       llamador existente renderiza byte a byte como en v1.33.0 (regla G-1). */
+    /* opts.tagLinks · ["200>370", …] se lee «en la caja A, una etiqueta que
+       nombra a B» — ANCLA > NOMBRADO, no origen > destino.
+
+       La primera versión lo leía como el sentido del dato, y funcionaba
+       mientras una de las dos puntas fuese del tren: la otra era el ancla por
+       eliminación. En cuanto el enlace es lateral↔lateral (370↔410) esa
+       deducción se rompe —ninguna es del tren— y peor: el enlace de ida y el
+       de vuelta deducían anclas DISTINTAS, así que el mismo servicio salía con
+       dos etiquetas en dos cajas. El ancla tiene que ser un dato de la opción,
+       no algo que el dibujo infiera. El sentido lo sigue poniendo la base. */
+    const TAGL = new Map();
+    (opts.tagLinks || []).forEach(e => {
+      const [a, b] = String(e).split(">");
+      if (a && b) { TAGL.set(a + "|" + b, a); TAGL.set(b + "|" + a, a); }
+    });
+    const anchorOf = l => TAGL.get(l.from_area + "|" + l.to_area);
+    /* opts.topAreas / opts.botAreas — la banda por DECISIÓN, no por regla.
+       roleTop() acierta con lo que el fluido dice de sí mismo, pero U230 es un
+       colector: no le llega el papel por su categoría, le llega por ser común
+       a toda la planta, y eso no está en ninguna columna. */
+    const FORCE_T = new Set((opts.topAreas || []).map(String));
+    /* opts.tagOrder — el orden IZQUIERDA→DERECHA de las etiquetas en un borde.
+       Mario: "el ingreso de anticorrosivo es antes que la salida a U-370".
+
+       Y tiene razón, pero la corrección no es mover una etiqueta: es que la
+       regla equivocada estaba contestando. Los puertos de las cajas se ordenan
+       por `plant_service_classes.sort_order` (v1.23.0) y eso contesta "¿qué
+       fluido?" — la pregunta correcta para una caja con ocho conexiones.
+       Una toma off-page sobre el tren pregunta otra cosa: "¿DÓNDE, a lo largo
+       de la unidad?". La inyección de inhibidor entra aguas arriba; la toma de
+       fuel gas sale aguas abajo de FV-2001. Eso es secuencia de proceso, y no
+       está en ninguna columna de la base — por eso es curado y explícito. */
+    const TAG_ORDER = (opts.tagOrder || []).map(String);
+    /* opts.portOrder · {"310|B": ["PW","NG"], …} — el orden de los puertos de
+       UN borde concreto, izquierda→derecha.
+
+       Mario: "la línea de agua debe salir cerca de la esquina inferior
+       izquierda de 310, mientras el gas de 360 entra por la derecha".
+
+       El orden global por `sort_order` (v1.23.0) existe para que la SECUENCIA
+       sea canónica en toda la planta —hidrocarburo, luego utilidad, luego
+       agua— y eso sigue siendo lo correcto por defecto. Pero una caja concreta
+       puede tener una razón de lámina para invertirlo: aquí el agua sale hacia
+       U530, que está abajo-izquierda, y el BOG entra desde U360, abajo-derecha.
+       Cruzar sus dos bajadas para respetar un orden canónico es pagar la regla
+       con el dibujo. La excepción es explícita y por borde, así que no
+       contamina el orden de las demás cajas. */
+    const PORT_ORDER = opts.portOrder || {};
+    const FORCE_B = new Set((opts.botAreas || []).map(String));
+    const isTagLink = l => anchorOf(l) != null;
 
     /* main chain from is_main links */
     const mains = links.filter(l => l.is_main).sort((a, b) => (a.display_rank || 0) - (b.display_rank || 0));
@@ -429,7 +495,25 @@
       l.from_area && l.to_area &&
       (chainAreas.has(l.from_area) !== chainAreas.has(l.to_area)));
     const sideAreas = new Map();  // area → {cats:Set, partners:[chain areas]}
+    /* si TODOS los enlaces de un área se van a etiqueta, esa área ya no
+       necesita caja: la etiqueta la nombra. Si sólo se va uno, la caja se
+       queda —U370 sigue teniendo otros cuatro orígenes. */
+    const tagOnly = new Set();
+    {
+      const tot = new Map(), tg = new Map();
+      sideLinks.forEach(l => {
+        const a = chainAreas.has(l.from_area) ? l.to_area : l.from_area;
+        if (chainAreas.has(a)) return;
+        tot.set(a, (tot.get(a) || 0) + 1);
+        if (isTagLink(l)) tg.set(a, (tg.get(a) || 0) + 1);
+      });
+      tot.forEach((n, a) => { if ((tg.get(a) || 0) === n) tagOnly.add(a); });
+    }
     sideLinks.forEach(l => {
+      {
+        const a = chainAreas.has(l.from_area) ? l.to_area : l.from_area;
+        if (tagOnly.has(a)) return;
+      }
       const side = chainAreas.has(l.from_area) ? l.to_area : l.from_area;
       if (chainAreas.has(side)) return;
       if (!sideAreas.has(side)) sideAreas.set(side, { cats: new Set(), partners: [] });
@@ -459,6 +543,11 @@
        `full` — what the viewer draws — keeps the fluid colours from
        plant_service_classes untouched. The data did not change. */
     const SIDE_INK = "#8B939C";
+    /* v1.35.0 — 15 px de paso dejaba dos carriles vecinos tan juntos que sus
+       ramales verticales se leían como uno solo bifurcado. El paso es lo único
+       que separa dos haces distintos; 19 es el mínimo con el que la etiqueta de
+       uno no toca la línea del otro. */
+    const LANE_PITCH = 19;
     const MAIN_W = 2.6;          // the plant's product path — the subject
     const BOX_SW = 1.2;          // box outline: a frame, not a pipe
     const nodePos = new Map();
@@ -545,7 +634,8 @@
         /* overlap only gets a vote when the role is genuinely mixed */
         const mixed = st.cats.has("PRODUCT") && (st.cats.has("ENERGY") || st.cats.has("WATER"));
         const ct = overlaps(tSpan, sp), cb = overlaps(bSpan, sp);
-        const useTop = mixed && ct !== cb ? ct < cb : band;
+        const forced = FORCE_T.has(String(a)) ? true : FORCE_B.has(String(a)) ? false : null;
+        const useTop = forced != null ? forced : (mixed && ct !== cb ? ct < cb : band);
         (useTop ? tops : bots).push([a, st]);
         (useTop ? tSpan : bSpan).push(sp);
       });
@@ -560,6 +650,31 @@
       });
     };
     place(tops, 42); place(bots, 372);
+    /* ── opts.packBotLeft ────────────────────────────────────────────────
+       Mario: "mueves la unidad 410 y 530 a la izquierda, debería quedar más
+       limpio". Con U230 arriba y U120 en etiqueta, el centroide de socios ya
+       no está gobernando nada útil abajo: quedan dos cajas flotando en medio
+       de una fila vacía. Alineadas a la izquierda, sus dos ramales se acortan
+       y el hueco queda entero en vez de partido en tres. */
+    /* ── opts.pinUnder · {area: chainArea} ────────────────────────────────
+       Mario: "410 debajo de 200, 530 debajo de 330".
+
+       El centroide de socios coloca bien cuando un servicio reparte entre
+       varias unidades, pero deja de gobernar nada útil cuando la fila se queda
+       con dos cajas: acaban flotando en medio de un piso vacío, cada una con
+       su ramal largo hacia el socio de más peso. Anclarlas bajo la unidad que
+       importa convierte el ramal principal en una vertical y deja el resto del
+       piso libre. Es una decisión de lámina, no un dato, así que es explícita. */
+    if (opts.pinUnder) {
+      Object.keys(opts.pinUnder).forEach(a => {
+        const q = nodePos.get(String(a)), t = nodePos.get(String(opts.pinUnder[a]));
+        if (q && t) q.x = Math.max(8, Math.min(W - BW - 8, t.x));
+      });
+      /* y si al anclarlas se pisan, cede la de la derecha — nunca al revés:
+         el ancla de la izquierda es la que marca el inicio del tren */
+      const row = [...nodePos.entries()].filter(([, q]) => q.y > mainY).sort((u, v) => u[1].x - v[1].x);
+      row.forEach(([, q], i) => { if (i) { const pv = row[i - 1][1]; if (q.x < pv.x + BW + 24) q.x = pv.x + BW + 24; } });
+    }
 
     let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
     const colors = new Set(["#4A4F57", SOFT, SIDE_INK]);
@@ -712,7 +827,24 @@
       }
 
       const trunks = new Map();          // sideArea → {partners: Map(chainA→{out,in}), codes}
+      /* ── v1.36.0 · un enlace por etiqueta no tiene por qué tocar el tren ───
+         Mario: "¿de 370 a dónde va?".
+
+         A ningún sitio, según la hoja — y era mentira. U370 manda fuel gas a
+         U420, devuelve aceite térmico a U410 y drena a U550. Ninguna de esas
+         salidas se dibujaba, y por dos motivos distintos: U420 y U550 no están
+         en la lámina, y las de U410 sí lo están pero son enlaces LATERAL↔
+         LATERAL — el mapa sólo traza lo que toca la cadena, así que caían
+         fuera de `sideLinks` sin que nada lo dijera.
+
+         Una unidad que recibe cuatro flechas y no emite ninguna se lee como un
+         callejón sin salida. El conector off-page arregla justo eso, y ya
+         estaba escrito: sólo le faltaba poder colgar de una caja que no sea
+         del tren. */
+      const tagged = links.filter(l => isTagLink(l) && !sideLinks.includes(l) &&
+        ((l.from_area && nodePos.has(l.from_area)) || (l.to_area && nodePos.has(l.to_area))));
       sideLinks.forEach(l => {
+        if (isTagLink(l)) { tagged.push(l); return; }
         const sideA = chainAreas.has(l.from_area) ? l.to_area : l.from_area;
         const chainA = chainAreas.has(l.from_area) ? l.from_area : l.to_area;
         if (!trunks.has(sideA)) trunks.set(sideA, { sideA, partners: new Map(), codes: new Set(), links: [] });
@@ -769,7 +901,13 @@
       });
       const portList = (label, top) => {
         const k = label + "|" + (top ? "T" : "B");
-        return [...(portsOf.get(k) || new Set())].sort((a, b) => svcRank(a) - svcRank(b));
+        const forced = PORT_ORDER[k];
+        const rk = c => {
+          if (!forced) return svcRank(c);
+          const i = forced.indexOf(c);
+          return i >= 0 ? i : 500 + svcRank(c);     // lo no listado, detrás y en orden canónico
+        };
+        return [...(portsOf.get(k) || new Set())].sort((a, b) => rk(a) - rk(b));
       };
       /* x of a fluid's port on a box edge */
       const portX = (p, label, top, code) => {
@@ -817,7 +955,7 @@
         } else {
           it.kind = "bundle";
           const lane = top ? laneT++ : laneB++;
-          it.ym = top ? mainY - 26 - lane * 15 : mainY + BH + 34 + lane * 15;
+          it.ym = top ? mainY - 26 - lane * LANE_PITCH : mainY + BH + 34 + lane * LANE_PITCH;
           it.lane = lane;
           it.stemX = sp.x + BW / 2;
           it.bx = px.map(e => portX(e.p, e.a, top, bestCode(e.d.codes)));
@@ -829,8 +967,56 @@
         items.push(it);
       });
 
+      /* el peine del colector es geometría de la hoja como cualquier otra: sus
+         verticales entran en allV o los haces horizontales lo cruzarían sin
+         saltar, que es el defecto que hopPath existe para no tener */
+      const rakeAll = links.filter(l => l.category === "RELIEF" && l.to_area && nodePos.has(l.to_area));
+      const rakeCnt = new Map();
+      rakeAll.forEach(l => { if (l.from_area) rakeCnt.set(l.from_area, (rakeCnt.get(l.from_area) || 0) + 1); });
+      const rakeOn = [...rakeCnt.keys()].filter(a => chainAreas.has(a) && nodePos.has(a))
+        .sort((u, v) => nodePos.get(u).x - nodePos.get(v).x);
+      const rakeDp = rakeAll.length ? nodePos.get(rakeAll[0].to_area) : null;
+      let rakeV = [];
+      if (opts.reliefRake && rakeDp && rakeOn.length && rakeDp.y < mainY) {
+        const ymR = Math.max(rakeDp.y + BH + 30,
+                    Math.min(mainY - 30, mainY - 26 - (laneT + 1) * LANE_PITCH));
+        /* la bajada al colector NO por el centro: ahí ya entra el haz de amina,
+           y dos líneas distintas en el mismo punto de una caja se leen como una */
+        const dcx = rakeDp.x + BW - 26;
+        /* ── dónde pincha cada ramal ────────────────────────────────────────
+           Por el centro de la caja no, y por dos razones distintas:
+
+             · el centro es donde ya arranca el haz de esa unidad (el de amina
+               en U330), y dos líneas superpuestas se leen como una;
+             · si la unidad lleva etiquetas off-page, el borde es SUYO — son
+               anchas y no se pueden mover, así que el ramal cede y se va a la
+               esquina. La cabecera empieza entonces a la derecha de la
+               columna de etiquetas, que es lo que impedía leer su rótulo.
+
+           Fuera de esos dos casos, el ramal recorre el borde y se queda donde
+           más lejos esté de cualquier vertical ya trazada. */
+        const trunkV = items.flatMap(it => it.v);
+        const hasTag = new Set(tagged.map(l => chainAreas.has(l.from_area) ? l.from_area : l.to_area));
+        const tickX = a => {
+          const q = nodePos.get(a);
+          if (hasTag.has(a)) return q.x + BW - 10;
+          let bx = q.x + BW / 2, bd = -1;
+          for (let t = 0.15; t <= 0.85; t += 0.05) {
+            const cx = q.x + 16 + (BW - 32) * t;
+            const d = trunkV.reduce((m, sg) =>
+              (sg.y1 < q.y + 2 && sg.y2 > ymR - 2) || (sg.y1 < ymR + 2 && sg.y2 > ymR - 2)
+                ? Math.min(m, Math.abs(sg.x - cx)) : m, 1e9);
+            if (d > bd) { bd = d; bx = cx; }
+          }
+          return bx;
+        };
+        const tick = new Map(rakeOn.map(a => [a, tickX(a)]));
+        rakeV = [{ x: dcx, y1: rakeDp.y + BH, y2: ymR }]
+          .concat(rakeOn.map(a => ({ x: tick.get(a), y1: ymR, y2: nodePos.get(a).y })));
+        opts._rake = { ymR, dcx, tick };
+      }
       /* ── pass 2 · ink, with the horizontals hopping every other vertical ── */
-      const allV = items.flatMap(it => it.v);
+      const allV = items.flatMap(it => it.v).concat(rakeV);
       items.forEach(it => {
         const st = it.st, top = it.top;
         /* ── v1.24.0 · ink hierarchy ────────────────────────────────────────
@@ -879,8 +1065,28 @@
             g += `<line x1="${bx2}" y1="${it.ym}" x2="${bx2}" y2="${yEnd}" ${e.d.out ? head : stroke}/>`;
           });
           const codes = trunkLabel(it.tr.links, it.tr.codes, it.tr.dom);
-          g += `<text x="${it.x1 + (it.x2 - it.x1) * (it.lane % 2 ? 0.66 : 0.34)}" y="${it.ym - 4}" text-anchor="middle" font-family="${MONO}" font-size="7.4" fill="${ink}"
-            paint-order="stroke" stroke="#fff" stroke-width="3">${esc(codes)}</text>`;
+          /* ── v1.35.0 · la etiqueta busca hueco, no una fracción fija ───────
+             Mario, señalando el techo: colisiones.
+
+             La etiqueta se ponía al 34 % o al 66 % del tramo según la paridad
+             del carril. Eso reparte, pero no MIRA: en cuanto una vertical de
+             otro haz cae en ese punto, el nombre del fluido se imprime encima
+             de una tubería, que es exactamente donde no se puede leer.
+
+             Ahora recorre el tramo y se queda donde está más lejos de
+             cualquier vertical de la hoja — la misma lista `allV` que ya usan
+             los saltos. Es la información que hacía falta y ya estaba ahí. */
+          const lw = codes.length * 4.4 + 8;
+          let best = null, bestD = -1;
+          for (let f = 0.12; f <= 0.88; f += 0.04) {
+            const cxL = it.x1 + (it.x2 - it.x1) * f;
+            if (cxL - lw / 2 < it.x1 + 4 || cxL + lw / 2 > it.x2 - 4) continue;
+            const d = allV.reduce((m, sg) =>
+              (it.ym > sg.y1 - 6 && it.ym < sg.y2 + 6) ? Math.min(m, Math.abs(sg.x - cxL)) : m, 1e9);
+            if (d > bestD) { bestD = d; best = cxL; }
+          }
+          g += `<text x="${best != null ? best : (it.x1 + it.x2) / 2}" y="${it.ym - 4}" text-anchor="middle" font-family="${MONO}" font-size="7.4" fill="${ink}"
+            paint-order="stroke" stroke="#fff" stroke-width="3.4">${esc(codes)}</text>`;
         }
         s += g + `</g>`;
       });
@@ -901,9 +1107,86 @@
          That is the rule, and it is worth stating because it is the trap:
              dash + fluid colour = that fluid's line style   (data)
              dash + grey         = an aggregate, not a pipe  (drawing)         */
-      const reliefs = links.filter(l => l.category === "RELIEF" && l.to_area && nodePos.has(l.to_area));
+      const reliefsAll = links.filter(l => l.category === "RELIEF" && l.to_area && nodePos.has(l.to_area));
+      /* ── v1.34.0 · la unidad resaltada NO se agrega ────────────────────────
+         Mario: "unit 200 a 230, ¿no hay conexión?".
+
+         La había —tres líneas: `8"-FL-000004-1C1` de V-201/S-201,
+         `4"-FL-000017-1C1` de V-202 (la descarga de PSV-2028A/B) y
+         `2"-FL-202006-6C1`— pero estaban dentro del agregado, y el agregado
+         arranca de un HUECO entre unidades a propósito: una línea saliendo del
+         borde de U330 diría "U330 alivia a la antorcha" y eso es falso, alivian
+         nueve (v1.25.0).
+
+         Ese razonamiento se invierte en la unidad resaltada. La hoja es sobre
+         U200: su alivio no es contexto, es materia. Y sale de SU borde porque
+         de U200 sí es verdad que alivia. El resto sigue agregado.
+
+         La regla general: lo que se agrega es el contexto, nunca el sujeto.   */
+      const hiRel = (opts.reliefFromHighlight && hi) ? reliefsAll.filter(l => String(l.from_area) === hi) : [];
+      const reliefs = reliefsAll.filter(l => hiRel.indexOf(l) < 0);
       const reliefUnits = new Set(reliefs.map(l => l.from_area).filter(Boolean)).size;
-      if (reliefs.length) {
+      /* ══ v1.35.0 · EL COLECTOR SE DIBUJA COMO RASTRILLO ═══════════════════
+         Mario, con un interrogante sobre la línea: "aclarar esa línea al flare
+         que no tiene origen. ¿son todas las unidades que tienen acceso?".
+
+         Las dos preguntas son la misma pregunta, y la respuesta es que el
+         dibujo se había pasado de listo. La línea arrancaba de un HUECO entre
+         unidades para no atribuirle el colector a ninguna (v1.25.0) — evitaba
+         decir una mentira, pero al precio de no decir nada: una línea que
+         empieza en el aire no tiene origen que leer, y quien mira no puede
+         contestar quién alivia.
+
+         Un COLECTOR se dibuja como colector: una línea de cabecera y un ramal
+         corto por cada unidad que descarga en ella. Cada ramal SÍ es verdad
+         —U330 alivia, y ahí está su ramal— y el conjunto contesta la pregunta
+         sin contadores: se cuentan los ramales. Cada uno lleva además su número
+         de líneas, porque "alivia" y "alivia por ocho sitios" no es lo mismo.
+
+         Y lo que NO está en el rastrillo se nombra, no se calla: las unidades
+         laterales descargan igual y su ramal cruzaría media lámina, así que van
+         listadas al extremo de la cabecera con su cuenta. G-4: el hueco se ve.  */
+      if (reliefs.length || hiRel.length) {
+        const all = reliefsAll;
+        const dest = all[0].to_area, dp = nodePos.get(dest);
+        const cnt = new Map();
+        all.forEach(l => { if (l.from_area) cnt.set(l.from_area, (cnt.get(l.from_area) || 0) + 1); });
+        const onRake = [...cnt.keys()].filter(a => chainAreas.has(a) && nodePos.has(a))
+          .sort((u, v) => nodePos.get(u).x - nodePos.get(v).x);
+        const off = [...cnt.entries()].filter(([a]) => !chainAreas.has(a) || !nodePos.has(a))
+          .sort((u, v) => v[1] - u[1]);
+        const offN = off.reduce((n, e) => n + e[1], 0);
+        if (dp && onRake.length && opts.reliefRake && dp.y < mainY && opts._rake) {
+          const g = `stroke="${SIDE_INK}" stroke-width="1.3" stroke-dasharray="5 3.5"`;
+          const gs = `stroke="${SIDE_INK}" stroke-width="1.1" stroke-dasharray="4 3"`;
+          /* la cabecera va por debajo de todos los carriles de haz y por encima
+             del tren: es un carril más, y se acota igual que ellos */
+          const ymR = opts._rake.ymR, dcx = opts._rake.dcx, tick = opts._rake.tick;
+          const xs = onRake.map(a => tick.get(a));
+          const x1 = Math.min(dcx, ...xs), x2 = Math.max(dcx, ...xs);
+          let r = `<g><title>${esc(all.length + " líneas de alivio → U" + dest + " · " +
+            [...cnt.entries()].map(e => "U" + e[0] + "×" + e[1]).join(" · "))}</title>`;
+          r += `<path d="${hopPath([[x1, ymR], [x2, ymR]], allV)}" fill="none" ${g}/>`;
+          /* una sola punta, y en el colector: es el destino de todos */
+          r += `<line x1="${dcx}" y1="${ymR}" x2="${dcx}" y2="${dp.y + BH + SIDE_GAP}" ${g} marker-end="${mref(SIDE_INK)}"/>`;
+          onRake.forEach(a => {
+            const q = nodePos.get(a), cx = tick.get(a), isHi = a === hi;
+            r += `<line x1="${cx}" y1="${ymR}" x2="${cx}" y2="${q.y - 2}" ${isHi ? g : gs}/>`;
+            r += `<circle cx="${cx}" cy="${ymR}" r="2.1" fill="${SIDE_INK}"/>`;
+            r += `<text x="${cx + 5}" y="${q.y - 8}" font-family="${MONO}" font-size="7" font-weight="${isHi ? 700 : 400}"
+              fill="${isHi ? CRIMSON : SIDE_INK}" paint-order="stroke" stroke="#fff" stroke-width="3">${cnt.get(a)}</text>`;
+          });
+          /* el rótulo va DEBAJO del carril: encima está la columna de
+             etiquetas de U200, y un rótulo que se lee a medias no es un rótulo */
+          r += `<text x="${Math.min(...xs) + 10}" y="${ymR + 12}" font-family="${MONO}" font-size="7.2" font-weight="700" fill="${SIDE_INK}"
+            paint-order="stroke" stroke="#fff" stroke-width="3.4">HP/LP RELIEF HEADER · ${all.length} LINES · ${cnt.size} UNITS</text>`;
+          if (off.length)
+            r += `<text x="${x2 - 4}" y="${ymR + 12}" text-anchor="end" font-family="${MONO}" font-size="6.8" fill="${SIDE_INK}"
+              paint-order="stroke" stroke="#fff" stroke-width="3.4">+ ${offN} FROM ${esc(off.map(e => e[0] ? "U" + e[0] : "NO ORIGIN").join(" · "))}</text>`;
+          s += r + `</g>`;
+        }
+      }
+      if (!opts.reliefRake && reliefs.length) {
         const dest = reliefs[0].to_area, dp = nodePos.get(dest);
         const from = [...new Set(reliefs.map(l => l.from_area).filter(Boolean))];
         /* the chain units only say WHERE the line starts; the count is the
@@ -929,21 +1212,177 @@
              final drop became 3 units long and the arrowhead a stub. Clamp to
              stay clear of the row it is heading for. */
           const lane = (top ? laneT : laneB) + 1;
-          const raw = top ? mainY - 26 - lane * 15 : mainY + BH + 34 + lane * 15;
-          const ym = top ? Math.min(raw, dp.y + BH + 20) : Math.max(raw, 0) && Math.min(raw, dp.y - 22);
+          const raw = top ? mainY - 26 - lane * LANE_PITCH : mainY + BH + 34 + lane * LANE_PITCH;
+          /* con el colector arriba la trampa se invierte: el carril caía DEMASIADO
+             cerca de la caja y la bajada final quedaba en 20 px — otra flecha
+             convertida en muñón. El carril se acota por los dos lados: nunca
+             más cerca de 56 px de la caja, nunca dentro de la fila de troncos. */
+          const ym = top ? Math.max(dp.y + BH + 56, Math.min(raw, mainY - 30))
+                         : Math.max(raw, 0) && Math.min(raw, dp.y - 22);
           const dx = dp.x + BW - 22;
           const g = `stroke="${SIDE_INK}" stroke-width="1.3" stroke-dasharray="5 3.5"`;
           s += `<g opacity=".9"><title>${esc(reliefs.length + " PSV / relief lines · " + from.join(", ") + " → " + dest)}</title>
             <line x1="${sx}" y1="${top ? mainY : mainY + BH}" x2="${sx}" y2="${ym}" ${g}/>
             <path d="${hopPath([[sx, ym], [dx, ym]], allV)}" fill="none" ${g}/>
             <line x1="${dx}" y1="${ym}" x2="${dx}" y2="${(top ? dp.y + BH : dp.y) + (top ? SIDE_GAP : -SIDE_GAP)}" ${g} marker-end="${mref(SIDE_INK)}"/>
-            <text x="${(sx + dx) / 2}" y="${ym - 4}" text-anchor="middle" font-family="${MONO}" font-size="7.2" fill="${SIDE_INK}"
-              paint-order="stroke" stroke="#fff" stroke-width="3">HP/LP RELIEFS</text></g>`;
+            <text x="${top ? sx + (dx > sx ? -6 : 6) : (sx + dx) / 2}" y="${top ? ym - 6 : ym - 4}" text-anchor="${top ? (dx > sx ? "end" : "start") : "middle"}" font-family="${MONO}" font-size="7.2" fill="${SIDE_INK}"
+              paint-order="stroke" stroke="#fff" stroke-width="3">HP/LP RELIEFS${top ? " · " + reliefs.length : ""}</text></g>`;
         }
       }
 
+
+      /* ══ v1.34.0 · UN ENLACE SUELTO SE DIBUJA COMO ETIQUETA ════════════════
+         Mario: "la conexión entre 200 y 370 reemplázala usando una etiqueta
+         simple U370, eso comenzará la limpieza".
+
+         El enlace 200→370 —la toma de fuel gas aguas abajo de FV-2001— es UNA
+         línea, y para dibujarla el haz de U370 tenía que estirarse desde U200
+         hasta el extremo derecho de la hoja: el tramo horizontal más largo del
+         mapa, cruzando por encima de U330, U310 y U350, para decir algo que no
+         tiene nada que ver con ninguna de las tres.
+
+         Un conector off-page dice lo mismo sin cruzar nada. Es exactamente
+         para lo que existe en un P&ID: cuando seguir la línea con el dedo
+         cuesta más que leer el destino, se corta la línea y se nombra el
+         destino. U370 sigue en la hoja con su caja y con sus otros cuatro
+         orígenes; lo que desaparece es el viaje.
+
+         La forma es la de TamSymProc.offPage(): galón en el sentido del flujo,
+         destino dentro. Y el puerto sale de la misma regla de fluido que todo
+         lo demás (v1.23.0), así que la toma de gas natural sale de U200 por
+         donde le corresponde al gas natural y no por el centro de la caja.    */
+      if (tagged.length) {
+        const TG_W = 26, peak = 9, KEY = 30;
+        const byKey = new Map();
+        tagged.forEach(l => {
+          const chainA = anchorOf(l);                       // el ancla, de la opción
+          const otherA = String(l.from_area) === String(chainA) ? l.to_area : l.from_area;
+          const k = chainA + "|" + otherA;
+          if (!byKey.has(k)) byKey.set(k, { k, chainA, otherA, in: false, out: false, codes: new Set(), ls: [], n: 0 });
+          const it = byKey.get(k); it.n++; it.ls.push(l);
+          if (String(l.from_area) === String(chainA)) it.out = true; else it.in = true;
+          if (l.service_code) it.codes.add(l.service_code);
+        });
+        const tg = [...byKey.values()];
+        tg.forEach(it => { it.code = bestCode(it.codes); });
+        /* reparto del borde POR UNIDAD, en orden de proceso */
+        const rank = it => {
+          const r = TAG_ORDER.indexOf(it.chainA + ">" + it.otherA);
+          return r >= 0 ? r : 900 + svcRank(it.code);
+        };
+        /* ── ¿arriba o a la derecha? ────────────────────────────────────
+           Una caja del tren tiene toda la banda superior libre, así que su
+           etiqueta va arriba y girada. Una caja de la FILA DE ARRIBA no: su
+           borde superior está a 42 px del canto de la hoja y una etiqueta
+           vertical se saldría del papel. Se va al costado y se escribe
+           horizontal — que además es donde queda el hueco de la lámina.
+
+           La orientación la manda la POSICIÓN, no una opción: si un día la
+           caja cambia de banda, la etiqueta la sigue sola. */
+        tg.forEach(it => { const q = nodePos.get(it.chainA); it.side = (q && q.y < mainY) ? "R" : "T"; });
+        const perUnit = new Map();
+        tg.forEach(it => { if (!perUnit.has(it.chainA)) perUnit.set(it.chainA, []); perUnit.get(it.chainA).push(it); });
+        perUnit.forEach((arr, unit) => {
+          const p = nodePos.get(unit); if (!p) return;
+          arr.sort((a, b) => rank(a) - rank(b));
+          if (arr[0].side === "R") {                    // al costado: se apilan
+            const w = arr.reduce((m, t) => Math.max(m,
+              Math.round(String(areaName(data, t.otherA) || "").length * 4.6) + KEY + 22), 96);
+            const room = W - (p.x + BW + 22) - 8;
+            arr.forEach((it, k) => { it.W = Math.min(w, room); it.row = k; });
+            return;
+          }
+          /* si por este borde sube además el ramal del colector, la columna de
+             etiquetas se retira lo bastante como para que el número de líneas
+             del ramal no quede pegado al canto de la última etiqueta */
+          const shares = (opts.reliefRake && rakeOn.indexOf(unit) >= 0) || (opts.reliefFromHighlight && String(unit) === hi);
+          const x0 = p.x + 16, x1 = p.x + BW - (shares ? 52 : 18);
+          /* misma altura para todas las del borde: un campo de formulario no
+             cambia de tamaño según lo que lleve dentro, y dos etiquetas de
+             alturas distintas dejan de leerse como una fila */
+          const HH = arr.reduce((m, t) => Math.max(m,
+            Math.round(String(areaName(data, t.otherA) || "").length * 4.3) + KEY + 18), 64);
+          arr.forEach((it, k) => {
+            it.H = HH;
+            it.x = arr.length <= 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * k / (arr.length - 1);
+          });
+        });
+        tg.forEach(it => {
+          const p = nodePos.get(it.chainA); if (!p) return;
+          const st = svcClass(data, it.code), ink = tint(st.color, SIDE_TINT);
+          const nm = String(areaName(data, it.otherA) || "").toUpperCase();
+          const both = it.in && it.out, out = it.out && !it.in;
+          const ttl = `<title>${esc("U" + it.chainA + (both ? " ↔ U" : out ? " → U" : " ← U") + it.otherA + " · " + it.n +
+                 " line(s) · " + it.ls.map(l => l.line_number || l.service_code).join(" · "))}</title>`;
+          if (it.side === "R") {
+            /* horizontal, al costado: misma gramática girada 90° — clave en el
+               extremo de fuera, galón en el sentido del flujo, esquina viva */
+            const TW = it.W, TH = 26, xL = p.x + BW + 22, xR = xL + TW;
+            const yT2 = p.y + 6 + it.row * (TH + 8), cy = yT2 + TH / 2;
+            const poly = both
+              ? `${xL},${yT2} ${xR},${yT2} ${xR},${yT2 + TH} ${xL},${yT2 + TH}`
+              : out
+              ? `${xL},${yT2} ${xR - peak},${yT2} ${xR},${cy} ${xR - peak},${yT2 + TH} ${xL},${yT2 + TH}`
+              : `${xL + peak},${yT2} ${xR},${yT2} ${xR},${yT2 + TH} ${xL + peak},${yT2 + TH} ${xL},${cy}`;
+            const kx = xR - KEY - (out ? peak : 0);
+            const keyClip = out
+              ? `${kx},${yT2} ${xR - peak},${yT2} ${xR},${cy} ${xR - peak},${yT2 + TH} ${kx},${yT2 + TH}`
+              : `${kx},${yT2} ${xR},${yT2} ${xR},${yT2 + TH} ${kx},${yT2 + TH}`;
+            s += `<g>${ttl}` +
+              `<line x1="${p.x + BW}" y1="${cy}" x2="${xL}" y2="${cy}" stroke="${ink}" stroke-width="${SIDE_W}"/>` +
+              `<polygon points="${poly}" fill="#fff" stroke="${ink}" stroke-width="1.2" stroke-linejoin="miter"/>` +
+              `<polygon points="${keyClip}" fill="${shade(st.color, 0.18)}" stroke-linejoin="miter"/>` +
+              `<line x1="${kx}" y1="${yT2}" x2="${kx}" y2="${yT2 + TH}" stroke="${ink}" stroke-width="1.2"/>` +
+              `<text x="${kx + KEY / 2}" y="${cy + 3.2}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="700" fill="#fff" letter-spacing="0.4">U${esc(it.otherA)}</text>` +
+              `<text x="${xL + 8}" y="${cy + 3}" font-family="${MONO}" font-size="6.6" fill="#4A4F57" letter-spacing="0.5">${esc(clip(nm, Math.floor((TW - KEY - 16) / 4.6)))}</text></g>`;
+            return;
+          }
+          const x = it.x;
+          /* ── el conector off-page, en clave de plano ─────────────────────
+             Esquina viva (un radio redondeado es lenguaje de interfaz, no de
+             P&ID) · dos campos y no una frase, con la clave SIEMPRE en el
+             extremo de fuera, como un registro SAP · y la punta como única
+             geometría que habla: un solo galón, en el sentido del flujo. */
+          const yB = p.y - 18, yT = yB - it.H;
+          const TG_H = it.H, x0 = x - TG_W / 2, cxk = x;
+          const poly = both
+            ? `${x0},${yB} ${x0},${yT} ${x0 + TG_W},${yT} ${x0 + TG_W},${yB}`
+            : out
+            ? `${x0},${yB} ${x0},${yT + peak} ${x},${yT} ${x0 + TG_W},${yT + peak} ${x0 + TG_W},${yB}`
+            : `${x0},${yT} ${x0 + TG_W},${yT} ${x0 + TG_W},${yB - peak} ${x},${yB} ${x0},${yB - peak}`;
+          const keyY = yT, keyH = KEY, sep = yT + KEY;
+          const bodyC = (sep + (out ? yB : yB - peak)) / 2;
+          const keyClip = out
+            ? `${x0},${yT + peak} ${x},${yT} ${x0 + TG_W},${yT + peak} ${x0 + TG_W},${sep} ${x0},${sep}`
+            : `${x0},${yT} ${x0 + TG_W},${yT} ${x0 + TG_W},${sep} ${x0},${sep}`;
+          s += `<g>${ttl}` +
+            `<line x1="${x}" y1="${p.y}" x2="${x}" y2="${yB}" stroke="${ink}" stroke-width="${SIDE_W}"/>` +
+            `<polygon points="${poly}" fill="#fff" stroke="${ink}" stroke-width="1.2" stroke-linejoin="miter"/>` +
+            `<polygon points="${keyClip}" fill="${shade(st.color, 0.18)}" stroke-linejoin="miter"/>` +
+            `<line x1="${x0}" y1="${sep}" x2="${x0 + TG_W}" y2="${sep}" stroke="${ink}" stroke-width="1.2"/>` +
+            `<text x="${cxk}" y="${keyY + keyH / 2 + 3.2 + (out ? 2 : 0)}" text-anchor="middle" transform="rotate(-90 ${cxk} ${keyY + keyH / 2 + (out ? 2 : 0)})" font-family="${MONO}" font-size="9" font-weight="700" fill="#fff" letter-spacing="0.4">U${esc(it.otherA)}</text>` +
+            `<text x="${x}" y="${bodyC + 3.2}" text-anchor="middle" transform="rotate(-90 ${x} ${bodyC})" font-family="${MONO}" font-size="6.6" fill="#4A4F57" letter-spacing="0.6">${esc(nm)}</text></g>`;
+        });
+      }
+      /* el alivio propio de la unidad resaltada: sale de SU borde, va por su
+         propio carril y entra a U230 por el lado opuesto al del agregado, para
+         que las dos líneas no se lean como una sola que se bifurca */
+      if (hiRel.length) {
+        const sp = nodePos.get(hi), dest = hiRel[0].to_area, dp = nodePos.get(dest);
+        if (sp && dp && dp.y < mainY) {
+          const g = `stroke="${SIDE_INK}" stroke-width="1.3" stroke-dasharray="5 3.5"`;
+          const sx = sp.x + BW - 6, dx = dp.x + 20;
+          const ym = Math.max(dp.y + BH + 26, mainY - 44);
+          s += `<g><title>${esc(hiRel.length + " líneas de alivio · U" + hi + " → U" + dest + " · " + hiRel.map(l => l.line_number || l.description).join(" · "))}</title>
+            <line x1="${sx}" y1="${sp.y}" x2="${sx}" y2="${ym}" ${g}/>
+            <path d="${hopPath([[sx, ym], [dx, ym]], allV)}" fill="none" ${g}/>
+            <line x1="${dx}" y1="${ym}" x2="${dx}" y2="${dp.y + BH + SIDE_GAP}" ${g} marker-end="${mref(SIDE_INK)}"/>
+            <text x="${sx + 6}" y="${ym - 5}" font-family="${MONO}" font-size="7.2" fill="${SIDE_INK}"
+              paint-order="stroke" stroke="#fff" stroke-width="3">${hiRel.length} PSV · U${esc(hi)}</text></g>`;
+        }
+      }
       s += drawNodes();
-      s += `<text x="20" y="${H - 8}" font-family="${MONO}" font-size="7.5" fill="${SOFT}">OVERVIEW · ${sideLinks.length} LINKS IN ${trunks.size} TRUNKS + ${reliefs.length} RELIEF LINES FROM ${reliefUnits} UNITS AGGREGATED · DASH = AGGREGATE, NOT A PIPE · HMB ${esc(kase)} · utilities &amp; drains hidden</text></svg>`;
+      s += `<text x="20" y="${H - 8}" font-family="${MONO}" font-size="7.5" fill="${SOFT}">OVERVIEW · ${sideLinks.length} LINKS IN ${trunks.size} TRUNKS${tagged.length ? " + " + tagged.length + " AS OFF-PAGE TAG" : ""} + ${opts.reliefRake ? reliefsAll.length + " RELIEF LINES FROM " + new Set(reliefsAll.map(l => l.from_area).filter(Boolean)).size + " UNITS ON THE HEADER RAKE" : (hiRel.length ? hiRel.length + " PSV FROM U" + esc(hi) + " DRAWN + " : "") + reliefs.length + " RELIEF LINES FROM " + reliefUnits + " UNITS AGGREGATED"} · DASH = AGGREGATE, NOT A PIPE · HMB ${esc(kase)} · utilities &amp; drains hidden</text></svg>`;
       return s;
     }
 
@@ -1165,6 +1604,73 @@
     return s;
   }
 
+  /* ── control & safety band (used by unitSummary when opts.controlBand) ───
+     Two shelves, both generated:
+
+       CONTROL      one ISA bubble per plant_control_loops row, a dashed 4-20 mA
+                    run, and the final element drawn by tam-sym-proc — so an
+                    SDV shows a solenoid and an FV a diaphragm without this
+                    function knowing the difference. The set point prints under
+                    the bubble, or an amber dash when the column is NULL.
+
+       SAFETY       the ESD / blowdown / relief FAMILIES with their counts from
+                    plant_valves. One symbol each, not eleven tags: at PFD level
+                    "six SDVs isolate this unit" is the fact, and the tag list
+                    is the P&ID's job.
+
+     Degrades honestly: with tam-sym-inst.js absent the bubbles fall back to
+     plain circles, with tam-sym-proc.js absent the valves fall back to text.  */
+  function controlBand(data, code, x0, y0, w, opts) {
+    opts = opts || {};
+    const IN = (typeof TamSymInst !== "undefined") ? TamSymInst : null;
+    const SY = (typeof TamSym !== "undefined") ? TamSym : null;
+    const PR = (typeof TamSymProc !== "undefined") ? TamSymProc : null;
+    const loops = (data.loops || []).filter(l => String(l.area_code) === String(code));
+    const valves = (data.valves || []).filter(v => String(v.unit || v.area_code) === String(code) && !v.removed);
+
+    let s = `<rect x="${x0}" y="${y0}" width="${w}" height="76" rx="6" fill="#FBFCFD" stroke="#E3E7EB"/>`;
+    s += `<text x="${x0 + 10}" y="${y0 + 13}" font-family="${MONO}" font-size="7.6" font-weight="700" letter-spacing=".1em" fill="${SOFT}">CONTROL LOOPS — plant_control_loops</text>`;
+
+    /* ── shelf 1 · the loops ─────────────────────────────────────────────
+       Each cell is bubble → signal → valve, left to right, which is the same
+       reading order as the loop schematics. One vocabulary, two zoom levels. */
+    const cw = Math.min(140, (w - 24) / Math.max(1, loops.length));
+    loops.forEach((l, i) => {
+      const cx = x0 + 12 + i * cw + 13, cy = y0 + 36;
+      const vx = cx + Math.min(52, cw - 26);
+      if (IN && SY) {
+        const b = IN.fromRow({ tag: l.loop_tag, system: "PCS" }, { sub: null, strokeWidth: 1.2 });
+        /* 0.95, not 0.82 — a bubble is TEXT in a ring, and shrinking the ring
+           shrinks the two lines inside it faster than the eye forgives. Below
+           ~0.9 the loop number starts riding the circle. */
+        s += SY.draw(b.kind, Object.assign({}, b.opts, { x: cx, y: cy, scale: 0.95,
+          title: l.loop_tag + " · " + (l.controlled_variable || "") }));
+        s += IN.signal(cx + 12, cy, vx - 9, cy, { type: "electric", color: SOFT, width: 1 });
+      } else {
+        s += `<circle cx="${cx}" cy="${cy}" r="9" fill="#fff" stroke="${INK}" stroke-width="1.2"/>`;
+      }
+      if (PR && SY && l.final_control_element) {
+        const v = PR.fromTag(l.final_control_element, { label: false, strokeWidth: 1.2 });
+        s += SY.draw(v.kind, Object.assign({}, v.opts, { x: vx, y: cy, scale: 0.74 }));
+      }
+      s += `<text x="${vx}" y="${cy + 16}" text-anchor="middle" font-family="${MONO}" font-size="6.2" fill="${SOFT}">${esc(l.final_control_element || "")}</text>`;
+      /* the set point, or the honest gap — amber, never a fabricated number */
+      const sp = (l.set_point != null && l.set_point !== "");
+      s += `<text x="${cx}" y="${cy + 16}" text-anchor="middle" font-family="${MONO}" font-size="6.6" font-weight="700" fill="${sp ? INK : "#B26A00"}">${esc(sp ? l.set_point + " " + (l.unit || "") : "SP —")}</text>`;
+    });
+
+    /* NO SECOND SHELF.
+       v1.31.0 had one here: three symbols and three counts, "6 SDV · 2 BDV ·
+       8 PSV". It was wrong, and worth saying why. A unit-flow diagram exists to
+       show WHERE things are. A count tells you a valve exists somewhere on the
+       sheet and then does not put it there — so it reads as coverage while
+       actually competing for space with the thing it claims to summarise. The
+       valves belong ON THE LINES they sit on; that is drawn by the train and
+       the drops, not here. Removed in v1.32.0. */
+
+    return s;
+  }
+
   /* ═════════════════════════════════════════════════════════════════════
      3 · UNIT SUMMARY — Manual §3.1: inputs → equipment train → outputs
      ═════════════════════════════════════════════════════════════════════ */
@@ -1188,7 +1694,23 @@
     /* every meter/control already allocated to a link of this area (drawn on lines, not in boxes) */
     const linkMeterSet = new Set(rows.flatMap(f => [...(f.meter_tags || []), ...(f.control_tags || [])]));
 
-    const W = 1000, H = 360;
+    /* ── v1.31.0 · optional CONTROL & SAFETY band ────────────────────────
+       opts.controlBand adds one strip under the train summarising, at PFD
+       level, WHAT HOLDS THIS UNIT STEADY and WHAT STOPS IT: the control loops
+       as ISA bubbles wired to their final element, and the ESD / relief valve
+       families as ISO symbols with their counts.
+
+       WHY IT BELONGS ON THIS SHEET AND NOT ON ANOTHER ONE
+       A unit-flow diagram already answers "what enters, what leaves". The
+       question a trainee asks next is "and what keeps it there?" — and the
+       honest answer is four bubbles and three valve families, not a table on
+       a different slide. The band is deliberately a SUMMARY: one symbol per
+       family, one bubble per loop, no line numbers. Detail belongs to the loop
+       schematics (tam-loop.js) and to the P&ID.
+
+       OPT-IN, so every existing caller renders byte-identical to v1.30.0. */
+    const BAND = opts.controlBand ? 92 : 0;
+    const W = 1000, H = 360 + BAND;
     let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
     const cols = ["#333", "#0B5CAD", "#1F8A4C", "#B26A00", mc];
     rows.forEach(r => cols.push(svcClass(data, r.service_code).color));
@@ -1370,14 +1892,463 @@
       const st = svcClass(data, r.service_code);
       return [st.name.toLowerCase(), st.color];
     })).entries()].slice(0, 6);
+    /* the fluid legend and the provenance footer ride at the BOTTOM of the
+       canvas, whatever the canvas turned out to be — they were pinned to 344
+       when H was a constant, which is exactly the bug an optional band finds */
+    const legY = H - 16;
     let lx = 120;
     cats.forEach(([nm, col]) => {
-      s += `<line x1="${lx}" y1="344" x2="${lx + 20}" y2="344" stroke="${col}" stroke-width="3"/>
-            <text x="${lx + 25}" y="347" font-family="${MONO}" font-size="8" fill="#666">${esc(clip(nm, 18))}</text>`;
+      s += `<line x1="${lx}" y1="${legY}" x2="${lx + 20}" y2="${legY}" stroke="${col}" stroke-width="3"/>
+            <text x="${lx + 25}" y="${legY + 3}" font-family="${MONO}" font-size="8" fill="#666">${esc(clip(nm, 18))}</text>`;
       lx += 32 + nm.length * 5.4;
     });
-    s += `<text x="${W - 8}" y="347" text-anchor="end" font-family="${MONO}" font-size="7" fill="${SOFT}">plant_area_trains + plant_process_links · HMB ${esc(kase)}</text></svg>`;
+    if (BAND) s += controlBand(data, code, 22, 330, W - 44, opts);
+    s += `<text x="${W - 8}" y="${legY + 3}" text-anchor="end" font-family="${MONO}" font-size="7" fill="${SOFT}">plant_area_trains + plant_process_links${BAND ? " + plant_control_loops" : ""} · HMB ${esc(kase)}</text></svg>`;
     return s;
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════
+     3b · PROCESS VIEW — every process valve on the line it sits on
+     ═════════════════════════════════════════════════════════════════════
+     unitSummary() answers "what enters and what leaves". processView() answers
+     the question a trainee asks next: "and what holds it there, and what stops
+     it?" — by drawing the valves where they physically are instead of listing
+     them somewhere else on the sheet.
+
+     FOUR SHELVES, always in the same places
+       flare header (top)     what relieves, what blows down, and to where
+       medium header (mid)    the heating/cooling medium and the valve on it
+       the train (middle)     the gas path with its valves inserted IN it
+       liquid outlets (below) each with its ESD valve, then its control valve —
+                              that order, because that is the order the fluid
+                              meets them
+
+     HOW CONTROL IS SHOWN — and why this is the right amount
+     A P&ID draws every element of a loop. A PFD does not: ISA 5.1 and ISO
+     10628 both treat it as the sheet that shows CONTROL INTENT and leave the
+     hardware to the P&ID. So each control valve carries one bubble — the
+     CONTROLLER — with its output dashed to the valve, and the sensor plus the
+     related variables as TEXT beside it. Seven loops fit without seven impulse
+     lines and seven signal runs crossing the process.
+
+     ONE EXCEPTION IS DRAWN IN FULL: a loop whose SENSOR AND FINAL ELEMENT ARE
+     ON DIFFERENT FLUIDS. On Unit 200 that is TIC-2002 — it measures the gas
+     leaving E-201 and acts on the hot oil entering it, which is the whole
+     hydrate-defence lesson. Annotating it would hide exactly the thing worth
+     seeing. The rule is general: opts.crossFluidLoop names it.
+
+     EVERYTHING THAT LEAVES THE SHEET LEAVES THROUGH A PROCESS TAG
+     Not a box. An off-page connector (TamSymProc.offPage) carries the
+     destination and the line number, and costs the layout nothing — the reason
+     the standard has the symbol at all. Outlet tags hang vertically so a
+     column of them never steals width from its neighbour.
+
+     WHAT IS DERIVED AND WHAT IS CURATED
+     Derived from the database: the train and its captions, every valve and its
+     family, which vessel each valve belongs to (plant_valves.equipment, then
+     the service text), the loops and their set points, the exchanger medium
+     and its duty, the destinations and their service colours.
+     Curated, and only because no table holds it yet: opts.recycle (an internal
+     line that rejoins the feed — plant_process_links is area-to-area and
+     correctly has no row for it) and opts.crossFluidLoop.
+     A valve no rule can place is NOT dropped: it prints in the amber strip
+     under the sheet. G-4 — a gap you cannot see is worse than one you can.
+     ═════════════════════════════════════════════════════════════════════ */
+  function processView(data, code, opts) {
+    opts = opts || {};
+    code = String(code);
+    const kase = opts.case || "C1W";
+    const PR = (typeof TamSymProc !== "undefined") ? TamSymProc : null;
+    const IN = (typeof TamSymInst !== "undefined") ? TamSymInst : null;
+    const SY = (typeof TamSym !== "undefined") ? TamSym : null;
+    const train = (data.trains || []).filter(t => String(t.area_code) === code).sort((a, b) => a.seq - b.seq);
+    if (!train.length || !PR || !IN || !SY)
+      return unitSummary(data, code, opts);          // no train, or packs absent → old sheet
+
+    const up = x => String(x || "").toUpperCase();
+    const AMBER = "#B26A00", SIG = SOFT, ESDINK = "#8A6D00", PSVINK = "#7A3FB3";
+    const GASCOL = (() => {
+      const rows = (data.flows || []).filter(f => String(f.area_code) === code);
+      const m = pickMain(rows, "OUT") || pickMain(rows, "IN");
+      return m ? svcClass(data, m.service_code).color : "#BB8C00";
+    })();
+
+    /* ── geometry ─────────────────────────────────────────────────────── */
+    const W = 1320, n = train.length;
+    const BOXW = 140, BOXH = 66, HALF = 11;
+    const FLY = 70, RSY = 136, HOY = 214, TVY = 262, CY = 356;
+    const MY = 430, CAPY = MY + BOXH / 2 + 18;
+    const DSDV = 534, DLV = 600, DEND = 664, COFF = 46;
+    const FEEDX = 124, UX = 1110, LEFTC = 260, RIGHTC = 940;
+    const colX = i => n === 1 ? (LEFTC + RIGHTC) / 2 : LEFTC + i * (RIGHTC - LEFTC) / (n - 1);
+    const boxL = i => colX(i) - BOXW / 2, boxR = i => colX(i) + BOXW / 2;
+    const H = 880;
+
+    /* ── inventory ────────────────────────────────────────────────────── */
+    const loops = (data.loops || []).filter(l => String(l.area_code) === code);
+    const fce = new Set(loops.map(l => up(l.final_control_element)).filter(Boolean));
+    const mistyped = [];
+    /* Solenoid pilots are out — EXCEPT anything plant_control_loops names as a
+       final control element. On Unit 200, LV-2022 is typed SOLENOID VALVE and
+       is LIC-2022's final element: one of those two rows is wrong and it is not
+       the loop table. Filtering on instrument_type alone would drop a real
+       control valve off the sheet in silence. */
+    const raw = (data.valves || []).filter(v => {
+      if (String(v.unit || v.area_code) !== code || v.removed) return false;
+      if (!/SOLENOID/.test(up(v.instrument_type))) return true;
+      if (fce.has(up(v.tag))) { mistyped.push(v.tag); return true; }
+      return false;
+    });
+    /* A/B pairs are one protection on a process view, drawn once */
+    const grouped = new Map();
+    raw.forEach(v => {
+      const isPair = /[AB]$/.test(v.tag), k = isPair ? v.tag.slice(0, -1) : v.tag;
+      if (!grouped.has(k)) grouped.set(k, { key: k, rows: [], isPair });
+      grouped.get(k).rows.push(v);
+    });
+    const items = [...grouped.values()].map(g => {
+      const v = g.rows[0], tag = g.isPair ? g.key + "A/B" : v.tag;
+      return { tag, one: v.tag, row: v,
+        fam: /^SDV/.test(v.tag) ? "SDV" : /^BDV/.test(v.tag) ? "BDV"
+           : /^PSV|^TSV/.test(v.tag) ? "PSV" : "CV" };
+    });
+    const has = t => items.some(i => i.tag === t);
+    const item = t => items.find(i => i.tag === t);
+    const loopOf = t => loops.find(l => up(l.final_control_element) === up(t));
+    const instOf = t => (data.instruments || []).find(r => up(r.tag) === up(t));
+    const placed = new Set(), unplaced = [];
+
+    /* which vessel a valve belongs to: the column first, then the service text
+       — the same order of trust the rest of this project uses */
+    const displayTags = train.map(t => t.display_tag);
+    function vesselIdx(v) {
+      const eq = up(v.equipment || "");
+      let i = displayTags.findIndex(d => up(d) === eq ||
+        (train[displayTags.indexOf(d)].equipment_tags || []).some(t => up(t) === eq));
+      if (i >= 0) return i;
+      /* the service text is the second source; the row's NOTES are the third.
+         SDV-2025/2026 are "OUTLET LIGHT/HEAVY SHUT DOWN" — no vessel in the
+         service at all — and their notes say which skid they sit on. Without
+         this they fell off the sheet into the amber strip, which is honest but
+         unnecessary when the answer is in the row. */
+      const svc = up(v.service || "") + " " + up(typeof v.notes === "string" ? v.notes : "");
+      i = displayTags.findIndex(d => svc.indexOf(up(d).replace(/A\/B$/, "")) >= 0);
+      return i;
+    }
+    const phaseOf = v => {
+      const s = up(v.service);
+      if (/HEAVY|WATER/.test(s)) return "water";
+      if (/LIGHT|\bHC\b|CONDENSAT/.test(s)) return "cond";
+      return null;
+    };
+
+    /* ── primitives ─────────────────────────────────────────────────────
+       tam-flow has no module-level `num`; the coordinates here are already
+       computed, so a local rounder keeps the SVG from carrying 14 decimals. */
+    const num = v => Math.round(v * 100) / 100;
+    const txt = (x, y, t, sz, w, f, a, fam) =>
+      `<text x="${num(x)}" y="${num(y)}"${a ? ` text-anchor="${a}"` : ""} font-family="${fam || MONO}" ` +
+      `font-size="${sz}"${w ? ` font-weight="${w}"` : ""} paint-order="stroke" stroke="#FAFBFC" ` +
+      `stroke-width="2.8" fill="${f || INK}">${esc(t)}</text>`;
+    const seg = (x1, y1, x2, y2, col, wd) =>
+      `<line x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" stroke="${col}" ` +
+      `stroke-width="${wd || 3.6}" stroke-linecap="butt"/>`;
+    const head = (x, y, dir, col) =>
+      `<path d="M-5,-5 L6,0 L-5,5 Z" fill="${col}" transform="translate(${num(x)},${num(y)}) ` +
+      `rotate(${{ E: 0, S: 90, W: 180, N: 270 }[dir]})"/>`;
+    function vsym(tag, x, y, rot) {
+      const v = PR.fromTag(tag, { label: false, strokeWidth: 1.4 }), it = item(tag) || item(tag + "A/B");
+      return SY.draw(v.kind, Object.assign({}, v.opts, { x, y, rot: rot || 0,
+        title: tag + (it ? " · " + (it.row.service || "") : "") }));
+    }
+    function vcap(tag, x, y, anchor, extra) {
+      const col = /^SDV|^BDV/.test(tag) ? ESDINK : /^PSV|^TSV/.test(tag) ? PSVINK : INK;
+      let o = txt(x, y, tag, 8.2, 700, col, anchor);
+      if (extra) o += txt(x, y + 9.5, extra, 6.5, 400, SOFT, anchor);
+      return o;
+    }
+    function bub(tag, x, y, kind, system) {
+      const b = IN.fromRow({ tag, system: system || (kind === "INST_SHARED" ? "PCS" : null) },
+        { sub: null, strokeWidth: 1.25, kind });
+      const r = instOf(tag);
+      return SY.draw(b.kind, Object.assign({}, b.opts, { x, y, title: tag + (r && r.service ? " · " + r.service : "") }));
+    }
+    const sig = (x1, y1, x2, y2, route) =>
+      IN.signal(x1, y1, x2, y2, { type: "electric", color: SIG, width: 1.05, route: route || "direct" });
+    /* the sensor of a loop: same letter, same number, T for transmitter */
+    function sensorOf(l) {
+      const m = String(l.loop_tag).match(/^([A-Z])[A-Z]*-(\d+)$/);
+      if (!m) return null;
+      return instOf(m[1] + "T-" + m[2]) || { tag: m[1] + "T-" + m[2], missing: true };
+    }
+    /* controller drawn + sensor/variables annotated */
+    function stack(l, bx, by, vx, vy, o) {
+      o = o || {};
+      let out = "";
+      if (!o.noOutput) {
+        const fromW = o.outFrom === "W";
+        out += sig(fromW ? bx - HALF : bx, fromW ? by : by + HALF, vx,
+          fromW ? vy : vy - (o.vHalf == null ? 13 : o.vHalf), o.route || "direct");
+      }
+      out += bub(l.loop_tag, bx, by, "INST_SHARED", "PCS");
+      const sn = sensorOf(l), below = o.textPos === "below";
+      const rng = sn && sn.range ? sn.range + (sn.units ? " " + sn.units : "")
+        : (l.operating_range ? l.operating_range + " " + (l.unit || "") : "");
+      const tx = below ? bx : bx + 17, an = below ? "middle" : "start";
+      if (!o.hideSensor)
+        out += txt(tx, below ? by + 24 : by - 2,
+          (sn ? sn.tag : "—") + (sn && sn.missing ? " ?" : "") + (rng ? " · " + rng : ""),
+          6.5, 600, sn && sn.missing ? AMBER : SOFT, an);
+      out += txt(tx, below ? by + 33 : by + 8,
+        l.set_point ? "SP " + l.set_point + " " + (l.unit || "") : "SP —",
+        7, 700, l.set_point ? INK : AMBER, an);
+      return out;
+    }
+
+    let s = "";
+
+    /* ── 1 · flare header ─────────────────────────────────────────────── */
+    const relief = items.filter(i => i.fam === "PSV" || i.fam === "BDV");
+    const flareLink = (data.links || []).find(l => String(l.from_area) === code && l.category === "RELIEF");
+    const FLARECOL = flareLink ? svcClass(data, flareLink.service_code).color : "#DD6E00";
+    if (relief.length) {
+      s += `<line x1="200" y1="${FLY}" x2="${W - 266}" y2="${FLY}" stroke="${FLARECOL}" stroke-width="2.2" stroke-dasharray="6 4"/>`;
+      s += PR.offPage(W - 266, FLY, { dir: "out", color: FLARECOL,
+        title: "TO U" + ((flareLink && flareLink.to_area) || "230") + " · FLARE",
+        sub: (flareLink && flareLink.line_number) || "" });
+      s += txt(200, FLY - 11, "HOT FLARE HEADER — relief & blowdown", 7.6, 700, FLARECOL);
+    }
+
+    /* ── 2 · the train ────────────────────────────────────────────────── */
+    train.forEach((t, i) => {
+      const x = colX(i);
+      s += `<rect x="${num(boxL(i))}" y="${MY - BOXH / 2}" width="${BOXW}" height="${BOXH}" rx="6" fill="#fff" stroke="${CRIMSON}" stroke-width="1.7"/>`;
+      s += txt(x, MY - 2, t.display_tag, 17, 700, INK, "middle", SANS);
+      const eq = (data.equipment || []).find(e => (t.equipment_tags || []).includes((e.tag || "").trim()));
+      s += txt(x, MY + 15, clip(eq ? eq.service : "", 28), 6.7, 400, SOFT, "middle");
+      s += txt(x, CAPY, t.caption || "", 7.8, 700, CRIMSON, "middle");
+    });
+
+    /* ── 3 · in-line valves, and the gas line cut around them ─────────── */
+    const rows = (data.flows || []).filter(f => String(f.area_code) === code);
+    const mainIn = pickMain(rows, "IN"), mainOut = pickMain(rows, "OUT");
+    const inline = [];
+    /* a train step's inline_element goes on the segment BEFORE its box; step 0's
+       goes on the inlet run */
+    train.forEach((t, i) => {
+      const tag = (t.inline_element || "").split("·")[0].trim();
+      if (!tag) return;
+      const x = i === 0 ? (FEEDX + boxL(0)) / 2 : (boxR(i - 1) + boxL(i)) / 2;
+      inline.push({ tag, x, note: null });
+    });
+    const outCtrl = mainOut && (mainOut.control_tags || [])[0];
+    if (outCtrl) inline.push({ tag: outCtrl, x: (boxR(n - 1) + UX) / 2, note: null });
+    /* any ESD valve the train did not claim goes on the first free segment —
+       on Unit 200 that is SDV-2001, the skid inlet, between V-202 and E-201 */
+    const usedX = new Set(inline.map(v => v.tag));
+    items.filter(i => i.fam === "SDV" && !usedX.has(i.tag) && !phaseOf(i.row))
+      .forEach((it, k) => {
+        const gi = 1 + k;
+        if (gi >= n) { unplaced.push(it.tag + " · " + (it.row.service || "")); return; }
+        inline.push({ tag: it.tag, x: boxL(gi) - (boxL(gi) - boxR(gi - 1)) * 0.62, note: clip(it.row.service || "", 22).toLowerCase() });
+      });
+
+    const stops = [FEEDX, ...inline.flatMap(v => [v.x - HALF, v.x + HALF]), UX]
+      .concat(train.flatMap((t, i) => [boxL(i), boxR(i)])).sort((a, b) => a - b);
+    for (let k = 0; k + 1 < stops.length; k++) {
+      const a = stops[k], b = stops[k + 1];
+      if (b - a < 2) continue;
+      if (train.some((t, i) => a >= boxL(i) - 0.5 && b <= boxR(i) + 0.5)) continue;
+      s += seg(a, MY, b, MY, GASCOL);
+    }
+    s += head(UX - 3, MY, "E", GASCOL);
+    s += PR.offPage(FEEDX, MY, { dir: "in", color: GASCOL,
+      title: "FROM " + clip(((mainIn && mainIn.other_label) || "FEED").split("(")[0].split("/")[0].trim(), 14).toUpperCase(),
+      sub: hmbChip(mainIn, kase) || "", w: 100 });
+    if (mainOut) s += PR.offPage(UX, MY, { dir: "out", color: GASCOL,
+      title: "TO U" + (mainOut.other_area || "") + " · " + clip(mainOut.other_area_name || "", 20).toUpperCase(),
+      sub: mainOut.line_number || "" });
+    inline.forEach(v => {
+      if (!has(v.tag)) { unplaced.push(v.tag + " (no plant_valves row)"); return; }
+      placed.add(v.tag);
+      s += vsym(v.tag, v.x, MY);
+      s += vcap(v.tag, v.x, MY + 32, "middle", v.note);
+    });
+
+    /* ── 4 · relief & blowdown risers ─────────────────────────────────── */
+    const slot = new Map();                       // per anchor, alternate ∓36
+    relief.forEach(it => {
+      let vi = vesselIdx(it.row);
+      /* a train step can claim a blowdown through its aux_note ("blowdown →
+         flare · BDV-2004"), which is how U200 ties BDV-2004 to V-201 */
+      if (vi < 0) vi = train.findIndex(t => up(t.aux_note || "").indexOf(up(it.one)) >= 0);
+      let x;
+      if (vi >= 0) {
+        const k = slot.get(vi) || 0; slot.set(vi, k + 1);
+        x = colX(vi) + (k % 2 ? 46 : -46);
+      } else {
+        const k = slot.get("seg") || 0; slot.set("seg", k + 1);
+        x = boxL(1) - (boxL(1) - boxR(0)) * 0.28 - k * 26;   // on the first free segment
+      }
+      placed.add(it.tag);
+      const yBot = vi >= 0 ? MY - BOXH / 2 : MY - 4;
+      s += `<line x1="${num(x)}" y1="${FLY + 2}" x2="${num(x)}" y2="${RSY - HALF}" stroke="${FLARECOL}" stroke-width="1.7" stroke-dasharray="5 4"/>`;
+      s += `<line x1="${num(x)}" y1="${RSY + HALF}" x2="${num(x)}" y2="${yBot}" stroke="${FLARECOL}" stroke-width="1.7" stroke-dasharray="5 4"/>`;
+      s += vsym(it.tag.replace("A/B", "A"), x, RSY, -90);
+      /* 24 characters of service text is wider than the 92 px between two
+         risers on the same vessel; 16 fits */
+      s += vcap(it.tag, x, RSY - 30, "middle", clip(it.row.service || "", 16).toLowerCase());
+    });
+
+    /* ── 5 · the exchanger medium, with the valve that throttles it ───── */
+    const med = (data.media || []).filter(m => (train.flatMap(t => t.equipment_tags || [])).includes(m.equipment_tag)
+      && (!m.case_code || m.case_code === kase))[0];
+    let SUP = null;
+    if (med) {
+      const mi = train.findIndex(t => (t.equipment_tags || []).includes(med.equipment_tag));
+      const EX = colX(mi < 0 ? 1 : mi), mc = svcClass(data, med.service_code).color;
+      SUP = EX - 46; const RET = EX + 46, WALL = MY - BOXH / 2;
+      const mv = items.find(i => i.fam === "CV" && up(i.row.line_number || "").indexOf("-" + med.service_code + "-") >= 0);
+      s += seg(SUP, HOY, RET + 40, HOY, mc, 2.4);
+      s += PR.offPage(RET + 40, HOY, { dir: "out", color: mc,
+        title: "TO / FROM U410 · " + up(med.medium_name || ""),
+        sub: Math.round(med.duty_kw) + " kW · " + n1(med.supply_temp_c) + " → " + n1(med.return_temp_c) + " °C" });
+      s += seg(SUP, HOY, SUP, mv ? TVY - 13 : WALL - 9, mc, 2.4);
+      if (mv) s += seg(SUP, TVY + 13, SUP, WALL - 9, mc, 2.4);
+      /* the head is 5 long: a line that stops ON the wall puts its tip inside */
+      s += head(SUP, WALL - 5, "S", mc);
+      s += seg(RET, WALL, RET, HOY + 6, mc, 2.4);
+      s += head(RET, HOY + 3, "N", mc);
+      if (mv) { placed.add(mv.tag); s += vsym(mv.tag, SUP, TVY, -90); s += vcap(mv.tag, SUP - 20, TVY - 3, "end"); }
+    }
+
+    /* ── 6 · control ──────────────────────────────────────────────────── */
+    const cross = opts.crossFluidLoop;
+    loops.forEach(l => {
+      const fe = l.final_control_element; if (!fe) return;
+      const iv = inline.find(v => up(v.tag) === up(fe));
+      if (l.loop_tag === cross) return;                       // drawn in full below
+      if (iv) s += stack(l, iv.x, CY, iv.x, MY, { route: "direct" });
+    });
+    if (cross && SUP != null) {
+      const l = loops.find(x => x.loop_tag === cross);
+      if (l) {
+        const sn = sensorOf(l), TICX = colX(train.findIndex(t => (t.equipment_tags || []).includes(med && med.equipment_tag))) || colX(1);
+        const TTX = TICX + 80, TICY = 306;
+        s += `<line x1="${num(TTX)}" y1="${MY - 4}" x2="${num(TTX)}" y2="${TICY + HALF}" stroke="${SIG}" stroke-width="1"/>`;
+        s += `<circle cx="${num(TTX)}" cy="${MY - 4}" r="2.3" fill="${SIG}"/>`;
+        s += bub(sn ? sn.tag : "?", TTX, TICY, "INST_FIELD");
+        s += txt(TTX + 16, TICY + 3, "gas out of " + (med ? med.equipment_tag : ""), 6.4, 600, SOFT);
+        s += sig(TTX - HALF, TICY, TICX + HALF + 1, TICY, "direct");
+        s += sig(TICX, TICY - HALF, SUP + 13, TVY, "vh");
+        s += stack(l, TICX, TICY, SUP, TVY, { noOutput: true, hideSensor: true, textPos: "below" });
+        s += txt(TICX, TICY - 20, "measures GAS · acts on the medium", 6.3, 700, CRIMSON, "middle");
+      }
+    }
+
+    /* ── 7 · liquid outlets ───────────────────────────────────────────── */
+    const outLinks = (data.links || []).filter(l => String(l.from_area) === code &&
+      ["WATER", "PRODUCT"].indexOf(l.category) >= 0 && l !== mainOut);
+    const dslot = new Map();
+    train.forEach((t, vi) => {
+      ["water", "cond"].forEach(ph => {
+        const sdv = items.find(i => i.fam === "SDV" && vesselIdx(i.row) === vi && phaseOf(i.row) === ph);
+        const cv = items.find(i => i.fam === "CV" && vesselIdx(i.row) === vi && phaseOf(i.row) === ph);
+        if (!sdv && !cv) return;
+        const k = dslot.get(vi) || 0; dslot.set(vi, k + 1);
+        const x = colX(vi) + (k % 2 ? 46 : -46);
+        const svc = ph === "water" ? "PW" : "WC";
+        const link = outLinks.find(l => l.service_code === svc) ||
+          outLinks.find(l => up(l.description || "").indexOf(ph === "water" ? "WATER" : "CONDENS") >= 0);
+        const col = link ? svcClass(data, link.service_code).color : (ph === "water" ? "#0000FF" : "#00B800");
+        const rec = opts.recycle && up(opts.recycle.valve) === up(cv && cv.tag);
+        const cuts = [MY + BOXH / 2, DSDV - HALF, DSDV + HALF, DLV - HALF, DLV + HALF, rec ? DEND + 26 : DEND + 4];
+        for (let q = 0; q + 1 < cuts.length; q++) s += seg(x, cuts[q], x, cuts[q + 1], col, 2.4);
+        [[sdv, DSDV], [cv, DLV]].forEach(([it, y]) => {
+          if (!it) return;
+          placed.add(it.tag);
+          s += vsym(it.tag, x, y, 90);
+          s += vcap(it.tag, x - 9, y - 16, "end");    // stepped off a VERTICAL run
+        });
+        if (cv) { const l = loopOf(cv.tag); if (l) s += stack(l, x + COFF, DLV, x + 13, DLV, { route: "direct", outFrom: "W", textPos: "below" }); }
+        if (rec) {
+          const jx = boxL(opts.recycle.toStep == null ? 1 : opts.recycle.toStep) - 24;
+          s += `<path d="M ${num(x)},${DEND + 26} L ${num(jx)},${DEND + 26} L ${num(jx)},${MY + 8}" fill="none" stroke="${col}" stroke-width="2.4"/>`;
+          s += head(jx, MY + 5, "N", col);
+          s += txt(x + 6, DEND + 42, "RECYCLE — " + (opts.recycle.line || ""), 7.6, 700, col);
+          if (opts.recycle.note) s += txt(x + 6, DEND + 52, opts.recycle.note, 6.5, 400, SOFT);
+        } else {
+          s += head(x, DEND, "S", col);
+          s += PR.offPage(x, DEND + 4, { dir: "out", rot: 90, color: col, w: 108,
+            title: "TO U" + ((link && link.to_area) || "—") + " · " + up((link && svcClass(data, link.service_code).name) || ph),
+            /* the LINK's line number is the header, not this drop's line: on a
+               vessel whose valves carry no line_number, printing it would put
+               the neighbour's line on this outlet. Better blank than wrong. */
+            sub: (cv && cv.row.line_number) || (sdv && sdv.row.line_number) || "" });
+        }
+      });
+    });
+
+    /* ── 7b · secondary product take-offs ─────────────────────────────────
+       A unit usually sends its main product one way and a slipstream another —
+       on Unit 200 the fuel-gas bypass to E-371 in U370, off FV-2001. It has a
+       reciprocal connector pair in plant_pid_connectors, so it is as verified
+       as topology gets, and it was the one confirmed link this sheet did not
+       show. Drawn as a tee into a process TAG rather than a routed line: the
+       destination is another drawing. */
+    if (mainOut) {
+      (data.links || []).filter(l => String(l.from_area) === code && l.category === "PRODUCT" &&
+        l.service_code === mainOut.service_code && l.to_area && l.to_area !== mainOut.other_area)
+        .slice(0, 2).forEach((l, k) => {
+          const ov = inline.find(v => up(v.tag) === up(outCtrl || ""));
+          const TEE = (ov ? ov.x : (boxR(n - 1) + UX) / 2) + 32 + k * 26, TY = 306;
+          s += `<circle cx="${num(TEE)}" cy="${MY}" r="3" fill="${GASCOL}"/>`;
+          s += seg(TEE, MY, TEE, TY, GASCOL, 2.2);
+          s += seg(TEE, TY, TEE + 30, TY, GASCOL, 2.2);
+          s += PR.offPage(TEE + 30, TY, { dir: "out", color: GASCOL,
+            title: "TO U" + l.to_area + " · " + clip(up(l.description || "").split("·").pop().trim(), 20),
+            sub: l.line_number || "" });
+          s += txt(TEE - 6, TY - 18, "take-off", 6.4, 700, GASCOL, "end");
+          s += txt(TEE - 6, TY - 9, "off " + (outCtrl || ""), 6.2, 400, SOFT, "end");
+        });
+    }
+
+    /* ── 8 · chemical / additive feeds ────────────────────────────────── */
+    (data.links || []).filter(l => String(l.to_area) === code && l.category === "CHEMICAL").forEach((l, k) => {
+      const col = svcClass(data, l.service_code).color;
+      const x = FEEDX + 52 + k * 40;
+      s += PR.offPage(x, 292, { dir: "in", rot: 90, color: col, w: 106,
+        title: "FROM U" + (l.from_area || "") + " · " + clip(up(svcClass(data, l.service_code).name.split("(")[0].trim()), 12),
+        sub: l.line_number || "" });
+      s += seg(x, 292, x, MY - 5, col, 2);
+      s += head(x, MY - 2, "S", col);
+    });
+
+    /* ── 9 · gaps, visible ────────────────────────────────────────────── */
+    items.forEach(i => { if (!placed.has(i.tag)) unplaced.push(i.tag + " · " + clip(i.row.service || "", 30)); });
+
+    /* opts.chrome === false drops the sheet's own title block: inside a deck the
+       slide already carries the title, and printing it twice steals the height
+       the drawing needs. The viewBox then starts below where the block was. */
+    const chrome = opts.chrome !== false;
+    const vy = chrome ? 0 : 46;
+    let out = `<svg viewBox="0 ${vy} ${W} ${H - vy}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">` +
+      `<rect y="${vy}" width="${W}" height="${H - vy}" fill="#FAFBFC"/>` +
+      (chrome
+        ? txt(24, 27, "UNIT " + esc(code) + " · " + esc(up(areaName(data, code))) + " — PROCESS VIEW", 14, 700, INK) +
+          txt(24, 41, "process valves on the line they sit on · " + loops.length +
+            " control loops · controller drawn, sensor & variables annotated (PFD convention)", 7, 600, SOFT) +
+          txt(W - 24, 27, "plant_valves · plant_instruments · plant_control_loops · plant_area_trains · v_exchanger_media", 7, 600, SOFT, "end")
+        : "") + s;
+    out += `<line x1="24" y1="${H - 44}" x2="${W - 24}" y2="${H - 44}" stroke="#E3E7EB"/>`;
+    out += txt(24, H - 30, "▣ controller (PCS)   ○ field instrument   — — 4-20 mA   ESD & blowdown = solenoid actuator   " +
+      "control valve = diaphragm   relief = spring, angle body   ·   " +
+      (unplaced.length ? unplaced.length + " UNPLACED: " + unplaced.join(" · ") : "all " + items.length + " process valves placed"),
+      7, 600, unplaced.length ? AMBER : "#1F8A4C");
+    if (mistyped.length)
+      out += txt(24, H - 18, "MISTYPED in plant_valves: " + mistyped.join(", ") +
+        " — instrument_type SOLENOID VALVE, but plant_control_loops uses it as a control valve", 7, 600, AMBER);
+    return out + `</svg>`;
   }
 
   /* ═════════════════════════════════════════════════════════════════════
@@ -3078,7 +4049,7 @@
   }
 
   /* ── export ───────────────────────────────────────────────────────────── */
-  const API = { load, fromViewer, plantMap, areaBlock, unitSummary, hmbCards, svcClass, hmbChip, indexData,
+  const API = { load, fromViewer, plantMap, areaBlock, unitSummary, processView, hmbCards, svcClass, hmbChip, indexData,
                 loadSld, sldFromViewer, indexSld, sldBoards, sld,
                 sldSummary, sldSummaryCards, sldSummarySchematic, sldBoardStats,
                 get sldSymbolStyle() { return sldSymbolStyle; },
@@ -3093,7 +4064,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.30.0" };
+                version: "1.37.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
