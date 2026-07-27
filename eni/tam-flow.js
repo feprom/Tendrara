@@ -1639,7 +1639,7 @@
           s += `<path d="M${x},${busY - th} L${x + zy(12)},${busY} L${x},${busY + th} Z" fill="${SLD_BUSCOL}"/>`;
           s += `<text x="${busX2}" y="${busY - zy(11)}" text-anchor="end" font-family="${MONO}" ` +
             `font-size="${ts(7.4)}" font-weight="700" fill="${SLD_BUSCOL}">` +
-            `sigue en ${band.part + 1}/${band.parts} ⇢</text>`;
+            `continues on ${band.part + 1}/${band.parts} ⇢</text>`;
         }
         if (band.part > 1) {                       /* …and arrives here */
           /* ON the bar's own start, not before it: the gutter to the left holds
@@ -1649,7 +1649,7 @@
           s += `<path d="M${x},${busY - th} L${x + zy(12)},${busY} L${x},${busY + th} Z" fill="${SLD_BUSCOL}"/>`;
           s += `<text x="${busX1 + zy(6)}" y="${busY - zy(11)}" text-anchor="start" font-family="${MONO}" ` +
             `font-size="${ts(7.4)}" font-weight="700" fill="${SLD_BUSCOL}">` +
-            `⇢ viene de ${band.part - 1}/${band.parts}</text>`;
+            `⇢ from ${band.part - 1}/${band.parts}</text>`;
         }
       }
 
@@ -2106,8 +2106,8 @@
              sources, upstream, ties, start, kw, loads };
   }
 
-  const SUM_START = [["VFD", "VFD"], ["SOFT_STARTER", "ARRANC. SUAVE"],
-                     ["SOFT_STARTER_2C", "SUAVE 2 CONTACT."], ["CONTACTOR", "DIRECTO"]];
+  const SUM_START = [["VFD", "VFD"], ["SOFT_STARTER", "SOFT STARTER"],
+                     ["SOFT_STARTER_2C", "SOFT STARTER · 2 CONT."], ["CONTACTOR", "DIRECT ON LINE"]];
 
   function sldSummary(S, o) {
     o = o || {};
@@ -2128,16 +2128,16 @@
         if (!grp.has(k)) grp.set(k, { kind: x.node.symbol_kind, kw: x.node.power_kw, n: 0 });
         grp.get(k).n++;
       });
-      const srcName = { GENERATOR: "generador", INVERTER: "inversor", TRANSFORMER: "transformador" };
+      const srcName = { GENERATOR: "generator", INVERTER: "inverter", TRANSFORMER: "transformer" };
       const feed = [];
       grp.forEach(g => {
         const nm = srcName[g.kind] || String(g.kind || "fuente").toLowerCase();
-        feed.push(`${g.n} ${nm}${g.n > 1 ? "es" : ""}` +
-                  (g.kw != null ? ` · ${n0(g.kw)} kW${g.n > 1 ? " c/u" : ""}` : ""));
+        feed.push(`${g.n} ${nm}${g.n > 1 ? "s" : ""}` +
+                  (g.kw != null ? ` · ${n0(g.kw)} kW${g.n > 1 ? " each" : ""}` : ""));
       });
-      st.upstream.forEach(u => feed.push(`desde ${u.board} ${sldPosCode(u.from.tag, u.board)}` +
+      st.upstream.forEach(u => feed.push(`from ${u.board} ${sldPosCode(u.from.tag, u.board)}` +
                                          (u.cable ? " · " + u.cable : "")));
-      const tieTxt = st.ties.map(t => `${sldBusCode(t.to.tag, t.board)} · ${t.board}${t.open ? " · N.A." : ""}`);
+      const tieTxt = st.ties.map(t => `${sldBusCode(t.to.tag, t.board)} · ${t.board}${t.open ? " · N.O." : ""}`);
 
       const chips = SUM_START.filter(k => st.start[k[0]] > 0).map(k =>
         `<span style="display:inline-block;border:1px solid ${LINE};border-radius:3px;padding:1px 6px;` +
@@ -2147,17 +2147,17 @@
         `border:1px solid ${LINE};border-top:3px solid ${CRIMSON};border-radius:6px;padding:10px 12px;background:#fff">` +
         `<div style="font:700 13px ${MONO};color:${CRIMSON}">${esc(st.tag)}</div>` +
         `<div style="font:600 10px ${MONO};color:${SOFT};margin-bottom:8px">${esc(st.doc_no || "")}` +
-          `${st.voltage_v != null ? " · " + n0(st.voltage_v) + " V" : ""} · ${st.busbars} barra${st.busbars === 1 ? "" : "s"}</div>` +
+          `${st.voltage_v != null ? " · " + n0(st.voltage_v) + " V" : ""} · ${st.busbars} busbar${st.busbars === 1 ? "" : "s"}</div>` +
         /* the headline is CONNECTED LOAD — the outgoing side. Not generation:
            those two numbers are different (PC1 carries 6.9 MW of load under
            8.6 MW of engines) and a card that blurred them would be worse than
            no card. The generation is named on its own line below. */
         `<div style="font:700 22px ${SANS};color:${INK};line-height:1">${mw(st.kw)}` +
-          `<span style="font:600 10px ${MONO};color:${SOFT}"> de carga conectada</span></div>` +
-        `<div style="font:600 11px ${MONO};color:${SOFT};margin:2px 0 8px">${st.positions} posiciones · ${st.loads} cargas</div>` +
-        `<div style="font:600 10px ${MONO};color:${SLD_BUSCOL};margin-bottom:2px">⚡ ${feed.length ? feed.map(esc).join("<br>⚡ ") : "sin fuente declarada"}</div>` +
+          `<span style="font:600 10px ${MONO};color:${SOFT}"> connected load</span></div>` +
+        `<div style="font:600 11px ${MONO};color:${SOFT};margin:2px 0 8px">${st.positions} positions · ${st.loads} loads</div>` +
+        `<div style="font:600 10px ${MONO};color:${SLD_BUSCOL};margin-bottom:2px">⚡ ${feed.length ? feed.map(esc).join("<br>⚡ ") : "no source declared"}</div>` +
         (tieTxt.length ? `<div style="font:600 10px ${MONO};color:${SOFT};margin-bottom:6px">⇄ ${tieTxt.map(esc).join("<br>⇄ ")}</div>` : `<div style="margin-bottom:6px"></div>`) +
-        (chips || `<span style="font:600 10px ${MONO};color:${SOFT}">sin método de arranque declarado</span>`) +
+        (chips || `<span style="font:600 10px ${MONO};color:${SOFT}">no starting method declared</span>`) +
         `</div>`;
     };
 
@@ -2213,7 +2213,7 @@
         (nav ? ` style="cursor:pointer" onclick="${nav}('sld/'+encodeURIComponent('${esc(st.tag)}'))"` : "") + `/>`;
       g += `<text x="${b.x + b.w / 2}" y="${b.y + 24}" text-anchor="middle" font-family="${MONO}" font-size="12" font-weight="700" fill="${CRIMSON}">${esc(st.tag)}</text>`;
       g += `<text x="${b.x + b.w / 2}" y="${b.y + 40}" text-anchor="middle" font-family="${MONO}" font-size="9.5" font-weight="600" fill="${SOFT}">` +
-        `${esc(st.doc_no || "")} · ${st.busbars} barra${st.busbars === 1 ? "" : "s"}</text>`;
+        `${esc(st.doc_no || "")} · ${st.busbars} busbar${st.busbars === 1 ? "" : "s"}</text>`;
       g += `<text x="${b.x + b.w / 2}" y="${b.y + 53}" text-anchor="middle" font-family="${MONO}" font-size="9.5" font-weight="700" fill="${INK}">` +
         `${st.positions} pos · ${mw(st.kw)}</text>`;
       /* THE LOAD, GENERIC — one arrow, one count. This is the whole point of a
@@ -2226,7 +2226,7 @@
       const ay = b.y + b.h, lx = b.x + b.w * (feedsDown.has(st.tag) ? 0.28 : 0.5);
       g += `<line x1="${lx}" y1="${ay}" x2="${lx}" y2="${ay + 14}" stroke="${INK}" stroke-width="1.3"/>` +
         `<path d="M${lx - 6},${ay + 14} L${lx + 6},${ay + 14} L${lx},${ay + 24} Z" fill="${INK}"/>` +
-        `<text x="${lx + 10}" y="${ay + 22}" font-family="${MONO}" font-size="9.5" font-weight="600" fill="${SOFT}">${st.loads} cargas</text>`;
+        `<text x="${lx + 10}" y="${ay + 22}" font-family="${MONO}" font-size="9.5" font-weight="600" fill="${SOFT}">${st.loads} loads</text>`;
     }));
 
     /* the feed from an upstream board: a plain elbow, top row to bottom row */
@@ -2259,7 +2259,7 @@
       const y = l.y + l.h / 2;
       g += `<line x1="${l.x + l.w}" y1="${y}" x2="${r.x}" y2="${y}" stroke="${SLD_BUSCOL}" stroke-width="1.6"${t.open ? ` stroke-dasharray="5 4"` : ""}/>` +
         `<text x="${(l.x + l.w + r.x) / 2}" y="${y - 6}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="700" fill="${SLD_BUSCOL}">` +
-        `${t.open ? "N.A." : "acopl."}</text>`;
+        `${t.open ? "N.O." : "coupler"}</text>`;
     }));
     g += `</svg>`;
 
@@ -2284,7 +2284,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.16.0" };
+                version: "1.16.1" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;

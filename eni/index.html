@@ -470,7 +470,7 @@
      Bump ?v= on every release — same cache rule as tam-flow.js. -->
 <script src="tam-sym.js?v=0.2.3"></script>
 <script src="tam-sym-elec.js?v=0.3.4"></script>
-<script src="tam-flow.js?v=1.16.0"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
+<script src="tam-flow.js?v=1.16.1"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
@@ -3800,8 +3800,8 @@ async function renderSld(c, board){
     c.innerHTML = `
     <div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · DISTRIBUTION OVERVIEW</span></div>
     <h1>Electrical single-line</h1>
-    <p class="lead" style="margin-bottom:12px">Cada Power Center, su alimentación y su carga agregada.
-    Pulsa un cuadro para abrir su unifilar con el detalle.</p>
+    <p class="lead" style="margin-bottom:12px">Every Power Center, where it is fed from, and its
+    aggregate load. Click a board to open its detailed single-line.</p>
     ${TamFlow.sldSummary(S,{onNavigate:"nav"})}
     ${sumTable()}`;
     return;
@@ -3813,7 +3813,7 @@ async function renderSld(c, board){
   <div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · SINGLE-LINE DIAGRAM</span></div>
   <h1>Electrical single-line</h1>
   <div style="margin:0 0 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-    <span class="chip dim" style="cursor:pointer" onclick="nav('sld')">‹ RESUMEN</span>
+    <span class="chip dim" style="cursor:pointer" onclick="nav('sld')">‹ OVERVIEW</span>
     ${boards.map(b=>`<span class="chip ${b.tag===cur?"ok":"dim"}" style="cursor:pointer"
       onclick="nav('sld/'+encodeURIComponent('${esc(b.tag)}'))">${esc(b.tag)} · ${esc(b.doc_no||"")}
       <span class="dim">${b.positions}p</span></span>`).join("")}
