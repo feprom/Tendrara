@@ -2025,9 +2025,253 @@
     return `<div style="overflow-x:auto">${s}</div>`;
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     v1.16.0 · THE SUMMARY VIEW — one screen for the whole installation
+     ─────────────────────────────────────────────────────────────────────
+     Mario asked for an executive read of the electrical distribution: a card
+     per Power Center with the figures that matter, and under them a small
+     schematic that answers only ONE question — who feeds whom. Click a card,
+     get that board's full single-line.
+
+     The rule that shapes everything here: THE INCOMING SIDE IS DETAIL, THE
+     OUTGOING SIDE IS A NUMBER. Where a board's energy comes from is the whole
+     point of a distribution overview, so every generator, every inverter and
+     every coupler is named. What the board then feeds is 44 motors, and naming
+     them is the detailed sheet's job — up here they are "44 loads, 15.4 MW"
+     and a single arrow. Mario: *"la carga no se muestra como detalle sino como
+     algo genérico"*.
+
+     Nothing is added to the database for any of this: it is v_sld_nodes and
+     v_sld_edges counted differently.                                        */
+
+  /* Everything the summary needs about one board, derived from the graph — no
+     hard-coded plant knowledge, so a fifth Power Center appears on its own. */
+  function sldBoardStats(S, boardTag) {
+    const board = S._byTag.get(boardTag);
+    const buses = (S._kids.get(boardTag) || []).filter(isBusbar).sort(byRank);
+    const busSet = new Set(buses.map(b => b.tag));
+    const pos = buses.reduce((a, b) => a.concat(S._kids.get(b.tag) || []), []);
+
+    /* an INCOMER is a position that feeds a busbar of THIS board; everything
+       else is an outgoing way. The same predicate the drawing uses. */
+    const inc = [], out = [];
+    pos.forEach(p => (sldOut(S, p.tag).some(e => e.edge_kind === "FEEDS" && busSet.has(e.to_tag))
+                      ? inc : out).push(p));
+
+    /* ── where the energy comes from ──────────────────────────────────────
+       Walk BACK from each incomer. Whatever feeds it is either a machine that
+       makes power (a generator, an inverter) or a position on another board —
+       and those two cases are the two ways a Power Center can be energised. */
+    const sources = [], upstream = [];
+    inc.forEach(p => sldIn(S, p.tag).filter(e => e.edge_kind === "FEEDS").forEach(e => {
+      const src = S._byTag.get(e.from_tag); if (!src) return;
+      /* A BUSBAR arriving here is not an upstream feed — it is the far side of
+         a coupler, and the database carries that edge in both directions, so
+         every coupler position looked like a board being fed from its
+         neighbour. PC1 and PC2 each claimed the other as their upstream and
+         both dropped off the generation row. Couplers are counted once, below,
+         as ties; a real upstream feed is a POSITION on another board. */
+      if (isBusbar(src)) return;
+      const sb = sldBoardOf(S, src);
+      if (sb && sb !== boardTag) upstream.push({ pos: p, from: src, board: sb, cable: e.cable_tag });
+      else if (src.tag !== boardTag) sources.push({ pos: p, node: src });
+    }));
+
+    /* ── the couplers that leave this board ───────────────────────────────
+       A tie to a busbar of another board is a source this section CAN have.
+       Its N.O. state is carried because all of them are normally open: drawn
+       without it the overview would claim a feed that does not normally
+       exist, which is the same rule G-3 the detailed sheet obeys. */
+    const ties = [];
+    pos.forEach(p => sldOut(S, p.tag).filter(e => e.edge_kind === "FEEDS").forEach(e => {
+      const t = S._byTag.get(e.to_tag);
+      if (!t || !isBusbar(t) || busSet.has(t.tag)) return;
+      const tb = sldBoardOf(S, t) || "";
+      if (tb && tb !== boardTag) ties.push({ pos: p, to: t, board: tb, open: !!e.normally_open });
+    }));
+
+    const start = { VFD: 0, SOFT_STARTER: 0, SOFT_STARTER_2C: 0, CONTACTOR: 0 };
+    let kw = 0, loads = 0;
+    out.forEach(p => {
+      if (p.start_kind && start[p.start_kind] != null) start[p.start_kind]++;
+      /* the power total is the OUTGOING side only. Adding the incomers would
+         count the same energy twice — once arriving, once leaving. */
+      if (p.power_kw != null) kw += +p.power_kw;
+      if (sldOut(S, p.tag).some(e => e.edge_kind === "FEEDS" &&
+            S._byTag.has(e.to_tag) && !isBusbar(S._byTag.get(e.to_tag)))) loads++;
+    });
+
+    return { tag: boardTag, doc_no: board && board.doc_no, voltage_v: board && board.voltage_v,
+             busbars: buses.length, positions: pos.length, inc: inc.length, out: out.length,
+             sources, upstream, ties, start, kw, loads };
+  }
+
+  const SUM_START = [["VFD", "VFD"], ["SOFT_STARTER", "ARRANC. SUAVE"],
+                     ["SOFT_STARTER_2C", "SUAVE 2 CONTACT."], ["CONTACTOR", "DIRECTO"]];
+
+  function sldSummary(S, o) {
+    o = o || {};
+    if (!S || !S._byTag) return "";
+    const nav = o.onNavigate;
+    const stats = sldBoards(S).map(b => sldBoardStats(S, b.tag));
+    if (!stats.length) return "";
+    const byTag = new Map(stats.map(x => [x.tag, x]));
+
+    /* ── the cards ─────────────────────────────────────────────────────── */
+    const mw = k => (k >= 1000 ? (k / 1000).toFixed(1) + " MW" : Math.round(k) + " kW");
+    const card = st => {
+      /* generators of equal rating are one line with a count, not five lines:
+         "5 × 1,822 kW" is the sentence an engineer would say out loud. */
+      const grp = new Map();
+      st.sources.forEach(x => {
+        const k = (x.node.symbol_kind || "SRC") + "|" + (x.node.power_kw == null ? "" : x.node.power_kw);
+        if (!grp.has(k)) grp.set(k, { kind: x.node.symbol_kind, kw: x.node.power_kw, n: 0 });
+        grp.get(k).n++;
+      });
+      const srcName = { GENERATOR: "generador", INVERTER: "inversor", TRANSFORMER: "transformador" };
+      const feed = [];
+      grp.forEach(g => {
+        const nm = srcName[g.kind] || String(g.kind || "fuente").toLowerCase();
+        feed.push(`${g.n} ${nm}${g.n > 1 ? "es" : ""}` +
+                  (g.kw != null ? ` · ${n0(g.kw)} kW${g.n > 1 ? " c/u" : ""}` : ""));
+      });
+      st.upstream.forEach(u => feed.push(`desde ${u.board} ${sldPosCode(u.from.tag, u.board)}` +
+                                         (u.cable ? " · " + u.cable : "")));
+      const tieTxt = st.ties.map(t => `${sldBusCode(t.to.tag, t.board)} · ${t.board}${t.open ? " · N.A." : ""}`);
+
+      const chips = SUM_START.filter(k => st.start[k[0]] > 0).map(k =>
+        `<span style="display:inline-block;border:1px solid ${LINE};border-radius:3px;padding:1px 6px;` +
+        `margin:0 4px 4px 0;font:700 10px ${MONO};color:${INK}">${k[1]} <span style="color:${CRIMSON}">${st.start[k[0]]}</span></span>`).join("");
+
+      return `<div${nav ? ` onclick="${nav}('sld/'+encodeURIComponent('${esc(st.tag)}'))" style="cursor:pointer;` : ` style="`}` +
+        `border:1px solid ${LINE};border-top:3px solid ${CRIMSON};border-radius:6px;padding:10px 12px;background:#fff">` +
+        `<div style="font:700 13px ${MONO};color:${CRIMSON}">${esc(st.tag)}</div>` +
+        `<div style="font:600 10px ${MONO};color:${SOFT};margin-bottom:8px">${esc(st.doc_no || "")}` +
+          `${st.voltage_v != null ? " · " + n0(st.voltage_v) + " V" : ""} · ${st.busbars} barra${st.busbars === 1 ? "" : "s"}</div>` +
+        /* the headline is CONNECTED LOAD — the outgoing side. Not generation:
+           those two numbers are different (PC1 carries 6.9 MW of load under
+           8.6 MW of engines) and a card that blurred them would be worse than
+           no card. The generation is named on its own line below. */
+        `<div style="font:700 22px ${SANS};color:${INK};line-height:1">${mw(st.kw)}` +
+          `<span style="font:600 10px ${MONO};color:${SOFT}"> de carga conectada</span></div>` +
+        `<div style="font:600 11px ${MONO};color:${SOFT};margin:2px 0 8px">${st.positions} posiciones · ${st.loads} cargas</div>` +
+        `<div style="font:600 10px ${MONO};color:${SLD_BUSCOL};margin-bottom:2px">⚡ ${feed.length ? feed.map(esc).join("<br>⚡ ") : "sin fuente declarada"}</div>` +
+        (tieTxt.length ? `<div style="font:600 10px ${MONO};color:${SOFT};margin-bottom:6px">⇄ ${tieTxt.map(esc).join("<br>⇄ ")}</div>` : `<div style="margin-bottom:6px"></div>`) +
+        (chips || `<span style="font:600 10px ${MONO};color:${SOFT}">sin método de arranque declarado</span>`) +
+        `</div>`;
+    };
+
+    /* ── the mini schematic: WHO FEEDS WHOM, and nothing else ────────────
+       Depth is derived, not assumed: a board with no upstream board is a
+       generation node and sits on the top row; one fed from another sits
+       under it. A fifth board slots itself in without a line of code. */
+    const depth = st => st.upstream.length ? 1 : 0;
+    const rows = [stats.filter(x => depth(x) === 0), stats.filter(x => depth(x) === 1)];
+    const BW = 260, BH = 62, GAPX = 70, GAPY = 104, PAD = 16, TOPY = 62;
+    const rowW = r => r.length * BW + Math.max(0, r.length - 1) * GAPX;
+    const W = Math.max(PAD * 2 + rowW(rows[0]), PAD * 2 + rowW(rows[1]), 520);
+    const H = TOPY + BH + (rows[1].length ? GAPY + BH : 0) + 46;
+    const bx = (r, i) => (W - rowW(r)) / 2 + i * (BW + GAPX);
+    const by = ri => TOPY + ri * (BH + GAPY);
+    /* which boards feed a board below them — needed before the first box is
+       drawn, so the load arrow knows to step aside for the outgoing feed */
+    const feedsDown = new Set();
+    stats.forEach(st => st.upstream.forEach(u => feedsDown.add(u.board)));
+    const at = new Map();
+    rows.forEach((r, ri) => r.forEach((st, i) => at.set(st.tag, { x: bx(r, i), y: by(ri), w: BW, h: BH })));
+
+    let g = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">` +
+      `<rect width="${W}" height="${H}" fill="#fff"/>`;
+
+    rows.forEach((r, ri) => r.forEach(st => {
+      const b = at.get(st.tag);
+      /* the generation above a top-row board: ONE machine symbol per distinct
+         rating with its count, because five identical circles say nothing that
+         "5 ×" does not, and they cost the width the labels need. */
+      if (ri === 0 && st.sources.length) {
+        const grp = new Map();
+        st.sources.forEach(x => { const k = (x.node.symbol_kind || "SRC") + "|" + (x.node.power_kw == null ? "" : x.node.power_kw);
+          if (!grp.has(k)) grp.set(k, { kind: x.node.symbol_kind, kw: x.node.power_kw, n: 0 }); grp.get(k).n++; });
+        const list = Array.from(grp.values());
+        list.forEach((s2, k) => {
+          const cx = b.x + b.w * (k + 1) / (list.length + 1), cy = TOPY - 30;
+          const K = (typeof window !== "undefined" ? window : globalThis).TamSym;
+          const sym = s2.kind === "GENERATOR" ? "GENERATOR" : (s2.kind === "INVERTER" ? "INVERTER" : "GENERATOR");
+          g += (K && K.has && K.has(sym)) ? K.draw(sym, { x: cx, y: cy, scale: 0.8, color: INK })
+             : `<circle cx="${cx}" cy="${cy}" r="10" fill="none" stroke="${INK}"/>`;
+          g += `<line x1="${cx}" y1="${cy + 10}" x2="${cx}" y2="${b.y}" stroke="${INK}" stroke-width="1.3"/>`;
+          /* TWO lines, not one. On a single line "4 × 1,822 kW" is 78 px of
+             10 px mono and three groups had to share 190 px of box: they
+             overlapped into "4 × 1,82  kW1,280kW 710 kW", which is not a number
+             at all. Count above, rating below, and the box got wider too. */
+          g += `<text x="${cx}" y="${cy - 24}" text-anchor="middle" font-family="${MONO}" font-size="10" font-weight="700" fill="${INK}">${s2.n} ×</text>`;
+          if (s2.kw != null)
+            g += `<text x="${cx}" y="${cy - 14}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="600" fill="${SOFT}">${n0(s2.kw)} kW</text>`;
+        });
+      }
+      g += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="4" fill="#fff" stroke="${CRIMSON}" stroke-width="1.6"` +
+        (nav ? ` style="cursor:pointer" onclick="${nav}('sld/'+encodeURIComponent('${esc(st.tag)}'))"` : "") + `/>`;
+      g += `<text x="${b.x + b.w / 2}" y="${b.y + 24}" text-anchor="middle" font-family="${MONO}" font-size="12" font-weight="700" fill="${CRIMSON}">${esc(st.tag)}</text>`;
+      g += `<text x="${b.x + b.w / 2}" y="${b.y + 40}" text-anchor="middle" font-family="${MONO}" font-size="9.5" font-weight="600" fill="${SOFT}">` +
+        `${esc(st.doc_no || "")} · ${st.busbars} barra${st.busbars === 1 ? "" : "s"}</text>`;
+      g += `<text x="${b.x + b.w / 2}" y="${b.y + 53}" text-anchor="middle" font-family="${MONO}" font-size="9.5" font-weight="700" fill="${INK}">` +
+        `${st.positions} pos · ${mw(st.kw)}</text>`;
+      /* THE LOAD, GENERIC — one arrow, one count. This is the whole point of a
+         summary: the 44 motors are on the other sheet. */
+      /* the generic load and the feed to a downstream board both leave the
+         bottom of the box; centred, they left it at the SAME POINT and the eye
+         could not tell the load from the cable to the MCC. A board that feeds
+         something else puts its load on the left third and its feed on the
+         right; a board that feeds nothing keeps the arrow centred. */
+      const ay = b.y + b.h, lx = b.x + b.w * (feedsDown.has(st.tag) ? 0.28 : 0.5);
+      g += `<line x1="${lx}" y1="${ay}" x2="${lx}" y2="${ay + 14}" stroke="${INK}" stroke-width="1.3"/>` +
+        `<path d="M${lx - 6},${ay + 14} L${lx + 6},${ay + 14} L${lx},${ay + 24} Z" fill="${INK}"/>` +
+        `<text x="${lx + 10}" y="${ay + 22}" font-family="${MONO}" font-size="9.5" font-weight="600" fill="${SOFT}">${st.loads} cargas</text>`;
+    }));
+
+    /* the feed from an upstream board: a plain elbow, top row to bottom row */
+    let elb = 0;
+    stats.forEach(st => st.upstream.forEach(u => {
+      const a = at.get(u.board), b = at.get(st.tag); if (!a || !b) return;
+      /* each feed gets its OWN horizontal run. Sharing one, two cables out of
+         the same board drew a single line with both labels stacked on the same
+         spot: the drawing said "one feed", the data said two. */
+      const x1 = a.x + a.w * 0.72, y1 = a.y + a.h, x2 = b.x + b.w / 2, y2 = b.y,
+            my = y1 + 30 + (elb++) * 16;
+      g += `<path d="M${x1},${y1} L${x1},${my} L${x2},${my} L${x2},${y2}" fill="none" stroke="${SLD_BUSCOL}" stroke-width="1.6"/>` +
+        `<path d="M${x2 - 5},${y2 - 9} L${x2 + 5},${y2 - 9} L${x2},${y2} Z" fill="${SLD_BUSCOL}"/>` +
+        /* the label goes on the MIDDLE of its own horizontal run, where nothing
+           else is. Anchored at the left end it landed on the source board's
+           "N cargas" arrow; anchored at the right end, on the drop line. When
+           the run is too short to hold it, it steps aside instead. */
+        `<text x="${Math.abs(x1 - x2) > 60 ? (x1 + x2) / 2 : Math.max(x1, x2) + 8}" y="${my - 4}" ` +
+        `text-anchor="${Math.abs(x1 - x2) > 60 ? "middle" : "start"}" font-family="${MONO}" font-size="9" font-weight="600" fill="${SLD_BUSCOL}">` +
+        `${esc(sldPosCode(u.from.tag, u.board))}${u.cable ? " · " + esc(u.cable) : ""}</text>`;
+    }));
+
+    /* the coupler between two boards: dashed, because every one of them is
+       normally open — a solid line would claim a feed that does not exist */
+    const seen = new Set();
+    stats.forEach(st => st.ties.forEach(t => {
+      const a = at.get(st.tag), b = at.get(t.board); if (!a || !b) return;
+      const key = [st.tag, t.board].sort().join("|"); if (seen.has(key)) return; seen.add(key);
+      const l = a.x < b.x ? a : b, r = a.x < b.x ? b : a;
+      const y = l.y + l.h / 2;
+      g += `<line x1="${l.x + l.w}" y1="${y}" x2="${r.x}" y2="${y}" stroke="${SLD_BUSCOL}" stroke-width="1.6"${t.open ? ` stroke-dasharray="5 4"` : ""}/>` +
+        `<text x="${(l.x + l.w + r.x) / 2}" y="${y - 6}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="700" fill="${SLD_BUSCOL}">` +
+        `${t.open ? "N.A." : "acopl."}</text>`;
+    }));
+    g += `</svg>`;
+
+    return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px">` +
+      stats.map(card).join("") + `</div>` +
+      `<div style="margin-top:12px;border:1px solid ${LINE};border-radius:6px;background:#fff;padding:10px;overflow-x:auto;text-align:center">${g}</div>`;
+  }
+
   /* ── export ───────────────────────────────────────────────────────────── */
   const API = { load, fromViewer, plantMap, areaBlock, unitSummary, hmbCards, svcClass, hmbChip, indexData,
                 loadSld, sldFromViewer, indexSld, sldBoards, sld,
+                sldSummary, sldBoardStats,
                 get sldSymbolStyle() { return sldSymbolStyle; },
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
@@ -2040,7 +2284,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.15.2" };
+                version: "1.16.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;

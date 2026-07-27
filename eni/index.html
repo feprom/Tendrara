@@ -470,7 +470,7 @@
      Bump ?v= on every release — same cache rule as tam-flow.js. -->
 <script src="tam-sym.js?v=0.2.3"></script>
 <script src="tam-sym-elec.js?v=0.3.4"></script>
-<script src="tam-flow.js?v=1.15.2"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
+<script src="tam-flow.js?v=1.16.0"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
 /* ════════════════════════════════════════════════════════════════
@@ -3776,31 +3776,16 @@ async function renderSld(c, board){
   }
   const boards = TamFlow.sldBoards(S);
   if(!boards.length){ c.innerHTML = `<div class="empty">v_sld_nodes carries no SWITCHBOARD row.</div>`; return; }
-  const cur = boards.some(b=>b.tag===board) ? board : boards[0].tag;
-  SLD.board = cur;
-
-  const totPos = boards.reduce((n,b)=>n+b.positions,0);
-  const totLoad = boards.reduce((n,b)=>n+b.loads,0);
-  const skipped = S._skipped.length;
-
-  c.innerHTML = `
-  <div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · SINGLE-LINE DIAGRAM</span></div>
-  <h1>Electrical single-line</h1>
-  <div class="facts">
-    <div class="fact" style="border-color:var(--crimson)"><div class="fbody"><div class="n" style="color:var(--blue)">${boards.length}</div><div class="l">POWER CENTERS</div></div></div>
-    <div class="fact"><div class="fbody"><div class="n">${totPos}</div><div class="l">POSITIONS</div></div></div>
-    <div class="fact"><div class="fbody"><div class="n">${totLoad}</div><div class="l">LOADS LINKED</div></div></div>
-    <div class="fact"><div class="fbody"><div class="n" style="color:${skipped?"var(--amber)":"var(--ok)"}">${skipped||"✓"}</div><div class="l">EDGES NOT DRAWABLE</div></div></div>
-  </div>
-  <div style="margin:14px 0 8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-    ${boards.map(b=>`<span class="chip ${b.tag===cur?"ok":"dim"}" style="cursor:pointer"
-      onclick="nav('sld/'+encodeURIComponent('${esc(b.tag)}'))">${esc(b.tag)} · ${esc(b.doc_no||"")}
-      <span class="dim">${b.positions}p</span></span>`).join("")}
-  </div>
-  <div id="sldbox" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px"></div>
-  <p class="lead" style="margin-top:10px">Click any load tag to open its asset card. A busbar wider than
-  the page is cut into rows, each end marked with the row it continues into.</p>
-  ${dataTable("sldcov","SC","Coverage per Power Center",[
+  /* ── [SLD] v1.16.0 · TWO LEVELS ────────────────────────────────────────
+     No board in the route = the SUMMARY: one card per Power Center and a small
+     schematic of who feeds whom. A board in the route = that board's sheet.
+     Mario: *"al apretar cada power center debe cargar su unifilar con el
+     detalle"*. The KPI strip and the chip row that used to sit here are gone —
+     the cards carry both the figures and the navigation, and carry them better,
+     because "113 POSITIONS" across four boards was a number nobody could act on.
+     The incoming side is named down to the machine; the outgoing side is one
+     arrow and a count, because that is what the detailed sheet is for. */
+  const sumTable = () => dataTable("sldcov","SC","Coverage per Power Center",[
     {label:"BOARD", get:r=>r.tag, cls:"mono",
       html:(r,v)=>`<span class="tag" onclick="event.stopPropagation();nav('sld/'+encodeURIComponent('${esc(r.tag)}'))">${esc(v)}</span>`},
     {label:"DOCUMENT", get:r=>r.doc_no||"—", cls:"mono dim"},
@@ -3808,7 +3793,35 @@ async function renderSld(c, board){
     {label:"BUSBARS", get:r=>r.busbars, cls:"mono", num:true},
     {label:"POSITIONS", get:r=>r.positions, cls:"mono", num:true},
     {label:"LOADS LINKED", get:r=>r.loads, cls:"mono", num:true}
-  ], boards)}`;
+  ], boards);
+
+  if(!board || !boards.some(b=>b.tag===board)){
+    SLD.board = null;
+    c.innerHTML = `
+    <div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · DISTRIBUTION OVERVIEW</span></div>
+    <h1>Electrical single-line</h1>
+    <p class="lead" style="margin-bottom:12px">Cada Power Center, su alimentación y su carga agregada.
+    Pulsa un cuadro para abrir su unifilar con el detalle.</p>
+    ${TamFlow.sldSummary(S,{onNavigate:"nav"})}
+    ${sumTable()}`;
+    return;
+  }
+  const cur = board;
+  SLD.board = cur;
+
+  c.innerHTML = `
+  <div class="kicker">TX EI06 <span class="sub">· ELECTRICAL · SINGLE-LINE DIAGRAM</span></div>
+  <h1>Electrical single-line</h1>
+  <div style="margin:0 0 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    <span class="chip dim" style="cursor:pointer" onclick="nav('sld')">‹ RESUMEN</span>
+    ${boards.map(b=>`<span class="chip ${b.tag===cur?"ok":"dim"}" style="cursor:pointer"
+      onclick="nav('sld/'+encodeURIComponent('${esc(b.tag)}'))">${esc(b.tag)} · ${esc(b.doc_no||"")}
+      <span class="dim">${b.positions}p</span></span>`).join("")}
+  </div>
+  <div id="sldbox" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px"></div>
+  <p class="lead" style="margin-top:10px">Click any load tag to open its asset card. A busbar wider than
+  the page is cut into rows, each end marked with the row it continues into.</p>
+  ${sumTable()}`;
 
   const box=document.getElementById("sldbox");
   /* The drawing must fit THIS BOX, not the window. tam-flow falls back to
