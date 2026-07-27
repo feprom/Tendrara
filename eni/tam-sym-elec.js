@@ -50,6 +50,42 @@
     const t = tipOf(c, len);
     return c.ln(t.x0, t.y0, t.x, t.y) + c.dot(t.x0, t.y0, 1.8);
   }
+  /* ── the CONTACTOR cup (v0.3.4) ────────────────────────────────────────
+     IEC 60617-07: what makes a make-contact a CONTACTOR is a semicircle on the
+     free end of the moving contact, its opening facing the fixed contact it is
+     travelling to. The plane of that semicircle is perpendicular TO THE MOVING
+     CONTACT — it turns with the blade.
+
+     Until v0.3.3 the cup was drawn axis-aligned: a "∪" opening straight up, no
+     matter that the blade sat at 30°. Closed (blade vertical) that is correct
+     by accident; OPEN — which is the state this drawing shows, because a
+     contactor is N.O. at rest — the blade ran diagonally into a horizontal cup
+     and the three ends fanned out. Mario: *"revisar icono de contactor con IEC,
+     si tiene esa especie de trinche"*. He was right: it read as a trident, and
+     a trident is not a symbol in 60617.
+
+     There were TWO faults, and the second is the one that made the trident.
+     The cup was centred ON the tip, so the moving contact ran to the middle of
+     the cup's MOUTH: two arc ends plus the blade sticking out between them —
+     three prongs, at any angle. In 60617 the blade STOPS AT THE BACK of the
+     cup and the cup opens forward from there. So the centre sits one radius
+     BEYOND the tip, along the blade, and the arc passes exactly through the
+     tip: the line meets the arc at a single point of tangency and there is
+     nothing left to read as a prong.
+
+     Given the pivot and the tip, the cup is built on that axis, so it is right
+     at every angle and there is no angle left to get wrong.                  */
+  function cup(c, x0, y0, x, y, r) {
+    const dx = x - x0, dy = y - y0, L = Math.hypot(dx, dy) || 1;
+    const nx = dx / L, ny = dy / L;        /* pivot → tip = toward the fixed contact */
+    const px = -ny, py = nx;               /* the chord runs across that            */
+    const R = r || 4.6;
+    const cx = x + nx * R, cy = y + ny * R;          /* one radius PAST the tip */
+    const f = n => +n.toFixed(2);
+    return c.path(`M${f(cx + px * R)},${f(cy + py * R)} A${R},${R} 0 0 1 ` +
+                  `${f(cx - px * R)},${f(cy - py * R)}`);
+  }
+
   /* stub conductors from the ports to the contacts */
   const stubs = c => c.ln(0, TOP, 0, TOP + 3) + c.ln(0, BOT, 0, BOT - 3);
   const fixedTop = c => c.dot(0, TOP + 3, 1.8);
@@ -176,8 +212,9 @@
       const t = tipOf(cc);
       let g = stubs(c) + c.cir(0, TOP + 3, 2, "#fff") + blade(cc) +
         /* the cup on the moving contact — the mark that says CONTACTOR and not
-           switch. It opens toward the fixed contact it is travelling to. */
-        c.path(`M${t.x - 4.6},${t.y - 1.4} A4.6,4.6 0 0 0 ${t.x + 4.6},${t.y - 1.4}`);
+           switch. It opens toward the fixed contact it is travelling to, and
+           since v0.3.4 it TURNS WITH THE BLADE (see `cup` above). */
+        cup(c, t.x0, t.y0, t.x, t.y, 4.6);
       if (o.coil !== false)
         /* Mechanical link (dashed, IEC) and the coil: a plain rectangle, the
            IEC 60617-07 relay element. The link is anchored at a FIXED point,
@@ -311,20 +348,30 @@
      each with its cathode bar and its gate lead. One branch conducts each
      half-cycle; phase-shifting the gates is the soft start. */
   /* the thyristor pair on its own, so SOFT_STARTER and SOFT_STARTER_2C draw the
-     same controller instead of two hand-copied versions that drift apart. */
+     same controller instead of two hand-copied versions that drift apart.
+
+     v0.3.4 — SIZED TO THE VFD. Mario, seeing .310/.311 (drives) next to
+     .312/.313 (soft starters) on the same bar: "el arrancador, del mismo tamaño
+     que los VFD". They were not: the drive is a solid 28 × 26 box, while the
+     starter's rails were only 18 apart with the thyristors poking out past
+     them, so on the sheet one converter read small-and-spiky and the other
+     large-and-solid — a difference in DRAWING that looked like a difference in
+     KIND. The rails now stand at ±11 so the thyristors reach exactly ±14, and
+     the whole mark occupies the same 28 × 26 as the drive. Two converters, two
+     symbols, one visual weight. */
   const thyristorPair = c =>
-      /* two parallel branches between the terminals */
-      c.ln(0, -13, 0, -9) + c.ln(0, 13, 0, 9) +
-      c.ln(-9, -9, 9, -9) + c.ln(-9, 9, 9, 9) +
-      c.ln(-9, -9, -9, 9) + c.ln(9, -9, 9, 9) +
+      /* two parallel branches between the terminals, the outer edge of the
+         thyristors landing on the VFD's own box line */
+      c.ln(-11, -13, 11, -13) + c.ln(-11, 13, 11, 13) +
+      c.ln(-11, -13, -11, 13) + c.ln(11, -13, 11, 13) +
       /* left branch: a thyristor conducting DOWNWARD - triangle apex down with
          its cathode bar across the apex */
-      c.path("M-12,-3.5 L-6,-3.5 L-9,1.5 Z", c.col) + c.ln(-12, 1.5, -6, 1.5) +
+      c.path("M-14,-3.5 L-8,-3.5 L-11,1.5 Z", c.col) + c.ln(-14, 1.5, -8, 1.5) +
       /* right branch: the ANTI-PARALLEL one, conducting upward. One branch
          conducts each half-cycle; phase-shifting the gates is the soft start. */
-      c.path("M6,3.5 L12,3.5 L9,-1.5 Z", c.col) + c.ln(6, -1.5, 12, -1.5) +
+      c.path("M8,3.5 L14,3.5 L11,-1.5 Z", c.col) + c.ln(8, -1.5, 14, -1.5) +
       /* the gate lead of each thyristor, off its cathode bar (IEC 60617-05) */
-      c.ln(-6, 1.5, -3.5, 4) + c.ln(6, -1.5, 3.5, -4);
+      c.ln(-8, 1.5, -5.5, 4) + c.ln(8, -1.5, 5.5, -4);
 
   def("SOFT_STARTER", {
     name: "Soft starter", std: "IEC 60617-05", w: 28, h: 26,
@@ -368,8 +415,9 @@
         const tx = x + 6, ty = 4;                  /* blade open at 30 degrees */
         return c.ln(x, yFork, x, -3) + c.dot(x, -3, 1.8) +
                c.ln(x, yPiv, tx, ty) +
-               /* the cup: this is a CONTACTOR, not a switch */
-               c.path(`M${tx - 4.2},${ty - 1.3} A4.2,4.2 0 0 0 ${tx + 4.2},${ty - 1.3}`) +
+               /* the cup: this is a CONTACTOR, not a switch — same helper as
+                  CONTACTOR, so the two can no longer drift apart (v0.3.4) */
+               cup(c, x, yPiv, tx, ty, 4.2) +
                /* and straight on down to its own machine — no merge, no box */
                c.ln(x, yPiv, x, 44);
       };
@@ -380,11 +428,20 @@
         c.ln(-X, yFork, X, yFork) +
         contact(-X) + contact(X) +
         /* MECHANICAL INTERLOCK, IEC 60617-02 form: the dashed mechanical
-           coupling between the two operating elements, broken in the middle for
-           the triangle that marks the coupling as an INTERLOCK — closing either
-           contactor holds the other open, so only one machine runs. */
-        c.ln(-X, 9, -5, 9, "2 2") + c.ln(5, 9, X, 9, "2 2") +
-        c.path("M-5,9 L5,9 L0,15.5 Z");
+           coupling between the two operating elements, with the triangle that
+           marks the coupling as an INTERLOCK — closing either contactor holds
+           the other open, so only one machine runs.
+
+           v0.3.4 — Mario: *"la línea horizontal debe pasar por el medio del
+           triángulo, pero no cortarlo"*. It used to run along the triangle's
+           BASE, which reads as a triangle hanging off a line — two marks that
+           happen to touch. Now the triangle straddles the line: base at 5.7,
+           apex at 12.3, so y = 9 is its half-height. The dashes stop at the
+           triangle's actual width AT THAT HEIGHT (±2.5, since it has tapered to
+           half by then), so the coupling runs INTO the mark from both sides and
+           the mark stays whole. */
+        c.ln(-X, 9, -2.5, 9, "2 2") + c.ln(2.5, 9, X, 9, "2 2") +
+        c.path("M-5,5.7 L5,5.7 L0,12.3 Z");
     }
   });
 
@@ -504,5 +561,5 @@
 
   T.ELEC_MAP = ELEC_MAP;
   T.fromNode = fromNode;
-  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.3.3", count: T.kinds().length }]);
+  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.3.4", count: T.kinds().length }]);
 })();

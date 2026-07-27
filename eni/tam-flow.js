@@ -1259,6 +1259,34 @@
                tieL: tie.filter(t => !isLater(t.farTag, bb.tag)) };
     });
 
+    /* The tie LABELS are built here, before anything measures the page, and no
+       longer inside the per-band loop where v1.7.0 put them. Two reasons, both
+       about width: the label runs rightward out of the last column and the page
+       has to know how far (trap T-14 — what leaves the viewBox is clipped in
+       silence), and v1.15.0 now needs that number BEFORE it can decide how many
+       columns fit. Tie objects are shared by reference with the segments the
+       split produces, so building them here reaches the draw loop unchanged. */
+    const tw = (txt, fs) => String(txt || "").length * fs * 0.6;
+    let tieOver = 0;                    /* how far past the bar end a tie reaches */
+    rawBands.forEach(b => {
+      b.tie.concat(b.tieL).forEach(t => {
+        const fb = sldBoardOf(S, S._byTag.get(t.farTag)) || boardTag;
+        const viaBoard = t.via ? (sldBoardOf(S, t.via) || boardTag) : boardTag;
+        t.farCode = sldBusCode(t.farTag, fb) + (fb !== boardTag ? " · " + fb : "");
+        t.offBoard = fb !== boardTag;
+        t.sub = [sldPosCode(t.pos.tag, boardTag),
+                 t.via ? "via " + (viaBoard !== boardTag ? viaBoard + " " : "") + sldPosCode(t.via.tag, viaBoard) : "",
+                 t.cable || "", t.open ? "N.O." : ""].filter(Boolean).join(" · ");
+      });
+      /* only the OUT ties stick out to the right; an arriving one is labelled
+         in the left gutter, where it costs the page nothing */
+      b.tie.forEach((t, i) => {
+        const w = Math.max(tw("⇢ BUSBAR " + t.farCode, ts(7.6)),
+                           ...String(t.sub).split(" · ").map(x => tw(x, ts(6.6))));
+        tieOver = Math.max(tieOver, gx(SLD_TIE_DX) * (i + 1) + gx(26) + gx(5) + w);
+      });
+    });
+
     /* ── v1.15.0 · CUT A BAR THAT DOES NOT FIT, AND SAY WHERE IT GOES ───────
        How many columns fit across the page, from the page itself. The layout
        grid is `gx`, so the answer moves with the zoom knob for free: zoom in
@@ -1270,10 +1298,27 @@
        four columns the drawing scrolls instead, which is the honest failure.  */
     const wrapCols = (function () {
       const root = (typeof window !== "undefined") ? window : null;
+      /* v1.15.1 — Mario, on the first cut version: "en la pantalla se genera aun
+         un scroll horizontal, disminuir un poco el ancho aprovechable". Two
+         things were eating the budget and neither was in the sum.
+
+         `innerWidth` is the WHOLE window: it includes the vertical scrollbar,
+         the page's own gutters and whatever chrome the app puts around the
+         drawing, none of which the SVG may use. 40 px did not cover it. The
+         reserve is now 96, which is the page gutter this viewer actually uses
+         plus a scrollbar plus a few px of slack — err on the narrow side, since
+         one column too few costs a little white space and one column too many
+         costs the scrollbar the whole feature exists to remove.
+
+         And a bar that carries a bus TIE does not end at its last column: the
+         tie elbow and its destination label run on past it, and that overhang
+         was measured for the page width but never subtracted from the column
+         budget — so a board with ties (PC1, PC2) overflowed by exactly the
+         label. Now it is reserved before the division. */
       const avail = +sldWrapWidth || +(o.wrapWidth || 0) ||
-                    (root && root.innerWidth ? root.innerWidth - 40 : 0);
+                    (root && root.innerWidth ? root.innerWidth - 96 : 0);
       if (!avail) return Infinity;                 /* headless: never cut */
-      return Math.max(4, Math.floor((avail - gx(SLD_PADX) * 2) / gx(SLD_COL)));
+      return Math.max(4, Math.floor((avail - gx(SLD_PADX) * 2 - tieOver) / gx(SLD_COL)));
     })();
 
     /* One busbar becomes N SEGMENTS, each a band in its own right. The split is
@@ -1320,18 +1365,6 @@
     bands.forEach(b => {
       b.base = Math.max(b.inc.length, b.out.length);
       b.nWide = b.base;
-      /* the labels are built here, not in the draw loop, because the page
-         width has to know how far the widest one reaches (trap T-14: what
-         leaves the viewBox is silently clipped) */
-      b.tie.concat(b.tieL).forEach((t, i) => {
-        const fb = sldBoardOf(S, S._byTag.get(t.farTag)) || boardTag;
-        const viaBoard = t.via ? (sldBoardOf(S, t.via) || boardTag) : boardTag;
-        t.farCode = sldBusCode(t.farTag, fb) + (fb !== boardTag ? " · " + fb : "");
-        t.offBoard = fb !== boardTag;
-        t.sub = [sldPosCode(t.pos.tag, boardTag),
-                 t.via ? "via " + (viaBoard !== boardTag ? viaBoard + " " : "") + sldPosCode(t.via.tag, viaBoard) : "",
-                 t.cable || "", t.open ? "N.O." : ""].filter(Boolean).join(" · ");
-      });
       b.tie.forEach((t, i) => { t.dx = gx(SLD_TIE_DX) * (i + 1); });
     });
     /* a band needs a longer conductor on the side that carries an assembly */
@@ -1357,7 +1390,6 @@
        assumed. A tie label runs rightward out of the last column; with the
        page width fixed at 2·PADX + cols·COL it was the tie column that kept it
        inside, and removing that column would have pushed it off the edge. */
-    const tw = (txt, fs) => String(txt || "").length * fs * 0.6;
     let tieRight = 0;
     bands.forEach(b => b.tie.forEach(t => {
       const w = Math.max(tw("⇢ BUSBAR " + t.farCode, ts(7.6)),
@@ -2004,7 +2036,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.15.0" };
+                version: "1.15.1" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
