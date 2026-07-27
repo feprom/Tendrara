@@ -94,7 +94,28 @@
 "use strict";
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 let GROUPS=[], DOMAINS=[];
-function domainOk(email){ return DOMAINS.length===0 || DOMAINS.some(d=>email.toLowerCase().endsWith("@"+d)); }
+/* Mirrors the DB rule exactly (migration 192): a row WITHOUT "@" grants a whole
+   domain, a row WITH "@" grants that one address. Before 192 the table was
+   domain-only and this line was right; after it, an individually approved
+   address turned into "@luis...@outlook.es" here and the browser rejected the
+   very person the database had just been told to allow — the check that was
+   meant to be a courtesy became the blocker, and the DB never even saw the
+   attempt. Two rules, one place each, saying the same thing. */
+function domainOk(email){
+  if(!DOMAINS.length) return true;
+  const e=email.toLowerCase().trim();
+  return DOMAINS.some(d=>{ d=String(d).toLowerCase().trim();
+    return d.includes("@") ? e===d : e.endsWith("@"+d); });
+}
+/* What we are willing to say out loud. The domains are company-wide and public;
+   an individually approved address is one named person's private email, and
+   printing the whole list in an error box would hand it to anyone who mistypes
+   their own. Domains by name, individuals by count. */
+function domainHint(){
+  const dom=DOMAINS.filter(d=>!String(d).includes("@")).map(d=>"@"+d);
+  const indiv=DOMAINS.length-dom.length;
+  return dom.join(", ") + (indiv ? (dom.length?", or ":"") + indiv + " individually approved address" + (indiv>1?"es":"") : "");
+}
 
 function mode(m){
   document.getElementById("tabIn").classList.toggle("on",m==="in");
@@ -140,8 +161,9 @@ async function loadGroups(){
   if(error){ say("Cannot reach the database: "+error.message,"err"); return; }
   GROUPS=data; DOMAINS=(doms||[]).map(d=>d.domain);
   if(DOMAINS.length){
-    document.getElementById("upEmail").placeholder="name@"+DOMAINS[0];
-    document.getElementById("domHint").textContent="Accounts are restricted to: "+DOMAINS.map(d=>"@"+d).join(", ");
+    const firstDom=DOMAINS.find(d=>!String(d).includes("@"));
+    if(firstDom) document.getElementById("upEmail").placeholder="name@"+firstDom;
+    document.getElementById("domHint").textContent="Accounts are restricted to: "+domainHint();
   }
   const sel=document.getElementById("upGroup");
   sel.innerHTML=data.map(g=>`<option value="${g.code}" ${g.code==="FIELD"?"selected":""}>${g.name} (level ${g.level})</option>`).join("");
@@ -157,7 +179,7 @@ async function signUp(){
   const group=document.getElementById("upGroup").value;
   const pin=document.getElementById("upPin").value, pin2=document.getElementById("upPin2").value;
   if(!name||!email.includes("@")) return say("Name and a valid email are required.","err");
-  if(!domainOk(email)) return say("Only these company emails can register: "+DOMAINS.map(d=>"@"+d).join(", "),"err");
+  if(!domainOk(email)) return say("This email cannot register. Allowed: "+domainHint(),"err");
   if(!/^\d{4,8}$/.test(pin)) return say("PIN must be 4–8 digits.","err");
   if(pin!==pin2) return say("PINs do not match.","err");
   document.getElementById("btnUp").disabled=true;
@@ -170,7 +192,7 @@ async function signUp(){
   document.getElementById("btnUp").disabled=false;
   if(error){
     if((error.message||"").includes("duplicate")) return say("An account with this email already exists — use SIGN IN.","err");
-    if((error.message||"").includes("EMAIL_DOMAIN_NOT_ALLOWED")) return say("This email domain is not authorized. Allowed: "+DOMAINS.map(d=>"@"+d).join(", "),"err");
+    if((error.message||"").includes("EMAIL_DOMAIN_NOT_ALLOWED")) return say("This email is not authorized. Allowed: "+domainHint(),"err");
     return say(error.message,"err");
   }
   say("Account created — entering…","ok");
