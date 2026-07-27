@@ -857,7 +857,17 @@
     const kva = new Map(rating.map(r => [r.tag, r]));
     nodes.forEach(n => { const r = kva.get(n.tag);
       if (r) { n.power_factor = r.power_factor; n.apparent_kva = r.apparent_kva; } });
-    return indexSld({ nodes, edges });
+    const S = indexSld({ nodes, edges });
+    /* v1.16.3 — whether the ratings ARRIVED is its own fact, and the summary has
+       to be able to tell it from "this source declares no power factor". The
+       first time this shipped, PostgREST had not yet picked the new view into
+       its schema cache, the fetch came back empty, and every card announced
+       "6 sources with no declared power factor" — a confident statement about
+       the plant produced by a stale cache. Wrong in the worst way: it read as
+       data. A missing SOURCE of truth and a missing VALUE are different, and
+       the card now says which one it is. */
+    S._hasRating = rating.length > 0;
+    return S;
   }
   function sldFromViewer(DB) {
     return indexSld({ nodes: DB.sldNodes || [], edges: DB.sldEdges || [] });
@@ -2122,9 +2132,10 @@
       if (x.node.apparent_kva != null) genKva += +x.node.apparent_kva;
       else if (x.node.power_kw != null) genNoPf++;
     });
+    const ratingUp = !!S._hasRating;
 
     return { tag: boardTag, doc_no: board && board.doc_no, voltage_v: board && board.voltage_v,
-             genKw, genKva, genNoPf,
+             genKw, genKva, genNoPf, ratingUp,
              busbars: buses.length, positions: pos.length, inc: inc.length, out: out.length,
              sources, upstream, ties, start, kw, loads };
   }
@@ -2181,16 +2192,28 @@
            Generation in MVA is what sizes switchgear; load in MW is what the
            plant actually draws. A board with no generation of its own says so
            rather than printing a zero, which would read as "shut down". */
-        `<div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:2px">` +
-          `<div><div style="font:700 20px ${SANS};color:${INK};line-height:1.05">` +
-            (st.genKva ? `${(st.genKva / 1000).toFixed(1)} MVA` : `<span style="color:${LINE}">—</span>`) + `</div>` +
+        /* BOTH figures big, generation first and in ink, connected load a shade
+           greyer. Mario: *"en grande el de generación y el de carga conectada,
+           tal vez generación en negro y carga un poco más gris"*. The weighting
+           is the point: on a distribution overview the generation is the
+           headline and the load is what it has to cover. */
+        `<div style="display:flex;gap:18px;align-items:flex-end;margin-bottom:3px">` +
+          `<div><div style="font:700 25px ${SANS};color:${INK};line-height:1.05">` +
+            (st.genKva ? `${(st.genKva / 1000).toFixed(1)} MVA`
+                       : (st.genKw ? `${(st.genKw / 1000).toFixed(1)} MW` : `<span style="color:${LINE}">—</span>`)) + `</div>` +
             `<div style="font:600 9px ${MONO};color:${SOFT}">GENERATION` +
-              (st.genKw ? ` · ${(st.genKw / 1000).toFixed(1)} MW` : "") + `</div></div>` +
-          `<div><div style="font:700 20px ${SANS};color:${INK};line-height:1.05">${mw(st.kw)}</div>` +
+              (st.genKva && st.genKw ? ` · ${(st.genKw / 1000).toFixed(1)} MW` : "") + `</div></div>` +
+          `<div><div style="font:700 25px ${SANS};color:#79808A;line-height:1.05">${mw(st.kw)}</div>` +
             `<div style="font:600 9px ${MONO};color:${SOFT}">CONNECTED LOAD</div></div>` +
         `</div>` +
-        (st.genNoPf ? `<div style="font:600 9px ${MONO};color:${CRIMSON};margin-bottom:2px">` +
-           `+ ${st.genNoPf} source${st.genNoPf === 1 ? "" : "s"} with no declared power factor — not in the MVA</div>` : "") +
+        /* three different sentences, never blurred into one:
+             the ratings view did not load      -> we cannot say
+             a source declares no power factor  -> the plant has not said
+             everything present                 -> nothing to add            */
+        (!st.ratingUp && st.genKw
+           ? `<div style="font:600 9px ${MONO};color:${SOFT};margin-bottom:2px">apparent power unavailable — source ratings did not load</div>`
+           : st.genNoPf ? `<div style="font:600 9px ${MONO};color:${CRIMSON};margin-bottom:2px">` +
+               `+ ${st.genNoPf} source${st.genNoPf === 1 ? "" : "s"} with no declared power factor — not in the MVA</div>` : "") +
         `<div style="font:600 11px ${MONO};color:${SOFT};margin:2px 0 8px">${st.positions} positions · ${st.loads} loads</div>` +
         `<div style="font:600 10px ${MONO};color:${SLD_BUSCOL};margin-bottom:2px">⚡ ${feed.length ? feed.map(esc).join("<br>⚡ ") : "no source declared"}</div>` +
         (tieTxt.length ? `<div style="font:600 10px ${MONO};color:${SOFT};margin-bottom:6px">⇄ ${tieTxt.map(esc).join("<br>⇄ ")}</div>` : `<div style="margin-bottom:6px"></div>`) +
@@ -2321,7 +2344,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.16.2" };
+                version: "1.16.3" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
