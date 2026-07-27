@@ -1336,7 +1336,13 @@
             const w = arr.reduce((m, t) => Math.max(m,
               Math.round(String(areaName(data, t.otherA) || "").length * 4.6) + KEY + 22), 96);
             const room = W - (p.x + BW + 22) - 8;
-            arr.forEach((it, k) => { it.W = Math.min(w, room); it.row = k; });
+            let acc = 0;
+            arr.forEach((it, k) => {
+              const hasNote = (data.media || []).some(m =>
+                String(m.area_code) === String(it.chainA) && m.service_code === it.code);
+              it.W = Math.min(w, room); it.row = k; it.rowY = acc;
+              acc += (hasNote ? 34 : 26) + 8;
+            });
             return;
           }
           /* si por este borde sube además el ramal del colector, la columna de
@@ -1361,11 +1367,37 @@
           const both = it.in && it.out, out = it.out && !it.in;
           const ttl = `<title>${esc("U" + it.chainA + (both ? " ↔ U" : out ? " → U" : " ← U") + it.otherA + " · " + it.n +
                  " line(s) · " + it.ls.map(l => l.line_number || l.service_code).join(" · "))}</title>`;
+          /* ── v1.39.0 · un medio térmico dice PARA QUÉ ─────────────────────
+             Mario: "el área 370 usa hot oil package ¿para qué? aclarar eso en
+             el dibujo".
+
+             La etiqueta decía HOT OIL PACKAGE, que es de dónde viene, y en un
+             servicio de calentamiento eso es la mitad menos interesante: lo
+             que un operador necesita saber es A QUÉ calienta y cuánto. Y no
+             hay que preguntárselo a nadie — `v_exchanger_media` lo tiene por
+             área desde que se montó la banda de control: los intercambiadores
+             de esa área que usan ese medio, y su duty de diseño.
+
+             Se imprime sólo si la tabla lo tiene. Si un día un área usa aceite
+             térmico y no hay fila, la etiqueta se queda con una línea en vez
+             de inventarse un destino. */
+          const med = [...new Map((data.media || [])
+            .filter(m => String(m.area_code) === String(it.chainA) && m.service_code === it.code)
+            .map(m => [m.equipment_tag, m])).values()];
+          /* el duty se suma por RAMA, no por equipo: E-371 y E-372 comparten
+             la rama H011→H012 y sus 200 kW, así que sumarlos daría 400 — el
+             doble. `v_exchanger_media` ya nombra la rama en supply/return. */
+          const kw = [...new Map(med.map(m =>
+            [String(m.supply_stream) + ">" + String(m.return_stream), +m.design_delta_kw || 0])).values()]
+            .reduce((n, v) => n + v, 0);
+          const note = med.length
+            ? med.map(m => m.equipment_tag).join(" / ") + (kw ? " · " + Math.round(kw) + " kW" : "")
+            : null;
           if (it.side === "R") {
             /* horizontal, al costado: misma gramática girada 90° — clave en el
                extremo de fuera, galón en el sentido del flujo, esquina viva */
-            const TW = it.W, TH = 26, xL = p.x + BW + 22, xR = xL + TW;
-            const yT2 = p.y + 6 + it.row * (TH + 8), cy = yT2 + TH / 2;
+            const TW = it.W, TH = note ? 34 : 26, xL = p.x + BW + 22, xR = xL + TW;
+            const yT2 = p.y + 6 + it.rowY, cy = yT2 + TH / 2;
             const poly = both
               ? `${xL},${yT2} ${xR},${yT2} ${xR},${yT2 + TH} ${xL},${yT2 + TH}`
               : out
@@ -1381,7 +1413,8 @@
               `<polygon points="${keyClip}" fill="${shade(st.color, 0.18)}" stroke-linejoin="miter"/>` +
               `<line x1="${kx}" y1="${yT2}" x2="${kx}" y2="${yT2 + TH}" stroke="${ink}" stroke-width="1.2"/>` +
               `<text x="${kx + KEY / 2}" y="${cy + 3.2}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="700" fill="#fff" letter-spacing="0.4">U${esc(it.otherA)}</text>` +
-              `<text x="${xL + 8}" y="${cy + 3}" font-family="${MONO}" font-size="6.6" fill="#4A4F57" letter-spacing="0.5">${esc(clip(nm, Math.floor((TW - KEY - 16) / 4.6)))}</text></g>`;
+              `<text x="${xL + 8}" y="${cy + (note ? -2 : 3)}" font-family="${MONO}" font-size="6.6" fill="#4A4F57" letter-spacing="0.5">${esc(clip(nm, Math.floor((TW - KEY - 16) / 4.6)))}</text>` +
+              (note ? `<text x="${xL + 8}" y="${cy + 9}" font-family="${MONO}" font-size="6.2" fill="${SOFT}">${esc(clip(note, Math.floor((TW - KEY - 16) / 4.3)))}</text>` : "") + `</g>`;
             return;
           }
           const x = it.x;
@@ -4111,7 +4144,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.38.0" };
+                version: "1.39.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
