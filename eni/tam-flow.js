@@ -807,6 +807,19 @@
      The value was chosen by rendering the sweep, not by taste — see the
      verification. */
   let sldZoom = 1.3;
+  /* ── v1.15.0 · where a busbar RUNS OUT OF PAGE ───────────────────────────
+     Mario: "cuando una barra sea más ancha que la pantalla, al final ponga una
+     etiqueta y continúe en una nueva fila".
+
+     This is the MATCHLINE, the oldest convention on a large drawing: a run too
+     long for the sheet is cut, the cut is named, and the run starts again lower
+     down carrying the name it was cut at. Every ELD03 sheet does it; the viewer
+     was the only thing pretending a bar could be arbitrarily wide, and the cost
+     was a horizontal scrollbar that hid whole sections of a board.
+
+     0 / null = measure the window at draw time. A number = a fixed page width
+     in CSS px, which is what a reproducible export wants. */
+  let sldWrapWidth = 0;
   const Z  = () => sldZoom;                       // symbols + text
   const G  = () => 1 + (sldZoom - 1) * 0.55;      // layout grid
   const gx = n => +(n * G()).toFixed(1);          // a layout distance
@@ -1229,7 +1242,7 @@
     }
 
     /* classify each position on each busbar */
-    const bands = busbars.map(bb => {
+    const rawBands = busbars.map(bb => {
       const kids = (S._kids.get(bb.tag) || []).slice().sort(byRank);
       const inc = [], out = [], cpl = [], tie = [];
       kids.forEach(p => {
@@ -1245,6 +1258,58 @@
                tie: tie.filter(t => isLater(t.farTag, bb.tag)),
                tieL: tie.filter(t => !isLater(t.farTag, bb.tag)) };
     });
+
+    /* ── v1.15.0 · CUT A BAR THAT DOES NOT FIT, AND SAY WHERE IT GOES ───────
+       How many columns fit across the page, from the page itself. The layout
+       grid is `gx`, so the answer moves with the zoom knob for free: zoom in
+       and the same board simply cuts into more rows.
+
+       The floor of 4 is deliberate. A very narrow window would otherwise cut
+       every bar into one-column strips — technically obedient, unreadable, and
+       the sort of thing that makes an automatic layout untrustworthy. Below
+       four columns the drawing scrolls instead, which is the honest failure.  */
+    const wrapCols = (function () {
+      const root = (typeof window !== "undefined") ? window : null;
+      const avail = +sldWrapWidth || +(o.wrapWidth || 0) ||
+                    (root && root.innerWidth ? root.innerWidth - 40 : 0);
+      if (!avail) return Infinity;                 /* headless: never cut */
+      return Math.max(4, Math.floor((avail - gx(SLD_PADX) * 2) / gx(SLD_COL)));
+    })();
+
+    /* One busbar becomes N SEGMENTS, each a band in its own right. The split is
+       by COLUMN INDEX, not by row, so an incomer and the outgoing way that
+       share column 7 stay in the same segment and on the same vertical — the
+       column is the unit of meaning on this drawing, and cutting between the
+       two halves of one would be a lie about which way feeds what.
+
+       The ties do NOT get copied into every segment: an outgoing tie leaves the
+       physical END of the bar, so it belongs to the LAST segment; an arriving
+       one reaches the START, so it belongs to the FIRST. Copying them would
+       draw the same coupler two or three times and inflate the position count
+       in the title block. */
+    const bands = [];
+    rawBands.forEach(b => {
+      const wide = Math.max(b.inc.length, b.out.length);
+      /* `step` is wrapCols made FINITE. It exists because of a bug that this
+         file should record rather than quietly fix: with no page to measure,
+         wrapCols is Infinity, and `0 * Infinity` is NaN in JavaScript — so the
+         first segment sliced [NaN, NaN], which Array#slice reads as [0, 0], and
+         the whole bar came out EMPTY. The page still rendered: title block,
+         busbar, footer, four columns of nothing. Trap T-13 in a new costume —
+         it did not throw, it returned LESS. */
+      const step = isFinite(wrapCols) ? wrapCols : Math.max(1, wide);
+      const parts = Math.max(1, Math.ceil(wide / step));
+      for (let k = 0; k < parts; k++) {
+        const a = k * step, z = a + step;
+        bands.push({ bus: b.bus,
+                     inc: b.inc.slice(a, z), out: b.out.slice(a, z),
+                     cplCount: b.cplCount,
+                     tie:  k === parts - 1 ? b.tie  : [],
+                     tieL: k === 0         ? b.tieL : [],
+                     part: k + 1, parts: parts });
+      }
+    });
+
     /* ── v1.7.0 · the tie sits just past the last column, not a column past it ──
        v1.6.0 gave every tie a full column so its vertical would clear the CT
        ratio of the last incomer's metering assembly. That ratio only reaches
@@ -1365,7 +1430,11 @@
       (board.voltage_v != null ? `  ·  ${esc(n0(board.voltage_v))} V` : "") +
       /* v1.6.0 — a tie is still a CUBICLE on this board; moving it to the end
          of the bar must not quietly drop it from the count. */
-      `  ·  ${bands.length} busbar${bands.length > 1 ? "s" : ""}  ·  ${bands.reduce((n, b) => n + b.inc.length + b.out.length + b.tie.length + b.tieL.length, 0)} positions` +
+      /* v1.15.0 — counted off rawBands, NOT the segments. A bar cut into three
+         rows is still ONE busbar, and saying "3 busbars" because the page is
+         narrow would make the drawing lie about the switchboard. */
+      `  ·  ${rawBands.length} busbar${rawBands.length > 1 ? "s" : ""}  ·  ${rawBands.reduce((n, b) => n + b.inc.length + b.out.length + b.tie.length + b.tieL.length, 0)} positions` +
+      (bands.length > rawBands.length ? `  ·  ${bands.length} rows (page cut)` : "") +
       /* v1.3.0 — metering positions are counted separately, not dropped. They
          are still cubicles on this board; they just no longer stand in the
          outgoing row pretending to carry load. */
@@ -1516,6 +1585,37 @@
         `BUSBAR ${esc(sldBusCode(band.bus.tag, boardTag))}</text>`;
       s += `<text x="8" y="${busY - zy(3)}" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(band.bus.tag)}` +
         `${band.bus.symbol_kind === "BUSBAR_INVERTER" ? " · inverter bus" : ""}</text>`;
+
+      /* ── v1.15.0 · the MATCHLINE marks ────────────────────────────────────
+         A cut bar must say, at the cut, that it is cut — otherwise a segment
+         reads as a short bar with a couple of ways on it, which is a different
+         switchboard. Both ends are marked and both marks name the row on the
+         OTHER side of the cut, so either one alone tells you where to look.
+
+         The mark is a solid triangle ON the conductor, in the busbar colour,
+         pointing the way the power keeps running. It is drawn as a triangle
+         rather than a text arrow because it has to survive at any zoom and in
+         a rasteriser that may not have the glyph. */
+      if (band.parts > 1) {
+        const th = zy(7);                          /* half-height of the mark */
+        if (band.part < band.parts) {              /* the bar runs off, rightward */
+          const x = busX2 + zy(3);
+          s += `<path d="M${x},${busY - th} L${x + zy(12)},${busY} L${x},${busY + th} Z" fill="${SLD_BUSCOL}"/>`;
+          s += `<text x="${busX2}" y="${busY - zy(11)}" text-anchor="end" font-family="${MONO}" ` +
+            `font-size="${ts(7.4)}" font-weight="700" fill="${SLD_BUSCOL}">` +
+            `sigue en ${band.part + 1}/${band.parts} ⇢</text>`;
+        }
+        if (band.part > 1) {                       /* …and arrives here */
+          /* ON the bar's own start, not before it: the gutter to the left holds
+             the busbar name, and a mark placed out there sat on top of the tag.
+             Arriving power entering the conductor is the right reading anyway. */
+          const x = busX1;
+          s += `<path d="M${x},${busY - th} L${x + zy(12)},${busY} L${x},${busY + th} Z" fill="${SLD_BUSCOL}"/>`;
+          s += `<text x="${busX1 + zy(6)}" y="${busY - zy(11)}" text-anchor="start" font-family="${MONO}" ` +
+            `font-size="${ts(7.4)}" font-weight="700" fill="${SLD_BUSCOL}">` +
+            `⇢ viene de ${band.part - 1}/${band.parts}</text>`;
+        }
+      }
 
       /* ── v1.4.0 · where else this section can be fed from ────────────────
          A bus coupler is drawn as a column on the busbar that OWNS it, and the
@@ -1848,67 +1948,23 @@
       });
     });
 
-    /* footer: legend + an honest account of what was not drawn.
-       The legend is GENERATED from the symbols this board actually used, so a
-       symbol added to the pack can never leave a stale key behind (rule G-7).  */
+    /* ── v1.15.0 · footer: THE ACCOUNT ONLY ────────────────────────────────
+       Mario: "eliminar la lista del fondo". The generated symbol legend and the
+       conventions sentence are gone — on a sheet whose symbols are IEC and
+       whose reader is an electrical engineer, a key naming "Contactor" under a
+       contactor is furniture, and it was the tallest thing on the page after
+       the drawing itself.
+
+       What STAYS is the account: how many edges could not be drawn, and how
+       many analysers ended up where they should not. That is not a legend, it
+       is the drawing admitting what it left out — drop it and an incomplete
+       sheet becomes indistinguishable from a complete one (rule G-4). The two
+       lines only appear when they have something to report, so a clean board
+       now ends at its last busbar with nothing underneath.                    */
     let fy = H - gx(14) - zy(14) - _footRows * zy(13);
-    let legendRows = 0;
+    const legendRows = 0;
     const skipped = S._skipped.length;
-    const Sym = (typeof window !== "undefined" ? window : globalThis).TamSym;
-    const used = _symUsed || new Set();
-    if (Sym && Sym.ELEC_MAP && used.size) {
-      const seen = [], names = [];
-      used.forEach(k => {
-        /* v1.3.0 — a kind the renderer placed directly (CT) is already a
-           registered symbol and must legend under its own name rather than
-           fall through to UNKNOWN. ELEC_MAP still wins for anything the
-           DATABASE names, so the audit surface is unchanged. */
-        let m = Sym.ELEC_MAP[String(k).toUpperCase()] ||
-                (Sym.spec && Sym.spec(String(k).toUpperCase()) ? String(k).toUpperCase() : "UNKNOWN");
-        if (sldSymbolStyle === "BOX" && (m === "CIRCUIT_BREAKER" || m === "ACB_DRAWOUT"))
-          m = "CIRCUIT_BREAKER_BOX";
-        if (seen.indexOf(m) < 0 && m !== "BUSBAR" && m !== "BUSBAR_INVERTER" &&
-            m !== "SWITCHBOARD") { seen.push(m); names.push((Sym.spec(m) || {}).name || m); }
-      });
-      /* v1.14.0 — the legend row was a flat 13 units tall, which was fine while
-         every symbol was 26 units. An 88-unit symbol at legend scale is 55 page
-         px and ran straight through the two rows above it. Lay the rows out
-         FIRST, measuring each one by its tallest symbol, then draw. */
-      const item = seen.map((m, i) => {
-        const sp = Sym.spec(m) || {};
-        return { m: m, name: names[i],
-                 sw: (sp.w || 24) * 0.62 * Z(),
-                 sh: (sp.h || 24) * 0.62 * Z() };
-      });
-      item.forEach(it => { it.wItem = it.sw + gx(8) + it.name.length * ts(4.6) + gx(10); });
-      const rows = [[]];
-      let lx = gx(SLD_PADX);
-      item.forEach(it => {
-        if (lx > gx(SLD_PADX) && lx + it.wItem > W - gx(8)) { rows.push([]); lx = gx(SLD_PADX); }
-        it.x = lx; rows[rows.length - 1].push(it); lx += it.wItem;
-      });
-      let ly = fy;
-      rows.forEach((row, ri) => {
-        const rowH = Math.max(zy(13), ...row.map(it => it.sh + zy(4)));
-        if (ri > 0) legendRows += Math.ceil(rowH / zy(13));
-        else        legendRows += Math.max(0, Math.ceil(rowH / zy(13)) - 1);
-        const cyR = ly + rowH / 2 - zy(6);       /* symbols centred in the row */
-        row.forEach(it => {
-          s += Sym.draw(it.m, { x: it.x + it.sw / 2, y: cyR, scale: 0.62 * Z() });
-          s += `<text x="${it.x + it.sw + gx(4)}" y="${cyR + zy(3)}" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(it.name)}</text>`;
-        });
-        ly += rowH;
-      });
-      fy = ly - zy(6);
-      s += `<text x="${gx(SLD_PADX)}" y="${fy + zy(14)}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${SOFT}">` +
-        `dashed = NORMALLY OPEN (bus coupler)  ·  dotted from an analyser = voltage reference, not a load  ·  ` +
-        `dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.3.2</text>`;
-    } else {
-      s += `<text x="${gx(SLD_PADX)}" y="${fy}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${SOFT}">` +
-        `□ breaker  ⊘ disconnector  Ⓐ analyser  ◎◎ transformer  Ⓜ motor  Ⓖ generator  ` +
-        `dashed = NORMALLY OPEN (bus coupler)  ·  dot = data status  ·  order = display_rank (paper column order)</text>`;
-    }
-    let fy2 = fy + (Sym && Sym.ELEC_MAP && used.size ? zy(27) : zy(13));
+    let fy2 = fy + zy(13);
     if (skipped) {
       /* v1.3.0 — the breakdown is COUNTED, not narrated. The old sentence named
          the flash-compressor motors as the example; migration 154 put them in
@@ -1942,7 +1998,13 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.14.3" };
+                /* v1.15.0 — 0 means MEASURE THE WINDOW at draw time, which is
+                   what a screen wants. A number is a fixed page width in CSS px,
+                   which is what a reproducible export or a print wants: set it
+                   and the same board cuts into the same rows on any machine. */
+                get sldWrapWidth() { return sldWrapWidth; },
+                set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
+                version: "1.15.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;

@@ -339,16 +339,23 @@
      stays SOFT_STARTER, because two contactors on a single machine are usually
      line + bypass, which is a different animal.
 
-     Drawn as what it is: the thyristor pair, then the conductor FORKS into two
-     N.O. contacts and merges again at port B. The fork/merge is symbolic — the
-     two real destinations hang off the way below — but it is the only mark that
-     says "this starter serves two machines". The dashed bar across the two
-     blades is the IEC mechanical link: the interlock, which is the whole point.
-     Only one contactor can close, so only one machine runs at a time. Draw them
-     both open (N.O. at rest), same decision as CONTACTOR. */
+     Drawn as what it is: the thyristor pair, then the conductor reaches a
+     JUNCTION and forks into two N.O. contacts, one per machine, each dropping
+     straight to its own terminal. Only one contactor can close, so only one
+     machine runs at a time; the mechanical coupling between the two operating
+     elements is what says so. Draw them both open (N.O. at rest), same
+     decision as CONTACTOR.
+
+     v0.3.3 — the two contactors were inside a white box, which read as one
+     piece of switchgear and hid the fork. Mario sent the plant's own drawing of
+     this arrangement: a solid junction dot, a bare horizontal spread, a
+     contactor hanging off each end, and the interlock marked by a triangle
+     between them — no enclosure anywhere. That is the form here now. The box
+     was never carrying information the fork does not: what mattered was the one
+     way in and the two ways out, and an open fork says that more directly. */
   def("SOFT_STARTER_2C", {
     name: "Soft starter, two interlocked contactors", std: "IEC 60617-05/-07/-02",
-    /* the box is as WIDE as the two machines are apart, so each drop runs
+    /* the fork is as WIDE as the two machines are apart, so each drop runs
        STRAIGHT from its terminal to its motor. Mario: "haz la caja lo
        suficientemente ancha como para que la bajada a los motores sea directa,
        sin esas líneas horizontales". The renderer reads the machine spacing off
@@ -356,31 +363,28 @@
     w: 64, h: 88,
     ports: { A: [0, -44, "N"], B: [0, 44, "S"], BL: [-26, 44, "S"], BR: [26, 44, "S"] },
     body: c => {
+      const X = 26, yFork = -13, yPiv = 15;
       const contact = x => {
         const tx = x + 6, ty = 4;                  /* blade open at 30 degrees */
-        return c.ln(x, -8, x, -3) + c.dot(x, -3, 1.8) +
-               c.ln(x, 15, tx, ty) +
+        return c.ln(x, yFork, x, -3) + c.dot(x, -3, 1.8) +
+               c.ln(x, yPiv, tx, ty) +
                /* the cup: this is a CONTACTOR, not a switch */
                c.path(`M${tx - 4.2},${ty - 1.3} A4.2,4.2 0 0 0 ${tx + 4.2},${ty - 1.3}`) +
-               c.ln(x, 15, x, 26);
+               /* and straight on down to its own machine — no merge, no box */
+               c.ln(x, yPiv, x, 44);
       };
       return `<g transform="translate(0,-30)">` + thyristorPair(c) + `</g>` +
-        /* soft starter down into the contactor assembly */
-        c.ln(0, -17, 0, -8) +
-        /* THE ASSEMBLY AS ONE BOX: one way in at the top, two out at the bottom.
-           The two contactors are a single piece of switchgear that hands the
-           starter's output to one machine or the other. */
-        c.rect(-31, -8, 62, 34, "#fff") +
-        /* the input spreads to both contactors along the inside of the lid */
-        c.ln(-26, -8, 26, -8) +
-        contact(-26) + contact(26) +
-        /* MECHANICAL INTERLOCK, IEC 60617-02 form: the mechanical-coupling
-           dashed link between the two operating elements, with the short bar
-           across its middle that marks the coupling as an INTERLOCK - closing
-           either contactor holds the other open, so only one machine runs. */
-        c.ln(-22, 20, 22, 20, "2 2") + c.ln(0, 17, 0, 23) +
-        /* the two ways out, straight down to the machines */
-        c.ln(-26, 26, -26, 44) + c.ln(26, 26, 26, 44);
+        /* soft starter down into the junction */
+        c.ln(0, -17, 0, yFork) + c.dot(0, yFork, 2.4) +
+        /* ONE way in, TWO ways out: the spread the junction dot presides over */
+        c.ln(-X, yFork, X, yFork) +
+        contact(-X) + contact(X) +
+        /* MECHANICAL INTERLOCK, IEC 60617-02 form: the dashed mechanical
+           coupling between the two operating elements, broken in the middle for
+           the triangle that marks the coupling as an INTERLOCK — closing either
+           contactor holds the other open, so only one machine runs. */
+        c.ln(-X, 9, -5, 9, "2 2") + c.ln(5, 9, X, 9, "2 2") +
+        c.path("M-5,9 L5,9 L0,15.5 Z");
     }
   });
 
@@ -500,5 +504,5 @@
 
   T.ELEC_MAP = ELEC_MAP;
   T.fromNode = fromNode;
-  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.3.2", count: T.kinds().length }]);
+  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.3.3", count: T.kinds().length }]);
 })();
