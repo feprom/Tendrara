@@ -845,7 +845,18 @@
       if (error) { console.warn("tam-flow/sld: " + t + ": " + error.message); return []; }
       return data || [];
     };
-    const [nodes, edges] = await Promise.all([all("v_sld_nodes", "display_rank"), all("v_sld_edges")]);
+    /* v1.16.2 — a third, small view: the APPARENT power of anything that has a
+       declared power factor (migration 191). It is fetched separately and
+       merged by tag rather than added to v_sld_nodes, because that view is 7350
+       characters and CREATE OR REPLACE only lets you append to it — the handoff
+       marks it as trap country. `all()` already returns [] and warns on error,
+       so an older database with no such view degrades to "apparent power
+       unknown" instead of breaking the page. */
+    const [nodes, edges, rating] = await Promise.all([
+      all("v_sld_nodes", "display_rank"), all("v_sld_edges"), all("v_sld_source_rating")]);
+    const kva = new Map(rating.map(r => [r.tag, r]));
+    nodes.forEach(n => { const r = kva.get(n.tag);
+      if (r) { n.power_factor = r.power_factor; n.apparent_kva = r.apparent_kva; } });
     return indexSld({ nodes, edges });
   }
   function sldFromViewer(DB) {
@@ -2101,13 +2112,25 @@
             S._byTag.has(e.to_tag) && !isBusbar(S._byTag.get(e.to_tag)))) loads++;
     });
 
+    /* GENERATION connected to this board. Apparent power only where the source
+       declares a power factor — the two inverters do not, so they are COUNTED
+       as unknown rather than given a plausible 0.8. A number the drawing made
+       up would be indistinguishable from one the plant measured. */
+    let genKw = 0, genKva = 0, genNoPf = 0;
+    sources.forEach(x => {
+      if (x.node.power_kw != null) genKw += +x.node.power_kw;
+      if (x.node.apparent_kva != null) genKva += +x.node.apparent_kva;
+      else if (x.node.power_kw != null) genNoPf++;
+    });
+
     return { tag: boardTag, doc_no: board && board.doc_no, voltage_v: board && board.voltage_v,
+             genKw, genKva, genNoPf,
              busbars: buses.length, positions: pos.length, inc: inc.length, out: out.length,
              sources, upstream, ties, start, kw, loads };
   }
 
   const SUM_START = [["VFD", "VFD"], ["SOFT_STARTER", "SOFT STARTER"],
-                     ["SOFT_STARTER_2C", "SOFT STARTER · 2 CONT."], ["CONTACTOR", "DIRECT ON LINE"]];
+                     ["SOFT_STARTER_2C", "SOFT STARTER · 2 CONT."], ["CONTACTOR", "DOL"]];
 
   function sldSummary(S, o) {
     o = o || {};
@@ -2146,14 +2169,28 @@
       return `<div${nav ? ` onclick="${nav}('sld/'+encodeURIComponent('${esc(st.tag)}'))" style="cursor:pointer;` : ` style="`}` +
         `border:1px solid ${LINE};border-top:3px solid ${CRIMSON};border-radius:6px;padding:10px 12px;background:#fff">` +
         `<div style="font:700 13px ${MONO};color:${CRIMSON}">${esc(st.tag)}</div>` +
-        `<div style="font:600 10px ${MONO};color:${SOFT};margin-bottom:8px">${esc(st.doc_no || "")}` +
-          `${st.voltage_v != null ? " · " + n0(st.voltage_v) + " V" : ""} · ${st.busbars} busbar${st.busbars === 1 ? "" : "s"}</div>` +
-        /* the headline is CONNECTED LOAD — the outgoing side. Not generation:
-           those two numbers are different (PC1 carries 6.9 MW of load under
-           8.6 MW of engines) and a card that blurred them would be worse than
-           no card. The generation is named on its own line below. */
-        `<div style="font:700 22px ${SANS};color:${INK};line-height:1">${mw(st.kw)}` +
-          `<span style="font:600 10px ${MONO};color:${SOFT}"> connected load</span></div>` +
+        /* the drawing number is gone from the card. Mario: it is the ELD03
+           sheet reference, it is the same four times over, and on a card whose
+           job is a figure at a glance it was the widest line of type. It is
+           still one click away, on the sheet itself. */
+        `<div style="font:600 10px ${MONO};color:${SOFT};margin-bottom:8px">` +
+          `${st.voltage_v != null ? n0(st.voltage_v) + " V · " : ""}${st.busbars} busbar${st.busbars === 1 ? "" : "s"}</div>` +
+        /* GENERATION and LOAD side by side, because the pair is the reading:
+           PC1 carries 6.9 MW of load under 8.6 MW / 10.1 MVA of engines, and a
+           card that showed only one of them would answer half the question.
+           Generation in MVA is what sizes switchgear; load in MW is what the
+           plant actually draws. A board with no generation of its own says so
+           rather than printing a zero, which would read as "shut down". */
+        `<div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:2px">` +
+          `<div><div style="font:700 20px ${SANS};color:${INK};line-height:1.05">` +
+            (st.genKva ? `${(st.genKva / 1000).toFixed(1)} MVA` : `<span style="color:${LINE}">—</span>`) + `</div>` +
+            `<div style="font:600 9px ${MONO};color:${SOFT}">GENERATION` +
+              (st.genKw ? ` · ${(st.genKw / 1000).toFixed(1)} MW` : "") + `</div></div>` +
+          `<div><div style="font:700 20px ${SANS};color:${INK};line-height:1.05">${mw(st.kw)}</div>` +
+            `<div style="font:600 9px ${MONO};color:${SOFT}">CONNECTED LOAD</div></div>` +
+        `</div>` +
+        (st.genNoPf ? `<div style="font:600 9px ${MONO};color:${CRIMSON};margin-bottom:2px">` +
+           `+ ${st.genNoPf} source${st.genNoPf === 1 ? "" : "s"} with no declared power factor — not in the MVA</div>` : "") +
         `<div style="font:600 11px ${MONO};color:${SOFT};margin:2px 0 8px">${st.positions} positions · ${st.loads} loads</div>` +
         `<div style="font:600 10px ${MONO};color:${SLD_BUSCOL};margin-bottom:2px">⚡ ${feed.length ? feed.map(esc).join("<br>⚡ ") : "no source declared"}</div>` +
         (tieTxt.length ? `<div style="font:600 10px ${MONO};color:${SOFT};margin-bottom:6px">⇄ ${tieTxt.map(esc).join("<br>⇄ ")}</div>` : `<div style="margin-bottom:6px"></div>`) +
@@ -2213,7 +2250,7 @@
         (nav ? ` style="cursor:pointer" onclick="${nav}('sld/'+encodeURIComponent('${esc(st.tag)}'))"` : "") + `/>`;
       g += `<text x="${b.x + b.w / 2}" y="${b.y + 24}" text-anchor="middle" font-family="${MONO}" font-size="12" font-weight="700" fill="${CRIMSON}">${esc(st.tag)}</text>`;
       g += `<text x="${b.x + b.w / 2}" y="${b.y + 40}" text-anchor="middle" font-family="${MONO}" font-size="9.5" font-weight="600" fill="${SOFT}">` +
-        `${esc(st.doc_no || "")} · ${st.busbars} busbar${st.busbars === 1 ? "" : "s"}</text>`;
+        (st.genKva ? `${(st.genKva / 1000).toFixed(1)} MVA generation` : `${st.busbars} busbar${st.busbars === 1 ? "" : "s"}`) + `</text>`;
       g += `<text x="${b.x + b.w / 2}" y="${b.y + 53}" text-anchor="middle" font-family="${MONO}" font-size="9.5" font-weight="700" fill="${INK}">` +
         `${st.positions} pos · ${mw(st.kw)}</text>`;
       /* THE LOAD, GENERIC — one arrow, one count. This is the whole point of a
@@ -2284,7 +2321,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.16.1" };
+                version: "1.16.2" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
