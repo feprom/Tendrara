@@ -649,7 +649,30 @@
         nodePos.set(a, { x: px, y, kind: "area" });
       });
     };
-    place(tops, 42); place(bots, 372);
+    /* ── v1.38.0 · la fila de abajo baja lo que haga falta ────────────────
+       Mario: "la entrada de gas a 360, la flecha está conectada por la mitad".
+
+       Y lo estaba. El carril de un haz vive en `mainY+BH+34 + n·PITCH`, así
+       que el TERCER haz del piso caía a 366 — seis unidades por encima de la
+       fila, que está en 372. El vástago que entra a U360 medía 6 px y su punta
+       de flecha mide 8: la punta era MÁS LARGA que el tramo que remataba, así
+       que se dibujaba sobre la horizontal y parecía una flecha pinchada en
+       mitad de una tubería que sigue de largo.
+
+       Es el mismo defecto que la v1.21.0 corrigió en la senda principal, y
+       reaparece porque la fila estaba clavada en 372 mientras el número de
+       carriles no lo está. La constante era la mentira: **la fila es una
+       CONSECUENCIA de cuántos haces hay debajo del tren**, no un número. Se
+       calcula, y la hoja crece con ella. Con un solo haz la lámina sale igual
+       de alta que siempre; con tres, 20 px más. */
+    /* Sólo aplica a `overview`: la rama `full` reparte sus carriles con otra
+       fórmula (`max(f.y,t.y) - 20 - (lane%5)*13`), así que reservar sitio con
+       la del haz movería el visor por una razón que no es la suya. */
+    const STEM_MIN = 26;                      // aire mínimo para vástago + punta
+    const botRowY = opts.detail === "overview"
+      ? Math.max(372, mainY + BH + 34 + Math.max(0, bots.length - 1) * LANE_PITCH + STEM_MIN)
+      : 372;
+    place(tops, 42); place(bots, botRowY);
     /* ── opts.packBotLeft ────────────────────────────────────────────────
        Mario: "mueves la unidad 410 y 530 a la izquierda, debería quedar más
        limpio". Con U230 arriba y U120 en etiqueta, el centroide de socios ya
@@ -676,7 +699,8 @@
       row.forEach(([, q], i) => { if (i) { const pv = row[i - 1][1]; if (q.x < pv.x + BW + 24) q.x = pv.x + BW + 24; } });
     }
 
-    let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
+    const HS = Math.max(H, botRowY + BH + 22);      // la hoja sigue a la fila
+    let s = `<svg viewBox="0 0 ${W} ${HS}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
     const colors = new Set(["#4A4F57", SOFT, SIDE_INK]);
     sideLinks.forEach(l => {
       const c = svcClass(data, l.service_code).color;
@@ -819,11 +843,34 @@
           (cnt.get(y) || 0) - (cnt.get(x) || 0) ||
           ((svcClass(data, x).sort_order || 99) - (svcClass(data, y).sort_order || 99)))[0];
       }
+      /* ── v1.38.0 · el haz se nombra por TODO lo que lleva ─────────────────
+         Mario: "identificar apropiadamente el nombre de los flujos".
+
+         v1.29.0 ya había arreglado la mitad del problema —el haz dejó de
+         bautizarse con la primera descripción que casara— pero se quedó a
+         medias: imprimía la clase DOMINANTE y luego "+1", y "+1" no es un
+         nombre, es un acuse de que hay algo más y no te lo voy a decir.
+
+         El caso que lo destapa es el de U360: lleva BOIL-OFF GAS del almacén
+         (2 líneas) y NATURAL GAS de vuelta a U310 (2 líneas). Empate a
+         líneas, así que decidía el `sort_order` e imprimía NATURAL GAS — el
+         nombre de la mitad, presentado como el nombre del todo. Justo la
+         confusión BOG/fuel gas que ya me habías señalado una vez.
+
+         Ahora se nombran las dos primeras por número de líneas, y sólo a
+         partir de la tercera aparece "+N". Un haz mixto se presenta como
+         mixto. */
       function trunkLabel(links, codes, dom) {
-        const st = svcClass(data, dom);
-        const nm = (st && st.name) ? String(st.name) : (dom || "");
-        const extra = Math.max(0, [...(codes || [])].length - 1);
-        return clip(nm, 22) + (extra ? " +" + extra : "");
+        const cnt = new Map();
+        (links || []).forEach(l => { if (l.service_code) cnt.set(l.service_code, (cnt.get(l.service_code) || 0) + 1); });
+        const list = [...(codes || [])].sort((x, y) =>
+          (cnt.get(y) || 0) - (cnt.get(x) || 0) ||
+          ((svcClass(data, x).sort_order || 99) - (svcClass(data, y).sort_order || 99)));
+        if (!list.length) return "";
+        const nameOf = c => { const st = svcClass(data, c); return clip(String((st && st.name) || c), 20); };
+        const shown = list.slice(0, 2).map(nameOf).join(" / ");
+        const extra = list.length - Math.min(2, list.length);
+        return shown + (extra ? " +" + extra : "");
       }
 
       const trunks = new Map();          // sideArea → {partners: Map(chainA→{out,in}), codes}
@@ -1382,7 +1429,7 @@
         }
       }
       s += drawNodes();
-      s += `<text x="20" y="${H - 8}" font-family="${MONO}" font-size="7.5" fill="${SOFT}">OVERVIEW · ${sideLinks.length} LINKS IN ${trunks.size} TRUNKS${tagged.length ? " + " + tagged.length + " AS OFF-PAGE TAG" : ""} + ${opts.reliefRake ? reliefsAll.length + " RELIEF LINES FROM " + new Set(reliefsAll.map(l => l.from_area).filter(Boolean)).size + " UNITS ON THE HEADER RAKE" : (hiRel.length ? hiRel.length + " PSV FROM U" + esc(hi) + " DRAWN + " : "") + reliefs.length + " RELIEF LINES FROM " + reliefUnits + " UNITS AGGREGATED"} · DASH = AGGREGATE, NOT A PIPE · HMB ${esc(kase)} · utilities &amp; drains hidden</text></svg>`;
+      s += `<text x="20" y="${HS - 8}" font-family="${MONO}" font-size="7.5" fill="${SOFT}">OVERVIEW · ${sideLinks.length} LINKS IN ${trunks.size} TRUNKS${tagged.length ? " + " + tagged.length + " AS OFF-PAGE TAG" : ""} + ${opts.reliefRake ? reliefsAll.length + " RELIEF LINES FROM " + new Set(reliefsAll.map(l => l.from_area).filter(Boolean)).size + " UNITS ON THE HEADER RAKE" : (hiRel.length ? hiRel.length + " PSV FROM U" + esc(hi) + " DRAWN + " : "") + reliefs.length + " RELIEF LINES FROM " + reliefUnits + " UNITS AGGREGATED"} · DASH = AGGREGATE, NOT A PIPE · HMB ${esc(kase)} · utilities &amp; drains hidden</text></svg>`;
       return s;
     }
 
@@ -1484,7 +1531,7 @@
     }
 
     s += drawNodes();
-    s += `<text x="20" y="${H - 8}" font-family="${MONO}" font-size="7.5" fill="${SOFT}">GENERATED FROM plant_process_links · HMB CASE ${esc(kase)} · utilities/relief/drains hidden</text></svg>`;
+    s += `<text x="20" y="${HS - 8}" font-family="${MONO}" font-size="7.5" fill="${SOFT}">GENERATED FROM plant_process_links · HMB CASE ${esc(kase)} · utilities/relief/drains hidden</text></svg>`;
     return s;
   }
 
@@ -4064,7 +4111,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.37.0" };
+                version: "1.38.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
