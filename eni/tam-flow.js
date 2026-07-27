@@ -754,7 +754,12 @@
      ("BUSBAR IA" at 12 px ≈ 66 px) and its tag underneath (≈ 74 px), both
      printed from x = 8. At 148 it held ~70 px of nothing and the drawing
      started well right of the page edge; Mario bracketed exactly that. */
-  const SLD_COL = 108, SLD_PADX = 112, SLD_BAND = 312;
+  /* v1.14.3 — 92, a 15% tightening of the old 108. It only became reachable
+     once the printed CT ratio came off the metering assembly (that label, not
+     the split ways, was what collided at 96 and below). Verified by sweeping
+     `check_sld_layout.js` over 92..108: 0 collisions on all four boards at the
+     shipping zoom. Do not tighten further without re-running that sweep. */
+  const SLD_COL = 92, SLD_PADX = 112, SLD_BAND = 312;
   /* how far past the last column a bus-to-bus tie stands. Measured against the
      CT ratio of a metering assembly, which is the thing that reaches furthest
      out of a column (~45 px) — see v1.7.0 note in the band pre-pass. */
@@ -769,6 +774,24 @@
   /* extra conductor between an outgoing way and its load when a starting
      device (contactor / soft starter / drive) has to be drawn on it */
   const SLD_START_DY = 40;
+  /* how tall a starting symbol is, in symbol units, and how much room beyond the
+     26-unit baseline it needs. Read from the pack so the geometry lives in one
+     place: add a taller symbol and the layout follows it. */
+  function startH(kind) {
+    const K = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    const sp = K && K.spec && K.spec(kind);
+    return (sp && sp.h) ? sp.h : 26;
+  }
+  const startExtra = kind => Math.max(0, startH(kind) - 26) * 0.92;
+  /* the two ways OUT of a starting symbol that has them (BL / BR), in page
+     coordinates, or null. A symbol with a single B port returns null and the
+     renderer falls back to one trunk plus a branch bar. */
+  function startOuts(kind, cx, cy) {
+    const K = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (!K || !K.ports || !K.spec || !K.spec(kind)) return null;
+    const p = K.ports(kind, { x: cx, y: cy, scale: 0.92 * Z() });
+    return (p && p.BL && p.BR) ? [p.BL, p.BR] : null;
+  }
 
   /* ── v1.4.0 · ONE ZOOM KNOB ──────────────────────────────────────────────
      Mario: "all the icons, it is too small" and "make the small text bold and
@@ -1072,12 +1095,16 @@
      its length underneath. `length_m` has been in `v_sld_edges` all along; the
      renderer simply never read it. Centred on the drop line the tag fought the
      line itself; to the right it reads as an annotation of that run. */
-  function sldCable(cx, y, e) {
+  /* v1.14.2 — `mid` centres the label instead of hanging it to the right of the
+     conductor. A way that FORKS has no conductor down the middle to hang off,
+     and the right-hand offset put the text across the right-hand drop. */
+  function sldCable(cx, y, e, mid) {
     if (!e || !e.cable_tag) return "";
-    let g = `<text x="${cx + zy(4)}" y="${y}" text-anchor="start" font-weight="600" ` +
+    const x = mid ? cx : cx + zy(4), an = mid ? "middle" : "start";
+    let g = `<text x="${x}" y="${y}" text-anchor="${an}" font-weight="600" ` +
       `font-family="${MONO}" font-size="${ts(6.6)}" fill="${SOFT}"${HALO}>${esc(e.cable_tag)}</text>`;
     if (e.length_m != null)
-      g += `<text x="${cx + zy(4)}" y="${y + zy(9)}" text-anchor="start" font-weight="600" ` +
+      g += `<text x="${x}" y="${y + zy(9)}" text-anchor="${an}" font-weight="600" ` +
         `font-family="${MONO}" font-size="${ts(6.2)}" fill="${SOFT}"${HALO}>${esc(n1(e.length_m))} m</text>`;
     return g;
   }
@@ -1250,7 +1277,14 @@
          its load, so the load row has to move down to make room for it AND for
          the cable label. Applied per band and only where one exists, so a board
          with no starting device is byte-identical to v1.9.0. */
-      b.dySt  = b.out.some(p => p.start_kind && SLD_START.has(p.start_kind)) ? zy(SLD_START_DY) : 0;
+      /* v1.14.0 — the reserve used to be a flat 40 for every starting device,
+         which was right while every one of them was 26 units tall. The soft
+         starter with its two interlocked contactors is 88, and a flat reserve
+         let it grow UP into the fuse switch above it. Size the reserve to the
+         tallest symbol actually on this band; a 26-unit one still reserves
+         exactly 40, so boards without a tall starter are unchanged. */
+      b.dySt  = Math.max(0, ...b.out.map(p =>
+        (p.start_kind && SLD_START.has(p.start_kind)) ? zy(SLD_START_DY + startExtra(p.start_kind)) : 0));
     });
 
     const cols = Math.max(4, ...bands.map(b => b.nWide));
@@ -1355,12 +1389,10 @@
       list.forEach((m, k) => {
         const my = busY + (above ? -1 : 1) * zy(30 + k * 34);
         drawn.meter++;
-        /* The analyser sits at cx+30, INSIDE the half-column (48), so its
-           voltage reference always lands on the busbar even in the last
-           column. The ratio goes to the RIGHT of the instrument: putting it on
-           the tap, where the CT spec would place it, runs it under the
-           analyser and the scale factor is the one number here that must stay
-           readable. */
+        /* The analyser sits at cx+30, inside the half column, so its voltage
+           reference always lands on the busbar even in the last column. The CT
+           ratio used to print to its right; v1.14.3 took it off the sheet (see
+           below) and the assembly now ends at the instrument. */
         g += sldSymDirect("CT", { x: cx, y: my, color: INK, scale: 0.92 * Z() });
         g += `<line x1="${cx + zy(11)}" y1="${my}" x2="${cx + zy(18)}" y2="${my}" stroke="${INK}" stroke-width="1.3"/>`;
         /* the instrument tag goes on the side AWAY from the busbar, so it never
@@ -1371,8 +1403,14 @@
           title: [m.meter_tag || m.tag, "measures " + m.measures_tag,
                   "U ref " + (m.voltage_ref_tag || "?"), m.ct_ratio_raw].filter(Boolean).join(" · ")
         });
-        g += `<text x="${cx + zy(43)}" y="${my + zy(3)}" font-weight="600" font-family="${MONO}" font-size="${ts(6.4)}" fill="${SOFT}"${HALO}>` +
-          `${esc(m.ct_ratio_raw || "ratio not printed")}</text>`;
+        /* v1.14.3 — the CT ratio no longer PRINTS. Mario asked for it off the
+           sheet, and it was the one thing standing between the drawing and a
+           tighter column: at cx+43 it only fitted while the half column was 54,
+           so it, not the split ways, was capping the pitch at 98.
+           The datum is NOT lost — it is in the analyser's own tooltip above
+           (`m.ct_ratio_raw` in the title), and it is one field of
+           v_sld_nodes.ct_ratio_raw for anything that needs to read it. What
+           went away is the printed copy, not the number. */
         /* the voltage reference — dashed, because it carries no load current.
            It leaves the instrument on the side FACING the busbar, which is
            below it for an incomer and above it for an outgoing position. */
@@ -1652,12 +1690,18 @@
               - (fan ? zy(13) : 0)
             : y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt - 2;
         const stKind = p.start_kind && SLD_START.has(p.start_kind) ? p.start_kind : null;
-        const stY = cy + zy(40);
+        /* v1.14.0 — anchored so the TOP PORT lands where a 26-unit symbol's did.
+           Hard-coding the centre at +40 put an 88-unit symbol's top port 27
+           units above the fuse switch's bottom: the two overlapped. */
+        const stY = cy + zy(40 + (stKind ? startExtra(stKind) / 2 : 0));
         if (t && stKind) {
           s += `<line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${sldPortYDirect(stKind, cx, stY, "A")}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
           s += sldSymDirect(stKind, { x: cx, y: stY, color: INK, scale: 0.92 * Z(),
             title: SLD_START.get(stKind) + (p.start_model ? " · " + p.start_model : "") });
-          s += `<line x1="${cx}" y1="${sldPortYDirect(stKind, cx, stY, "B")}" x2="${cx}" y2="${yBot}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
+          /* v1.14.0 — a symbol that declares BL/BR hands out TWO conductors, so
+             the single trunk below it would be a third one that goes nowhere. */
+          if (!(fan && startOuts(stKind, cx, stY)))
+            s += `<line x1="${cx}" y1="${sldPortYDirect(stKind, cx, stY, "B")}" x2="${cx}" y2="${yBot}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         } else if (t) {
           s += `<line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${yBot}" stroke="${INK}" stroke-width="1.4"${dash}/>`;
         }
@@ -1692,7 +1736,8 @@
            the 26-unit starting symbols and INSIDE the 76-unit SOFT_STARTER_2C.
            Hang it off the symbol's own B port instead, so it stays clear of any
            symbol the pack grows later. */
-        s += sldCable(cx, stKind ? sldPortYDirect(stKind, cx, stY, "B") + zy(9) : cy + zy(50), t.e);
+        s += sldCable(cx, stKind ? sldPortYDirect(stKind, cx, stY, "B") + zy(9) : cy + zy(50), t.e,
+                      !!(fan && stKind && startOuts(stKind, cx, stY)));
 
         if (isBusbar(tn)) {                       /* coupler → another busbar */
           const here = busSet.has(tn.tag);
@@ -1712,12 +1757,22 @@
         } else if (fan) {                          /* several machines, in parallel */
           const cyL = y0 + gx(SLD_LOAD_Y) + dy2 + band.dySt;
           const cyM = cyL + zy(14);
-          const dx  = gx(SLD_COL) * 0.28;          /* inside the column pitch */
+          const outs = stKind ? startOuts(stKind, cx, stY) : null;
+          /* the machines line up UNDER the symbol's own terminals when it has
+             two, so each drop is a straight line. Only a one-output symbol
+             needs a spacing guess and a branch bar. */
+          const dx  = outs ? Math.abs(outs[1].x - outs[0].x) / 2 : gx(SLD_COL) * 0.28;
           const yBar = sldPortY(tn.symbol_kind, cx, cyM, "A") - zy(13);
-          s += `<line x1="${cx - dx}" y1="${yBar}" x2="${cx + dx}" y2="${yBar}" stroke="${INK}" stroke-width="1.4"/>`;
+          /* with a two-output symbol each machine gets its own conductor from
+             its own terminal — a dog-leg, the way a real sheet draws it. With a
+             one-output symbol, the old branch bar. */
+          if (!outs)
+            s += `<line x1="${cx - dx}" y1="${yBar}" x2="${cx + dx}" y2="${yBar}" stroke="${INK}" stroke-width="1.4"/>`;
           fan.forEach((x, k) => {
-            const n = x.n, ox = cx + (k === 0 ? -dx : dx) + (fan.length > 2 ? (k - (fan.length - 1) / 2) * 0 : 0);
+            const n = x.n, ox = cx + (k === 0 ? -dx : dx);
             drawn.load++;
+            if (outs && outs[k])
+              s += `<line x1="${outs[k].x}" y1="${outs[k].y}" x2="${ox}" y2="${yBar}" stroke="${INK}" stroke-width="1.4"/>`;
             s += `<line x1="${ox}" y1="${yBar}" x2="${ox}" y2="${sldPortY(n.symbol_kind, ox, cyM, "A")}" stroke="${INK}" stroke-width="1.4"/>`;
             s += sldGlyph(n.symbol_kind, ox, cyM, INK, false);
             /* the tags are clipped harder than in the single-machine case: two
@@ -1815,22 +1870,39 @@
         if (seen.indexOf(m) < 0 && m !== "BUSBAR" && m !== "BUSBAR_INVERTER" &&
             m !== "SWITCHBOARD") { seen.push(m); names.push((Sym.spec(m) || {}).name || m); }
       });
-      let lx = gx(SLD_PADX), ly = fy;
-      seen.forEach((m, i) => {
-        /* the item width has to include the SYMBOL's own width, not a constant:
-           the contactor is 52 units wide against the usual 22, so a flat gx(30)
-           ran its glyph under the previous item's text. */
-        const sw = ((Sym.spec(m) || {}).w || 24) * 0.62 * Z();
-        const wItem = sw + gx(8) + names[i].length * ts(4.6) + gx(10);
-        if (lx > gx(SLD_PADX) && lx + wItem > W - gx(8)) { lx = gx(SLD_PADX); ly += zy(13); legendRows++; }
-        s += Sym.draw(m, { x: lx + sw / 2, y: ly - zy(4), scale: 0.62 * Z() });
-        s += `<text x="${lx + sw + gx(4)}" y="${ly - 1}" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(names[i])}</text>`;
-        lx += wItem;
+      /* v1.14.0 — the legend row was a flat 13 units tall, which was fine while
+         every symbol was 26 units. An 88-unit symbol at legend scale is 55 page
+         px and ran straight through the two rows above it. Lay the rows out
+         FIRST, measuring each one by its tallest symbol, then draw. */
+      const item = seen.map((m, i) => {
+        const sp = Sym.spec(m) || {};
+        return { m: m, name: names[i],
+                 sw: (sp.w || 24) * 0.62 * Z(),
+                 sh: (sp.h || 24) * 0.62 * Z() };
       });
-      fy = ly;
+      item.forEach(it => { it.wItem = it.sw + gx(8) + it.name.length * ts(4.6) + gx(10); });
+      const rows = [[]];
+      let lx = gx(SLD_PADX);
+      item.forEach(it => {
+        if (lx > gx(SLD_PADX) && lx + it.wItem > W - gx(8)) { rows.push([]); lx = gx(SLD_PADX); }
+        it.x = lx; rows[rows.length - 1].push(it); lx += it.wItem;
+      });
+      let ly = fy;
+      rows.forEach((row, ri) => {
+        const rowH = Math.max(zy(13), ...row.map(it => it.sh + zy(4)));
+        if (ri > 0) legendRows += Math.ceil(rowH / zy(13));
+        else        legendRows += Math.max(0, Math.ceil(rowH / zy(13)) - 1);
+        const cyR = ly + rowH / 2 - zy(6);       /* symbols centred in the row */
+        row.forEach(it => {
+          s += Sym.draw(it.m, { x: it.x + it.sw / 2, y: cyR, scale: 0.62 * Z() });
+          s += `<text x="${it.x + it.sw + gx(4)}" y="${cyR + zy(3)}" font-weight="600" font-family="${MONO}" font-size="${ts(6.8)}" fill="${SOFT}">${esc(it.name)}</text>`;
+        });
+        ly += rowH;
+      });
+      fy = ly - zy(6);
       s += `<text x="${gx(SLD_PADX)}" y="${fy + zy(14)}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${SOFT}">` +
         `dashed = NORMALLY OPEN (bus coupler)  ·  dotted from an analyser = voltage reference, not a load  ·  ` +
-        `dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.3.0</text>`;
+        `dot = data status  ·  order = display_rank (paper column order)  ·  symbols: IEC style, tam-sym-elec v0.3.2</text>`;
     } else {
       s += `<text x="${gx(SLD_PADX)}" y="${fy}" font-weight="600" font-family="${MONO}" font-size="${ts(7.4)}" fill="${SOFT}">` +
         `□ breaker  ⊘ disconnector  Ⓐ analyser  ◎◎ transformer  Ⓜ motor  Ⓖ generator  ` +
@@ -1870,7 +1942,7 @@
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
                 get sldZoom() { return sldZoom; },
                 set sldZoom(v) { sldZoom = (+v > 0 ? +v : 1); },
-                version: "1.14.0" };
+                version: "1.14.3" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;

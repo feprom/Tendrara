@@ -347,28 +347,40 @@
      Only one contactor can close, so only one machine runs at a time. Draw them
      both open (N.O. at rest), same decision as CONTACTOR. */
   def("SOFT_STARTER_2C", {
-    name: "Soft starter, two interlocked contactors", std: "IEC 60617-05/-07",
-    w: 62, h: 76,
-    ports: { A: [0, -38, "N"], B: [0, 38, "S"] },
+    name: "Soft starter, two interlocked contactors", std: "IEC 60617-05/-07/-02",
+    /* the box is as WIDE as the two machines are apart, so each drop runs
+       STRAIGHT from its terminal to its motor. Mario: "haz la caja lo
+       suficientemente ancha como para que la bajada a los motores sea directa,
+       sin esas líneas horizontales". The renderer reads the machine spacing off
+       BL/BR rather than off a constant, so the two stay locked together. */
+    w: 64, h: 88,
+    ports: { A: [0, -44, "N"], B: [0, 44, "S"], BL: [-26, 44, "S"], BR: [26, 44, "S"] },
     body: c => {
-      const X = 17;                                /* half the fork width */
-      const branch = x => {
-        const tx = x + 7.5, ty = 0;                /* blade open at 30 degrees,
-                                                      leaning the same way as
-                                                      every other contact here */
-        return c.ln(x, -8, x, -2) + c.dot(x, -2, 1.8) +
-               c.ln(x, 13, tx, ty) +
-               /* the cup that says CONTACTOR and not switch */
-               c.path(`M${tx - 4.6},${ty - 1.4} A4.6,4.6 0 0 0 ${tx + 4.6},${ty - 1.4}`) +
-               c.ln(x, 13, x, 26);
+      const contact = x => {
+        const tx = x + 6, ty = 4;                  /* blade open at 30 degrees */
+        return c.ln(x, -8, x, -3) + c.dot(x, -3, 1.8) +
+               c.ln(x, 15, tx, ty) +
+               /* the cup: this is a CONTACTOR, not a switch */
+               c.path(`M${tx - 4.2},${ty - 1.3} A4.2,4.2 0 0 0 ${tx + 4.2},${ty - 1.3}`) +
+               c.ln(x, 15, x, 26);
       };
-      return `<g transform="translate(0,-25)">` + thyristorPair(c) + `</g>` +
-        c.ln(0, -12, 0, -8) + c.ln(-X, -8, X, -8) +
-        branch(-X) + branch(X) +
-        /* mechanical interlock between the two contactors (IEC dashed link):
-           only one can close, so only one machine runs at a time */
-        c.ln(-X + 4, 8, X - 4, 8, "2 2") +
-        c.ln(-X, 26, X, 26) + c.ln(0, 26, 0, 38);
+      return `<g transform="translate(0,-30)">` + thyristorPair(c) + `</g>` +
+        /* soft starter down into the contactor assembly */
+        c.ln(0, -17, 0, -8) +
+        /* THE ASSEMBLY AS ONE BOX: one way in at the top, two out at the bottom.
+           The two contactors are a single piece of switchgear that hands the
+           starter's output to one machine or the other. */
+        c.rect(-31, -8, 62, 34, "#fff") +
+        /* the input spreads to both contactors along the inside of the lid */
+        c.ln(-26, -8, 26, -8) +
+        contact(-26) + contact(26) +
+        /* MECHANICAL INTERLOCK, IEC 60617-02 form: the mechanical-coupling
+           dashed link between the two operating elements, with the short bar
+           across its middle that marks the coupling as an INTERLOCK - closing
+           either contactor holds the other open, so only one machine runs. */
+        c.ln(-22, 20, 22, 20, "2 2") + c.ln(0, 17, 0, 23) +
+        /* the two ways out, straight down to the machines */
+        c.ln(-26, 26, -26, 44) + c.ln(26, 26, 26, 44);
     }
   });
 
@@ -488,5 +500,5 @@
 
   T.ELEC_MAP = ELEC_MAP;
   T.fromNode = fromNode;
-  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.3.0", count: T.kinds().length }]);
+  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.3.2", count: T.kinds().length }]);
 })();
