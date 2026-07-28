@@ -96,12 +96,17 @@
   .slide.m101scope table.timeline td{padding-top:2.5px;padding-bottom:2.5px;font-size:12px;}
   .slide.m101scope .lead{font-size:13.5px;}
   .slide.m101scope table.timeline td.seg{line-height:1.3;}
+  /* fichas de equipo (12a..12d) · la regla global .eqdetail reserva 58 px para el
+     encabezado, medida sobre la lamina antigua. Estas cuatro se pasaban 5 px y
+     desbordaban las cuatro; se aprieta SOLO aqui, sin tocar la regla global. */
+  .slide.m101ds .eqdetail{height:calc(100% - 66px);}
+  .slide.m101ds h2{margin-bottom:11px;}
   /* botonera de planos — slide 09. Regla global (no acotada): cualquier lámina que
      tenga un plano detrás puede usarla, que es justo lo que evita reinventarla. */
-  .docbtns{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:-4px 0 10px;}
-  .docbtns .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
-    color:var(--ink-soft);font-weight:700;margin-right:2px;}
-  .docbtn{display:inline-flex;flex-direction:column;gap:1px;text-decoration:none;
+  /* align-items:stretch para que el botón del PFD, que no lleva subtítulo, quede a la
+     misma altura que los dos que sí lo llevan. */
+  .docbtns{display:flex;align-items:stretch;flex-wrap:wrap;gap:8px;margin:-4px 0 10px;}
+  .docbtn{display:inline-flex;flex-direction:column;justify-content:center;gap:1px;text-decoration:none;
     border:1px solid var(--line-strong);border-left:3px solid var(--crimson);border-radius:7px;
     background:#fff;padding:5px 12px 6px;transition:.15s;}
   .docbtn b{font-size:12px;color:var(--crimson);line-height:1.2;}
@@ -136,7 +141,8 @@
     text-align:center;color:#c9ced6;font-family:var(--mono);font-size:12px;line-height:1.7;padding:26px;}
   .slide.m101video .vidbox.missing .vidmiss{display:flex;}
   .slide.m101video .vidfoot{flex:0 0 auto;margin-top:8px;font-size:11.5px;color:var(--ink-soft);}
-  /* slide 16 · el registro documental pasó de 9 a 13 filas (migración 195): se aprieta
+  /* slide de documentos (hoy la 20) · el registro pasó de 9 a 15 filas (migración 195):
+     se aprieta
      sólo esta slide, sin tocar la regla global de .data que usan las otras 27. */
   .slide.m101docs table.data td, .slide.m101docs table.data th{padding-top:3.5px;padding-bottom:3.5px;line-height:1.25;}
   .slide.m101docs table.data{font-size:11px !important;}
@@ -436,7 +442,7 @@
 
     <!-- 2 SCOPE / OBJECTIVES / AGENDA · Ivan · 5 -->
     <section class="slide m101scope" data-min="5" data-block="Module open" data-presenter="Ivan"
-      data-notes='["Scope: BOTH halves of module 101 — Unit 200 inlet AND Unit 530 process water treatment. The modules table calls this session \"UNIT 200 LNG Plant Inlet & 530 Process Water Treatment\".","Objectives are the exam blueprint — read them out.","Block 1 = what U200 is and how the gas flows through it; Block 2 = how you control, monitor and protect it, then U530.","U530 is where the water U200 separates actually goes — V-201 drains into it. Its own slides come after the U200 material.","4-hour skeleton — breaks at 1:48 and 3:00. Block 1 carries the two separator videos (12 min); Block 3 keeps 0:19 reserved, in amber, until the U530 slides exist and their own data-min replace it."]'>
+      data-notes='["Scope: BOTH halves of module 101 — Unit 200 inlet AND Unit 530 process water treatment. The modules table calls this session \"UNIT 200 LNG Plant Inlet & 530 Process Water Treatment\".","Objectives are the exam blueprint — read them out.","Block 1 = what U200 is and how the gas flows through it; Block 2 = how you control, monitor and protect it, then U530.","U530 is where the water U200 separates actually goes — V-201 drains into it. Its own slides come after the U200 material.","4-hour skeleton — breaks at 1:50 and 3:00. Block 1 carries the two separator videos (12 min) and one datasheet slide per equipment; Block 3 keeps 0:17 reserved, in amber, until the U530 slides exist and their own data-min replace it."]'>
       <div class="kicker">Scope · Objectives · Agenda</div>
       <h2>What Module 101 covers</h2>
       <div class="grid2">
@@ -458,16 +464,16 @@
                duración · acumulado, con fila de total al pie y la columna de acumulado
                completa hasta 4:00. Los minutos de Module open, Block 1 y Block 2 NO
                están escritos a mano: son la suma de los `data-min` de las propias
-               slides (13 + 80 + 53), que es el único sitio donde ese dato existe de
+               slides (13 + 82 + 53), que es el único sitio donde ese dato existe de
                verdad. Block 1 incluye los 12 min de la slide de vídeo (separadores
-               2F/3F), que salieron de la reserva del Bloque 3. Al quitar «The two
-               loops to know cold» (6 min) esos minutos vuelven al Bloque 3: 0:19. -->
+               2F/3F). La ficha de equipo se partio en cuatro laminas de 2 min, una
+               detras de cada explicacion de proceso; el Bloque 3 queda en 0:17. -->
           <table class="timeline">
             <tr><td class="seg"><b>Module open</b><span class="tp">program · team · roadmap · scope</span></td><td class="dur">0:13</td><td class="cum">0:13</td></tr>
-            <tr><td class="seg"><b>Block 1 — U200: what it is, how the gas flows</b></td><td class="dur">1:20</td><td class="cum">1:33</td></tr>
-            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">1:48</td></tr>
-            <tr><td class="seg"><b>Block 2 — U200: control, monitoring, protection</b></td><td class="dur">0:53</td><td class="cum">2:41</td></tr>
-            <tr><td class="seg"><b>Block 3 — U530: process water treatment</b></td><td class="dur" style="color:var(--amber);font-weight:700;">0:19</td><td class="cum" style="color:var(--amber);">3:00</td></tr>
+            <tr><td class="seg"><b>Block 1 — U200: what it is, how the gas flows</b></td><td class="dur">1:22</td><td class="cum">1:35</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">1:50</td></tr>
+            <tr><td class="seg"><b>Block 2 — U200: control, monitoring, protection</b></td><td class="dur">0:53</td><td class="cum">2:43</td></tr>
+            <tr><td class="seg"><b>Block 3 — U530: process water treatment</b></td><td class="dur" style="color:var(--amber);font-weight:700;">0:17</td><td class="cum" style="color:var(--amber);">3:00</td></tr>
             <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">3:15</td></tr>
             <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum">3:30</td></tr>
             <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:00</td></tr>
@@ -645,16 +651,15 @@
       <div class="kicker">Unit 200 · Operating summary <span class="sub">— process view · every process valve on the line it sits on</span></div>
       <h2>Operating summary — what enters, what leaves, and every valve in between</h2>
       <!-- Los tres planos que hay detrás de esta lámina. Mismo registro documental que
-           la tarjeta de la slide 06 y la tabla de la 16: revisión ACTIVE, ruta /docs.
+           la tarjeta de la slide 06 y la tabla de documentos: revisión ACTIVE, ruta /docs.
            Abren en pestaña nueva; el deck no necesita sesión. -->
       <div class="docbtns">
-        <span class="lbl">Los planos de esta lámina:</span>
         <a class="docbtn" href="/docs/20250310_TAM-158_PFD.pdf" target="_blank" rel="noopener">
-          <b>PFD</b><span>TAM-158 · rev 1 · U200 en hojas 1–2</span></a>
+          <b>PFD</b></a>
         <a class="docbtn" href="/docs/PRO13-ING-PR50.pdf" target="_blank" rel="noopener">
           <b>P&amp;ID V-202</b><span>PRO13-ING-PR50 · rev 4</span></a>
         <a class="docbtn" href="/docs/PRO13-ING-PR01.pdf" target="_blank" rel="noopener">
-          <b>P&amp;ID V-201</b><span>PRO13-ING-PR01 · rev 6 · 21044-PR-PID-20001</span></a>
+          <b>P&amp;ID V-201</b><span>PRO13-ING-PR01 · rev 6</span></a>
       </div>
 
       <div class="mapwrap">
@@ -727,6 +732,38 @@
         </div>
       </div>
     </section>
+    <!-- 12a DATASHEET V-202 · Ivan · 2 · ficha inmediatamente despues de su lamina de proceso -->
+    <section class="slide m101ds" data-min="2" data-block="Block 1" data-presenter="Ivan"
+      data-notes='["Datasheet de V-202, justo después de verlo en proceso: el equipo y su ficha juntos.","100 barg de diseño — es el recipiente de mayor presión de la unidad, porque recibe el gas de pozo sin reducir.","5.6 m3, 1420 mm de diámetro, 3180 mm TL-TL: pequeño y robusto.","Internos: vertedero y placas deflectoras — así separa gas, condensado y agua en un solo recipiente.","Trampa de examen: V-202 es el separador de ENTRADA (100 barg); V-201 es el final (50 barg, 20 m3, el más grande).","Protección: PSV-2028A/B tarados a 90 barg, caso fuego, y despresurización por BDV-2027."]'>
+      <div class="kicker">Technological object <span class="sub">— datasheet · Manual §3.5 · PRO13-ING-PR50</span></div>
+      <h2>Datasheet — V-202 inlet three-phase separator</h2>
+      <div class="eqdetail" data-eq="V-202">
+        <div class="eqfig">
+          <div class="imgbox" data-eqcar></div>
+          <div class="cap">Datasheet — V-202 inlet three-phase separator (V-202 skid)</div>
+        </div>
+        <div class="eqcol">
+          <div class="eqcard">
+            <div class="hd"><div class="tag">V-202</div><div class="ty">Inlet 3-phase separator · V-202 skid · PRO13-ING-PR50</div></div>
+            <div class="bd"><div class="eqspecs">
+              <div class="er"><span class="k">Service</span><span class="v">1st-stage sep.</span></div>
+              <div class="er"><span class="k">Design P</span><span class="v">100 barg</span></div>
+              <div class="er"><span class="k">Design T</span><span class="v">−15 / 100 °C</span></div>
+              <div class="er"><span class="k">Int. diameter</span><span class="v">1420 mm</span></div>
+              <div class="er"><span class="k">TL–TL</span><span class="v">3180 mm</span></div>
+              <div class="er"><span class="k">Volume</span><span class="v">5.6 m³</span></div>
+              <div class="er"><span class="k">Material</span><span class="v">PH 355 NH</span></div>
+              <div class="er"><span class="k">Corr. allow.</span><span class="v">3 mm</span></div>
+              <div class="er"><span class="k">Insulation</span><span class="v">H50</span></div>
+              <div class="er"><span class="k">Internals</span><span class="v">weir + deflectors</span></div>
+              <div class="er"><span class="k">Levels</span><span class="v">LIC-2021/2022</span></div>
+              <div class="er"><span class="k">Protection</span><span class="v">PSV-2028A/B · BDV-2027</span></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
 
     <!-- 8 PROCESS II — E-201 HEATING · Ivan · 8 -->
     <section class="slide" data-min="7" data-block="Block 1" data-presenter="Ivan"
@@ -785,6 +822,38 @@
         </div>
       </div>
     </section>
+    <!-- 12b DATASHEET E-201 · Ivan · 2 · ficha inmediatamente despues de su lamina de proceso -->
+    <section class="slide m101ds" data-min="2" data-block="Block 1" data-presenter="Ivan"
+      data-notes='["El único intercambiador de la unidad: carcasa y tubos, tipo BEM.","650 kW de diseño, pero en operación va de 84 kW en verano a 388 kW en invierno — el equipo está dimensionado por el caso frío.","66 m2 de superficie, 184 tubos de 6096 mm.","Aceite térmico por carcasa desde U410; el gas va por tubos, que es el lado de alta presión (90 barg de diseño).","Lo gobierna TIC-2002 actuando sobre TV-2002 en el aceite: la consigna de 43 °C es prevención de hidratos, no confort.","RD-2005 es el disco de ruptura: si rompe, dispara PSD."]'>
+      <div class="kicker">Technological object <span class="sub">— datasheet · Manual §3.5 · PRO13-ING-PR01</span></div>
+      <h2>Datasheet — E-201 feed gas heater (BEM, hot oil)</h2>
+      <div class="eqdetail" data-eq="E-201">
+        <div class="eqfig">
+          <div class="imgbox" data-eqcar></div>
+          <div class="cap">Datasheet — E-201 shell-and-tube feed gas heater (hot oil)</div>
+        </div>
+        <div class="eqcol">
+          <div class="eqcard">
+            <div class="hd"><div class="tag">E-201</div><div class="ty">Feed gas heater (BEM, hot oil) · S-201 · PRO13-ING-PR01</div></div>
+            <div class="bd"><div class="eqspecs">
+              <div class="er"><span class="k">Service</span><span class="v">hydrate heating</span></div>
+              <div class="er"><span class="k">Duty rated</span><span class="v">650 kW</span></div>
+              <div class="er"><span class="k">Duty oper.</span><span class="v">84 → 388 kW</span></div>
+              <div class="er"><span class="k">Design P</span><span class="v">shell 70 / tube 90 barg</span></div>
+              <div class="er"><span class="k">Design T</span><span class="v">−28/120 · −28/100 °C</span></div>
+              <div class="er"><span class="k">Surface</span><span class="v">66 m²</span></div>
+              <div class="er"><span class="k">Shell</span><span class="v">16″ NPS</span></div>
+              <div class="er"><span class="k">Tube length</span><span class="v">6096 mm</span></div>
+              <div class="er"><span class="k">Material</span><span class="v">CS / SS304</span></div>
+              <div class="er"><span class="k">Corr. allow.</span><span class="v">1.5 / 0 mm</span></div>
+              <div class="er"><span class="k">Control</span><span class="v">TIC-2002 → TV-2002</span></div>
+              <div class="er"><span class="k">Protection</span><span class="v">RD-2005 → PSD</span></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
 
     <!-- 9 PROCESS III — PRESSURE & FILTRATION · Ivan · 8 -->
     <section class="slide" data-min="7" data-block="Block 1" data-presenter="Ivan"
@@ -846,6 +915,38 @@
         </div>
       </div>
     </section>
+    <!-- 12c DATASHEET F-201A/B · Ivan · 2 · ficha inmediatamente despues de su lamina de proceso -->
+    <section class="slide m101ds" data-min="2" data-block="Block 1" data-presenter="Ivan"
+      data-notes='["Dos filtros iguales en duty/standby: uno en servicio, otro listo.","Cinco cartuchos de 5 micras cada uno — retienen partículas antes de la amina de U330.","Se vigilan por diferencial: PDG-2001. El cambio se hace por ΔP, no por calendario.","Regla de campo: NUNCA los dos fuera de servicio con gas pasando.","Diseño 50 barg, SS304, sin aislamiento — están aguas abajo de la reducción de PV-2001."]'>
+      <div class="kicker">Technological object <span class="sub">— datasheet · Manual §3.5 · PRO13-ING-PR01</span></div>
+      <h2>Datasheet — F-201A/B feed gas particulate filters</h2>
+      <div class="eqdetail" data-eq="F-201A/B">
+        <div class="eqfig">
+          <div class="imgbox" data-eqcar></div>
+          <div class="cap">Datasheet — F-201A/B 5 µm particulate filters (duty/standby)</div>
+        </div>
+        <div class="eqcol">
+          <div class="eqcard">
+            <div class="hd"><div class="tag">F-201A/B</div><div class="ty">Feed gas particulate filters · duty/standby · PRO13-ING-PR01</div></div>
+            <div class="bd"><div class="eqspecs">
+              <div class="er"><span class="k">Service</span><span class="v">5 µm filtration</span></div>
+              <div class="er"><span class="k">Design P</span><span class="v">50 barg</span></div>
+              <div class="er"><span class="k">Design T</span><span class="v">−28 / 100 °C</span></div>
+              <div class="er"><span class="k">Diameter</span><span class="v">18″ NPS</span></div>
+              <div class="er"><span class="k">SM–SM</span><span class="v">1625 mm</span></div>
+              <div class="er"><span class="k">Volume</span><span class="v">0.27 m³</span></div>
+              <div class="er"><span class="k">Elements</span><span class="v">5 × 5 µm cart.</span></div>
+              <div class="er"><span class="k">Material</span><span class="v">SS304</span></div>
+              <div class="er"><span class="k">Insulation</span><span class="v">none</span></div>
+              <div class="er"><span class="k">Config</span><span class="v">duty / standby</span></div>
+              <div class="er"><span class="k">Monitor</span><span class="v">PDG-2001 ΔP</span></div>
+              <div class="er"><span class="k">Protection</span><span class="v">PSV-2003A/B</span></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
 
     <!-- 10 PROCESS IV — V-201 FINAL SEPARATION · Ivan · 9 -->
     <section class="slide" data-min="8" data-block="Block 1" data-presenter="Ivan"
@@ -905,6 +1006,38 @@
         </div>
       </div>
     </section>
+    <!-- 12d DATASHEET V-201 · Ivan · 2 · ficha inmediatamente despues de su lamina de proceso -->
+    <section class="slide m101ds" data-min="2" data-block="Block 1" data-presenter="Ivan"
+      data-notes='["El recipiente más grande de la unidad: 20 m3, 9000 mm entre tangentes.","Diseño 50 barg — la mitad que V-202, porque aquí el gas ya está reducido por PV-2001.","Interior revestido en 304 y la bota con traceado y aislamiento: es donde se acumula el agua.","Tres niveles medidos (LT-2001/2002/2003) más el interruptor independiente LSLL-2004.","Sus salidas las cierran SDV-2002 (líquido ligero) y SDV-2003 (agua) — son los efectos LSD de la matriz causa-efecto.","Lo que sale de aquí ya es el gas que ve U330."]'>
+      <div class="kicker">Technological object <span class="sub">— datasheet · Manual §3.5 · PRO13-ING-PR01</span></div>
+      <h2>Datasheet — V-201 inlet raw gas separator</h2>
+      <div class="eqdetail" data-eq="V-201">
+        <div class="eqfig">
+          <div class="imgbox" data-eqcar></div>
+          <div class="cap">Datasheet — V-201 inlet raw gas separator (final separation)</div>
+        </div>
+        <div class="eqcol">
+          <div class="eqcard">
+            <div class="hd"><div class="tag">V-201</div><div class="ty">Inlet raw gas separator · S-201 skid · PRO13-ING-PR01</div></div>
+            <div class="bd"><div class="eqspecs">
+              <div class="er"><span class="k">Service</span><span class="v">final 3-ph sep.</span></div>
+              <div class="er"><span class="k">Design P</span><span class="v">50 barg</span></div>
+              <div class="er"><span class="k">Design T</span><span class="v">−28 / 100 °C</span></div>
+              <div class="er"><span class="k">Int. diameter</span><span class="v">1625 mm</span></div>
+              <div class="er"><span class="k">TL–TL</span><span class="v">9000 mm</span></div>
+              <div class="er"><span class="k">Volume</span><span class="v">20 m³</span></div>
+              <div class="er"><span class="k">Material</span><span class="v">CS · 304 clad</span></div>
+              <div class="er"><span class="k">Corr. allow.</span><span class="v">0 mm</span></div>
+              <div class="er"><span class="k">Insulation</span><span class="v">boot trace+ins.</span></div>
+              <div class="er"><span class="k">Levels</span><span class="v">LIC-2001/2002 · LSLL-2004</span></div>
+              <div class="er"><span class="k">Outlets</span><span class="v">SDV-2002/2003</span></div>
+              <div class="er"><span class="k">Protection</span><span class="v">PSV-2001A/B</span></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
 
     <!-- 11 GAS OUT & MEASUREMENT · Ivan · 7 -->
     <section class="slide" data-min="6" data-block="Block 1" data-presenter="Ivan"
@@ -965,43 +1098,7 @@
       </div>
     </section>
 
-    <!-- 12 EQUIPMENT DATASHEET · Ivan · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Ivan"
-      data-notes='["Table 3.3 datasheet, equipment by equipment — click each tag to switch the render and its data.","Order the gas meets them: V-202 → E-201 → F-201A/B → V-201 — separate, heat, filter, separate again.","Exam trap: V-202 is the INLET 3-phase separator (design 100 barg); V-201 is the final RAW GAS separator (50 barg, 20 m3 — the biggest vessel).","E-201 is the only heat exchanger — BEM type, 650 kW rated, hot oil from U410, SS304 tubes, 66 m2.","Filters F-201A/B: five 5-micron cartridges each, duty/standby — never both offline with gas flowing.","These are the datasheet values; more fields (weights, nozzles, materials) live in the equipment database."]'>
-      <div class="kicker">Technological objects <span class="sub">— datasheet · Manual §3.5, doc PRO13</span></div>
-      <h2>Equipment datasheet — Unit 200</h2>
-      <div class="eqdetail">
-        <div class="eqfig">
-          <div class="imgbox" id="eqcar"></div>
-          <div class="cap" id="eqcap">Datasheet — V-202 inlet three-phase separator (V-202 skid)</div>
-        </div>
-        <div class="eqcol">
-          <div class="eqcard">
-            <div class="hd"><div class="tag" id="eqtag">V-202</div><div class="ty" id="eqty">Inlet 3-phase separator · V-202 skid · PRO13-ING-PR50</div></div>
-            <div class="bd"><div class="eqspecs" id="eqbd">
-              <div class="er"><span class="k">Service</span><span class="v">1st-stage sep.</span></div>
-              <div class="er"><span class="k">Design P</span><span class="v">100 barg</span></div>
-              <div class="er"><span class="k">Design T</span><span class="v">−15 / 100 °C</span></div>
-              <div class="er"><span class="k">Int. diameter</span><span class="v">1420 mm</span></div>
-              <div class="er"><span class="k">TL–TL</span><span class="v">3180 mm</span></div>
-              <div class="er"><span class="k">Volume</span><span class="v">5.6 m³</span></div>
-              <div class="er"><span class="k">Material</span><span class="v">PH 355 NH</span></div>
-              <div class="er"><span class="k">Corr. allow.</span><span class="v">3 mm</span></div>
-              <div class="er"><span class="k">Insulation</span><span class="v">H50</span></div>
-              <div class="er"><span class="k">Internals</span><span class="v">weir + deflectors</span></div>
-              <div class="er"><span class="k">Levels</span><span class="v">LIC-2021/2022</span></div>
-              <div class="er"><span class="k">Protection</span><span class="v">PSV-2028A/B · BDV-2027</span></div>
-            </div></div>
-          </div>
-          <div class="eqthumbs" id="eqthumbs">
-            <button class="on" data-e="0">V-202</button>
-            <button data-e="1">E-201</button>
-            <button data-e="2">F-201A/B</button>
-            <button data-e="3">V-201</button>
-          </div>
-        </div>
-      </div>
-    </section>
+
 
     <!-- 13 VALVES & RELIEF · Ivan · 8 -->
     <section class="slide" data-min="8" data-block="Block 1" data-presenter="Ivan"
@@ -1744,72 +1841,56 @@
       cdots.forEach(function(d){d.onclick=function(){cgo(+d.dataset.i);crestart();};});
       crestart();
     }
-    // equipment datasheet switcher
-    var EQ=[
-      {tag:"V-202",base:"V-202",ty:"Inlet 3-phase separator · V-202 skid · PRO13-ING-PR50",img:"/images/V-202_01.png",cap:"Datasheet — V-202 inlet three-phase separator (V-202 skid)",
-       rows:[["Service","1st-stage sep."],["Design P","100 barg"],["Design T","−15 / 100 °C"],["Int. diameter","1420 mm"],["TL–TL","3180 mm"],["Volume","5.6 m³"],["Material","PH 355 NH"],["Corr. allow.","3 mm"],["Insulation","H50"],["Internals","weir + deflectors"],["Levels","LIC-2021/2022"],["Protection","PSV-2028A/B · BDV-2027"]]},
-      {tag:"E-201",base:"E-201",ty:"Feed gas heater (BEM, hot oil) · S-201 · PRO13-ING-PR01",img:"/images/E-201_01.png",cap:"Datasheet — E-201 shell-and-tube feed gas heater (hot oil)",
-       rows:[["Service","hydrate heating"],["Duty rated","650 kW"],["Duty oper.","84 → 388 kW"],["Design P","shell 70 / tube 90 barg"],["Design T","−28/120 · −28/100 °C"],["Surface","66 m²"],["Shell","16″ NPS"],["Tube length","6096 mm"],["Material","CS / SS304"],["Corr. allow.","1.5 / 0 mm"],["Control","TIC-2002 → TV-2002"],["Protection","RD-2005 → PSD"]]},
-      {tag:"F-201A/B",base:"F-201",ty:"Feed gas particulate filters · duty/standby · PRO13-ING-PR01",img:"/images/F-201_01.png",cap:"Datasheet — F-201A/B 5 µm particulate filters (duty/standby)",
-       rows:[["Service","5 µm filtration"],["Design P","50 barg"],["Design T","−28 / 100 °C"],["Diameter","18″ NPS"],["SM–SM","1625 mm"],["Volume","0.27 m³"],["Elements","5 × 5 µm cart."],["Material","SS304"],["Insulation","none"],["Config","duty / standby"],["Monitor","PDG-2001 ΔP"],["Protection","PSV-2003A/B"]]},
-      {tag:"V-201",base:"V-201",ty:"Inlet raw gas separator · S-201 skid · PRO13-ING-PR01",img:"/images/V-201_01.png",cap:"Datasheet — V-201 inlet raw gas separator (final separation)",
-       rows:[["Service","final 3-ph sep."],["Design P","50 barg"],["Design T","−28 / 100 °C"],["Int. diameter","1625 mm"],["TL–TL","9000 mm"],["Volume","20 m³"],["Material","CS · 304 clad"],["Corr. allow.","0 mm"],["Insulation","boot trace+ins."],["Levels","LIC-2001/2002 · LSLL-2004"],["Outlets","SDV-2002/2003"],["Protection","PSV-2001A/B"]]}
-    ];
-    var eqcar=document.getElementById('eqcar');
-    if(eqcar){
-      var eqcap=document.getElementById('eqcap'),eqtag=document.getElementById('eqtag'),
-          eqty=document.getElementById('eqty'),eqbd=document.getElementById('eqbd');
-      var ebtns=[].slice.call(document.querySelectorAll('#eqthumbs button'));
-      var eqTimer=null, eqToken=0;
+    // Fichas de equipo — una slide por equipo (12a..12d), ya no hay selector.
+    //
+    // Cada lamina lleva sus datos ESCRITOS EN EL HTML: tag, tipo, caption y las 12
+    // filas de especificacion. Si este script no corre, la ficha sigue leyendose.
+    // Lo unico que hace el JS es montar el carrusel de imagenes, que no se puede
+    // escribir a mano porque el numero de fotos depende de lo que haya subido.
+    //
+    // Convencion de nombres: <base>_00.png opcional primero, luego la serie contigua
+    // _01, _02, ... Subir una foto mas y aparece sola al recargar; no hay lista que
+    // mantener. `base` no siempre es el tag: F-201A/B guarda sus fotos como F-201_xx.
+    var EQBASE={"V-202":"V-202","E-201":"E-201","F-201A/B":"F-201","V-201":"V-201"};
+    [].slice.call(document.querySelectorAll('.eqdetail[data-eq]')).forEach(function(host){
+      var tag=host.getAttribute('data-eq'), base=EQBASE[tag]||tag;
+      var car=host.querySelector('[data-eqcar]'); if(!car) return;
+      var timer=null;                                  // un temporizador POR lamina
       function pad(n){return n<10?'0'+n:''+n;}
-      // Auto-detect images named <base>_01.png, _02.png, ... (contiguous). Upload more → they appear on reload.
-      function probe(base,i,acc,tok,done){
-        if(tok!==eqToken) return;                 // a newer selection started
+      function probe(i,acc,done){
         if(i>20){ done(acc); return; }
         var im=new Image();
-        im.onload=function(){ acc.push('/images/'+base+'_'+pad(i)+'.png'); probe(base,i+1,acc,tok,done); };
+        im.onload=function(){ acc.push('/images/'+base+'_'+pad(i)+'.png'); probe(i+1,acc,done); };
         im.onerror=function(){ done(acc); };
         im.src='/images/'+base+'_'+pad(i)+'.png';
       }
-      function buildCar(list,alt){
-        clearInterval(eqTimer);
-        if(!list.length){ eqcar.innerHTML=''; return; }
-        if(list.length===1){ eqcar.innerHTML='<img class="eqc-solo" src="'+list[0]+'" alt="'+alt+'">'; return; }
-        eqcar.innerHTML=list.map(function(s,k){return '<img class="eqc-img'+(k===0?' on':'')+'" src="'+s+'" alt="'+alt+'">';}).join('')
-          +'<div class="eqc-count" id="eqccount">1/'+list.length+'</div>'
+      function build(list){
+        clearInterval(timer);
+        if(!list.length){ car.innerHTML=''; return; }
+        if(list.length===1){ car.innerHTML='<img class="eqc-solo" src="'+list[0]+'" alt="'+tag+'">'; return; }
+        car.innerHTML=list.map(function(s,k){return '<img class="eqc-img'+(k===0?' on':'')+'" src="'+s+'" alt="'+tag+'">';}).join('')
+          +'<div class="eqc-count">1/'+list.length+'</div>'
           +'<div class="eqc-dots">'+list.map(function(s,k){return '<b class="'+(k===0?'on':'')+'" data-i="'+k+'"></b>';}).join('')+'</div>';
-        var imgs=[].slice.call(eqcar.querySelectorAll('.eqc-img'));
-        var dots=[].slice.call(eqcar.querySelectorAll('.eqc-dots b'));
-        var cnt=document.getElementById('eqccount'), ci=0;
-        function go(n){ci=(n+imgs.length)%imgs.length;
+        var imgs=[].slice.call(car.querySelectorAll('.eqc-img'));
+        var dots=[].slice.call(car.querySelectorAll('.eqc-dots b'));
+        var cnt=car.querySelector('.eqc-count'), ci=0;
+        function go(n){ ci=(n+imgs.length)%imgs.length;
           imgs.forEach(function(im,k){im.classList.toggle('on',k===ci);});
           dots.forEach(function(d,k){d.classList.toggle('on',k===ci);});
-          cnt.textContent=(ci+1)+'/'+imgs.length;}
-        function restart(){clearInterval(eqTimer);eqTimer=setInterval(function(){go(ci+1);},3800);}
-        dots.forEach(function(d){d.onclick=function(ev){ev.stopPropagation();go(+d.dataset.i);restart();};});
+          cnt.textContent=(ci+1)+'/'+imgs.length; }
+        function restart(){ clearInterval(timer); timer=setInterval(function(){go(ci+1);},3800); }
+        dots.forEach(function(d){ d.onclick=function(ev){ ev.stopPropagation(); go(+d.dataset.i); restart(); }; });
         restart();
       }
-      function loadEquip(idx,btn){
-        var e=EQ[idx]; if(!e) return;
-        ebtns.forEach(function(x){x.classList.toggle('on',x===btn);});
-        eqcap.textContent=e.cap;eqtag.textContent=e.tag;eqty.textContent=e.ty;
-        eqbd.innerHTML=e.rows.map(function(r){return '<div class="er"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';}).join('');
-        eqcar.innerHTML='';
-        var tok=++eqToken, base=e.base||e.tag;
-        function finish(list){ if(tok!==eqToken) return; if(!list.length && e.img) list=[e.img]; buildCar(list,e.tag); }
-        // optional <base>_00 goes first, then the contiguous _01, _02, ... sequence
-        var im0=new Image();
-        im0.onload=function(){ if(tok!==eqToken) return; probe(base,1,['/images/'+base+'_00.png'],tok,finish); };
-        im0.onerror=function(){ if(tok!==eqToken) return; probe(base,1,[],tok,finish); };
-        im0.src='/images/'+base+'_00.png';
-      }
-      ebtns.forEach(function(b){b.onclick=function(){loadEquip(+b.dataset.e,b);};});
-      loadEquip(0,ebtns[0]);
-    }
+      var im0=new Image();
+      im0.onload=function(){ probe(1,['/images/'+base+'_00.png'],build); };
+      im0.onerror=function(){ probe(1,[],build); };
+      im0.src='/images/'+base+'_00.png';
+    });
   })();
 </script>
 <script>
-  // Interactive Cause & Effect matrix (slide 22) — LOCAL COPY of plant_cause_effect / _effects · SAF12-ING-FR01
+  // Interactive Cause & Effect matrix (hoy la slide 26) — LOCAL COPY of plant_cause_effect / _effects · SAF12-ING-FR01
   (function(){
     var host=document.getElementById('ce22'); if(!host) return;
     var CE={
@@ -2248,7 +2329,7 @@
                      : '<span class="docstat off">pending</span>';
         h+='<tr><td class="tg" data-dno="'+i+'">'+link+'</td><td>'+esc(d.ttl)+'</td><td class="ty">'+esc(d.rev||'—')+'</td><td data-dlk="'+i+'">'+open+'</td></tr>';
       });
-      h+='</tbody></table><div class="celegend"><b>Source:</b> registro documental de la planta (vista <b>v_doc_register_public</b>) — la misma lista que lee la slide 16.<br>'+
+      h+='</tbody></table><div class="celegend"><b>Source:</b> registro documental de la planta (vista <b>v_doc_register_public</b>) — la misma lista que lee la slide de documentos.<br>'+
          '<b>Rev</b> = revisión <b>ACTIVE</b> del registro, no la del nombre del fichero.<br>'+
          '<b>open ↗</b> abre el PDF publicado en <b>/docs</b>: el deck no necesita sesión ni el visor.<br>'+
          '<b>PENDING</b> = el documento está en el registro pero no hay PDF: falta el fichero, no el documento.</div>';
