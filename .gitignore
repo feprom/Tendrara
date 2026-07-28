@@ -8,7 +8,11 @@
 #
 # Do not remove this rule. If you need a drawing on the site, it belongs in storage
 # and gets linked from the E&I Navigator (EI70 / EI80), not committed here.
-docs/
+# NOTA (2026-07-28): esto decia `docs/` — con barra final git excluye el DIRECTORIO
+# y ya no mira dentro, asi que los dos `!docs/...` de abajo NUNCA se aplicaron y los
+# handouts publicos llevaban meses sin publicarse (git ls-files no devolvia un solo
+# PDF). `docs/*` excluye el CONTENIDO, que es lo que permite reincluir excepciones.
+docs/*
 
 # The two genuinely public handouts, linked from the training decks:
 !docs/LNGSafetyData.pdf
