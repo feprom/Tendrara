@@ -1094,7 +1094,7 @@
       <div class="kicker">Reference · Documents <span class="sub">— Manual §3.3 · consultation links</span></div>
       <h2>Unit 200 — relevant documents</h2>
       <table class="data" id="docstbl" style="font-size:12px;"></table>
-      <div class="note">Source: <b>plant_documents</b> (local copy) · <span class="docstat on">LINK</span> opens the PDF · <span class="docstat off">PENDING</span> not published yet.</div>
+      <div class="note">Source: registro documental de la planta, vista <b>v_doc_register_public</b> (copia local) · <b>Rev</b> = revisión <b>ACTIVE</b> del registro · <b>open ↗</b> abre el PDF · <span class="docstat off">PENDING</span> = está en el registro pero no hay fichero.</div>
     </section>
 
     <!-- BREAK 1 -->
@@ -1952,45 +1952,45 @@
   })();
 </script>
 <script>
-  // Relevant documents — LOCAL COPY of plant_documents (Supabase).
-  // Auto-detect: each url is probed; if the file exists under /docs/ the link enables itself. No code change needed.
+  // Relevant documents — COPIA LOCAL del registro documental (vista v_doc_register_public).
+  //
+  // El registro manda: `ok` sale de que exista fichero, y `rev` de la revisión ACTIVE,
+  // no del nombre del PDF. El sondeo HEAD sólo corre servido por HTTP — en file:// el
+  // navegador lo bloquea por CORS y la tabla entera salía PENDING siendo mentira.
   (function(){
     var DOCS=[
-      {no:"TAM-158-PFD",title:"Process Flow Diagram — TAM-158 (4 sheets · U200 on sheets 1–2)",cat:"Process",rev:"2025-03-10",url:"/docs/20250310_TAM-158_PFD.pdf"},
-      {no:"PRO02-ING-FR02",title:"Process Description",cat:"Process",rev:"1B",url:"/docs/PRO02-ING-FR02.pdf"},
-      {no:"PRO10-ING-PR14",title:"Process Flow Diagram (Inlet Separator) — no published PDF; use TAM-158-PFD",cat:"Process",rev:"",url:null},
-      {no:"PRO13-ING-PR01",title:"P&ID — Unit 200 skid S-201 / V-201 (21044-PR-PID-20001)",cat:"Drawings",rev:"",url:"/docs/PRO13-ING-PR01.pdf"},
-      {no:"PRO13-ING-PR50",title:"P&ID — additional 3-phase separator V-202",cat:"Drawings",rev:"5",url:"/docs/PRO13-ING-PR50.pdf"},
-      {no:"PRO13-ING-PR51",title:"P&ID — corrosion inhibitor package (U120, injects upstream of V-202)",cat:"Drawings",rev:"2",url:"/docs/PRO13-ING-PR51.pdf"},
-      {no:"21044-PR-DSH-0E201",title:"Datasheet — E-201 feed gas heater",cat:"Datasheet",rev:"1",url:"/docs/21044-PR-DSH-0E201.pdf"},
-      {no:"21044-PR-DSH-0V201",title:"Datasheet — V-201 inlet raw gas separator",cat:"Datasheet",rev:"1",url:null},
-      {no:"21044-PR-DSH-0V202",title:"Datasheet — V-202 inlet 3-phase separator",cat:"Datasheet",rev:"",url:null},
-      {no:"21044-PR-DSH-0F201",title:"Datasheet — F-201A/B feed gas particulate filter",cat:"Datasheet",rev:"",url:null},
-      {no:"SAF01-ING-FR01",title:"Process Safety & Isolation Philosophy",cat:"Safety",rev:"Rev.2",url:"/docs/SAF01-ING-FR01.pdf"},
-      {no:"SAF12-ING-FR01",title:"Cause & Effect Matrix",cat:"Safety",rev:"",url:"/docs/SAF12-ING-FR01.pdf"},
-      {no:"SAF05-ING-FR01",title:"Relief & Blowdown Philosophy",cat:"Safety",rev:"",url:"/docs/SAF05-ING-FR01.pdf"},
-      {no:"21044-AU-HMI-00002",title:"HMI Philosophy",cat:"Control",rev:"",url:"/docs/21044-AU-HMI-00002.pdf"},
-      {no:"21044-PR-MAN-00001",title:"Plant Operating Manual",cat:"Manual",rev:"01",url:"/docs/21044-PR-MAN-00001.pdf"}
+      {no:"TAM-158-PFD",title:"Process Flow Diagram — TAM-158 (4 sheets · U200 on sheets 1–2)",cat:"Process",rev:"1",ok:true,url:"/docs/20250310_TAM-158_PFD.pdf"},
+      {no:"PRO02-ING-FR02",title:"Process Description",cat:"Process",rev:"1B",ok:true,url:"/docs/PRO02-ING-FR02.pdf"},
+      {no:"PRO10-ING-PR14",title:"Process Flow Diagram (Inlet Separator) — not in the document store; TAM-158-PFD is the PFD in use",cat:"Process",rev:"",ok:false,url:null},
+      {no:"PRO13-ING-PR01",title:"P&ID — Unit 200 skid S-201 / V-201 (21044-PR-PID-20001)",cat:"Drawings",rev:"6",ok:true,url:"/docs/PRO13-ING-PR01.pdf"},
+      {no:"PRO13-ING-PR50",title:"P&ID — additional 3-phase separator V-202",cat:"Drawings",rev:"4",ok:true,url:"/docs/PRO13-ING-PR50.pdf"},
+      {no:"PRO13-ING-PR51",title:"P&ID — corrosion inhibitor package (U120, injects upstream of V-202)",cat:"Drawings",rev:"1",ok:true,url:"/docs/PRO13-ING-PR51.pdf"},
+      {no:"21044-PR-DSH-0E201",title:"Datasheet — E-201 feed gas heater",cat:"Datasheet",rev:"1",ok:true,url:"/docs/21044-PR-DSH-0E201.pdf"},
+      {no:"21044-PR-DSH-0V201",title:"Datasheet — V-201 inlet raw gas separator — registered, source is .xlsm, no PDF",cat:"Datasheet",rev:"1",ok:false,url:null},
+      {no:"21044-PR-DSH-0V202",title:"Datasheet — V-202 inlet 3-phase separator",cat:"Datasheet",rev:"",ok:false,url:null},
+      {no:"21044-PR-DSH-0F201",title:"Datasheet — F-201A/B feed gas particulate filter",cat:"Datasheet",rev:"",ok:false,url:null},
+      {no:"SAF01-ING-FR01",title:"Process Safety & Isolation Philosophy",cat:"Safety",rev:"2",ok:true,url:"/docs/SAF01-ING-FR01.pdf"},
+      {no:"SAF12-ING-FR01",title:"Cause & Effect Matrix",cat:"Safety",rev:"6",ok:true,url:"/docs/SAF12-ING-FR01.pdf"},
+      {no:"SAF05-ING-FR01",title:"Relief & Blowdown Philosophy",cat:"Safety",rev:"1",ok:true,url:"/docs/SAF05-ING-FR01.pdf"},
+      {no:"21044-AU-HMI-00002",title:"HMI Philosophy",cat:"Control",rev:"1",ok:true,url:"/docs/21044-AU-HMI-00002.pdf"},
+      {no:"21044-PR-MAN-00001",title:"Plant Operating Manual",cat:"Manual",rev:"01",ok:true,url:"/docs/21044-PR-MAN-00001.pdf"}
     ];
     var t=document.getElementById('docstbl'); if(!t) return;
     function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
     t.innerHTML='<tr><th>Doc No</th><th>Title</th><th>Category</th><th>Rev</th><th>Link</th></tr>';
-    function probe(url,cb){ try{ fetch(encodeURI(url),{method:'HEAD'}).then(function(r){cb(r.ok);}).catch(function(){cb(false);}); }catch(e){cb(false);} }
+    var canProbe=/^https?:$/.test(location.protocol);
     DOCS.forEach(function(d){
+      var u=d.url?encodeURI(d.url):null, live=!!(d.ok&&u);
       var tr=document.createElement('tr');
-      tr.innerHTML='<td class="k" data-no></td><td>'+esc(d.title)+'</td><td class="doccat">'+esc(d.cat)+'</td><td class="doccat">'+esc(d.rev||'—')+'</td><td data-link><span class="docstat off">checking…</span></td>';
-      tr.querySelector('[data-no]').textContent=d.no;
+      tr.innerHTML='<td class="k" data-no></td><td>'+esc(d.title)+'</td><td class="doccat">'+esc(d.cat)+'</td><td class="doccat">'+esc(d.rev||'—')+'</td>'+
+        '<td data-link>'+(live?'<a class="doclink" href="'+u+'" target="_blank" rel="noopener">open ↗</a>':'<span class="docstat off">pending</span>')+'</td>';
+      var no=tr.querySelector('[data-no]');
+      if(live) no.innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">'+esc(d.no)+'</a>';
+      else no.textContent=d.no;
       t.appendChild(tr);
-      if(!d.url){ tr.querySelector('[data-link]').innerHTML='<span class="docstat off">pending</span>'; return; }
-      probe(d.url,function(ok){
-        var u=encodeURI(d.url);
-        if(ok){
-          tr.querySelector('[data-no]').innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">'+esc(d.no)+'</a>';
-          tr.querySelector('[data-link]').innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">open ↗</a>';
-        } else {
-          tr.querySelector('[data-link]').innerHTML='<span class="docstat off">pending</span>';
-        }
-      });
+      if(!live || !canProbe) return;
+      function fail(){ tr.querySelector('[data-link]').innerHTML='<span class="docstat off">file missing</span>'; no.textContent=d.no; }
+      try{ fetch(u,{method:'HEAD'}).then(function(r){ if(!r.ok) fail(); }).catch(fail); }catch(e){ fail(); }
     });
   })();
 </script>
@@ -2203,44 +2203,57 @@
         '<div class="row">'+esc(d.note)+'</div></div>';
       return '<div class="cewrap"><table class="cematrix"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>'+legend+'</div>';
     }
-    // Documentos de Unit 200 — COPIA LOCAL de plant_documents (Supabase, migración 195).
-    // Diagramas de proceso + P&ID que gobiernan la unidad + datasheets de los 4 equipos.
-    // url:null = el documento existe pero no está publicado → imprime PENDING, no un link muerto.
+    // Documentos de Unit 200 — COPIA LOCAL del registro documental (Supabase,
+    // vista v_doc_register_public · migraciones 195/196).
+    //
+    // QUIÉN MANDA. La revisión NO sale del nombre del fichero: sale de
+    // plant_document_revisions con status ACTIVE, que es donde el proyecto la lleva.
+    // Por eso PR01 es rev 6 y no "—", PR50 es 4 y no 5, PR51 es 1 y no 2.
+    // `store` = ruta del PDF en el bucket privado plant-docs; `url` = copia estática
+    // publicada en /docs, que es la que puede abrir el deck sin sesión.
+    // `ok:false` = está en el registro pero NO hay fichero: imprime PENDING.
     var U200DOCS = { title:"Documents · Unit 200 (10) — process diagrams · P&IDs · equipment datasheets", rows:[
-      {grp:"Process diagrams", no:"TAM-158-PFD",        ttl:"Process Flow Diagram — TAM-158 (4 sheets · U200 on sheets 1–2)", rev:"2025-03-10", url:"/docs/20250310_TAM-158_PFD.pdf"},
-      {grp:"Process diagrams", no:"PRO10-ING-PR14",     ttl:"Process Flow Diagram (Inlet Separator) — superseded in practice by TAM-158-PFD", rev:"", url:null},
-      {grp:"Process diagrams", no:"PRO02-ING-FR02",     ttl:"Process Description — §3 is this unit", rev:"1B", url:"/docs/PRO02-ING-FR02.pdf"},
-      {grp:"P&ID",             no:"PRO13-ING-PR01",     ttl:"21044-PR-PID-20001 — skid S-201 / V-201 (the main U200 sheet)", rev:"", url:"/docs/PRO13-ING-PR01.pdf"},
-      {grp:"P&ID",             no:"PRO13-ING-PR50",     ttl:"Additional 3-phase separator V-202", rev:"5", url:"/docs/PRO13-ING-PR50.pdf"},
-      {grp:"P&ID",             no:"PRO13-ING-PR51",     ttl:"Corrosion inhibitor package (U120 — injects upstream of V-202)", rev:"2", url:"/docs/PRO13-ING-PR51.pdf"},
-      {grp:"Datasheets",       no:"21044-PR-DSH-0E201", ttl:"E-201 — feed gas heater", rev:"1", url:"/docs/21044-PR-DSH-0E201.pdf"},
-      {grp:"Datasheets",       no:"21044-PR-DSH-0V201", ttl:"V-201 — inlet raw gas separator", rev:"1", url:null},
-      {grp:"Datasheets",       no:"21044-PR-DSH-0V202", ttl:"V-202 — inlet 3-phase separator", rev:"", url:null},
-      {grp:"Datasheets",       no:"21044-PR-DSH-0F201", ttl:"F-201A/B — feed gas particulate filter", rev:"", url:null}
+      {grp:"Process diagrams", no:"TAM-158-PFD",        ttl:"Process Flow Diagram — TAM-158 (4 sheets · U200 on sheets 1–2)", rev:"1",  ok:true,  url:"/docs/20250310_TAM-158_PFD.pdf", store:"TAM-158-PFD/rev-1"},
+      {grp:"Process diagrams", no:"PRO02-ING-FR02",     ttl:"Process Description — §3 is this unit",                          rev:"1B", ok:true,  url:"/docs/PRO02-ING-FR02.pdf",      store:"PRO02-ING-FR02/rev-1B"},
+      {grp:"Process diagrams", no:"PRO10-ING-PR14",     ttl:"Process Flow Diagram (Inlet Separator) — not in the document store; TAM-158-PFD is the PFD in use", rev:"", ok:false, url:null, store:null},
+      {grp:"P&ID",             no:"PRO13-ING-PR01",     ttl:"21044-PR-PID-20001 — skid S-201 / V-201 (the main U200 sheet)",  rev:"6",  ok:true,  url:"/docs/PRO13-ING-PR01.pdf",      store:"PRO13-ING-PR01/rev-6"},
+      {grp:"P&ID",             no:"PRO13-ING-PR50",     ttl:"Additional 3-phase separator V-202",                             rev:"4",  ok:true,  url:"/docs/PRO13-ING-PR50.pdf",      store:"PRO13-ING-PR50/rev-4"},
+      {grp:"P&ID",             no:"PRO13-ING-PR51",     ttl:"Corrosion inhibitor package (U120 — injects upstream of V-202)", rev:"1",  ok:true,  url:"/docs/PRO13-ING-PR51.pdf",      store:"PRO13-ING-PR51/rev-1"},
+      {grp:"Datasheets",       no:"21044-PR-DSH-0E201", ttl:"E-201 — feed gas heater",                                        rev:"1",  ok:true,  url:"/docs/21044-PR-DSH-0E201.pdf",  store:"E-201_datasheet/rev-1"},
+      {grp:"Datasheets",       no:"21044-PR-DSH-0V201", ttl:"V-201 — inlet raw gas separator — registered, source is .xlsm, no PDF in the store", rev:"1", ok:false, url:null, store:null},
+      {grp:"Datasheets",       no:"21044-PR-DSH-0V202", ttl:"V-202 — inlet 3-phase separator",                                rev:"",   ok:false, url:null, store:null},
+      {grp:"Datasheets",       no:"21044-PR-DSH-0F201", ttl:"F-201A/B — feed gas particulate filter",                         rev:"",   ok:false, url:null, store:null}
     ]};
+    function docCell(d){
+      return d.ok && d.url
+        ? '<a class="doclink" href="'+encodeURI(d.url)+'" target="_blank" rel="noopener">open ↗</a>'
+        : '<span class="docstat off">pending</span>';
+    }
     function renderDocs(){
       var last='', h='<table class="objtbl"><thead><tr><th>Doc No</th><th>Title</th><th>Rev</th><th>Link</th></tr></thead><tbody>';
       U200DOCS.rows.forEach(function(d,i){
         if(d.grp!==last){ last=d.grp; h+='<tr><td colspan="4" style="background:var(--bg-soft);font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;">'+esc(d.grp)+'</td></tr>'; }
-        h+='<tr><td class="tg" data-dno="'+i+'">'+esc(d.no)+'</td><td>'+esc(d.ttl)+'</td><td class="ty">'+esc(d.rev||'—')+'</td>'+
-           '<td data-dlk="'+i+'">'+(d.url?'<span class="docstat off">checking…</span>':'<span class="docstat off">pending</span>')+'</td></tr>';
+        var no = (d.ok&&d.url) ? '<a class="doclink" href="'+encodeURI(d.url)+'" target="_blank" rel="noopener">'+esc(d.no)+'</a>' : esc(d.no);
+        h+='<tr><td class="tg" data-dno="'+i+'">'+no+'</td><td>'+esc(d.ttl)+'</td><td class="ty">'+esc(d.rev||'—')+'</td>'+
+           '<td data-dlk="'+i+'">'+docCell(d)+'</td></tr>';
       });
-      h+='</tbody></table><div class="celegend"><b>Source:</b> plant_documents (local copy · migration 195) — the same registry slide 16 reads.<br>'+
-         '<b>PENDING</b> means the document exists in the register but has no published PDF yet; it is not a missing document, it is a missing file.</div>';
+      h+='</tbody></table><div class="celegend"><b>Source:</b> registro documental de la planta (vista <b>v_doc_register_public</b>) — la misma lista que lee la slide 16.<br>'+
+         '<b>Rev</b> = revisión <b>ACTIVE</b> del registro, no la del nombre del fichero.<br>'+
+         '<b>PENDING</b> = el documento está en el registro pero no hay PDF: falta el fichero, no el documento.<br>'+
+         'Los PDF viven en el bucket privado <b>plant-docs</b> y se publican como copia estática en <b>/docs</b>; el visor <b>/eni/</b> los abre con sesión, y de PR01 y PR51 tiene además el render por baldosas.</div>';
       return h;
     }
+    // El sondeo HEAD sólo tiene sentido servido por HTTP: en file:// el navegador lo
+    // bloquea por CORS y todo salía PENDING aunque el fichero estuviera publicado.
+    // Manda el registro; el sondeo sólo degrada una fila si el fichero falta de verdad.
     function probeDocs(){
+      if(!/^https?:$/.test(location.protocol)) return;
       U200DOCS.rows.forEach(function(d,i){
-        if(!d.url) return;
-        var u=encodeURI(d.url);
-        var cell=wrap.querySelector('[data-dlk="'+i+'"]'), no=wrap.querySelector('[data-dno="'+i+'"]');
+        if(!(d.ok&&d.url)) return;
+        var u=encodeURI(d.url), cell=wrap.querySelector('[data-dlk="'+i+'"]'), no=wrap.querySelector('[data-dno="'+i+'"]');
         if(!cell) return;
-        function set(ok){
-          if(!ok){ cell.innerHTML='<span class="docstat off">pending</span>'; return; }
-          cell.innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">open ↗</a>';
-          if(no) no.innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">'+esc(d.no)+'</a>';
-        }
-        try{ fetch(u,{method:'HEAD'}).then(function(r){set(r.ok);}).catch(function(){set(false);}); }catch(e){ set(false); }
+        function fail(){ cell.innerHTML='<span class="docstat off">file missing</span>'; if(no) no.textContent=d.no; }
+        try{ fetch(u,{method:'HEAD'}).then(function(r){ if(!r.ok) fail(); }).catch(fail); }catch(e){ fail(); }
       });
     }
     function open(g){
