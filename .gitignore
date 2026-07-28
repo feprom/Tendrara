@@ -18,6 +18,23 @@ docs/*
 !docs/LNGSafetyData.pdf
 !docs/SAF05-ING-FR01.pdf
 
+# --- LISTA BLANCA DEL MODULO 101 (decision de Mario, 2026-07-28) ---------------
+# El deck de formacion tiene que ser INDEPENDIENTE: los alumnos no tienen cuenta
+# del E&I Navigator, asi que sus documentos se sirven desde /docs sin login.
+# Esto es una EXCEPCION consciente a la regla de arriba, acotada a estos ficheros:
+# quedan publicos en tendrara.neo-ware.com. Todo lo demas de docs/ sigue fuera.
+# Para revertir: borrar estas lineas y las copias de publish/docs.
+!docs/20250310_TAM-158_PFD.pdf
+!docs/PRO02-ING-FR02.pdf
+!docs/PRO13-ING-PR01.pdf
+!docs/PRO13-ING-PR50.pdf
+!docs/PRO13-ING-PR51.pdf
+!docs/21044-PR-DSH-0E201.pdf
+!docs/SAF01-ING-FR01.pdf
+!docs/SAF12-ING-FR01.pdf
+!docs/21044-AU-HMI-00002.pdf
+!docs/21044-PR-MAN-00001.pdf
+
 # Local tooling / secrets — must never reach a public repo
 node_modules/
 .env
