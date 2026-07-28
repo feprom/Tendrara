@@ -96,6 +96,21 @@
   .slide.m101scope table.timeline td{padding-top:2.5px;padding-bottom:2.5px;font-size:12px;}
   .slide.m101scope .lead{font-size:13.5px;}
   .slide.m101scope table.timeline td.seg{line-height:1.3;}
+  /* botonera de planos — slide 09. Regla global (no acotada): cualquier lámina que
+     tenga un plano detrás puede usarla, que es justo lo que evita reinventarla. */
+  .docbtns{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:-4px 0 10px;}
+  .docbtns .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-soft);font-weight:700;margin-right:2px;}
+  .docbtn{display:inline-flex;flex-direction:column;gap:1px;text-decoration:none;
+    border:1px solid var(--line-strong);border-left:3px solid var(--crimson);border-radius:7px;
+    background:#fff;padding:5px 12px 6px;transition:.15s;}
+  .docbtn b{font-size:12px;color:var(--crimson);line-height:1.2;}
+  .docbtn b:after{content:" ↗";font-weight:400;}
+  .docbtn span{font-family:var(--mono);font-size:9px;color:var(--ink-soft);line-height:1.2;}
+  .docbtn:hover{background:#FBE9EC;border-color:var(--crimson);}
+  .docbtn.gone{border-left-color:var(--line-strong);pointer-events:none;opacity:.55;}
+  .docbtn.gone b{color:var(--ink-soft);}
+  .docbtn.gone b:after{content:" · file missing";font-family:var(--mono);font-size:8.5px;font-weight:400;}
   /* slide 08 · reproductor de vídeo. La slide es `position:absolute; inset:0`, así que
      con flex-column el .vidbox se come todo el alto que sobre de la cabecera; el <video>
      lleva object-fit:contain para no deformar el material de origen. Todo acotado a
@@ -421,7 +436,7 @@
 
     <!-- 2 SCOPE / OBJECTIVES / AGENDA · Ivan · 5 -->
     <section class="slide m101scope" data-min="5" data-block="Module open" data-presenter="Ivan"
-      data-notes='["Scope: BOTH halves of module 101 — Unit 200 inlet AND Unit 530 process water treatment. The modules table calls this session \"UNIT 200 LNG Plant Inlet & 530 Process Water Treatment\".","Objectives are the exam blueprint — read them out.","Block 1 = what U200 is and how the gas flows through it; Block 2 = how you control, monitor and protect it, then U530.","U530 is where the water U200 separates actually goes — V-201 drains into it. Its own slides come after the U200 material.","4-hour skeleton — breaks at 1:48 and 3:00. Block 1 carries the two separator videos (12 min); Block 3 keeps 0:13 reserved, in amber, until the U530 slides exist and their own data-min replace it."]'>
+      data-notes='["Scope: BOTH halves of module 101 — Unit 200 inlet AND Unit 530 process water treatment. The modules table calls this session \"UNIT 200 LNG Plant Inlet & 530 Process Water Treatment\".","Objectives are the exam blueprint — read them out.","Block 1 = what U200 is and how the gas flows through it; Block 2 = how you control, monitor and protect it, then U530.","U530 is where the water U200 separates actually goes — V-201 drains into it. Its own slides come after the U200 material.","4-hour skeleton — breaks at 1:48 and 3:00. Block 1 carries the two separator videos (12 min); Block 3 keeps 0:19 reserved, in amber, until the U530 slides exist and their own data-min replace it."]'>
       <div class="kicker">Scope · Objectives · Agenda</div>
       <h2>What Module 101 covers</h2>
       <div class="grid2">
@@ -443,15 +458,16 @@
                duración · acumulado, con fila de total al pie y la columna de acumulado
                completa hasta 4:00. Los minutos de Module open, Block 1 y Block 2 NO
                están escritos a mano: son la suma de los `data-min` de las propias
-               slides (13 + 80 + 59), que es el único sitio donde ese dato existe de
+               slides (13 + 80 + 53), que es el único sitio donde ese dato existe de
                verdad. Block 1 incluye los 12 min de la slide de vídeo (separadores
-               2F/3F), que salieron de la reserva del Bloque 3: 0:25 → 0:13. -->
+               2F/3F), que salieron de la reserva del Bloque 3. Al quitar «The two
+               loops to know cold» (6 min) esos minutos vuelven al Bloque 3: 0:19. -->
           <table class="timeline">
             <tr><td class="seg"><b>Module open</b><span class="tp">program · team · roadmap · scope</span></td><td class="dur">0:13</td><td class="cum">0:13</td></tr>
             <tr><td class="seg"><b>Block 1 — U200: what it is, how the gas flows</b></td><td class="dur">1:20</td><td class="cum">1:33</td></tr>
             <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">1:48</td></tr>
-            <tr><td class="seg"><b>Block 2 — U200: control, monitoring, protection</b></td><td class="dur">0:59</td><td class="cum">2:47</td></tr>
-            <tr><td class="seg"><b>Block 3 — U530: process water treatment</b></td><td class="dur" style="color:var(--amber);font-weight:700;">0:13</td><td class="cum" style="color:var(--amber);">3:00</td></tr>
+            <tr><td class="seg"><b>Block 2 — U200: control, monitoring, protection</b></td><td class="dur">0:53</td><td class="cum">2:41</td></tr>
+            <tr><td class="seg"><b>Block 3 — U530: process water treatment</b></td><td class="dur" style="color:var(--amber);font-weight:700;">0:19</td><td class="cum" style="color:var(--amber);">3:00</td></tr>
             <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">3:15</td></tr>
             <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum">3:30</td></tr>
             <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:00</td></tr>
@@ -628,6 +644,18 @@
       data-notes='["This is Table 3.1 of the Operating Manual — the one-page identity card of the unit. Exam material.","Inputs: raw gas up to 55 barg through SDV-2024, plus corrosion inhibitor injection upstream of the first separator.","Outputs: conditioned gas to U330 regulated by FV-2001; water to U530; condensates to the hot oil buffer as fuel.","Key specs: hydrate prevention by TIC-2002 on E-201; pressure by PV-2001; flow by FIC-2001; PSVs plus PAHH/TAHH/LALL/LAHH trips with blowdown via BDV-2004.","Walk the table slowly — every row returns later in the module."]'>
       <div class="kicker">Unit 200 · Operating summary <span class="sub">— process view · every process valve on the line it sits on</span></div>
       <h2>Operating summary — what enters, what leaves, and every valve in between</h2>
+      <!-- Los tres planos que hay detrás de esta lámina. Mismo registro documental que
+           la tarjeta de la slide 06 y la tabla de la 16: revisión ACTIVE, ruta /docs.
+           Abren en pestaña nueva; el deck no necesita sesión. -->
+      <div class="docbtns">
+        <span class="lbl">Los planos de esta lámina:</span>
+        <a class="docbtn" href="/docs/20250310_TAM-158_PFD.pdf" target="_blank" rel="noopener">
+          <b>PFD</b><span>TAM-158 · rev 1 · U200 en hojas 1–2</span></a>
+        <a class="docbtn" href="/docs/PRO13-ING-PR50.pdf" target="_blank" rel="noopener">
+          <b>P&amp;ID V-202</b><span>PRO13-ING-PR50 · rev 4</span></a>
+        <a class="docbtn" href="/docs/PRO13-ING-PR01.pdf" target="_blank" rel="noopener">
+          <b>P&amp;ID V-201</b><span>PRO13-ING-PR01 · rev 6 · 21044-PR-PID-20001</span></a>
+      </div>
 
       <div class="mapwrap">
         <div class="lbl"><span>Unit 200 — process view · 19 process valves · 7 control loops</span><span class="you">generated from the plant database</span></div>
@@ -640,7 +668,6 @@
       </div>
       <div class="routing"><b>Process view</b> — every process valve in <b>plant_valves</b> drawn on the line it sits on, in flow order <b>V-202 → E-201 → F-201A/B → V-201</b>. Everything that leaves the sheet leaves through a <b>process tag</b> (off-page connector) carrying its destination and line number. Each control valve carries its <b>controller</b>; the sensor and set point are annotated — PFD convention, the hardware belongs to the P&amp;ID.</div>
     </section>
-
 
     <!-- 7 PROCESS I — RECEPTION & V-202 · Ivan · 8 -->
     <section class="slide" data-min="7" data-block="Block 1" data-presenter="Ivan"
@@ -1261,40 +1288,6 @@
       <div class="note"><b>FIC-2001 is the plant throughput knob</b> · <b>TIC-2002 is the hydrate defense</b> — the two loops to know cold.</div>
     </section>
 
-    <!-- 16b ANATOMY OF A LOOP · Ivan · 7 · GENERATED from plant_control_loops -->
-    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Ivan"
-      data-notes='["The table on the previous slide gives seven facts. This slide gives one idea — and it is the idea a trainee has to carry out of Block 2.","Read the shape, always the same in both: the measurement RISES on the left, the correction FALLS on the right. Element in the pipe, transmitter in the field, controller in the PCS, valve back in the same pipe it just measured. That closed shape IS the loop.","Point at the two outlines: FT-2001 is a plain CIRCLE — field mounted, you walk to it. FIC-2001 is a SQUARE around a circle — shared control, it lives in the PCS. There is no physical controller to point at, and that is what the square says.","FIC-2001: FE-2001 orifice plate on the 6-inch gas outlet, FT-2001 4-20 mA, controller at 16.0 MMSCFD, FV-2001 diaphragm valve. This is the plant throughput knob.","TIC-2002: thermowell on the E-201 gas outlet, TT-2002, controller at 43 degrees C, and the valve is on the HOT OIL line, not on the gas. Ask the group why — the answer is that you control the gas temperature by throttling the heating medium, and it is the hydrate defence.","Both drawings are generated from plant_control_loops, plant_instruments and plant_valves. Nothing here is drawn by hand, so nothing here can drift from the database."]'>
-      <div class="kicker">Operating interface <span class="sub">— anatomy of a loop · generated from the plant database</span></div>
-      <h2>The two loops to know cold</h2>
-
-      <div class="mapwrap">
-        <div class="lbl"><span>Unit 200 — FIC-2001 throughput · TIC-2002 hydrate defence</span>
-          <span class="you" style="font-weight:400;"><b>○ field</b> · <b>▣ shared control (PCS)</b> · solid = process · dashed = 4-20 mA</span></div>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 976 266" style="width:100%;height:auto;display:block;" font-family="Consolas,monospace"><rect width="976" height="266" fill="#FAFBFC"/><g transform="translate(10,10)"><rect x="0.5" y="0.5" width="469" height="245" rx="6" fill="#fff" stroke="#E3E7EB"/><text x="26" y="20" text-anchor="start" font-family="Consolas,monospace" font-size="12.5" font-weight="700" fill="#15171A">FIC-2001</text><text x="26" y="34" text-anchor="start" font-family="Consolas,monospace" font-size="7.6" font-weight="600" fill="#4A4F57">FEED GAS FLOW CONTROLLER</text><rect x="404" y="9" width="40" height="15" rx="7.5" fill="#EEF3F8" stroke="#C9D6E4"/><text x="424" y="20" text-anchor="middle" font-family="Consolas,monospace" font-size="7.6" font-weight="700" fill="#0B5CAD">PCS</text><line x1="26" y1="196" x2="113" y2="196" stroke="#C08A2E" stroke-width="3.2" stroke-linecap="butt"/><line x1="131" y1="196" x2="339" y2="196" stroke="#C08A2E" stroke-width="3.2" stroke-linecap="butt"/><line x1="357" y1="196" x2="436" y2="196" stroke="#C08A2E" stroke-width="3.2" stroke-linecap="butt"/><path d="M-6,-4 L4,0 L-6,4 Z" fill="#C08A2E" transform="translate(438,196)"/><text x="28" y="212" text-anchor="start" font-family="Consolas,monospace" font-size="6.8" font-weight="600" fill="#4A4F57">6&quot;-NG-200015-6S1</text><g transform="translate(122,196)"><title>FE-2001 · Orifice plate</title><line x1="0" y1="-9.5" x2="0" y2="9.5" stroke="#15171A" stroke-width="2.08" stroke-linecap="round"/><line x1="-4" y1="-9.5" x2="-4" y2="-15.5" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><line x1="4" y1="-9.5" x2="4" y2="-15.5" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><line x1="-4" y1="-15.5" x2="4" y2="-15.5" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/></g><text x="122" y="222" text-anchor="middle" font-family="Consolas,monospace" font-size="6.8" font-weight="700" fill="#4A4F57">FE-2001</text><g transform="translate(348,196)"><title>Control valve FV-2001</title><path d="M -9,-6.5 L -9,6.5 L 0,0 Z" fill="#fff" stroke="#333" stroke-width="1.35" stroke-linecap="round"/><path d="M 9,-6.5 L 9,6.5 L 0,0 Z" fill="#fff" stroke="#333" stroke-width="1.35" stroke-linecap="round"/><line x1="0" y1="0" x2="0" y2="-13" stroke="#333" stroke-width="1.35" stroke-linecap="round"/><path d="M -7,-13 A 7,5.5 0 0 1 7,-13 Z" fill="#fff" stroke="#333" stroke-width="1.35" stroke-linecap="round"/></g><text x="348" y="222" text-anchor="middle" font-family="Consolas,monospace" font-size="7.6" font-weight="700" fill="#15171A">FV-2001</text><g transform="translate(122,132)"><title>FT-2001 · FEED GAS FLOW · PCS</title><circle cx="0" cy="0" r="11" fill="#fff" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><text x="0" y="-2" text-anchor="middle" font-family="Consolas,monospace" font-size="7.4" font-weight="700" fill="#15171A">FT</text><text x="0" y="6.8" text-anchor="middle" font-family="Consolas,monospace" font-size="7.4" font-weight="400" fill="#15171A">2001</text></g><text x="139" y="136" text-anchor="start" font-family="Consolas,monospace" font-size="6.6" font-weight="600" fill="#4A4F57">0..25 MMSCFD</text><g transform="translate(236,76)"><title>FIC-2001 · PCS</title><rect x="-11" y="-11" width="22" height="22" fill="#fff" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><circle cx="0" cy="0" r="10.6" fill="none" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><line x1="-11" y1="0" x2="11" y2="0" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><text x="0" y="-2" text-anchor="middle" font-family="Consolas,monospace" font-size="7.4" font-weight="700" fill="#15171A">FIC</text><text x="0" y="6.8" text-anchor="middle" font-family="Consolas,monospace" font-size="7.4" font-weight="400" fill="#15171A">2001</text></g><text x="236" y="102" text-anchor="middle" font-family="Consolas,monospace" font-size="6.8" font-weight="600" fill="#4A4F57">range 0..25 MMSCFD</text><text x="236" y="112" text-anchor="middle" font-family="Consolas,monospace" font-size="7.2" font-weight="700" fill="#15171A">SP 16.0 MMSCFD</text><path d="M 122,180 L 122,143" fill="none" stroke="#4A4F57" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/><path d="M 122,121 L 122,76 L 224,76" fill="none" stroke="#4A4F57" stroke-width="1.15" stroke-dasharray="5 3" stroke-linecap="round" stroke-linejoin="round"/><path d="M-4.5,-3 L1,0 L-4.5,3 Z" fill="#4A4F57" transform="translate(224,76) rotate(0)"/><path d="M 248,76 L 348,76 L 348,176" fill="none" stroke="#4A4F57" stroke-width="1.15" stroke-dasharray="5 3" stroke-linecap="round" stroke-linejoin="round"/><path d="M-4.5,-3 L1,0 L-4.5,3 Z" fill="#4A4F57" transform="translate(348,176) rotate(90)"/><text x="26" y="232" text-anchor="start" font-family="Consolas,monospace" font-size="6.6" font-weight="400" fill="#4A4F57">Maintains gas flow; uses feedback from PT-2003 and TT-2001</text></g><g transform="translate(496,10)"><rect x="0.5" y="0.5" width="469" height="245" rx="6" fill="#fff" stroke="#E3E7EB"/><text x="26" y="20" text-anchor="start" font-family="Consolas,monospace" font-size="12.5" font-weight="700" fill="#15171A">TIC-2002</text><text x="26" y="34" text-anchor="start" font-family="Consolas,monospace" font-size="7.6" font-weight="600" fill="#4A4F57">E-201 OUTLET TEMPERATURE CONTROLLER</text><rect x="404" y="9" width="40" height="15" rx="7.5" fill="#EEF3F8" stroke="#C9D6E4"/><text x="424" y="20" text-anchor="middle" font-family="Consolas,monospace" font-size="7.6" font-weight="700" fill="#0B5CAD">PCS</text><line x1="26" y1="196" x2="113" y2="196" stroke="#C08A2E" stroke-width="3.2" stroke-linecap="butt"/><line x1="131" y1="196" x2="339" y2="196" stroke="#C08A2E" stroke-width="3.2" stroke-linecap="butt"/><line x1="357" y1="196" x2="436" y2="196" stroke="#C08A2E" stroke-width="3.2" stroke-linecap="butt"/><path d="M-6,-4 L4,0 L-6,4 Z" fill="#C08A2E" transform="translate(438,196)"/><text x="28" y="212" text-anchor="start" font-family="Consolas,monospace" font-size="6.8" font-weight="600" fill="#4A4F57">6&quot;-NG-200005-9S1</text><g transform="translate(122,196)"><title>TE-2002 · Thermowell</title><rect x="-2.6" y="-13.5" width="5.2" height="7" fill="#fff" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><line x1="0" y1="-6.5" x2="0" y2="5.5" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/></g><g transform="translate(348,196)"><title>Control valve TV-2002</title><path d="M -9,-6.5 L -9,6.5 L 0,0 Z" fill="#fff" stroke="#333" stroke-width="1.35" stroke-linecap="round"/><path d="M 9,-6.5 L 9,6.5 L 0,0 Z" fill="#fff" stroke="#333" stroke-width="1.35" stroke-linecap="round"/><line x1="0" y1="0" x2="0" y2="-13" stroke="#333" stroke-width="1.35" stroke-linecap="round"/><path d="M -7,-13 A 7,5.5 0 0 1 7,-13 Z" fill="#fff" stroke="#333" stroke-width="1.35" stroke-linecap="round"/></g><text x="348" y="222" text-anchor="middle" font-family="Consolas,monospace" font-size="7.6" font-weight="700" fill="#15171A">TV-2002</text><g transform="translate(122,132)"><title>TT-2002 · E-201 OUTLET TEMPERATURE · PCS</title><circle cx="0" cy="0" r="11" fill="#fff" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><text x="0" y="-2" text-anchor="middle" font-family="Consolas,monospace" font-size="7.4" font-weight="700" fill="#15171A">TT</text><text x="0" y="6.8" text-anchor="middle" font-family="Consolas,monospace" font-size="7.4" font-weight="400" fill="#15171A">2002</text></g><text x="139" y="136" text-anchor="start" font-family="Consolas,monospace" font-size="6.6" font-weight="600" fill="#4A4F57">-15..150 °C</text><g transform="translate(236,76)"><title>TIC-2002 · PCS</title><rect x="-11" y="-11" width="22" height="22" fill="#fff" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><circle cx="0" cy="0" r="10.6" fill="none" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><line x1="-11" y1="0" x2="11" y2="0" stroke="#15171A" stroke-width="1.3" stroke-linecap="round"/><text x="0" y="-2" text-anchor="middle" font-family="Consolas,monospace" font-size="7.4" font-weight="700" fill="#15171A">TIC</text><text x="0" y="6.8" text-anchor="middle" font-family="Consolas,monospace" font-size="7.4" font-weight="400" fill="#15171A">2002</text></g><text x="236" y="102" text-anchor="middle" font-family="Consolas,monospace" font-size="6.8" font-weight="600" fill="#4A4F57">range -15..150 °C</text><text x="236" y="112" text-anchor="middle" font-family="Consolas,monospace" font-size="7.2" font-weight="700" fill="#15171A">SP 43 °C</text><path d="M 122,182 L 122,143" fill="none" stroke="#4A4F57" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/><path d="M 122,121 L 122,76 L 224,76" fill="none" stroke="#4A4F57" stroke-width="1.15" stroke-dasharray="5 3" stroke-linecap="round" stroke-linejoin="round"/><path d="M-4.5,-3 L1,0 L-4.5,3 Z" fill="#4A4F57" transform="translate(224,76) rotate(0)"/><path d="M 248,76 L 348,76 L 348,176" fill="none" stroke="#4A4F57" stroke-width="1.15" stroke-dasharray="5 3" stroke-linecap="round" stroke-linejoin="round"/><path d="M-4.5,-3 L1,0 L-4.5,3 Z" fill="#4A4F57" transform="translate(348,176) rotate(90)"/><text x="26" y="232" text-anchor="start" font-family="Consolas,monospace" font-size="6.6" font-weight="400" fill="#4A4F57">Regulates hot oil flowrate to S&amp;T exchanger to hold E-201 outlet gas temp…</text></g></svg>
-      </div>
-
-      <div class="vgrid" style="margin-top:8px;grid-template-columns:repeat(3,1fr);">
-        <div class="hcard ctl"><div class="hh"><span>Read it in 4 steps</span><span>every loop</span></div><div class="hb">
-          <div class="hval"><span class="k">1 · element</span><span class="v">in the pipe</span></div>
-          <div class="hval"><span class="k">2 · transmitter</span><span class="v">in the field</span></div>
-          <div class="hval"><span class="k">3 · controller</span><span class="v">in the PCS</span></div>
-          <div class="hval"><span class="k">4 · valve</span><span class="v">back in the pipe</span></div>
-        </div></div>
-        <div class="hcard rel"><div class="hh"><span>Why the shape</span><span>ISA 5.1</span></div><div class="hb">
-          <div class="hval"><span class="k">○ circle</span><span class="v">field</span></div>
-          <div class="hval"><span class="k">▣ square</span><span class="v">PCS</span></div>
-          <div class="hval"><span class="k">◇ diamond</span><span class="v">ESD</span></div>
-          <div class="hval"><span class="k">actuator</span><span class="v">dome / solenoid</span></div>
-        </div></div>
-        <div class="hcard iso"><div class="hh"><span>Where it comes from</span><span>live data</span></div><div class="hb">
-          <div class="hval"><span class="k">bubbles · SP</span><span class="v">plant_control_loops</span></div>
-          <div class="hval"><span class="k">ranges · outlines</span><span class="v">plant_instruments</span></div>
-          <div class="hval"><span class="k">valve · actuator</span><span class="v">plant_valves</span></div>
-          <div class="hval"><span class="k">drawn by hand</span><span class="v">nothing</span></div>
-        </div></div>
-      </div>
-      <div class="note"><b>TIC-2002 acts on the hot oil, not on the gas</b> — you hold the gas at 43 °C by throttling the heating medium. That is the hydrate defence, and it is why the valve in the right-hand drawing sits on a different line from the measurement.</div>
-    </section>
 
     <!-- 17 HMI SCREENS · Ivan · 9 -->
     <section class="slide" data-min="8" data-block="Block 2" data-presenter="Ivan"
@@ -2045,6 +2038,20 @@
       new MutationObserver(function(){ if(!sec.classList.contains('active')) vid.pause(); })
         .observe(sec,{attributes:true,attributeFilter:['class']});
     }
+  })();
+</script>
+<script>
+  // Botones de plano — misma disciplina que las dos tablas de documentos: si el PDF
+  // no está en el sitio, el botón se apaga y lo dice, no se queda con un link muerto.
+  // Sólo se sondea servido por HTTP; en file:// CORS lo bloquea y sería un falso rojo.
+  (function(){
+    if(!/^https?:$/.test(location.protocol)) return;
+    [].slice.call(document.querySelectorAll('a.docbtn')).forEach(function(a){
+      var u=a.getAttribute('href'); if(!u) return;
+      function fail(){ a.classList.add('gone'); a.removeAttribute('target'); }
+      try{ fetch(encodeURI(u),{method:'HEAD'}).then(function(r){ if(!r.ok) fail(); }).catch(fail); }
+      catch(e){ fail(); }
+    });
   })();
 </script>
 <div class="lightbox" id="lightbox"><button class="lbclose" aria-label="close">✕</button><img id="lbimg" src="" alt=""><div class="lbcap" id="lbcap"></div></div>
