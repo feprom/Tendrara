@@ -96,6 +96,11 @@
   .slide.m101scope table.timeline td{padding-top:2.5px;padding-bottom:2.5px;font-size:12px;}
   .slide.m101scope .lead{font-size:13.5px;}
   .slide.m101scope table.timeline td.seg{line-height:1.3;}
+  /* slide 16 · el registro documental pasó de 9 a 13 filas (migración 195): se aprieta
+     sólo esta slide, sin tocar la regla global de .data que usan las otras 27. */
+  .slide.m101docs table.data td, .slide.m101docs table.data th{padding-top:3.5px;padding-bottom:3.5px;line-height:1.25;}
+  .slide.m101docs table.data{font-size:11px !important;}
+  .slide.m101docs .note{margin-top:7px;}
   .slide.m101scope table.timeline .tp{display:block;font-size:10px;color:var(--ink-soft);font-weight:400;margin-top:1px;line-height:1.32;}
   .slide.m101scope .note{margin-top:8px;padding-top:6px;}
   .note{margin-top:14px;font-size:11.5px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);padding-top:9px;line-height:1.5;}
@@ -233,7 +238,7 @@
   .eqthumbs button:hover{border-color:var(--crimson);color:var(--crimson);}
   .eqthumbs button.on{background:var(--crimson);border-color:var(--crimson);color:#fff;}
   /* technological-objects tiles + details modal */
-  .objgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-top:11px;}
+  .objgrid{display:grid;grid-template-columns:repeat(9,1fr);gap:7px;margin-top:11px;}
   .objtile{border:1px solid var(--line-strong);border-top:3px solid var(--acc,#C8102E);border-radius:10px;background:#fff;
     padding:10px 6px;text-align:center;cursor:pointer;transition:.14s;font-family:inherit;display:flex;flex-direction:column;align-items:center;}
   .objtile:hover{border-color:var(--acc,#C8102E);box-shadow:0 5px 16px rgba(0,0,0,.10);transform:translateY(-2px);}
@@ -343,16 +348,16 @@
 
     <!-- 1c INSTRUCTORS · Ivan · 2 -->
     <section class="slide" data-min="2" data-block="Module open" data-presenter="Ivan"
-      data-notes='["Each instructor introduces himself — about one minute each.","1 · IVAN CAMPLONE — Project Manager, Ital Fluid; plant, process & operations lead for this module: engineering background, career path and years in the industry [complete], and your role in the Tendrara project (engineering, documents, commissioning) — why you know this plant.","2 · MAURO MARINELLI — Projects Director: project delivery and engineering oversight of the Tendrara facility [complete with your background and years].,"3 · ALESSANDRO ZAPPONE — Senior Process Engineer: process design background and years in the industry [complete], and which parts of this module you take.","Common closing (Ivan): Technical America is the technology vendor and training provider; questions welcome at any slide — the exam only covers what we present."]'>
+      data-notes='["Each instructor introduces himself — about one minute each.","1 · MAURO MARINELLI — Projects Director, Ital Fluid: project delivery and engineering oversight of the Tendrara facility [complete with your background and years].","2 · IVAN CAMPLONE — Project Manager, Ital Fluid; plant, process & operations lead for this module: engineering background, career path and years in the industry [complete], and your role in the Tendrara project (engineering, documents, commissioning) — why you know this plant.","3 · ALESSANDRO ZAPPONE — Senior Process Engineer, Ital Fluid: process design background and years in the industry [complete], and which parts of this module you take.","Common closing (Ivan): Technical America is the technology vendor and training provider; questions welcome at any slide — the exam only covers what we present."]'>
       <div class="kicker">Your instructors</div>
       <h2>Meet the team</h2>
       <div class="team">
-        <div class="person"><div class="av">IC</div><div class="nm">Ing. Ivan Camplone</div><div class="rl">Project Manager — Ital Fluid</div><div class="org">The Tendrara facility · process, operation &amp; plant systems · Unit 200 walkthrough</div></div>
-        <div class="person"><div class="av zr">MM</div><div class="nm">Mauro Marinelli</div><div class="rl zr">Projects Director</div><div class="org">Project delivery &amp; engineering oversight of the Tendrara Micro LNG facility</div></div>
-        <div class="person"><div class="av gn">AZ</div><div class="nm">Alessandro Zappone</div><div class="rl gn">Senior Process Engineer</div><div class="org" style="color:var(--amber);">[complete — company &amp; scope for this module]</div></div>
+        <div class="person"><div class="av zr">MM</div><div class="nm">Mauro Marinelli</div><div class="rl zr">Projects Director — Ital Fluid</div></div>
+        <div class="person"><div class="av">IC</div><div class="nm">Ivan Camplone</div><div class="rl">Project Manager — Ital Fluid</div></div>
+        <div class="person"><div class="av gn">AZ</div><div class="nm">Alessandro Zappone</div><div class="rl gn">Senior Process Engineer — Ital Fluid</div></div>
       </div>
       <div class="note">Technical America — technology vendor &amp; training provider.
-        <b style="color:var(--crimson);">Ivan Camplone</b> (Ital Fluid) — plant, process &amp; operations · <b style="color:var(--blue);">Mauro</b> — projects direction · <b style="color:var(--ok);">Alessandro Zappone</b> — process engineering.</div>
+        <b style="color:var(--blue);">Mauro Marinelli</b> — projects direction · <b style="color:var(--crimson);">Ivan Camplone</b> — plant, process &amp; operations · <b style="color:var(--ok);">Alessandro Zappone</b> — process engineering.</div>
     </section>
 
     <!-- 1d ROADMAP · Ivan · 2 -->
@@ -391,7 +396,7 @@
 
     <!-- 2 SCOPE / OBJECTIVES / AGENDA · Ivan · 5 -->
     <section class="slide m101scope" data-min="5" data-block="Module open" data-presenter="Ivan"
-      data-notes='["Scope: BOTH halves of module 101 — Unit 200 inlet AND Unit 530 process water treatment. The modules table calls this session \"UNIT 200 LNG Plant Inlet & 530 Process Water Treatment\".","Objectives are the exam blueprint — read them out.","Block 1 = what U200 is and how the gas flows through it; Block 2 = how you control, monitor and protect it, then U530.","U530 is where the water U200 separates actually goes — V-201 drains into it. Its own slides come after the U200 material.","Same 4-hour skeleton — breaks at 1:45 and 3:00."]'>
+      data-notes='["Scope: BOTH halves of module 101 — Unit 200 inlet AND Unit 530 process water treatment. The modules table calls this session \"UNIT 200 LNG Plant Inlet & 530 Process Water Treatment\".","Objectives are the exam blueprint — read them out.","Block 1 = what U200 is and how the gas flows through it; Block 2 = how you control, monitor and protect it, then U530.","U530 is where the water U200 separates actually goes — V-201 drains into it. Its own slides come after the U200 material.","4-hour skeleton — breaks at 1:36 and 3:00. U200 was trimmed 16 min to reserve 0:25 for Block 3; that 0:25 is a reservation and prints in amber until the U530 slides exist."]'>
       <div class="kicker">Scope · Objectives · Agenda</div>
       <h2>What Module 101 covers</h2>
       <div class="grid2">
@@ -409,30 +414,32 @@
           </ul>
         </div>
         <div>
-          <!-- AGENDA POR TEMAS. Los minutos NO están escritos a mano: son la suma
-               de los `data-min` de las propias slides de cada bloque, que es el único
-               sitio donde ese dato existe de verdad. Por eso Block 1 son 76 min y no
-               los 1:45 que decía la tabla anterior — la tabla llevaba tiempo sin
-               mirar al deck que describe. -->
+          <!-- AGENDA. Misma estructura de tabla que los módulos 001 y 002: segmento ·
+               duración · acumulado, con fila de total al pie y la columna de acumulado
+               completa hasta 4:00. Los minutos de Module open, Block 1 y Block 2 NO
+               están escritos a mano: son la suma de los `data-min` de las propias
+               slides (13 + 68 + 59), que es el único sitio donde ese dato existe de
+               verdad. El material de U200 se recortó de 143 a 127 min para reservar
+               0:25 al Bloque 3 sin pasar de las 4:00. -->
           <table class="timeline">
             <tr><td class="seg"><b>Module open</b><span class="tp">program · team · roadmap · scope</span></td><td class="dur">0:13</td><td class="cum">0:13</td></tr>
-            <tr><td class="seg"><b>Block 1 — U200: what it is, how the gas flows</b><span class="tp">siting, size &amp; utilities · plant map &amp; HMB · operating summary · V-202 · E-201 · PV-2001 &amp; F-201A/B · V-201 · gas out &amp; metering · datasheets · valves · documents</span></td><td class="dur">1:16</td><td class="cum">1:29</td></tr>
-            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">1:44</td></tr>
-            <tr><td class="seg"><b>Block 2 — U200: control, monitoring, protection</b><span class="tp">instrumentation · control loops &amp; set points · the two loops to know cold · PCS screens · alarms &amp; trips · cause &amp; effect · daily checks · key messages</span></td><td class="dur">1:07</td><td class="cum">2:51</td></tr>
-            <tr><td class="seg"><b>Block 3 — U530: process water treatment</b><span class="tp">where V-201's water goes · degasser V-531 · coalescer V-532A/B · two filter stages · what leaves to the pond, what goes back to U410</span></td><td class="dur" style="color:var(--amber);font-weight:700;">—</td><td class="cum" style="color:var(--amber);">—</td></tr>
-            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum"></td></tr>
-            <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum"></td></tr>
-            <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum"></td></tr>
-            <tr class="tot"><td class="seg">Slides built today</td><td class="dur">3:51</td><td class="cum">of 4:00</td></tr>
+            <tr><td class="seg"><b>Block 1 — U200: what it is, how the gas flows</b><span class="tp">siting &amp; size 4 · plant map &amp; HMB 5 · operating summary 6 · V-202 7 · E-201 7 · PV-2001 &amp; F-201A/B 7 · V-201 8 · gas out &amp; metering 6 · datasheets 6 · valves 8 · documents 4</span></td><td class="dur">1:08</td><td class="cum">1:21</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">1:36</td></tr>
+            <tr><td class="seg"><b>Block 2 — U200: control, monitoring, protection</b><span class="tp">instrumentation 8 · loops &amp; set points 9 · the two loops to know cold 6 · PCS screens 8 · alarms &amp; trips 9 · cause &amp; effect 7 · daily checks 5 · key messages 7</span></td><td class="dur">0:59</td><td class="cum">2:35</td></tr>
+            <tr><td class="seg"><b>Block 3 — U530: process water treatment</b><span class="tp">where V-201's water goes · degasser V-531 · coalescer V-532A/B · two filter stages · what leaves to the pond, what goes back to U410</span></td><td class="dur" style="color:var(--amber);font-weight:700;">0:25</td><td class="cum" style="color:var(--amber);">3:00</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">3:15</td></tr>
+            <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum">3:30</td></tr>
+            <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:00</td></tr>
+            <tr class="tot"><td class="seg">Module total</td><td class="dur">4:00</td><td class="cum"></td></tr>
           </table>
-          <div class="note" style="margin-top:9px;">Scope note: this session is <b>U200 <i>and</i> U530</b> — the modules table titles it “UNIT 200 LNG Plant Inlet &amp; 530 Process Water Treatment”. <b>Block 3 is not built yet</b>: its slides and its timing come after the U200 material, which is why the row prints “—” instead of a made-up number.</div>
+          <div class="note" style="margin-top:9px;">Scope note: this session is <b>U200 <i>and</i> U530</b> — the modules table titles it “UNIT 200 LNG Plant Inlet &amp; 530 Process Water Treatment”. The U200 material was trimmed from 2:23 to <b>2:07</b> to reserve <b>0:25</b> for Block 3; that 0:25 is <b>a reservation, not a measurement</b> — it prints in amber until the U530 slides exist and their own <code>data-min</code> replace it. Breaks fall at <b>1:36</b> and <b>3:00</b>.</div>
         </div>
       </div>
     </section>
 
     <!-- 5 PHYSICAL AREA · Ivan · 5 -->
-    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Ivan"
-      data-notes='["We open Block 1 with the area physically — the images rotate through the 3D model and the plot plan; point out where V-202 and S-201 sit.","Location: V-202 at the inlet gate, S-201 on the pipe rack beside U330; gas-detection zone 1; site at 1,434 m.","Technological objects (datasheet): V-202 100 barg / 5.6 m3; E-201 650 kW / 66 m2; F-201A/B 5 micron; V-201 20 m3.","Size of the system: 5 equipment, 37 instruments, 7 loops, 22 valves, 10 trips, 2 skids, 14 hardwired PLC I/O.","Energy: a thermally-driven passive unit — E-201 84 to 388 kW on hot oil; only ~4.2 kW electrical (weigh bridges + actuators)."]'>
+    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Ivan"
+      data-notes='["We open Block 1 with the area physically — the images rotate through the 3D model and the plot plan; point out where V-202 and S-201 sit.","Location: V-202 at the inlet gate, S-201 on the pipe rack beside U330; gas-detection zone 1; site at 1,434 m.","Technological objects (datasheet): V-202 100 barg / 5.6 m3; E-201 650 kW / 66 m2; F-201A/B 5 micron; V-201 20 m3.","Size of the system: 4 equipment, 37 instruments, 7 loops, 22 valves, 10 trips, 2 skids, 14 hardwired PLC I/O. V-221 is NOT in this unit — it is the LNG separator of U220 and used to sit here by a database error, now corrected.","Documents tile: the process diagrams and the P&IDs that govern this unit, plus the equipment datasheets — click a row to open the PDF; amber PENDING means the document exists but is not published yet.","Energy: a thermally-driven passive unit — E-201 84 to 388 kW on hot oil; only ~4.2 kW electrical (weigh bridges + actuators)."]'>
       <div class="kicker">Unit 200 · The area physically <span class="sub">— location · size · technological objects · energy</span></div>
       <h2>Where it sits, how big it is, what it consumes</h2>
 
@@ -454,7 +461,7 @@
       </div>
 
       <div class="objgrid">
-        <button class="objtile" style="--acc:#C8102E" data-g="equipment"><div class="ic">⚙</div><div class="n">5</div><div class="l">Main Equipment</div></button>
+        <button class="objtile" style="--acc:#C8102E" data-g="equipment"><div class="ic">⚙</div><div class="n">4</div><div class="l">Main Equipment</div></button>
         <button class="objtile" style="--acc:#0B5CAD" data-g="instruments"><div class="ic">◉</div><div class="n">37</div><div class="l">Instruments</div></button>
         <button class="objtile" style="--acc:#1F8A4C" data-g="valves"><div class="ic">⧓</div><div class="n">22</div><div class="l">Valves</div></button>
         <button class="objtile" style="--acc:#B26A00" data-g="motors"><div class="ic">⟳</div><div class="n">0</div><div class="l">Motors</div></button>
@@ -462,6 +469,7 @@
         <button class="objtile" style="--acc:#E0651A" data-g="alarms"><div class="ic">⚠</div><div class="n">10</div><div class="l">Critical Alarms</div></button>
         <button class="objtile" style="--acc:#0E7C86" data-g="mccs"><div class="ic">▥</div><div class="n">0</div><div class="l">Remote MCCs</div></button>
         <button class="objtile" style="--acc:#15171A" data-g="ce"><div class="ic">▦</div><div class="n">10</div><div class="l">Cause &amp; Effect</div></button>
+        <button class="objtile" style="--acc:#4A4F57" data-g="docs"><div class="ic">▤</div><div class="n">10</div><div class="l">Documents</div></button>
       </div>
 
       <div class="objmodal" id="objmodal">
@@ -474,7 +482,7 @@
     </section>
 
     <!-- 5b AREA MAP + HMB (general) · Ivan · 6 -->
-    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Ivan"
+    <section class="slide" data-min="5" data-block="Block 1" data-presenter="Ivan"
       data-notes='["The whole plant on one line — all areas — with Unit 200 highlighted: you are here.","Trace the main path 200 → 330 → 310 → 350 → 220, plus the side loops: NH3 (340), BOG &amp; BOG-recycle (360), fuel-gas bypass to 370.","HMB, design Case 1: feed ~16.6 MMSCFD / 16,720 kg/h at ~46 barg, cold in winter (4.6 C) — E-201 heats it to 43 C for hydrate prevention.","E-201 duty swings 84 kW (summer) to 388 kW (winter); rated 650 kW, hot oil from U410.","Gas leaves to U330 at ~41.7 barg, 41.4 C, still carrying CO2 ~9.3% — sweetening is next.","Side streams: water to U530, condensate to S-413 as boiler fuel."]'>
       <div class="kicker">Unit 200 · Area map &amp; HMB <span class="sub">— where we are · what flows in / out</span></div>
       <h2>Unit 200 in the plant — process map, inputs &amp; outputs</h2>
@@ -569,7 +577,7 @@
     </section>
 
     <!-- 5c OPERATING SUMMARY (specific) · Ivan · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Ivan"
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Ivan"
       data-notes='["This is Table 3.1 of the Operating Manual — the one-page identity card of the unit. Exam material.","Inputs: raw gas up to 55 barg through SDV-2024, plus corrosion inhibitor injection upstream of the first separator.","Outputs: conditioned gas to U330 regulated by FV-2001; water to U530; condensates to the hot oil buffer as fuel.","Key specs: hydrate prevention by TIC-2002 on E-201; pressure by PV-2001; flow by FIC-2001; PSVs plus PAHH/TAHH/LALL/LAHH trips with blowdown via BDV-2004.","Walk the table slowly — every row returns later in the module."]'>
       <div class="kicker">Unit 200 · Operating summary <span class="sub">— process view · every process valve on the line it sits on</span></div>
       <h2>Operating summary — what enters, what leaves, and every valve in between</h2>
@@ -588,7 +596,7 @@
 
 
     <!-- 7 PROCESS I — RECEPTION & V-202 · Ivan · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Ivan"
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Ivan"
       data-notes='["Start walking the gas through the unit — first stage.","SDV-2024 is the PLANT INLET shutdown valve — the primary emergency isolation of the incoming pipeline.","Corrosion inhibitor (package XX-201) is injected into the gas line before V-202 — protects downstream equipment against acidic compounds, moisture and CO2.","V-202 inlet three-phase separator: water out to the Process Water Package; condensates are re-commingled with the gas leaving the vessel and travel together downstream.","V-202 has its own level loops LIC-2021/2022 with LV-2021/2022, outlets SDV-2025 (condensate) and SDV-2026 (water) — you will see them on the HMI later."]'>
       <div class="kicker">Process · Stage 1/5 <span class="sub">— reception &amp; first separation</span></div>
       <h2>Gas reception &amp; first separation — V-202</h2>
@@ -647,7 +655,7 @@
     </section>
 
     <!-- 8 PROCESS II — E-201 HEATING · Ivan · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Ivan"
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Ivan"
       data-notes='["Second stage: heating. From V-202 the gas passes SDV-2001 — the INLET SKID shutdown valve, isolating the U200 skid for local shutdown or maintenance.","E-201 is a shell-and-tube exchanger heated by HOT OIL — it raises gas temperature to prevent hydrate formation, critical in winter operation.","Control: TIC-2002 regulates the gas outlet temperature by throttling the hot oil flow with TV-2002.","Link back to Module 001 site conditions: Tendrara winters bring frost and occasional snow — this exchanger is the hydrate defense.","Ask: what happens if E-201 loses hot oil on a cold day? Hydrate risk downstream — TAHH/TALL monitoring and trip logic protect it."]'>
       <div class="kicker">Process · Stage 2/5 <span class="sub">— heating &amp; hydrate prevention</span></div>
       <h2>Heating &amp; hydrate prevention — E-201</h2>
@@ -705,7 +713,7 @@
     </section>
 
     <!-- 9 PROCESS III — PRESSURE & FILTRATION · Ivan · 8 -->
-    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Ivan"
+    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Ivan"
       data-notes='["Third stage: pressure control and filtration.","PV-2001 — the gas inlet pressure control valve — holds the pressure needed for stable downstream processing; PIC-2001 set point 45.0 barg.","F-201A/B particulate filters in duty/standby: remove solids larger than 5 microns to protect downstream equipment — amine contactors, dryers, cold box.","PDG-2001 measures the pressure drop across the filters — rising DP means the duty filter is loading up: swap to standby and schedule the cartridge change.","Remember Module 001: the chergui desert wind and dust are exactly why these filters matter here."]'>
       <div class="kicker">Process · Stage 3/5 <span class="sub">— pressure control &amp; filtration</span></div>
       <h2>Pressure control &amp; filtration — PV-2001 · F-201A/B</h2>
@@ -766,7 +774,7 @@
     </section>
 
     <!-- 10 PROCESS IV — V-201 FINAL SEPARATION · Ivan · 9 -->
-    <section class="slide" data-min="9" data-block="Block 1" data-presenter="Ivan"
+    <section class="slide" data-min="8" data-block="Block 1" data-presenter="Ivan"
       data-notes='["Fourth stage: the inlet raw gas separator V-201 — final three-phase separation before the gas leaves the unit.","Free water goes again to the Process Water Package (U530).","ALL the condensates are routed to the condensates buffer tank S-413 inside the Hot Oil System — used as fuel for the boilers. Nothing is wasted.","Levels: LIC-2001 light liquid on LV-2012, LIC-2002 heavy liquid on LV-2011; LSLL-2004 is the independent low-low switch.","Outlets protected by SDV-2002 (HC) and SDV-2003 (water); vessel by PSV-2001A/B set at 50 barg.","Why do low-low levels matter? Gas blow-by: if the liquid seal is lost, high-pressure gas escapes down a liquid line — that is why LALL trips close the outlet SDVs."]'>
       <div class="kicker">Process · Stage 4/5 <span class="sub">— final separation</span></div>
       <h2>Final separation — V-201 inlet raw gas separator</h2>
@@ -825,7 +833,7 @@
     </section>
 
     <!-- 11 GAS OUT & MEASUREMENT · Ivan · 7 -->
-    <section class="slide" data-min="7" data-block="Block 1" data-presenter="Ivan"
+    <section class="slide" data-min="6" data-block="Block 1" data-presenter="Ivan"
       data-notes='["Last step in the flow path: measurement and export.","Dry gas from V-201 is measured by FT-2001 and regulated by FV-2001 — flow controller FIC-2001, set point 16.0 MMSCFD.","Pressure and temperature to dehydration monitored by PT-2003 and TT-2001.","A bypass line sends part of the stream to E-371 in the Vaporizer Unit (U370) for fuel gas supply.","The gas still contains CO2 — next stop is U330 amine absorption, then U310 dehydration, then liquefaction.","AE/AT-2001 feed gas analyzer gives composition at the unit boundary."]'>
       <div class="kicker">Process · Stage 5/5 <span class="sub">— measurement &amp; export</span></div>
       <h2>Gas out — measurement &amp; routing</h2>
@@ -1034,8 +1042,8 @@
     </section>
 
     <!-- 14 RELEVANT DOCUMENTS · Ivan · 4 -->
-    <section class="slide" data-min="4" data-block="Block 1" data-presenter="Ivan"
-      data-notes='["Table 3.2 — where to look things up for this unit. Keep this list; it repeats in every unit module.","PRO02 process description and PRO10-PR14 PFD are the process references; PRO13 sheets are the skid drawings.","SAF01, SAF05 and SAF12 are the safety philosophies — isolation, relief/blowdown, cause &amp; effect.","The HMI philosophy document governs everything you see on the screens in Block 2."]'>
+    <section class="slide m101docs" data-min="4" data-block="Block 1" data-presenter="Ivan"
+      data-notes='["Table 3.2 — where to look things up for this unit. Keep this list; it repeats in every unit module.","Process references: the TAM-158 PFD (U200 on sheets 1-2) and the PRO02 process description. PRO10-ING-PR14 is in the register but has no published PDF.","P&IDs: PRO13-ING-PR01 is the main sheet (21044-PR-PID-20001), PR50 the V-202 separator, PR51 the corrosion inhibitor package that injects upstream of it.","Datasheets: one per equipment — E-201 is published, the other three are pending.","SAF01, SAF05 and SAF12 are the safety philosophies — isolation, relief/blowdown, cause &amp; effect.","The HMI philosophy document governs everything you see on the screens in Block 2.","This is the same list behind the Documents tile on the area slide — one registry, two places to reach it."]'>
       <div class="kicker">Reference · Documents <span class="sub">— Manual §3.3 · consultation links</span></div>
       <h2>Unit 200 — relevant documents</h2>
       <table class="data" id="docstbl" style="font-size:12px;"></table>
@@ -1053,7 +1061,7 @@
     </section>
 
     <!-- 15 INSTRUMENTATION · Ivan · 9 -->
-    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Ivan"
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Ivan"
       data-notes='["Table 3.5 has 37 instruments — here are the ones you actually watch.","Flow: FT-2001 feed gas 0..25 MMSCFD; FT-2011/FT-2012 water and condensate outlet flows from V-201.","Pressure: PT-2001/2002 feed gas, PT-2003 gas to dehydration — all 0..100 barg; PDG-2001 filter DP.","Temperature: TT-2001 feed gas, TT-2002 E-201 outlet.","Levels on V-201: LT-2001 light, LT-2002 heavy, LT-2003 total, plus LSLL-2004 independent switch.","Quality: AE/AT-2001 feed gas analyzer. Position: ZSH/ZSL on every SDV and BDV.","Where a printed range is garbled in the extraction, the instrument datasheet governs."]'>
       <div class="kicker">Operating interface <span class="sub">— Manual §3.5.3 · Table 3.5 (37 instruments)</span></div>
       <h2>Instrumentation — what you watch</h2>
@@ -1123,7 +1131,7 @@
     </section>
 
     <!-- 16 CONTROL LOOPS · Ivan · 10 -->
-    <section class="slide" data-min="10" data-block="Block 2" data-presenter="Ivan"
+    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Ivan"
       data-notes='["Table 3.7 — the seven controllers of Unit 200. This is the core of Block 2.","FIC-2001: feed gas flow on FV-2001, range 0..25 MMSCFD, set point 16.0 — the throughput knob of the whole plant.","PIC-2001: feed gas pressure on PV-2001, set point 45.0 barg — stability for everything downstream.","TIC-2002: E-201 outlet temperature on TV-2002 — the hydrate defense.","Four level controllers: LIC-2001/2002 on V-201 (LV-2012/2011), LIC-2021/2022 on V-202 (LV-2021/2022).","Ask the group: which loop would you adjust to raise plant throughput? (FIC-2001) — and which one must you NEVER starve in winter? (TIC-2002)."]'>
       <div class="kicker">Operating interface <span class="sub">— Manual §3.5.5 · Table 3.7 (7 loops)</span></div>
       <h2>Control loops &amp; set points</h2>
@@ -1207,7 +1215,7 @@
     </section>
 
     <!-- 16b ANATOMY OF A LOOP · Ivan · 7 · GENERATED from plant_control_loops -->
-    <section class="slide" data-min="7" data-block="Block 2" data-presenter="Ivan"
+    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Ivan"
       data-notes='["The table on the previous slide gives seven facts. This slide gives one idea — and it is the idea a trainee has to carry out of Block 2.","Read the shape, always the same in both: the measurement RISES on the left, the correction FALLS on the right. Element in the pipe, transmitter in the field, controller in the PCS, valve back in the same pipe it just measured. That closed shape IS the loop.","Point at the two outlines: FT-2001 is a plain CIRCLE — field mounted, you walk to it. FIC-2001 is a SQUARE around a circle — shared control, it lives in the PCS. There is no physical controller to point at, and that is what the square says.","FIC-2001: FE-2001 orifice plate on the 6-inch gas outlet, FT-2001 4-20 mA, controller at 16.0 MMSCFD, FV-2001 diaphragm valve. This is the plant throughput knob.","TIC-2002: thermowell on the E-201 gas outlet, TT-2002, controller at 43 degrees C, and the valve is on the HOT OIL line, not on the gas. Ask the group why — the answer is that you control the gas temperature by throttling the heating medium, and it is the hydrate defence.","Both drawings are generated from plant_control_loops, plant_instruments and plant_valves. Nothing here is drawn by hand, so nothing here can drift from the database."]'>
       <div class="kicker">Operating interface <span class="sub">— anatomy of a loop · generated from the plant database</span></div>
       <h2>The two loops to know cold</h2>
@@ -1242,7 +1250,7 @@
     </section>
 
     <!-- 17 HMI SCREENS · Ivan · 9 -->
-    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Ivan"
+    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Ivan"
       data-notes='["Figures 3.2 and 3.3 — the two PCS operating screens for Unit 200, from the real HMI.","Screen 1: the S-201 side — E-201 feed gas heater with TIC-2002, PV-2001, the two filters, V-201 with its level loops, FV-2001 export, BDV-2004 to flare.","Screen 2: the V-202 side — SDV-2024 plant inlet, XX-201 corrosion inhibitor, LIC-2021/2022, SDV-2025/2026 outlets, BDV-2027, PSV-2028A/B.","Point out the standard faceplate: PV in green, SP, output, MAN/REM mode, OVERRIDE indication.","Everything follows the HMI Philosophy 21044-AU-HMI-00002 — same conventions on every unit screen."]'>
       <div class="kicker">Operating interface <span class="sub">— Manual §3.6.1, Fig. 3.2–3.3</span></div>
       <h2>PCS operating screens — Unit 200</h2>
@@ -1263,7 +1271,7 @@
     </section>
 
     <!-- 18 CRITICAL ALARMS & TRIPS · Ivan · 10 -->
-    <section class="slide" data-min="10" data-block="Block 2" data-presenter="Ivan"
+    <section class="slide" data-min="9" data-block="Block 2" data-presenter="Ivan"
       data-notes='["Table 3.8 — the ten critical alarms of Unit 200 and the shutdown level each one calls. Exam material.","Pattern to teach: HIGH-HIGH alarms (pressure, temperature, high level) call PSD — the process must stop.","LOW-LOW level alarms call LSD — local isolation is enough, because the risk is gas blow-by through a liquid line.","ZSH-2005 is special: it is a position switch on rupture disk RD-2005 — if the disk bursts, PSD.","Quiz the group row by row: alarm → level → why."]'>
       <div class="kicker">Protection · Alarms <span class="sub">— Manual §3.6.2 · Table 3.8 (10 trips)</span></div>
       <h2>Critical alarms &amp; trips</h2>
@@ -1319,7 +1327,7 @@
     </section>
 
     <!-- 19 CAUSE & EFFECT · Ivan · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Ivan"
+    <section class="slide" data-min="7" data-block="Block 2" data-presenter="Ivan"
       data-notes='["Table 3.9 — the unit cause &amp; effect logic. The principle matters more than the grid.","Each LOW-LOW level trip closes the outlet SDV of THAT liquid phase: lose the light-liquid seal → close the HC outlet; lose the water seal → close the water outlet. V-201 uses SDV-2002/2003, V-202 uses SDV-2025/2026.","Why: with no liquid seal, high-pressure gas would blow through the liquid line into low-pressure systems — the classic gas blow-by scenario.","On ESD (I1), the unit is isolated at SDV-2024/2001 and depressurized to flare via BDV-2004.","The authoritative signed grid is SAF12-ING-FR01 — always check it before overriding anything."]'>
       <div class="kicker">Protection · Cause &amp; Effect <span class="sub">— Manual §3.6.3 · Table 3.9 · SAF12 · interactive</span></div>
       <h2>Cause &amp; effect matrix — hover a cause or an effect</h2>
@@ -1327,7 +1335,7 @@
     </section>
 
     <!-- 20 DAILY CHECKS · Ivan · 6 -->
-    <section class="slide" data-min="6" data-block="Block 2" data-presenter="Ivan"
+    <section class="slide" data-min="5" data-block="Block 2" data-presenter="Ivan"
       data-notes='["What a Unit 200 field round actually looks like — derived from the unit design; the formal checklist comes with the operating procedures.","Filter ΔP on PDG-2001 — the number one routine item in a dusty site; swap duty/standby before the alarm, not after.","E-201 outlet temperature — the hydrate watch, especially on winter nights.","Corrosion inhibitor: verify the XX-201 package is injecting — an empty tote protects nothing.","Separator levels steady, no valve passing, no icing on the skid, PSVs and BDV free of obstruction.","Log everything — CK checkpoints and the shift log, as trained in Module 002."]'>
       <div class="kicker">Operation · Rounds</div>
       <h2>Daily checks on Unit 200</h2>
@@ -1343,7 +1351,7 @@
     </section>
 
     <!-- 21 KEY MESSAGES & RECAP · Ivan · 8 -->
-    <section class="slide" data-min="8" data-block="Block 2" data-presenter="Ivan"
+    <section class="slide" data-min="7" data-block="Block 2" data-presenter="Ivan"
       data-notes='["Read slowly — this is the exam blueprint.","1) Order of the flow path. 2) The three duties: separate, heat, filter. 3) The two loops to know cold: FIC-2001 at 16 MMSCFD and TIC-2002 hydrate defense.","4) HH → PSD, LL level → LSD closing the phase outlet — gas blow-by.","5) Water to U530, condensates to S-413 as fuel, bypass to E-371.","6) Documents: chapter 3 of the Operating Manual + SAF01/SAF05/SAF12.","Preview the next module: Unit 330 amine sweetening &amp; Unit 310 dehydration — where the CO2 finally leaves the gas."]'>
       <div class="kicker">Take-home · Recap</div>
       <h2>Key messages — Module 101</h2>
@@ -1901,10 +1909,16 @@
   // Auto-detect: each url is probed; if the file exists under /docs/ the link enables itself. No code change needed.
   (function(){
     var DOCS=[
-      {no:"PRO02-ING-FR02",title:"Process Description",cat:"Process",rev:"",url:"/docs/PRO02-ING-FR02.pdf"},
-      {no:"PRO10-ING-PR14",title:"Process Flow Diagram (Inlet Separator)",cat:"Process",rev:"",url:"/docs/PRO10-ING-PR14.pdf"},
-      {no:"PRO13-ING-PR01",title:"Unit 200 — Skid S-201 / V-201",cat:"Drawings",rev:"",url:"/docs/PRO13-ING-PR01.pdf"},
-      {no:"PRO13-ING-PR50",title:"Unit 200 — V-202",cat:"Drawings",rev:"",url:"/docs/PRO13-ING-PR50.pdf"},
+      {no:"TAM-158-PFD",title:"Process Flow Diagram — TAM-158 (4 sheets · U200 on sheets 1–2)",cat:"Process",rev:"2025-03-10",url:"/docs/20250310_TAM-158_PFD.pdf"},
+      {no:"PRO02-ING-FR02",title:"Process Description",cat:"Process",rev:"1B",url:"/docs/PRO02-ING-FR02.pdf"},
+      {no:"PRO10-ING-PR14",title:"Process Flow Diagram (Inlet Separator) — no published PDF; use TAM-158-PFD",cat:"Process",rev:"",url:null},
+      {no:"PRO13-ING-PR01",title:"P&ID — Unit 200 skid S-201 / V-201 (21044-PR-PID-20001)",cat:"Drawings",rev:"",url:"/docs/PRO13-ING-PR01.pdf"},
+      {no:"PRO13-ING-PR50",title:"P&ID — additional 3-phase separator V-202",cat:"Drawings",rev:"5",url:"/docs/PRO13-ING-PR50.pdf"},
+      {no:"PRO13-ING-PR51",title:"P&ID — corrosion inhibitor package (U120, injects upstream of V-202)",cat:"Drawings",rev:"2",url:"/docs/PRO13-ING-PR51.pdf"},
+      {no:"21044-PR-DSH-0E201",title:"Datasheet — E-201 feed gas heater",cat:"Datasheet",rev:"1",url:"/docs/21044-PR-DSH-0E201.pdf"},
+      {no:"21044-PR-DSH-0V201",title:"Datasheet — V-201 inlet raw gas separator",cat:"Datasheet",rev:"1",url:null},
+      {no:"21044-PR-DSH-0V202",title:"Datasheet — V-202 inlet 3-phase separator",cat:"Datasheet",rev:"",url:null},
+      {no:"21044-PR-DSH-0F201",title:"Datasheet — F-201A/B feed gas particulate filter",cat:"Datasheet",rev:"",url:null},
       {no:"SAF01-ING-FR01",title:"Process Safety & Isolation Philosophy",cat:"Safety",rev:"Rev.2",url:"/docs/SAF01-ING-FR01.pdf"},
       {no:"SAF12-ING-FR01",title:"Cause & Effect Matrix",cat:"Safety",rev:"",url:"/docs/SAF12-ING-FR01.pdf"},
       {no:"SAF05-ING-FR01",title:"Relief & Blowdown Philosophy",cat:"Safety",rev:"",url:"/docs/SAF05-ING-FR01.pdf"},
@@ -1920,6 +1934,7 @@
       tr.innerHTML='<td class="k" data-no></td><td>'+esc(d.title)+'</td><td class="doccat">'+esc(d.cat)+'</td><td class="doccat">'+esc(d.rev||'—')+'</td><td data-link><span class="docstat off">checking…</span></td>';
       tr.querySelector('[data-no]').textContent=d.no;
       t.appendChild(tr);
+      if(!d.url){ tr.querySelector('[data-link]').innerHTML='<span class="docstat off">pending</span>'; return; }
       probe(d.url,function(ok){
         var u=encodeURI(d.url);
         if(ok){
@@ -1953,12 +1968,11 @@
   // Unit 200 technological objects — LOCAL COPY of the plant database (offline; sync on demand)
   (function(){
     var U200OBJ = {
-      equipment: { title:"Main Equipment · Unit 200 (5)", cols:["Tag","Service","Skid"], rows:[
+      equipment: { title:"Main Equipment · Unit 200 (4)", cols:["Tag","Service","Skid"], rows:[
         ["V-202","Inlet 3-phase separator","V-202"],
         ["E-201","Feed gas heater – BEM type","S-201"],
         ["F-201A/B","Feed gas particulate filter","S-201"],
-        ["V-201","Inlet raw gas separator","V-201"],
-        ["V-221","LNG separator","V-221"]
+        ["V-201","Inlet raw gas separator","V-201"]
       ]},
       instruments: { title:"Instruments · Unit 200 (37)", cols:["Tag","Service","Type","Range"], rows:[
         ["AE-2001","Feed gas analyzer","Gas analyzer sensor","—"],
@@ -2092,8 +2106,49 @@
         '<div class="row">'+esc(d.note)+'</div></div>';
       return '<div class="cewrap"><table class="cematrix"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>'+legend+'</div>';
     }
+    // Documentos de Unit 200 — COPIA LOCAL de plant_documents (Supabase, migración 195).
+    // Diagramas de proceso + P&ID que gobiernan la unidad + datasheets de los 4 equipos.
+    // url:null = el documento existe pero no está publicado → imprime PENDING, no un link muerto.
+    var U200DOCS = { title:"Documents · Unit 200 (10) — process diagrams · P&IDs · equipment datasheets", rows:[
+      {grp:"Process diagrams", no:"TAM-158-PFD",        ttl:"Process Flow Diagram — TAM-158 (4 sheets · U200 on sheets 1–2)", rev:"2025-03-10", url:"/docs/20250310_TAM-158_PFD.pdf"},
+      {grp:"Process diagrams", no:"PRO10-ING-PR14",     ttl:"Process Flow Diagram (Inlet Separator) — superseded in practice by TAM-158-PFD", rev:"", url:null},
+      {grp:"Process diagrams", no:"PRO02-ING-FR02",     ttl:"Process Description — §3 is this unit", rev:"1B", url:"/docs/PRO02-ING-FR02.pdf"},
+      {grp:"P&ID",             no:"PRO13-ING-PR01",     ttl:"21044-PR-PID-20001 — skid S-201 / V-201 (the main U200 sheet)", rev:"", url:"/docs/PRO13-ING-PR01.pdf"},
+      {grp:"P&ID",             no:"PRO13-ING-PR50",     ttl:"Additional 3-phase separator V-202", rev:"5", url:"/docs/PRO13-ING-PR50.pdf"},
+      {grp:"P&ID",             no:"PRO13-ING-PR51",     ttl:"Corrosion inhibitor package (U120 — injects upstream of V-202)", rev:"2", url:"/docs/PRO13-ING-PR51.pdf"},
+      {grp:"Datasheets",       no:"21044-PR-DSH-0E201", ttl:"E-201 — feed gas heater", rev:"1", url:"/docs/21044-PR-DSH-0E201.pdf"},
+      {grp:"Datasheets",       no:"21044-PR-DSH-0V201", ttl:"V-201 — inlet raw gas separator", rev:"1", url:null},
+      {grp:"Datasheets",       no:"21044-PR-DSH-0V202", ttl:"V-202 — inlet 3-phase separator", rev:"", url:null},
+      {grp:"Datasheets",       no:"21044-PR-DSH-0F201", ttl:"F-201A/B — feed gas particulate filter", rev:"", url:null}
+    ]};
+    function renderDocs(){
+      var last='', h='<table class="objtbl"><thead><tr><th>Doc No</th><th>Title</th><th>Rev</th><th>Link</th></tr></thead><tbody>';
+      U200DOCS.rows.forEach(function(d,i){
+        if(d.grp!==last){ last=d.grp; h+='<tr><td colspan="4" style="background:var(--bg-soft);font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;">'+esc(d.grp)+'</td></tr>'; }
+        h+='<tr><td class="tg" data-dno="'+i+'">'+esc(d.no)+'</td><td>'+esc(d.ttl)+'</td><td class="ty">'+esc(d.rev||'—')+'</td>'+
+           '<td data-dlk="'+i+'">'+(d.url?'<span class="docstat off">checking…</span>':'<span class="docstat off">pending</span>')+'</td></tr>';
+      });
+      h+='</tbody></table><div class="celegend"><b>Source:</b> plant_documents (local copy · migration 195) — the same registry slide 16 reads.<br>'+
+         '<b>PENDING</b> means the document exists in the register but has no published PDF yet; it is not a missing document, it is a missing file.</div>';
+      return h;
+    }
+    function probeDocs(){
+      U200DOCS.rows.forEach(function(d,i){
+        if(!d.url) return;
+        var u=encodeURI(d.url);
+        var cell=wrap.querySelector('[data-dlk="'+i+'"]'), no=wrap.querySelector('[data-dno="'+i+'"]');
+        if(!cell) return;
+        function set(ok){
+          if(!ok){ cell.innerHTML='<span class="docstat off">pending</span>'; return; }
+          cell.innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">open ↗</a>';
+          if(no) no.innerHTML='<a class="doclink" href="'+u+'" target="_blank" rel="noopener">'+esc(d.no)+'</a>';
+        }
+        try{ fetch(u,{method:'HEAD'}).then(function(r){set(r.ok);}).catch(function(){set(false);}); }catch(e){ set(false); }
+      });
+    }
     function open(g){
       if(g==='ce'){ ttl.textContent=U200CE.title; wrap.innerHTML=renderCE(); modal.classList.add('on'); return; }
+      if(g==='docs'){ ttl.textContent=U200DOCS.title; wrap.innerHTML=renderDocs(); modal.classList.add('on'); probeDocs(); return; }
       var d=U200OBJ[g]; if(!d) return;
       ttl.textContent=d.title;
       if(!d.rows.length){
