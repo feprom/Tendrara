@@ -542,7 +542,7 @@
             <li>Recognize the <b>critical alarms &amp; trips</b> and what each one shuts down.</li>
             <li>Read the <b>Unit 200 HMI screens</b> and locate the unit documents.</li>
             <li>Carry out the <b>routine field checks &amp; maintenance</b>: filter ΔP swap-over, hydrate-temperature watch, inhibitor tote &amp; separator-level rounds.</li>
-            <li>Trace the <b>water Unit 200 separates</b> through <b>Unit 530</b> — degasser, coalescer, two filter stages — and say where the oil and the water each end up.</li>
+            <li>Trace the <b>water Unit 200 separates</b> through <b>Unit 530</b> — degasser, two filter stages, coalescer — and say where the oil and the water each end up.</li>
           </ul>
         </div>
         <div>
@@ -1216,19 +1216,19 @@
 
     <!-- 28 U530 PORTADA DE BLOQUE · Ivan · 1 -->
     <section class="slide inter u530cover" data-min="1" data-block="Block 3" data-presenter="Alessandro"
-      data-notes='["Block change: we close Unit 200 and follow the water Unit 200 has just separated.", "The question that opens the block: the separator takes the water out of the gas — and then what? That water is not thrown away: it is degassed, the oil is taken out of it, and it is filtered twice.", "The full chain, from memory: V-531 degasser, then V-532A/B liquid-liquid coalescer, then F-531A/B at 50 micron, then F-532A/B at 10 micron, then the evaporation pond.", "One vendor package, one P&amp;ID: PRO13-ING-PR47.", "17 minutes for the whole block — this is not a slide to linger on."]'>
+      data-notes='["Block change: we close Unit 200 and follow the water Unit 200 has just separated.", "The question that opens the block: the separator takes the water out of the gas — and then what? That water is not thrown away: it is degassed, the oil is taken out of it, and it is filtered twice.", "The full chain, from memory: V-531 degasser, then F-531A/B at 50 micron, then F-532A/B at 10 micron, then the V-532A/B liquid-liquid coalescer, and out to the evaporation pond.", "One vendor package, one P&amp;ID: PRO13-ING-PR47.", "17 minutes for the whole block — this is not a slide to linger on."]'>
       <div>
         <div class="big">530</div>
         <h2>Unit 530 — Process Water Treatment</h2>
         <p>Where the water Unit 200 separates actually goes — and where the oil that came with it ends up.</p>
         <div class="u530chain">
           <span><b>V-531</b><i>degasser</i></span><em>→</em>
-          <span><b>V-532A/B</b><i>liq–liq coalescer</i></span><em>→</em>
           <span><b>F-531A/B</b><i>50 µm</i></span><em>→</em>
           <span><b>F-532A/B</b><i>10 µm</i></span><em>→</em>
+          <span><b>V-532A/B</b><i>liq–liq coalescer</i></span><em>→</em>
           <span class="pond"><b>Evaporation pond</b><i>2"-PW-000343</i></span>
         </div>
-        <p class="u530sub">One vendor package · one P&amp;ID: <b>PRO13-ING-PR47</b> (21044-PR-PID-53001, rev 5)</p>
+        <p class="u530sub">One vendor package · one P&amp;ID: <b>PRO13-ING-PR47</b> (21044-PR-PID-53001, rev 8)</p>
       </div>
     </section>
 
@@ -1251,12 +1251,12 @@
         <button class="objtile" style="--acc:#C8102E" data-g5="equipment"><div class="ic">⚙</div><div class="n">4</div><div class="l">Main Equipment</div></button>
         <button class="objtile" style="--acc:#0B5CAD" data-g5="instruments"><div class="ic">◉</div><div class="n">33</div><div class="l">Instruments</div></button>
         <button class="objtile" style="--acc:#1F8A4C" data-g5="valves"><div class="ic">⧓</div><div class="n">14</div><div class="l">Valves</div></button>
-        <button class="objtile" style="--acc:#E0651A" data-g5="alarms"><div class="ic">⚠</div><div class="n">2</div><div class="l">Critical Alarms</div></button>
-        <button class="objtile gap" style="--acc:#B26A00" data-g5="loops"><div class="ic">⟲</div><div class="n">—</div><div class="l">Control Loops</div></button>
+        <button class="objtile" style="--acc:#E0651A" data-g5="alarms"><div class="ic">⚠</div><div class="n">2</div><div class="l">Alarms · 1 trip</div></button>
+        <button class="objtile" style="--acc:#B26A00" data-g5="loops"><div class="ic">⟲</div><div class="n">2</div><div class="l">Control Loops</div></button>
         <button class="objtile" style="--acc:#4A4F57" data-g5="docs"><div class="ic">▤</div><div class="n">2</div><div class="l">Documents</div></button>
       </div>
 
-      <div class="note"><b>Design envelope shared by the four items</b> — 15 bar g · −15/100 °C · carbon steel · 6 mm corrosion allowance · 50 mm insulation. <b class="amb">Control loops print “—”, not “0”</b>: <code>plant_control_loops</code> has no row for Unit 530, yet <b>LV-5301A/B</b> and <b>LV-5305</b> are on the P&amp;ID as final elements. The loop exists on the drawing; the record does not exist yet.</div>
+      <div class="note"><b>Design envelope shared by the four items</b> — 15 bar g · −15/100 °C · carbon steel · 6 mm corrosion allowance · 50 mm insulation. <b>Two level loops, one per phase</b> — <b>LIC-5304</b> holds the water level on <b>LV-5301A/B</b>, <b>LIC-5305</b> the condensate level on <b>LV-5305</b>. Read off <b>PRO13-ING-PR47</b> and registered on 28 Jul 2026 (migration 204). <b class="amb">Their set points print “—”</b>, like the four LIC of Unit 200: the drawing gives levels, the operating set point lives in the setting sheets.</div>
 
       <div class="objmodal" id="o530modal">
         <div class="objbox">
@@ -1350,7 +1350,7 @@
 
     <!-- 31 U530 VIDEO · COALESCEDORES · Ivan · 4 -->
     <section class="slide m101video" data-min="4" data-block="Block 3" data-presenter="Alessandro"
-      data-notes='["Three minutes of video before opening the P&amp;ID: how a liquid-liquid coalescer separates.", "The idea they have to take away: the cartridge does not filter the oil, it MERGES it. Dispersed droplets hit the medium, join together and get heavy enough to settle by gravity. That is why it is called a coalescer and not a filter.", "That is exactly V-532A/B: two cartridges of 95.3 mm outside diameter in a 273 mm vessel of 0.16 m3.", "And that is why the order of the unit matters: degas first (V-531), then take the oil out (V-532), and only then filter solids (F-531 and F-532). Filtering before coalescing destroys the cartridge.", "When it ends, hand over to the P&amp;ID: the next slide is the whole drawing."]'>
+      data-notes='["Three minutes of video before opening the P&amp;ID: how a liquid-liquid coalescer separates.", "The idea they have to take away: the cartridge does not filter the oil, it MERGES it. Dispersed droplets hit the medium, join together and get heavy enough to settle by gravity. That is why it is called a coalescer and not a filter.", "That is exactly V-532A/B: two cartridges of 95.3 mm outside diameter in a 273 mm vessel of 0.16 m3.", "And that is why the order of the unit matters: degas first (V-531), then take the SOLIDS out in the two filter stages (F-531A/B at 50 micron, F-532A/B at 10 micron), and only then coalesce the oil in V-532A/B. Solids first is deliberate: grit reaching the coalescing medium blinds it, and the coalescer is the last polish before the water leaves for the pond.", "When it ends, hand over to the P&amp;ID: the next slide is the whole drawing."]'>
       <div class="vidhd">
         <div>
           <div class="kicker">Unit 530 · How the coalescer works</div>
@@ -1363,15 +1363,15 @@
           src="/images/3%20-%20Liquid%20Coalescers.mp4"></video>
         <div class="vidmiss" id="m530vmiss">—</div>
       </div>
-      <div class="vidfoot">The cartridge does not filter the oil — it <b>merges</b> it. Dispersed droplets coalesce on the medium until they are heavy enough to settle. That is <b>V-532A/B</b>: two 95.3 mm OD cartridges in a 273 mm vessel, 0.16 m³. It also explains the order of the unit — <b>degas, then coalesce, then filter</b>.</div>
+      <div class="vidfoot">The cartridge does not filter the oil — it <b>merges</b> it. Dispersed droplets coalesce on the medium until they are heavy enough to settle. That is <b>V-532A/B</b>: two 95.3 mm OD cartridges in a 273 mm vessel, 0.16 m³. It also explains the order of the unit — <b>degas, filter the solids, then coalesce</b>: grit would blind the coalescing medium, so it comes out first.</div>
     </section>
 
     <!-- 32 U530 P&ID PR47 · Ivan · 5 -->
     <section class="slide m530pid" data-min="5" data-block="Block 3" data-presenter="Alessandro"
-      data-notes='["The whole drawing, PRO13-ING-PR47 / 21044-PR-PID-53001 rev 5. It zooms: mouse wheel or the buttons, and drag to move around.", "Suggested walk: water in at top left, then V-531 with PCV-5301 holding the pressure and LT-5304 / LT-5305 on the two levels, then condensate out through LV-5305 and SDV-5301 towards S-413, then water through V-532A/B, F-531A/B, F-532A/B and out to the pond.", "The two alarms of the block are both here: LALL-5304 and LALL-5305, both low-low level on V-531. LALL-5305 has a set point, 200 mm (10 percent); LALL-5304 is a digital contact.", "The differential gauges PDG-5303A/B, 5304 and 5305 are the daily round of this unit: four delta-P readings, one per stage. Same idea as PDG-2001 in Unit 200.", "If it does not read on the projector, use the zoom: the image is 6740 by 4768, it takes magnification."]'>
+      data-notes='["The whole drawing, PRO13-ING-PR47 / 21044-PR-PID-53001, revision 8 of 12 Feb 2026 — that is what the title block says. It zooms: mouse wheel or the buttons, and drag to move around.", "Suggested walk: water in at top left, then V-531 with PCV-5301 holding the pressure and the two level loops — LIC-5304 on the water side, LIC-5305 on the light-liquid side. Condensate leaves through LV-5305 and SDV-5301 towards S-413. The water leaves on 2 inch PW-530004 and goes F-531A/B, then F-532A/B, then the V-532A/B coalescers, and out to the pond through LV-5301A/B.", "Two alarms, but only ONE trip. LALL-5305 is the LSD: low-low light liquid at LLLL 200 mm from bottom tangent line, and it closes SDV-5301 on the condensate outlet. LALL-5304, on the water side, is an alarm only — LIC-5304 carries H and L flags and there is no shutdown block on that side of the vessel.", "The differential gauges PDG-5303A/B, 5304 and 5305 are the daily round of this unit: four delta-P readings, one per stage. Same idea as PDG-2001 in Unit 200.", "If it does not read on the projector, use the zoom: the image is 6740 by 4768, it takes magnification."]'>
       <div class="vidhd">
         <div>
-          <div class="kicker">Unit 530 · P&amp;ID <span class="sub">— PRO13-ING-PR47 · 21044-PR-PID-53001 · rev 5</span></div>
+          <div class="kicker">Unit 530 · P&amp;ID <span class="sub">— PRO13-ING-PR47 · 21044-PR-PID-53001 · rev 8 (12 Feb 2026)</span></div>
           <h2>The whole unit on one drawing</h2>
         </div>
         <div class="pidctl">
@@ -1392,7 +1392,7 @@
 
     <!-- 21 KEY MESSAGES & RECAP · Ivan · 8 -->
     <section class="slide" data-min="7" data-block="Block 3" data-presenter="Ivan"
-      data-notes='["Read slowly — this is the exam blueprint.","1) Order of the flow path. 2) The three duties: separate, heat, filter. 3) The two loops to know cold: FIC-2001 at 16 MMSCFD and TIC-2002 hydrate defense.","4) HH → PSD, LL level → LSD closing the phase outlet — gas blow-by.","5) Water to U530, condensates to S-413 as fuel, bypass to E-371.","6) Unit 530 in order: degasser, coalescer, 50 um filter, 10 um filter, evaporation pond — and the coalescer merges the oil rather than filtering it.","6) Documents: chapter 3 of the Operating Manual + SAF01/SAF05/SAF12.","Preview the next module: Unit 330 amine sweetening &amp; Unit 310 dehydration — where the CO2 finally leaves the gas."]'>
+      data-notes='["Read slowly — this is the exam blueprint.","1) Order of the flow path. 2) The three duties: separate, heat, filter. 3) The two loops to know cold: FIC-2001 at 16 MMSCFD and TIC-2002 hydrate defense.","4) HH → PSD, LL level → LSD closing the phase outlet — gas blow-by.","5) Water to U530, condensates to S-413 as fuel, bypass to E-371.","6) Unit 530 in order: degasser, 50 um filter, 10 um filter, liq-liq coalescer, evaporation pond — the coalescer merges the oil rather than filtering it, and it goes last because solids would blind the medium.","6) Documents: chapter 3 of the Operating Manual + SAF01/SAF05/SAF12.","Preview the next module: Unit 330 amine sweetening &amp; Unit 310 dehydration — where the CO2 finally leaves the gas."]'>
       <div class="kicker">Take-home · Recap</div>
       <h2>Key messages — Module 101</h2>
       <ul class="points">
@@ -1401,7 +1401,7 @@
         <li><b>3 ·</b> Loops to know cold: <b>FIC-2001 @ 16.0 MMSCFD</b> (throughput) · <b>TIC-2002</b> (hydrate defense) · PIC-2001 @ 45.0 barg.</li>
         <li><b>4 ·</b> Trips: <b>HH → PSD · LL level → LSD</b> closes that phase outlet — prevents <b>gas blow-by</b>.</li>
         <li><b>5 ·</b> Nothing wasted: water → <b>U530</b> · condensates → <b>S-413 boiler fuel</b> · bypass → <b>E-371 fuel gas</b>.</li>
-        <li><b>6 ·</b> <b>Unit 530</b>, in order: <b>V-531</b> degasser → <b>V-532A/B</b> liq–liq coalescer → <b>F-531A/B</b> 50 µm → <b>F-532A/B</b> 10 µm → <b>evaporation pond</b>. Oil out to <b>S-413</b>, water out to the pond. The coalescer <b>merges</b> the oil, it does not filter it — which is why it comes before the filters.</li>
+        <li><b>6 ·</b> <b>Unit 530</b>, in order: <b>V-531</b> degasser → <b>F-531A/B</b> 50 µm → <b>F-532A/B</b> 10 µm → <b>V-532A/B</b> liq–liq coalescer → <b>evaporation pond</b>. Oil out to <b>S-413</b>, water out to the pond. The coalescer <b>merges</b> the oil, it does not filter it — and it goes <b>last</b>, because solids would blind the coalescing medium.</li>
         <li><b>7 ·</b> References: <b>Operating Manual Ch. 3</b> · SAF01 · SAF05 · SAF12 · HMI Philosophy · <b>PRO13-ING-PR47</b> for Unit 530.</li>
       </ul>
       <div class="note">Next: <b>Module 102 — Unit 330 &amp; 310, Sweetening &amp; Dehydration</b> — where the CO₂ leaves the gas.</div>
@@ -2469,22 +2469,27 @@
           ["TSV-5307B","Thermal expansion relief","Thermal safety valve","2\"-PW-530007"]
         ],
         foot:"Six of the fourteen are thermal expansion relief valves on blocked-in water lines — the signature of a package that can be isolated section by section." },
-      alarms:{ title:"Critical alarms · Unit 530 (2)",
-        cols:["Alarm","Instrument","Type","Set point","Description"],
+      alarms:{ title:"Alarms · Unit 530 (2 — only one is a trip)",
+        cols:["Alarm","Instrument","Type","Set point","Side of V-531","What it does"],
         rows:[
-          ["LALL-5304","LS-5304","LSD","DI","Low-low liquid level on V-531"],
-          ["LALL-5305","LT-5305","LSD","200 mm (10%)","Low-low liquid level on V-531"]
+          ["LALL-5305","LT-5305","LSD","LLLL 200 mm from BTL","light liquid (condensate)","Closes SDV-5301 on the wet condensate outlet"],
+          ["LALL-5304","LS-5304","ALARM","LLL 300 mm from BTL","water (heavy liquid)","Alarm only — no shutdown block on this side"]
         ],
-        foot:"Two alarms against ten in Unit 200. That may be real — this is a vendor package with one vessel under pressure — but it is not a closed number: treat it as what the register holds today, not as the full protection scheme." },
-      loops:{ title:"Control loops · Unit 530 (no record)", cols:[], rows:[],
-        empty:"plant_control_loops has no row for Unit 530.\n\nThat is a gap in the record, not a unit without control: the P&ID carries LV-5301A/B on the V-532A/B levels and LV-5305 on the V-531 light-liquid level, each with its positioner command and feedback (LVY / LVZ). The loop tags and set points are not in the database yet, so this deck prints “—” rather than a plausible number." },
+        foot:"Corrected on 28 Jul 2026 against PRO13-ING-PR47 (migration 204): LALL-5304 was typed LSD and is not. The unit has ONE trip, LALL-5305, and it closes the one shutdown valve there is — SDV-5301, on the condensate line, where losing the liquid seal would let gas blow by towards S-413. On the water side LIC-5304 carries H and L alarm flags and nothing more. Still open: the register calls the LALL-5304 initiator LS-5304, while the drawing shows LT-5304 and LG-5304 on that chamber. Note also LAHH-5301A/B and LALL-5302A/B on the V-532A/B coalescers, drawn on the P&ID and not yet in plant_alarms." },
+      loops:{ title:"Control loops · Unit 530 (2)",
+        cols:["Loop","Controlled variable","Final element","Range","Set point","Levels on the P&ID"],
+        rows:[
+          ["LIC-5304","V-531 water (heavy liquid) level","LV-5301A/B","0..100 %","—","HLL 550 · NLL 450 · LLL 300 mm from BTL"],
+          ["LIC-5305","V-531 light liquid (condensate) level","LV-5305","0..100 %","—","HLL 850 · NLL 750 · LLL 300 · LLLL 200 mm from BTL"]
+        ],
+        foot:"One loop per phase on V-531. The water side discharges through the V-532A/B coalescers on 2\"-PW-530009 and out to the evaporation pond; the light-liquid side discharges on 3\"-WC-530008 to the S-413 buffer tank. Set points print — on purpose, exactly like the four LIC of Unit 200: the drawing gives levels (HLL/NLL/LLL/LLLL), but the operating set point lives in the setting sheets, not in the P&ID. Each valve has its positioner command and feedback (LVY / LVZ)." },
       docs:{ title:"Documents · Unit 530 (2)",
         cols:["Document","Title","Category","Rev","Published"],
         rows:[
-          ["PRO13-ING-PR47","P&ID — 21044-PR-PID-53001","P&ID","5 (drawing)","PENDING"],
+          ["PRO13-ING-PR47","P&ID — 21044-PR-PID-53001","P&ID","8 (drawing, 12 Feb 2026)","PENDING"],
           ["PIVECTORHFENb","Vector High Flow series filter cartridges (Pall)","Vendor datasheet","b","PENDING"]
         ],
-        foot:"Both are in the register with available = false — no published PDF. The P&ID itself is digitised in plant_pid_drawings as PRO13-ING-PR47 / 21044-PR-PID-53001, rev 5; the image on the next slide is that drawing." }
+        foot:"Both are in the register with available = false — no published PDF. The P&ID itself is digitised in plant_pid_drawings as PRO13-ING-PR47 / 21044-PR-PID-53001. Corrected on 28 Jul 2026: the register said rev 5 (24 June 2024), but the title block of the copy that travels with this deck reads rev 8, 12 Feb 2026 — two revisions further on." }
     };
     var modal=document.getElementById('o530modal'); if(!modal) return;
     var wrap=document.getElementById('o530wrap'), ttl=document.getElementById('o530title');
