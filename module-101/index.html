@@ -424,6 +424,51 @@
   .slide.u530map table.data.u530io td, .slide.u530map table.data.u530io th{padding:2.5px 7px;}
   .slide.u530map table.data.u530io{font-size:10.2px;}
   .slide.u530map .note{margin-top:8px;padding-top:7px;font-size:10.5px;}
+  /* algo que sólo existe al imprimir (el vídeo no se puede imprimir) */
+  .printonly{display:none;}
+
+  /* print / export-to-PDF: cada slide es una pagina, y el cromo (navbar, barra de
+     progreso, lightbox, modales) desaparece. Mismo bloque que el modulo 002, mas
+     los anadidos que pide este deck: las dos slides de video, la del P&ID con
+     zoom, las fichas de equipo y el mapa acotado de U530. */
+  @media print{
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    @page{size:1040px 720px;margin:0;}
+    html,body{background:#fff !important;display:block !important;min-height:0 !important;padding:0 !important;width:1040px;}
+    .deck{width:1040px !important;max-width:none !important;height:auto !important;border:none !important;
+      box-shadow:none !important;border-radius:0 !important;display:block !important;}
+    .navbar,.progress,.lightbox,.objmodal{display:none !important;}
+    .brandbar{position:fixed;top:0;left:0;width:1040px;background:#fff;z-index:5;}
+    .accent{position:fixed;top:77px;left:0;width:1040px;z-index:5;}
+    .stage{position:static !important;overflow:visible !important;height:auto !important;flex:none !important;}
+    /* padding-top (y no un margen del .stage) para que el hueco de la cabecera
+       fija se repita en TODAS las paginas impresas */
+    .slide{position:static !important;opacity:1 !important;visibility:visible !important;display:block !important;
+      width:1040px;min-height:630px;box-sizing:border-box;overflow:visible !important;
+      padding:114px 44px 30px !important;page-break-after:always;break-after:page;}
+    .slide:last-child{page-break-after:auto;break-after:auto;}
+    .slide.inter{display:flex !important;height:auto !important;min-height:576px;}
+    .printonly{display:block !important;}
+
+    /* ── lo especifico del modulo 101 ───────────────────────────────────────
+       Las slides de video y la del P&ID son cajas flex elasticas: con display
+       block sus hijos con flex:1 1 auto y min-height:0 se quedan en cero y no
+       imprimen nada. */
+    .slide.m101video .vidbox{display:none !important;}      /* un <video> impreso es un rectangulo negro */
+    .slide.m101video .vidtabs,.slide.m530pid .pidctl{display:none !important;}
+    .slide.m101video .vidfoot{margin-top:14px !important;}
+    .pidbox{height:430px !important;min-height:430px !important;overflow:hidden !important;
+      border:1px solid var(--line-strong) !important;}
+    .pidbox img{position:static !important;transform:none !important;width:100% !important;height:auto !important;}
+    .pidhint{display:none !important;}
+    .slide.m101ds .eqdetail{height:auto !important;}         /* height:calc(100% - 66px) colapsa sin padre elastico */
+    /* el mapa de U530 se queda al ancho de pantalla: al 100% la slide se parte en dos paginas */
+    .slide.u530map .mapwrap{max-width:63% !important;}
+    /* si una slide desborda igualmente, que el corte caiga ENTRE bloques y no por
+       la mitad de un grafico o de una tabla */
+    .mapwrap,.carea,.objgrid,.mgrid,.figrow,table,svg,.eqdetail{page-break-inside:avoid;break-inside:avoid;}
+    .slide.u530area .carea{height:262px !important;}
+  }
 </style>
 </head>
 <body>
@@ -731,6 +776,7 @@
           src="/images/1%20-%20Intro%20to%202-Phase_3-Phase%20Separators.mp4"></video>
         <div class="vidmiss" id="m101vmiss">—</div>
       </div>
+      <div class="printonly note" style="margin-top:14px;"><b>Video slide.</b> The two clips do not print — play them from the deck: <b>1 · Intro to 2-phase / 3-phase separators</b> (5:40) and <b>2 · Three-phase separator</b> (5:32).</div>
       <div class="vidfoot" id="m101vfoot">Vídeo 1 de 2 · <b>Intro to 2-phase / 3-phase separators</b> — 5:40. El separador trifásico del vídeo 2 es el mismo principio que <b>V-202</b>, el primer equipo del recorrido.</div>
     </section>
 
@@ -1363,6 +1409,7 @@
           src="/images/3%20-%20Liquid%20Coalescers.mp4"></video>
         <div class="vidmiss" id="m530vmiss">—</div>
       </div>
+      <div class="printonly note" style="margin-top:14px;"><b>Video slide.</b> The clip does not print — play <b>3 · Liquid coalescers</b> (2:56) from the deck.</div>
       <div class="vidfoot">The cartridge does not filter the oil — it <b>merges</b> it. Dispersed droplets coalesce on the medium until they are heavy enough to settle. That is <b>V-532A/B</b>: two 95.3 mm OD cartridges in a 273 mm vessel, 0.16 m³. It also explains the order of the unit — <b>degas, filter the solids, then coalesce</b>: grit would blind the coalescing medium, so it comes out first.</div>
     </section>
 
@@ -1444,6 +1491,7 @@
     <div class="navmid">
       <button class="nav" id="present">⧉ Presenter view</button>
       <button class="nav" id="fs">⛶ Fullscreen</button>
+      <button class="nav" id="printpdf">🖨 Print / Export PDF</button>
     </div>
     <div class="navbtns">
       <button class="nav" id="prev">‹ Prev</button>
@@ -1460,6 +1508,7 @@
   const cur=document.getElementById('cur'), bar=document.getElementById('bar'),
         prev=document.getElementById('prev'), next=document.getElementById('next'),
         present=document.getElementById('present'), fs=document.getElementById('fs'),
+        printpdf=document.getElementById('printpdf'),
         deckEl=document.querySelector('.deck');
   document.getElementById('total').textContent=String(slides.length).padStart(2,'0');
 
@@ -1509,6 +1558,7 @@
     else { (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
   }
   fs.onclick=toggleFs;
+  printpdf.onclick=()=>window.print();
 
   // ---- Fullscreen auto-fit: the deck is a 1040x720 canvas scaled uniformly to the screen ----
   // (Fullscreen goes on <html>: the Fullscreen spec forces transform:none / width:100% !important
