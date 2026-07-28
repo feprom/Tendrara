@@ -96,6 +96,31 @@
   .slide.m101scope table.timeline td{padding-top:2.5px;padding-bottom:2.5px;font-size:12px;}
   .slide.m101scope .lead{font-size:13.5px;}
   .slide.m101scope table.timeline td.seg{line-height:1.3;}
+  /* slide 08 · reproductor de vídeo. La slide es `position:absolute; inset:0`, así que
+     con flex-column el .vidbox se come todo el alto que sobre de la cabecera; el <video>
+     lleva object-fit:contain para no deformar el material de origen. Todo acotado a
+     .m101video: ninguna otra slide usa flex a nivel de sección. */
+  .slide.m101video{display:flex;flex-direction:column;padding:18px 26px 16px;overflow:hidden;}
+  .slide.m101video.active{display:flex;}
+  .slide.m101video .vidhd{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex:0 0 auto;}
+  .slide.m101video .vidhd h2{margin:0;font-size:21px;}
+  .slide.m101video .vidhd .kicker{margin-bottom:5px;}
+  .slide.m101video .vidtabs{display:flex;gap:8px;flex:0 0 auto;}
+  .slide.m101video .vidtabs button{display:flex;align-items:center;gap:9px;cursor:pointer;
+    border:1px solid var(--line-strong);border-top:3px solid var(--line-strong);border-radius:9px;
+    background:#fff;padding:7px 14px;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-soft);
+    transition:.15s;}
+  .slide.m101video .vidtabs button:hover{border-color:var(--crimson);color:var(--ink);}
+  .slide.m101video .vidtabs button.on{border-color:var(--crimson);border-top-color:var(--crimson);color:var(--ink);background:#FBE9EC;}
+  .slide.m101video .vidtabs button .dur{font-family:var(--mono);font-size:10.5px;font-weight:700;
+    color:var(--crimson);background:#fff;border-radius:10px;padding:2px 8px;}
+  .slide.m101video .vidbox{flex:1 1 auto;min-height:0;margin-top:11px;border:1px solid var(--line-strong);
+    border-radius:10px;background:#0e0f11;overflow:hidden;position:relative;}
+  .slide.m101video .vidbox video{width:100%;height:100%;display:block;object-fit:contain;background:#0e0f11;}
+  .slide.m101video .vidmiss{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    text-align:center;color:#c9ced6;font-family:var(--mono);font-size:12px;line-height:1.7;padding:26px;}
+  .slide.m101video .vidbox.missing .vidmiss{display:flex;}
+  .slide.m101video .vidfoot{flex:0 0 auto;margin-top:8px;font-size:11.5px;color:var(--ink-soft);}
   /* slide 16 · el registro documental pasó de 9 a 13 filas (migración 195): se aprieta
      sólo esta slide, sin tocar la regla global de .data que usan las otras 27. */
   .slide.m101docs table.data td, .slide.m101docs table.data th{padding-top:3.5px;padding-bottom:3.5px;line-height:1.25;}
@@ -396,7 +421,7 @@
 
     <!-- 2 SCOPE / OBJECTIVES / AGENDA · Ivan · 5 -->
     <section class="slide m101scope" data-min="5" data-block="Module open" data-presenter="Ivan"
-      data-notes='["Scope: BOTH halves of module 101 — Unit 200 inlet AND Unit 530 process water treatment. The modules table calls this session \"UNIT 200 LNG Plant Inlet & 530 Process Water Treatment\".","Objectives are the exam blueprint — read them out.","Block 1 = what U200 is and how the gas flows through it; Block 2 = how you control, monitor and protect it, then U530.","U530 is where the water U200 separates actually goes — V-201 drains into it. Its own slides come after the U200 material.","4-hour skeleton — breaks at 1:36 and 3:00. U200 was trimmed 16 min to reserve 0:25 for Block 3; that 0:25 is a reservation and prints in amber until the U530 slides exist."]'>
+      data-notes='["Scope: BOTH halves of module 101 — Unit 200 inlet AND Unit 530 process water treatment. The modules table calls this session \"UNIT 200 LNG Plant Inlet & 530 Process Water Treatment\".","Objectives are the exam blueprint — read them out.","Block 1 = what U200 is and how the gas flows through it; Block 2 = how you control, monitor and protect it, then U530.","U530 is where the water U200 separates actually goes — V-201 drains into it. Its own slides come after the U200 material.","4-hour skeleton — breaks at 1:48 and 3:00. Block 1 carries the two separator videos (12 min); Block 3 keeps 0:13 reserved, in amber, until the U530 slides exist and their own data-min replace it."]'>
       <div class="kicker">Scope · Objectives · Agenda</div>
       <h2>What Module 101 covers</h2>
       <div class="grid2">
@@ -418,21 +443,20 @@
                duración · acumulado, con fila de total al pie y la columna de acumulado
                completa hasta 4:00. Los minutos de Module open, Block 1 y Block 2 NO
                están escritos a mano: son la suma de los `data-min` de las propias
-               slides (13 + 68 + 59), que es el único sitio donde ese dato existe de
-               verdad. El material de U200 se recortó de 143 a 127 min para reservar
-               0:25 al Bloque 3 sin pasar de las 4:00. -->
+               slides (13 + 80 + 59), que es el único sitio donde ese dato existe de
+               verdad. Block 1 incluye los 12 min de la slide de vídeo (separadores
+               2F/3F), que salieron de la reserva del Bloque 3: 0:25 → 0:13. -->
           <table class="timeline">
             <tr><td class="seg"><b>Module open</b><span class="tp">program · team · roadmap · scope</span></td><td class="dur">0:13</td><td class="cum">0:13</td></tr>
-            <tr><td class="seg"><b>Block 1 — U200: what it is, how the gas flows</b><span class="tp">siting &amp; size 4 · plant map &amp; HMB 5 · operating summary 6 · V-202 7 · E-201 7 · PV-2001 &amp; F-201A/B 7 · V-201 8 · gas out &amp; metering 6 · datasheets 6 · valves 8 · documents 4</span></td><td class="dur">1:08</td><td class="cum">1:21</td></tr>
-            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">1:36</td></tr>
-            <tr><td class="seg"><b>Block 2 — U200: control, monitoring, protection</b><span class="tp">instrumentation 8 · loops &amp; set points 9 · the two loops to know cold 6 · PCS screens 8 · alarms &amp; trips 9 · cause &amp; effect 7 · daily checks 5 · key messages 7</span></td><td class="dur">0:59</td><td class="cum">2:35</td></tr>
-            <tr><td class="seg"><b>Block 3 — U530: process water treatment</b><span class="tp">where V-201's water goes · degasser V-531 · coalescer V-532A/B · two filter stages · what leaves to the pond, what goes back to U410</span></td><td class="dur" style="color:var(--amber);font-weight:700;">0:25</td><td class="cum" style="color:var(--amber);">3:00</td></tr>
+            <tr><td class="seg"><b>Block 1 — U200: what it is, how the gas flows</b></td><td class="dur">1:20</td><td class="cum">1:33</td></tr>
+            <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">1:48</td></tr>
+            <tr><td class="seg"><b>Block 2 — U200: control, monitoring, protection</b></td><td class="dur">0:59</td><td class="cum">2:47</td></tr>
+            <tr><td class="seg"><b>Block 3 — U530: process water treatment</b></td><td class="dur" style="color:var(--amber);font-weight:700;">0:13</td><td class="cum" style="color:var(--amber);">3:00</td></tr>
             <tr class="brk"><td class="seg">☕ Break</td><td class="dur">0:15</td><td class="cum">3:15</td></tr>
             <tr><td class="seg">Questions &amp; answers</td><td class="dur">0:15</td><td class="cum">3:30</td></tr>
             <tr><td class="seg">Exam + module evaluation</td><td class="dur">0:30</td><td class="cum">4:00</td></tr>
             <tr class="tot"><td class="seg">Module total</td><td class="dur">4:00</td><td class="cum"></td></tr>
           </table>
-          <div class="note" style="margin-top:9px;">Scope note: this session is <b>U200 <i>and</i> U530</b> — the modules table titles it “UNIT 200 LNG Plant Inlet &amp; 530 Process Water Treatment”. The U200 material was trimmed from 2:23 to <b>2:07</b> to reserve <b>0:25</b> for Block 3; that 0:25 is <b>a reservation, not a measurement</b> — it prints in amber until the U530 slides exist and their own <code>data-min</code> replace it. Breaks fall at <b>1:36</b> and <b>3:00</b>.</div>
         </div>
       </div>
     </section>
@@ -574,6 +598,29 @@
         <div class="pill"><b>Basis</b>HYSYS @ 83.5 kPa (1,434 m) · design cases 1/2 · summer &amp; winter</div>
       </div>
       <div class="routing">Side streams: <b>process water → U530</b> · <b>condensates → S-413</b> (Hot Oil buffer, boiler fuel) · <b>fuel-gas bypass → E-371 (U370)</b>. Gas leaves stripped of liquids but still with CO₂ — sweetening is next.</div>
+    </section>
+
+    <!-- 5b-bis SEPARATOR VIDEOS · Ivan · 12 -->
+    <!-- Los dos ficheros viven en publish\images\ y se sirven desde /images/. Los espacios
+         del nombre van como %20: el nombre de fichero es el que mandó ITF y no se toca. -->
+    <section class="slide m101video" data-min="12" data-block="Block 1" data-presenter="Ivan"
+      data-notes='["Antes de recorrer los equipos, los dos vídeos de separación: el principio primero, el equipo después.","Vídeo 1 (5:40) — intro a separadores bifásicos y trifásicos: por qué se separa, qué hace cada sección del recipiente.","Vídeo 2 (5:32) — separador trifásico en detalle: gas arriba, condensado e agua abajo, la bota y el vertedero — que es exactamente V-202.","Los dos botones de arriba cambian de vídeo; el reproductor recuerda dónde se quedó cada uno, así que se puede saltar de uno a otro sin perder el punto.","Enlazar con V-202 al terminar: 100 barg, 5.6 m3, weir + deflector plates — el equipo real del vídeo 2.","Los 12 min salieron de la reserva del Bloque 3 (0:25 → 0:13): si los vídeos se recortan, esos minutos vuelven a U530."]'>
+      <div class="vidhd">
+        <div>
+          <div class="kicker">Unit 200 · How separation works</div>
+          <h2>Two-phase &amp; three-phase separation</h2>
+        </div>
+        <div class="vidtabs" id="m101vtabs">
+          <button class="on" data-v="0">1 · Intro to 2-phase / 3-phase separators<span class="dur">5:40</span></button>
+          <button data-v="1">2 · Three-phase separator<span class="dur">5:32</span></button>
+        </div>
+      </div>
+      <div class="vidbox" id="m101vbox">
+        <video id="m101vid" controls preload="metadata" playsinline
+          src="/images/1%20-%20Intro%20to%202-Phase_3-Phase%20Separators.mp4"></video>
+        <div class="vidmiss" id="m101vmiss">—</div>
+      </div>
+      <div class="vidfoot" id="m101vfoot">Vídeo 1 de 2 · <b>Intro to 2-phase / 3-phase separators</b> — 5:40. El separador trifásico del vídeo 2 es el mismo principio que <b>V-202</b>, el primer equipo del recorrido.</div>
     </section>
 
     <!-- 5c OPERATING SUMMARY (specific) · Ivan · 7 -->
@@ -1945,6 +1992,56 @@
         }
       });
     });
+  })();
+</script>
+<script>
+  // Slide de vídeo — selector de dos ficheros sobre un único <video>.
+  // Guarda el punto de reproducción de cada vídeo, para poder saltar de uno a otro
+  // sin volver al principio. Al salir de la slide, pausa: nada sigue sonando de fondo.
+  (function(){
+    var vid=document.getElementById('m101vid'); if(!vid) return;
+    var tabs=document.getElementById('m101vtabs'), box=document.getElementById('m101vbox'),
+        foot=document.getElementById('m101vfoot');
+    var VIDS=[
+      {src:'/images/1%20-%20Intro%20to%202-Phase_3-Phase%20Separators.mp4',
+       name:'Intro to 2-phase / 3-phase separators', dur:'5:40'},
+      {src:'/images/2%20-%20Three-Phase%20Separator.mp4',
+       name:'Three-phase separator', dur:'5:32'}
+    ];
+    var miss=document.getElementById('m101vmiss');
+    var at=0, mark=[0,0];
+    vid.addEventListener('timeupdate',function(){ mark[at]=vid.currentTime; });
+    // Un fallo de vídeo tiene dos causas muy distintas y conviene no confundirlas:
+    // código 4 = el navegador NO puede decodificar (el vídeo 1 viene en AV1);
+    // cualquier otro = el fichero no está donde el deck lo busca.
+    vid.addEventListener('error',function(){
+      var c=(vid.error&&vid.error.code)||0;
+      miss.innerHTML = (c===4)
+        ? 'Este navegador no puede decodificar el vídeo.<br>El vídeo 1 está en <b>AV1</b> y el 2 en <b>H.264 con audio Opus</b>.<br>Usa Chrome o Edge actualizados, o reconvierte los ficheros a H.264 + AAC.'
+        : 'El vídeo no está donde el deck lo busca.<br>Deben existir <b>images\\1 - Intro to 2-Phase_3-Phase Separators.mp4</b><br>y <b>images\\2 - Three-Phase Separator.mp4</b> en el sitio publicado.';
+      box.classList.add('missing');
+    });
+    vid.addEventListener('loadedmetadata',function(){ box.classList.remove('missing'); });
+    function pick(n){
+      if(n===at) return;
+      mark[at]=vid.currentTime||0; at=n;
+      box.classList.remove('missing');
+      vid.pause(); vid.src=VIDS[n].src;
+      vid.currentTime=mark[n]||0;
+      [].slice.call(tabs.querySelectorAll('button')).forEach(function(b,i){ b.classList.toggle('on',i===n); });
+      foot.innerHTML='Vídeo '+(n+1)+' de 2 · <b>'+VIDS[n].name+'</b> — '+VIDS[n].dur+
+        (n===1?'. Este es el principio de <b>V-202</b>, el primer equipo del recorrido.'
+              :'. El separador trifásico del vídeo 2 es el mismo principio que <b>V-202</b>, el primer equipo del recorrido.');
+    }
+    [].slice.call(tabs.querySelectorAll('button')).forEach(function(b){
+      b.onclick=function(){ pick(+b.dataset.v); };
+    });
+    // pausa al salir de la slide
+    var sec=vid.closest('section.slide');
+    if(sec && 'MutationObserver' in window){
+      new MutationObserver(function(){ if(!sec.classList.contains('active')) vid.pause(); })
+        .observe(sec,{attributes:true,attributeFilter:['class']});
+    }
   })();
 </script>
 <div class="lightbox" id="lightbox"><button class="lbclose" aria-label="close">✕</button><img id="lbimg" src="" alt=""><div class="lbcap" id="lbcap"></div></div>
