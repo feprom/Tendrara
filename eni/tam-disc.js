@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   tam-disc.js — DISCIPLINE SQUARES (treemap)  ·  v0.2.0
+   tam-disc.js — DISCIPLINE SQUARES (treemap)  ·  v0.4.1
    ─────────────────────────────────────────────────────────────────────────
    Four squares, one per discipline, all the SAME SIZE. Inside each square the
    asset classes of that discipline are tiled by area: a class with twice the
@@ -46,9 +46,20 @@
      TamDisc.MARIO                → the four pure hues, keyed by discipline
      TamDisc.autoInk(hex)         → same hue, dark enough to read on the card
 
-   COLOUR — one pure Mario hue per discipline, no exceptions
-     MECHANICAL red #E52521 · ELECTRICAL yellow #FBD000 ·
-     INSTRUMENTATION green #43B047 · CONTROL blue #049CD8.
+   COLOUR — one pure hue per discipline, no exceptions
+     MECHANICAL red #E52521 · ELECTRICAL gold #F4C320 ·
+     INSTRUMENTATION green #3FA540 · CONTROL royal blue #2B6BD1.
+
+     [v0.3.1] Sampled pixel-for-pixel from the reference treemap Mario supplied
+     rather than guessed: red came back #E52521, identical to what we already had;
+     green #3FA540 and gold #F4C320 are a shade warmer than the #43B047 / #FBD000
+     they replace; and CONTROL moves from #049CD8 — a cyan — to the reference's
+     royal #2B6BD1, which is the difference Mario spotted. The DISCIPLINE MAPPING is
+     unchanged (the reference calls mechanical blue and electrical red; ours does
+     not, because that mapping is the product's discipline code).
+     Side effect worth having: #2B6BD1 is dark enough that white text wins on the
+     pure hue (5.09:1), so the control square reads white throughout like the
+     reference, and the title ink comes back as the pure blue itself.
      Those four values are the product's discipline code and they are used HERE
      AT FULL SATURATION: the rule bar and the biggest tile of every square carry
      the pure hue. Nothing is muted "for contrast" — the earlier v0.1.0 exception
@@ -163,9 +174,9 @@
      They are drawn at full saturation; nothing here is toned down. */
   var MARIO = {
     MECHANICAL:      "#E52521",   // red
-    ELECTRICAL:      "#FBD000",   // yellow
-    INSTRUMENTATION: "#43B047",   // green
-    CONTROL:         "#049CD8"    // blue
+    ELECTRICAL:      "#F4C320",   // gold
+    INSTRUMENTATION: "#3FA540",   // green
+    CONTROL:         "#2B6BD1"    // royal blue
   };
   var CARD = "#FBFCFD";           // the square's own background
 
@@ -205,26 +216,55 @@
      the biggest tile is the darkest. Rank, not value: with 30 fans against 2
      heaters a value ramp would collapse every small tile into the same wash.
 
-     The ramp STARTS at the pure hue: the biggest tile of every square is the
-     discipline colour itself, undiluted, and only the smaller tiles are washed
-     toward white. So each square shows the pure red / yellow / green / blue at
-     its largest, which is where the reader looks first. */
+     The ramp STARTS at the pure hue and walks DOWN into deeper shades of it: the
+     biggest tile of every square is the discipline colour itself, undiluted, and
+     the smaller tiles get darker rather than paler.
+
+     [v0.3.0] It used to wash toward WHITE, which left the tail of a long square as
+     a row of near-white rectangles — legible up close, weak on a projector, and
+     nothing like the depth of the reference Mario sent. Multiplying down instead
+     keeps every tile saturated at any rank, which is what lets a square read as one
+     block of colour from the back of a room, and it puts white text on roughly two
+     tiles in three.
+
+     Direction note: the reference runs the other way — biggest tile darkest,
+     smaller ones lighter. Kept as biggest = PURE because "the ramp starts at the
+     pure hue" is a rule set earlier the same day, and the 3.4 px rule bar alone is
+     too thin to carry the discipline colour. To flip it, swap the `f` line for
+     `var f = (1 - DEEP) + DEEP * t;` — nothing else changes. */
+  /* [v0.4.1] The four hues are used EXACTLY as Mario supplied them, and every label
+     inside a square is WHITE. Both are his instruction, repeated, and neither is
+     traded against the other:
+
+       MECHANICAL #E52521 · ELECTRICAL #F4C320 · INSTRUMENTATION #3FA540 · CONTROL #2B6BD1
+
+     The biggest tile of every square carries its pure hue, undiluted; the ramp only
+     walks DOWN from there into deeper shades of the same colour, so nothing is ever
+     lightened or muted.
+
+     v0.4.0 briefly darkened the gold so white text would clear a contrast bound.
+     That was wrong of me — it is the same mistake v0.1.0 made with #E0A800, and it
+     changed a colour the owner had chosen. Reverted.
+
+     For the record, so nobody re-discovers it and "fixes" it again: white on pure
+     #F4C320 measures 1.66:1, which is below every WCAG bound. The number on the
+     largest electrical tile is therefore the weakest text in the set. It matches the
+     source treemap, which does the same thing at the same ratio. If a print or an
+     audit ever forces the issue, the fix is a text shadow or a darker gold — not a
+     silent change to the palette. */
+  var DEEP = 0.58;                              // how far down the smallest tile goes
+
   function ramp(hex, k, n) {
     var c = rgbOf(hex);
     var t = n > 1 ? (k / (n - 1)) : 0;          // 0 = biggest, 1 = smallest
-    var mix = 0.66 * t;                         // 0 = pure hue, toward white
-    return "rgb(" + Math.round(c[0] + (255 - c[0]) * mix) + "," +
-                    Math.round(c[1] + (255 - c[1]) * mix) + "," +
-                    Math.round(c[2] + (255 - c[2]) * mix) + ")";
+    var f = 1 - DEEP * t;                       // 1.00 pure hue  ->  0.42 deep shade
+    return "rgb(" + Math.round(c[0] * f) + "," +
+                    Math.round(c[1] * f) + "," +
+                    Math.round(c[2] * f) + ")";
   }
-  // black or white text, whichever survives on that fill (WCAG contrast, not a
-  // brightness guess — on pure yellow that is black, on pure red it is white)
-  function inkOn(rgb) {
-    var m = /rgb\((\d+),(\d+),(\d+)\)/.exec(rgb);
-    if (!m) return "#15171A";
-    var t = [+m[1], +m[2], +m[3]];
-    return contrast(t, [21, 23, 26]) >= contrast(t, [255, 255, 255]) ? "#15171A" : "#FFFFFF";
-  }
+
+  // White, always — every label inside a square, at every rank.
+  function inkOn() { return "#FFFFFF"; }
 
   function square(group, opts) {
     opts = opts || {};
@@ -238,7 +278,7 @@
        ELECTRICAL, INSTRUMENTATION and CONTROL each have exactly one pure hue
        and the library knows them, so a caller cannot accidentally ship a
        fifth red. An explicit `rule` still wins for anything off-register. */
-    var rule = group.rule || MARIO[String(group.title || "").toUpperCase()] || "#049CD8";
+    var rule = group.rule || MARIO[String(group.title || "").toUpperCase()] || "#2B6BD1";
     var ink  = group.ink  || autoInk(rule);
 
     var W = S - 2 * pad, H = S - 2 * pad - head;
@@ -305,7 +345,7 @@
   }
 
   var API = { square: square, band: band, squarify: squarify,
-              MARIO: MARIO, autoInk: autoInk, VERSION: "0.2.0" };
+              MARIO: MARIO, autoInk: autoInk, VERSION: "0.4.1" };
   if (typeof window !== "undefined") window.TamDisc = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
 })();
