@@ -383,6 +383,29 @@
     #printroot .prn-chips b{color:var(--crimson);}
     #printroot .pb{page-break-before:always;}
   }
+
+  /* [DISC-COLLAPSE 2026-07-29] The four discipline squares start CLOSED.
+     They are a 210 px-tall band at the top of every page and they pushed the
+     process diagram — the thing people actually navigate with — below the fold.
+     Collapsed the row is one strip carrying the same four numbers; one click
+     opens ALL FOUR together, because the squares are only readable against each
+     other and opening them one at a time teaches the wrong comparison. */
+  .discrow{margin:9px 0;}
+  .drbar{display:flex;align-items:center;gap:12px;width:100%;background:#fff;
+    border:1px solid #C9CED4;border-radius:8px;padding:8px 11px;cursor:pointer;
+    text-align:left;font:inherit;}
+  .drbar:hover{border-color:#8E959D;}
+  .drlbl{font:700 8.5px Consolas,monospace;letter-spacing:.12em;color:var(--ink-soft);white-space:nowrap;}
+  .drchips{display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+  .dchip{display:inline-flex;align-items:center;gap:5px;font:700 8.5px Consolas,monospace;
+    letter-spacing:.06em;color:var(--ink-soft);}
+  .dchip i{width:9px;height:9px;border-radius:2px;display:block;flex:none;}
+  .dchip b{font:700 12px Consolas,monospace;color:#15171A;}
+  .drcaret{margin-left:auto;font-size:10px;color:var(--ink-soft);transition:transform .15s ease;flex:none;}
+  .discrow.open .drcaret{transform:rotate(180deg);}
+  .discrow.open .drchips{display:none;}
+  .drgrid{display:none;gap:8px;align-items:start;margin-top:8px;}
+  .discrow.open .drgrid{display:grid;}
 </style>
 </head>
 <body>
@@ -1776,7 +1799,7 @@ function discBoxCard([title,rule,ink,items,total,totalTip]){
 const ELEC_TILES={
   MOTOR:            ["MOT",   "MOTORS",        "nav('report/motors')"],
   ELECTRIC_HEATER:  ["HEATER","HEATERS",       "nav('report/loads')"],
-  ELECTRICAL_LOAD:  ["LOAD",  "AUX SYSTEMS",   "nav('report/loads')"],
+  ELECTRICAL_LOAD:  ["LOAD",  "OTHER LOADS",   "nav('report/loads')"],
   DOL_STARTER:      ["MCC",   "DOL STARTERS",  "nav('sld')"],
   POWER_FEEDER:     ["LOAD",  "FEEDERS",       "nav('sld')"],
   VFD_DRIVE:        ["MCC",   "VFD DRIVES",    "nav('sld')"],
@@ -1843,6 +1866,21 @@ const CTRL_TILES={
    to its parent when the parent is itself a tile (that is how ELEC_DISTRIBUTION
    gathers its ten classes); otherwise the leaf is the tile. A class absent from
    the map prints nothing — db-graphics §4, a graphic never invents a figure. */
+/* [ELEC-MOTORS 2026-07-29] Classes that must NEVER absorb their children.
+
+   The roll-up below exists so a deep leaf lands on the tile of the parent the
+   map names. That is right for a class that is only a GROUPING. It is wrong for
+   ELECTRICAL_LOAD, which is both a tile of its own AND the parent of almost the
+   whole electrical tree — MOTOR, POWER_FEEDER, GENERATOR, SWITCHGEAR,
+   TRANSFORMER, MCC_PANEL, VFD_DRIVE all hang off it. The square rendered ONE
+   tile, AUX SYSTEMS 453, and the 308 motors — the biggest single class in the
+   plant — disappeared inside it. Nothing was wrong with the data: MOTOR carries
+   308 rows in plant_assets, they were just being counted under their parent.
+   The 453 was 308 + 107 + 14 + 9 + 7 + 4 + 2 + 2, which is exactly that tree.
+
+   ELECTRICAL_LOAD keeps its own tile and now means what it says: the 14 assets
+   registered AT that class and nothing below it. */
+const NO_ROLLUP=new Set(["ELECTRICAL_LOAD"]);
 function classCards(disc, MAP, areaCode, navOf){
   const m=new Map();
   (DB.assets||[]).forEach(a=>{
@@ -1850,7 +1888,7 @@ function classCards(disc, MAP, areaCode, navOf){
     const cl=IDX.aclassById.get(a.asset_class_id);
     if(!cl || cl.discipline!==disc) return;
     const parent=cl.parent_class_id ? IDX.aclassById.get(cl.parent_class_id) : null;
-    const key=(parent && MAP[parent.code]) ? parent.code
+    const key=(parent && MAP[parent.code] && !NO_ROLLUP.has(parent.code)) ? parent.code
             : (disc==="ELECTRICAL" && ELEC_FALLBACK_DIST.has(cl.code)) ? "ELEC_DISTRIBUTION"
             : cl.code;
     if(MAP[key]) m.set(key,(m.get(key)||0)+1);
@@ -1879,11 +1917,13 @@ function classCards(disc, MAP, areaCode, navOf){
 
    discBoxCard / discBand remain the offline fallback for a page where tam-disc.js
    failed to load. */
+let DISCROW_N = 0;
 function discRow(groups){
   if(typeof TamDisc === "undefined") return discBand(groups);
-  const cells = groups.map(g=>{
+  const list = (groups||[]).filter(g => g && g[3] && g[3].length);
+  if(!list.length) return "";
+  const cells = list.map(g=>{
     const [title,rule,ink,items,total,totalTip,foot] = g;
-    if(!items || !items.length) return "";
     const footHTML = foot ? `<div style="margin-top:5px;font:600 8.5px Consolas,monospace;`
       + `letter-spacing:.03em;color:var(--ink-soft);line-height:1.35">${foot}</div>` : "";
     const body = TamDisc.square({
@@ -1893,10 +1933,30 @@ function discRow(groups){
     }, {size:210});
     return `<div style="min-width:0"${totalTip?` title="${esc(totalTip)}"`:""}>${body}${footHTML}</div>`;
   });
-  return `<div style="display:grid;grid-template-columns:repeat(${groups.length||1},minmax(0,1fr));`
-    + `gap:8px;align-items:start;margin:9px 0">${cells.join("")}</div>`;
+  /* the closed strip carries the SAME four figures as the open squares — it is a
+     collapse, not a summary, so nothing is hidden that the corner totals showed. */
+  const chips = list.map(g=>`<span class="dchip"><i style="background:${g[1]}"></i>`
+    + `${esc(g[0])}<b>${g[4]==null?"":g[4]}</b></span>`).join("");
+  const uid = "discrow-" + (++DISCROW_N);
+  return `<div class="discrow" id="${uid}">
+    <button type="button" class="drbar" aria-expanded="false" aria-controls="${uid}-grid"
+      onclick="toggleDiscRow('${uid}')" title="Show the four discipline squares">
+      <span class="drlbl">ASSETS BY DISCIPLINE</span>
+      <span class="drchips">${chips}</span>
+      <span class="drcaret">&#9662;</span>
+    </button>
+    <div class="drgrid" id="${uid}-grid" style="grid-template-columns:repeat(${list.length},minmax(0,1fr))">${cells.join("")}</div>
+  </div>`;
 }
-
+/* One click opens every square in the row — see the CSS note above. */
+function toggleDiscRow(id){
+  const r = document.getElementById(id); if(!r) return;
+  const open = r.classList.toggle("open");
+  const b = r.querySelector(".drbar");
+  if(b){ b.setAttribute("aria-expanded", open ? "true" : "false");
+         b.setAttribute("title", open ? "Hide the discipline squares" : "Show the four discipline squares"); }
+}
+window.toggleDiscRow = toggleDiscRow;
 function discBand(groups){
   /* Two colours per group, not one. Mario asked for a Mario-Bros palette — red,
      yellow, green, blue — and a 9 px bold label in #FBD000 on white is simply
@@ -2009,8 +2069,8 @@ function bfdSvg(cnt){
       <text x="566" y="${vy(112)}" font-family="Consolas,monospace" font-size="7.5" fill="#0B5CAD">NH3</text>
       <line x1="820" y1="${vy(148)}" x2="820" y2="${vy(88)}" stroke="#1F8A4C" stroke-width="1.6" marker-end="url(#bfg)"/>
       <text x="826" y="${vy(120)}" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">BOG</text>
-      <polyline points="760,${vy(58)} 700,${vy(58)} 700,${vy(148)}" fill="none" stroke="#1F8A4C" stroke-width="1.6" marker-end="url(#bfg)"/>
-      <text x="704" y="${vy(100)}" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">RECYCLE</text>`;
+      <polyline points="790,${vy(30)} 790,${vy(13)} 455,${vy(13)} 455,${vy(148)}" fill="none" stroke="#1F8A4C" stroke-width="1.6" marker-end="url(#bfg)"/>
+      <text x="461" y="${vy(10)}" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">BOG RECYCLE → U310 · F35</text>`;
   s+=ovBlock(cnt,55,vy(300),140,vy(64),"410");
   s+=ovBlock(cnt,415,vy(300),140,vy(64),"370");
   s+=ovBlock(cnt,625,vy(300),140,vy(64),"480");
@@ -2020,8 +2080,9 @@ function bfdSvg(cnt){
       <polyline points="150,${vy(238)} 150,${vy(268)} 380,${vy(268)} 380,${vy(332)} 413,${vy(332)}" fill="none" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#bfm)"/>
       <text x="180" y="${vy(263)}" font-family="Consolas,monospace" font-size="7.5" fill="#4A4F57">FUEL-GAS BYPASS (U200)</text>
       <line x1="555" y1="${vy(332)}" x2="622" y2="${vy(332)}" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#bfm)"/>
-      <polyline points="900,${vy(58)} 985,${vy(58)} 985,${vy(290)} 765,${vy(290)} 765,${vy(298)}" fill="none" stroke="#1F8A4C" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bfg)"/>
-      <text x="800" y="${vy(285)}" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">FLASH GAS → FUEL</text>
+      <polyline points="900,${vy(58)} 985,${vy(58)} 985,${vy(288)} 495,${vy(288)} 495,${vy(298)}" fill="none" stroke="#1F8A4C" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bfg)"/>
+      <text x="560" y="${vy(284)}" font-family="Consolas,monospace" font-size="7.5" fill="#1F8A4C">FLASH GAS → E-372 (U370)</text>
+      <text x="558" y="${vy(326)}" font-family="Consolas,monospace" font-size="6.6" fill="#4A4F57">VIA U420 HP/LP</text>
       <line x1="765" y1="${vy(332)}" x2="822" y2="${vy(332)}" stroke="#4A4F57" stroke-width="1.5" marker-end="url(#bfm)"/>
       <text x="826" y="${vy(329)}" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">POWER GEN /</text>
       <text x="826" y="${vy(340)}" font-family="Consolas,monospace" font-size="8" fill="#4A4F57">FUEL USERS</text>
