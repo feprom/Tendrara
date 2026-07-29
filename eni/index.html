@@ -1766,21 +1766,135 @@ function discBoxCard([title,rule,ink,items,total,totalTip]){
    handed in here has been checked to be disjoint — see the ELECTRICAL note in
    renderHome(). Do not add a card to one of these groups without asking whether
    it overlaps a card already there. */
-const MIN_TILES = 3;
+
+/* ── the discipline tile maps ────────────────────────────────────────────────
+   [ELEC-CLASSES / AREA-CLASSES 2026-07-29] One map per discipline, keyed by the
+   ASSET CLASS CODE. Whatever reads them — the plant strip or an area page — tiles
+   plant_assets by class, so the tiles always add up to the corner figure of that
+   box. Module scope, not inside renderHome(), because renderArea() needs the same
+   maps: one definition, one meaning, both pages. */
+const ELEC_TILES={
+  MOTOR:            ["MOT",   "MOTORS",        "nav('report/motors')"],
+  ELECTRIC_HEATER:  ["HEATER","HEATERS",       "nav('report/loads')"],
+  ELECTRICAL_LOAD:  ["LOAD",  "AUX SYSTEMS",   "nav('report/loads')"],
+  DOL_STARTER:      ["MCC",   "DOL STARTERS",  "nav('sld')"],
+  POWER_FEEDER:     ["LOAD",  "FEEDERS",       "nav('sld')"],
+  VFD_DRIVE:        ["MCC",   "VFD DRIVES",    "nav('sld')"],
+  SOFT_STARTER:     ["MCC",   "SOFT STARTERS", "nav('sld')"],
+  ELEC_DISTRIBUTION:["MCC",   "DISTRIBUTION",  "nav('sld')"]
+};
+// pre-221 only: the ten classes SQL/221 hangs under ELEC_DISTRIBUTION
+const ELEC_FALLBACK_DIST=new Set(["NETWORK_ANALYZER","BUSBAR","GENERATOR","SWITCHGEAR",
+  "BUS_COUPLER","E_HOUSE","MCC_PANEL","INVERTER","TRANSFORMER","UPS"]);
+const MECH_TILES={
+  FAN:            ["FAN",   "FANS"],
+  PUMP:           ["PUMP",  "PUMPS"],
+  HEAT_EXCHANGER: ["HX",    "EXCHANGERS"],
+  PROCESS_TANK:   ["EQ",    "TANKS"],
+  SEPARATOR:      ["EQ",    "SEPARATORS"],
+  VESSEL:         ["EQ",    "VESSELS"],
+  STORAGE_TANK:   ["EQ",    "STORAGE TANKS"],
+  FILTER:         ["FILTER","FILTERS"],
+  COMPRESSOR:     ["COMP",  "COMPRESSORS"],
+  HEATER:         ["HEATER","HEATERS"],
+  EQUIPMENT:      ["EQ",    "EQUIPMENT"]
+};
+
+/* [DISC-CLOSE 2026-07-29] INSTRUMENTATION and CONTROL tiled by asset class too,
+   so all four squares add up to their own corner figure. Until now these two read
+   from other sources — the ISA measured-variable families for instruments, the IO /
+   alarm / station counts for control — and neither summed to the total printed in
+   the corner: area 330 instrumentation showed 129 against 173. Two boxes that close
+   and two that do not is worse than four that consistently do not, so both moved
+   onto the registry.
+
+   What is lost: the ISA family view. PRESSURE / TEMPERATURE / LEVEL / FLOW is what
+   an operator reads, and it is not an asset class — it is the first letter of the
+   tag. It stays one click away in the instrument report and the module decks keep
+   their family tiles. Mario's call, 2026-07-29.
+
+   ALARMS leave the CONTROL square for the same reason manual valves left the
+   mechanical one: they are not CONTROL assets — the class tree has no ALARM class
+   and the 1567 does not include them. They print under the square instead. */
+const INST_TILES={
+  INDICATOR_GAUGE: ["INST", "GAUGES",           "nav('report/instruments')"],
+  TRANSMITTER:     ["INSTP","TRANSMITTERS",     "nav('report/instruments')"],
+  SWITCH:          ["INSTZ","SWITCHES",         "nav('report/instruments')"],
+  SOLENOID:        ["VLV",  "SOLENOIDS",        "nav('report/valves')"],
+  RELIEF_VALVE:    ["VLV",  "RELIEF VALVES",    "nav('report/valves')"],
+  CONTROL_VALVE:   ["VLV",  "CONTROL VALVES",   "nav('report/valves')"],
+  ANALYZER:        ["INSTA","ANALYSERS",        "nav('report/instruments')"],
+  ONOFF_VALVE:     ["VLV",  "ON-OFF VALVES",    "nav('report/valves')"],
+  PRIMARY_ELEMENT: ["INSTF","PRIMARY ELEMENTS", "nav('report/instruments')"],
+  ACTUATOR:        ["VLV",  "ACTUATORS",        "nav('report/valves')"]
+};
+const CTRL_TILES={
+  IO_CHANNEL:   ["IO",  "IO CHANNELS",    "nav('report/io')"],
+  CONTROL_LOOP: ["RIO", "CONTROL LOOPS",  "nav('report/loops')"],
+  RIO_PANEL:    ["ST",  "RIO PANELS",     "nav('report/panels')"],
+  SEQUENCE:     ["DWG", "SEQUENCES",      "nav('report/panels')"],
+  JUNCTION_BOX: ["ST",  "JUNCTION BOXES", "nav('report/panels')"],
+  NETWORK_NODE: ["IO",  "NETWORK NODES",  "nav('report/panels')"],
+  CAUSE_EFFECT: ["CE",  "CAUSE & EFFECT", "nav('report/ce')"]
+};
+
+/* classCards(discipline, map, areaCode?, nav?) — tile plant_assets by class.
+   areaCode restricts to one area; omit it for the whole plant. A class rolls up
+   to its parent when the parent is itself a tile (that is how ELEC_DISTRIBUTION
+   gathers its ten classes); otherwise the leaf is the tile. A class absent from
+   the map prints nothing — db-graphics §4, a graphic never invents a figure. */
+function classCards(disc, MAP, areaCode, navOf){
+  const m=new Map();
+  (DB.assets||[]).forEach(a=>{
+    if(areaCode!=null && String(a.area_code)!==String(areaCode)) return;
+    const cl=IDX.aclassById.get(a.asset_class_id);
+    if(!cl || cl.discipline!==disc) return;
+    const parent=cl.parent_class_id ? IDX.aclassById.get(cl.parent_class_id) : null;
+    const key=(parent && MAP[parent.code]) ? parent.code
+            : (disc==="ELECTRICAL" && ELEC_FALLBACK_DIST.has(cl.code)) ? "ELEC_DISTRIBUTION"
+            : cl.code;
+    if(MAP[key]) m.set(key,(m.get(key)||0)+1);
+  });
+  return [...m.entries()].sort((x,y)=>y[1]-x[1]).map(([k,n])=>{
+    const t=MAP[k];
+    return [t[0], n, t[1], t[2] || (navOf?navOf(k):"")];
+  });
+}
+
+/* discRow(groups) — one square per discipline, with an optional foot line under it.
+   group = [title, rule, ink, items, total, totalTip, footHTML?]
+
+   [AREA-FIX 2026-07-29] Two changes, both from the area 330 page reading wrong.
+
+   1. The row is a GRID of equal columns, not a flex row. As a flex row a box with
+      few items stretched across half the strip and stood empty.
+   2. EVERY discipline is a square. The old rule — fewer than 3 classes falls back
+      to the card row — made sense while the row was flexible width: two tiles in a
+      square look empty. With fixed equal columns it was worse, not better: area 330
+      ELECTRICAL rendered as two small cards in a column sized for a square, leaving
+      a hole in the row. A square with one big tile and one thin one is the honest
+      picture of "37 motors and 2 heaters", and the row stays uniform. The thin tile
+      keeps its colour and its tooltip; below ~18 px it drops the number, which is
+      the documented degrade, not a bug.
+
+   discBoxCard / discBand remain the offline fallback for a page where tam-disc.js
+   failed to load. */
 function discRow(groups){
   if(typeof TamDisc === "undefined") return discBand(groups);
   const cells = groups.map(g=>{
-    const [title,rule,ink,items,total,totalTip] = g;
+    const [title,rule,ink,items,total,totalTip,foot] = g;
     if(!items || !items.length) return "";
-    if(items.length < MIN_TILES) return discBoxCard(g);
-    const svg = TamDisc.square({
+    const footHTML = foot ? `<div style="margin-top:5px;font:600 8.5px Consolas,monospace;`
+      + `letter-spacing:.03em;color:var(--ink-soft);line-height:1.35">${foot}</div>` : "";
+    const body = TamDisc.square({
       title, total, note: totalTip,
       items: items.map(([icon,n,label,link]) => ({label, value:n, nav:link,
         sub: totalTip ? `${label} · ${n}` : null}))
     }, {size:210});
-    return `<div style="flex:1 1 0;min-width:0"${totalTip?` title="${esc(totalTip)}"`:""}>${svg}</div>`;
+    return `<div style="min-width:0"${totalTip?` title="${esc(totalTip)}"`:""}>${body}${footHTML}</div>`;
   });
-  return `<div class="dband">${cells.join("")}</div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(${groups.length||1},minmax(0,1fr));`
+    + `gap:8px;align-items:start;margin:9px 0">${cells.join("")}</div>`;
 }
 
 function discBand(groups){
@@ -1949,64 +2063,27 @@ function renderHome(c){
   const dc=disc=>(DB.assets||[]).filter(a=>{
     const cl=IDX.aclassById.get(a.asset_class_id); return cl && cl.discipline===disc; }).length;
   /* [ELEC-CLASSES 2026-07-29] ELECTRICAL — eight tiles: field, cubicles, distribution.
-
-     Mario's model. The field holds motors, heaters and the auxiliary systems. The
-     electrical assets proper are the cubicles, counted PER TYPE and not grouped.
-     Everything else — busbars, boards, couplers, transformers, bus-tie converters,
-     metering, generation, e-houses — is one DISTRIBUTION group. Only that last one
-     is a group; the rest are read as leaf classes.
+     Mario's model: the field holds motors, heaters and the auxiliary systems; the
+     electrical assets proper are the cubicles counted PER TYPE and not grouped;
+     everything else — busbars, boards, couplers, transformers, bus-tie converters,
+     metering, generation, e-houses — is the one DISTRIBUTION group.
 
        MOTORS         308  |  DOL STARTERS  54   |  DISTRIBUTION 57
        HEATERS         22  |  FEEDERS       46   |
        AUX SYSTEMS     14  |  VFD DRIVES     6   |
                            |  SOFT STARTERS  3   |
-       ─────────────────────────────────────────────
+       ──────────────────────────────────────────────
        field  344         cubicles  109        distribution 57      = 510
 
      510, not 488: SQL/221 moves the 22 resistive heaters that carry a
-     plant_electrical_assets row from MECHANICAL to ELECTRICAL, because they behave
-     as electrical loads and the field tile has to be "motors and heaters".
-     MECHANICAL drops to 340 in the same migration — its corner figure is read from
-     the registry, so it follows automatically.
+     plant_electrical_assets row from MECHANICAL to ELECTRICAL — they behave as
+     electrical loads, and the field tile has to be "motors and heaters". MECHANICAL
+     drops to 340 in the same migration; its corner figure is read from the registry
+     so it follows on its own. The cubicle split is a CLASS split, not a renderer
+     one: 221 promotes v_sld_nodes.start_kind onto the asset class. Ways .214/.215
+     stay plain feeders, so the two ABB cabinets are not double counted.
 
-     The cubicle split is a CLASS split, not a renderer one: SQL/221 promotes
-     v_sld_nodes.start_kind onto the asset class, so DOL_STARTER / SOFT_STARTER /
-     VFD_DRIVE / POWER_FEEDER each mean one kind of cubicle. The 46 plain feeders
-     are the ways with no start device recorded on the sheet — breaker-only feeds to
-     boards, transformers and the separate ABB drive cabinets. Ways .214/.215 are
-     among them, which is why the two ACS880 cabinets are not double counted.
-
-     Before 221 is applied the class split does not exist, so ELEC_FALLBACK_DIST
-     still rolls the distribution classes up and the cubicles show as one FEEDERS
-     tile — six tiles instead of eight, same total. Delete the fallback once 221 is
-     in and verified. */
-  const ELEC_TILES={
-    MOTOR:            ["MOT",   "MOTORS",        "nav('report/motors')"],
-    ELECTRIC_HEATER:  ["HEATER","HEATERS",       "nav('report/loads')"],
-    ELECTRICAL_LOAD:  ["LOAD",  "AUX SYSTEMS",   "nav('report/loads')"],
-    DOL_STARTER:      ["MCC",   "DOL STARTERS",  "nav('sld')"],
-    POWER_FEEDER:     ["LOAD",  "FEEDERS",       "nav('sld')"],
-    VFD_DRIVE:        ["MCC",   "VFD DRIVES",    "nav('sld')"],
-    SOFT_STARTER:     ["MCC",   "SOFT STARTERS", "nav('sld')"],
-    ELEC_DISTRIBUTION:["MCC",   "DISTRIBUTION",  "nav('sld')"]
-  };
-  // pre-221 only: the ten classes SQL/221 hangs under ELEC_DISTRIBUTION
-  const ELEC_FALLBACK_DIST=new Set(["NETWORK_ANALYZER","BUSBAR","GENERATOR","SWITCHGEAR",
-    "BUS_COUPLER","E_HOUSE","MCC_PANEL","INVERTER","TRANSFORMER","UPS"]);
-  const elecClassCards=()=>{
-    const m=new Map();
-    (DB.assets||[]).forEach(a=>{
-      const cl=IDX.aclassById.get(a.asset_class_id);
-      if(!cl || cl.discipline!=="ELECTRICAL") return;
-      const parent=cl.parent_class_id ? IDX.aclassById.get(cl.parent_class_id) : null;
-      const tile=(parent && parent.code==="ELEC_DISTRIBUTION") ? "ELEC_DISTRIBUTION"
-               : ELEC_FALLBACK_DIST.has(cl.code) ? "ELEC_DISTRIBUTION"
-               : cl.code;
-      if(ELEC_TILES[tile]) m.set(tile,(m.get(tile)||0)+1);
-    });
-    return [...m.entries()].sort((x,y)=>y[1]-x[1])
-      .map(([k,n])=>{ const t=ELEC_TILES[k]; return [t[0], n, t[1], t[2]]; });
-  };
+     ELEC_TILES and classCards() live at module scope — the area page uses them too. */
   // instrument families, ISA first letter of the tag (P pressure · T temperature ·
   // L level · F flow · Z position · A analysis). Read off the registry, never typed.
   const instFam=ltr=>(DB.instUi||[]).filter(r=>String(r.tag||"").trim().toUpperCase().startsWith(ltr)).length;
@@ -2045,22 +2122,13 @@ function renderHome(c){
        v_electrical_ui, SWITCHGEAR from plant_assets, LOADS from the whole of
        v_electrical_ui with the motors still inside it. One source, one class per
        tile, and the arithmetic closes. */
-    ["ELECTRICAL", "#FBD000", "#9A6B00", elecClassCards(),
+    ["ELECTRICAL", "#FBD000", "#9A6B00", classCards("ELECTRICAL", ELEC_TILES),
       dc("ELECTRICAL"), "Assets of the discipline in the registry, tiled as the field assets (motors, heaters, auxiliary systems), the supply cubicles counted per type, and one distribution group for the boards, busbars, transformers and metering behind them. A motor, its cubicle, its busbar and its board are four different assets, not one counted four times, so the tiles add up to this figure exactly. See SQL/221."],
-    ["INSTRUMENTATION", "#43B047", "#1F8A4C", [
-      ["INSTP", instFam("P"),      "PRESSURE",    "nav('report/instruments')"],
-      ["INSTT", instFam("T"),      "TEMPERATURE", "nav('report/instruments')"],
-      ["INSTL", instFam("L"),      "LEVEL",       "nav('report/instruments')"],
-      ["INSTF", instFam("F"),      "FLOW",        "nav('report/instruments')"],
-      ["INSTZ", instFam("Z"),      "POSITION",    "nav('report/instruments')"],
-      ["INSTA", instFam("A"),      "ANALYSIS",    "nav('report/instruments')"],
-      ["VLV",  DB.valves.length,     "ACT. VALVES", "nav('report/valves')"]],
-      dc("INSTRUMENTATION"), "Assets of the discipline in the registry. The cards are the ISA measured-variable families read off the tag's first letter; hand switches, F&G and status points are in the total but not shown as cards."],
-    ["CONTROL", "#049CD8", "#0B5CAD", [
-      ["IO",   DB.io.length,         "IO CHANNELS", "nav('report/io')"],
-      ["ST",   IDX.stations.size,    "IO STATIONS", "nav('report/panels')"],
-      ["ALM",  DB.alarms.length,     "ALARMS",      "nav('alarms')"]],
-      dc("CONTROL"), "Assets of the discipline in the registry."]
+    ["INSTRUMENTATION", "#43B047", "#1F8A4C", classCards("INSTRUMENTATION", INST_TILES),
+      dc("INSTRUMENTATION"), "Assets of the discipline in the registry, tiled by asset class, so the tiles add up to this figure exactly. The ISA measured-variable families (pressure, temperature, level, flow) are the first letter of the tag, not a class — they are in the instrument report."],
+    ["CONTROL", "#049CD8", "#0B5CAD", classCards("CONTROL", CTRL_TILES),
+      dc("CONTROL"), "Assets of the discipline in the registry, tiled by asset class, so the tiles add up to this figure exactly. Alarms are not CONTROL assets — they have no class in the tree and are not in this figure; their count is printed under the square.",
+      DB.alarms.length ? `<span style="cursor:pointer" onclick="nav('alarms')">+ ${DB.alarms.length} ALARMS <span style="font-weight:400">· alarm register, not registry assets</span></span>` : ""]
   ])}
   <div class="bfd">${bfdSvg(cnt)}</div>
   <div class="note">Transactions: <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
@@ -2991,44 +3059,46 @@ function renderArea(c, code){
   const dcA=disc=>(DB.assets||[]).filter(a=>{ if(String(a.area_code)!==String(code)) return false;
     const cl=IDX.aclassById.get(a.asset_class_id); return cl && cl.discipline===disc; }).length;
   const instFamA=ltr=>inst.filter(r=>String(r.tag||"").trim().toUpperCase().startsWith(ltr)).length;
-  const mechCards=[];
-  [["PUMP","PUMP","PUMPS"],["COMP","COMPRESSOR","COMPRESSORS"],["HX","HEAT_EXCHANGER","EXCHANGERS"],
-   ["FILTER","FILTER","FILTERS"],["FAN","FAN","FANS"],["HEATER","HEATER","HEATERS"]].forEach(([ic,cl,lb])=>{
-     if(eqCls(cl)) mechCards.push([ic, eqCls(cl), lb, goto("mech","sec-eq")]); });
-  const nVess=eqCls("VESSEL")+eqCls("SEPARATOR")+eqCls("PROCESS_TANK")+eqCls("STORAGE_TANK")+eqCls("COLUMN");
-  if(nVess) mechCards.push(["EQ", nVess, "VESSELS", goto("mech","sec-eq")]);
-  mechCards.push(["MVLV", mvs.length||"—", "MANUAL VALVES", goto("mech","sec-mvlv")]);
-  const instCards=[];
-  [["INSTP","P","PRESSURE"],["INSTT","T","TEMPERATURE"],["INSTL","L","LEVEL"],
-   ["INSTF","F","FLOW"],["INSTZ","Z","POSITION"],["INSTA","A","ANALYSIS"]].forEach(([ic,l,lb])=>{
-     if(instFamA(l)) instCards.push([ic, instFamA(l), lb, goto("instr","sec-inst")]); });
-  if(vlvs.length) instCards.push(["VLV", vlvs.length, "ACT. VALVES", goto("instr","sec-vlv")]);
-  /* [DISC-SQUARES 2026-07-29 · ELEC-SLD] the area box stays on the LOAD LIST, not on
-     the asset classes the home strip now tiles, because the switchboard objects are
-     not area-coded to a process unit: every POWER_FEEDER, busbar and board sits at
-     the power centres in area 480, so plant_assets knows only MOTOR inside 330/310
-     (37 + 3). One tile is not a square, so this box renders as cards either way.
-     The overlap is still removed: motorRows is built FROM eloads (every load with a
-     motor datasheet) plus the remote-MCC rows, so MOTORS and LOADS shared machines.
-     OTHER LOADS is this area's feeders that are not the driven equipment of a motor
-     already counted — 330 reads 37 motors and the remainder of its 26 loads. */
-  const motorEquipTags=new Set(motorRows.map(m=>String(m.equip||"").trim()).filter(Boolean));
-  const otherLoads=eloads.filter(l=>!motorEquipTags.has(String(l.tag||"").trim())).length;
-  const elecCards=[];
-  if(motorRows.length) elecCards.push(["MOT", motorRows.length, "MOTORS", goto("elec","sec-motors")]);
-  if(otherLoads)       elecCards.push(["LOAD", otherLoads, "OTHER LOADS", goto("elec","sec-eload")]);
-  const ctrlCards=[["IO", DB.io.filter(r=>String(r.unit)===String(code)).length, "IO CHANNELS", goto("ctrl","sec-io")],
-                   ["ST", stationRows.length, "STATIONS", goto("ctrl","sec-stations")]];
-  if(alm.length) ctrlCards.push(["ALM", alm.length, "ALARMS", goto("ctrl","sec-alm")]);
-  if(ceR.length) ctrlCards.push(["CE", ceObj.causes.length, "CAUSE & EFFECT", goto("ctrl","sec-ce")]);
+  /* [AREA-CLASSES 2026-07-29] MECHANICAL and ELECTRICAL now tile plant_assets by
+     class FOR THIS AREA, so the tiles add up to the corner figure of the box —
+     area 330 reads FANS 30 · PUMPS 10 · TANKS 8 · FILTERS 6 · EXCHANGERS 5 ·
+     SEPARATORS 2 · HEATERS 2 = 63, which is exactly dcA("MECHANICAL").
+
+     They used to be built from the SECTION tables (eq / eloads / motorRows), which
+     count different things: the mechanical square showed MANUAL VALVES 104 beside
+     six equipment classes and summed to 167 against a corner of 63. As a card row
+     that was six true facts plus one; as a treemap it claimed the area is two
+     thirds manual valves, which it is not — those 104 valves live in
+     plant_manual_valves (Stage-2) and are not registry assets at all.
+
+     The valves are NOT dropped: the count is real and it is the biggest single
+     thing a mechanic meets in this unit. It moves out of the PARTITION and under
+     the square as a foot line, still clickable through to its own section. Same
+     reasoning for the instrument F&G/hand-switch remainder. */
+  const mechCards=classCards("MECHANICAL", MECH_TILES, code, ()=>goto("mech","sec-eq"));
+  const elecCards=classCards("ELECTRICAL", ELEC_TILES, code, k=>
+    k==="MOTOR" ? goto("elec","sec-motors") : goto("elec","sec-eload"));
+  const mvFoot = mvs.length
+    ? `<span style="cursor:pointer" onclick="${goto("mech","sec-mvlv")}">+ ${mvs.length} MANUAL VALVES`
+      + ` <span style="font-weight:400">· Stage-2 register, not registry assets</span></span>`
+    : "";
+  const instCards=classCards("INSTRUMENTATION", INST_TILES, code, k=>
+    /VALVE|SOLENOID|ACTUATOR/.test(k) ? goto("instr","sec-vlv") : goto("instr","sec-inst"));
+  const ctrlCards=classCards("CONTROL", CTRL_TILES, code, k=>
+    k==="IO_CHANNEL" ? goto("ctrl","sec-io")
+    : k==="CAUSE_EFFECT" ? goto("ctrl","sec-ce") : goto("ctrl","sec-stations"));
   const facts=discRow([
     ["MECHANICAL","#E52521","#C8102E",mechCards,dcA("MECHANICAL"),
-     "Assets of the discipline in this area. Manual valves are their own Stage-2 register and are not in this figure."],
+     "Assets of the discipline in this area, tiled by asset class, so the tiles add up to this figure exactly. Manual valves are their own Stage-2 register and are not registry assets — their count is printed under the square.",
+     mvFoot],
     ["ELECTRICAL","#FBD000","#9A6B00",elecCards,dcA("ELECTRICAL"),
-     "Assets of the discipline in this area. OTHER LOADS is this area's feeders without the motors tiled beside them, so no machine is counted twice; the area holds "+eloads.length+" load-list records in total."],
+     "Assets of the discipline in this area. The switchboard objects — feeders, busbars, boards — are not area-coded to a process unit: they sit at the power centres in area 480, so an area sees only its field assets. The area holds "+eloads.length+" load-list records in total.",
+     eloads.length ? `<span style="cursor:pointer" onclick="${goto("elec","sec-eload")}">${eloads.length} LOAD-LIST RECORDS <span style="font-weight:400">· incl. feeders at the power centres</span></span>` : ""],
     ["INSTRUMENTATION","#43B047","#1F8A4C",instCards,dcA("INSTRUMENTATION"),
-     "Assets of the discipline in this area. The cards are the ISA measured-variable families; hand switches, F&G and status points are in the total but not shown as cards."],
-    ["CONTROL","#049CD8","#0B5CAD",ctrlCards,dcA("CONTROL"),"Assets of the discipline in this area."]
+     "Assets of the discipline in this area, tiled by asset class, so the tiles add up to this figure exactly. The ISA measured-variable families are the first letter of the tag, not a class — they are in the instrument section below."],
+    ["CONTROL","#049CD8","#0B5CAD",ctrlCards,dcA("CONTROL"),
+     "Assets of the discipline in this area, tiled by asset class, so the tiles add up to this figure exactly. Alarms are not CONTROL assets and are not in this figure.",
+     alm.length ? `<span style="cursor:pointer" onclick="${goto("ctrl","sec-alm")}">+ ${alm.length} ALARMS <span style="font-weight:400">· alarm register, not registry assets</span></span>` : ""]
   ]);
 
   // ── process topology (migrations 048/049/050) → tam-flow.js unit-flow diagram.
