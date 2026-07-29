@@ -1948,6 +1948,65 @@ function renderHome(c){
   // assets of a DISCIPLINE — the corner figure of each box
   const dc=disc=>(DB.assets||[]).filter(a=>{
     const cl=IDX.aclassById.get(a.asset_class_id); return cl && cl.discipline===disc; }).length;
+  /* [ELEC-CLASSES 2026-07-29] ELECTRICAL — eight tiles: field, cubicles, distribution.
+
+     Mario's model. The field holds motors, heaters and the auxiliary systems. The
+     electrical assets proper are the cubicles, counted PER TYPE and not grouped.
+     Everything else — busbars, boards, couplers, transformers, bus-tie converters,
+     metering, generation, e-houses — is one DISTRIBUTION group. Only that last one
+     is a group; the rest are read as leaf classes.
+
+       MOTORS         308  |  DOL STARTERS  54   |  DISTRIBUTION 57
+       HEATERS         22  |  FEEDERS       46   |
+       AUX SYSTEMS     14  |  VFD DRIVES     6   |
+                           |  SOFT STARTERS  3   |
+       ─────────────────────────────────────────────
+       field  344         cubicles  109        distribution 57      = 510
+
+     510, not 488: SQL/221 moves the 22 resistive heaters that carry a
+     plant_electrical_assets row from MECHANICAL to ELECTRICAL, because they behave
+     as electrical loads and the field tile has to be "motors and heaters".
+     MECHANICAL drops to 340 in the same migration — its corner figure is read from
+     the registry, so it follows automatically.
+
+     The cubicle split is a CLASS split, not a renderer one: SQL/221 promotes
+     v_sld_nodes.start_kind onto the asset class, so DOL_STARTER / SOFT_STARTER /
+     VFD_DRIVE / POWER_FEEDER each mean one kind of cubicle. The 46 plain feeders
+     are the ways with no start device recorded on the sheet — breaker-only feeds to
+     boards, transformers and the separate ABB drive cabinets. Ways .214/.215 are
+     among them, which is why the two ACS880 cabinets are not double counted.
+
+     Before 221 is applied the class split does not exist, so ELEC_FALLBACK_DIST
+     still rolls the distribution classes up and the cubicles show as one FEEDERS
+     tile — six tiles instead of eight, same total. Delete the fallback once 221 is
+     in and verified. */
+  const ELEC_TILES={
+    MOTOR:            ["MOT",   "MOTORS",        "nav('report/motors')"],
+    ELECTRIC_HEATER:  ["HEATER","HEATERS",       "nav('report/loads')"],
+    ELECTRICAL_LOAD:  ["LOAD",  "AUX SYSTEMS",   "nav('report/loads')"],
+    DOL_STARTER:      ["MCC",   "DOL STARTERS",  "nav('sld')"],
+    POWER_FEEDER:     ["LOAD",  "FEEDERS",       "nav('sld')"],
+    VFD_DRIVE:        ["MCC",   "VFD DRIVES",    "nav('sld')"],
+    SOFT_STARTER:     ["MCC",   "SOFT STARTERS", "nav('sld')"],
+    ELEC_DISTRIBUTION:["MCC",   "DISTRIBUTION",  "nav('sld')"]
+  };
+  // pre-221 only: the ten classes SQL/221 hangs under ELEC_DISTRIBUTION
+  const ELEC_FALLBACK_DIST=new Set(["NETWORK_ANALYZER","BUSBAR","GENERATOR","SWITCHGEAR",
+    "BUS_COUPLER","E_HOUSE","MCC_PANEL","INVERTER","TRANSFORMER","UPS"]);
+  const elecClassCards=()=>{
+    const m=new Map();
+    (DB.assets||[]).forEach(a=>{
+      const cl=IDX.aclassById.get(a.asset_class_id);
+      if(!cl || cl.discipline!=="ELECTRICAL") return;
+      const parent=cl.parent_class_id ? IDX.aclassById.get(cl.parent_class_id) : null;
+      const tile=(parent && parent.code==="ELEC_DISTRIBUTION") ? "ELEC_DISTRIBUTION"
+               : ELEC_FALLBACK_DIST.has(cl.code) ? "ELEC_DISTRIBUTION"
+               : cl.code;
+      if(ELEC_TILES[tile]) m.set(tile,(m.get(tile)||0)+1);
+    });
+    return [...m.entries()].sort((x,y)=>y[1]-x[1])
+      .map(([k,n])=>{ const t=ELEC_TILES[k]; return [t[0], n, t[1], t[2]]; });
+  };
   // instrument families, ISA first letter of the tag (P pressure · T temperature ·
   // L level · F flow · Z position · A analysis). Read off the registry, never typed.
   const instFam=ltr=>(DB.instUi||[]).filter(r=>String(r.tag||"").trim().toUpperCase().startsWith(ltr)).length;
@@ -1963,19 +2022,31 @@ function renderHome(c){
                                       "VESSELS",     "nav('report/equipment')"],
       ["MVLV", (DB.mvalves||[]).length,"MANUAL VALVES","nav('report/manual-valves')"]],
       dc("MECHANICAL"), "Assets of the discipline in the registry. Manual valves are still their own Stage-2 register and are not promoted to plant_assets yet, so they are not in this figure."],
-    /* [DISC-SQUARES 2026-07-29] the fourth card used to be LOADS = the WHOLE of
-       v_electrical_ui, next to MOTORS and GENERATORS read out of the same view.
-       Motors are loads: as a card row that was three true facts, as a treemap it
-       is the same machine claiming area twice. The card is now OTHER LOADS —
-       the load list minus the motors and generators already tiled — so the four
-       tiles partition the view. The figure still opens the full load report. */
-    ["ELECTRICAL", "#FBD000", "#9A6B00", [
-      ["MOT",  ec("MOTOR"),          "MOTORS",      "nav('report/motors')"],
-      ["MOT",  ec("GENERATOR"),      "GENERATORS",  "nav('report/motors')"],
-      ["MCC",  ac("SWITCHGEAR"),     "SWITCHGEAR",  "nav('sld')"],
-      ["LOAD", Math.max(0,(DB.elecUi||[]).length - ec("MOTOR") - ec("GENERATOR")),
-                                     "OTHER LOADS", "nav('report/loads')"]],
-      dc("ELECTRICAL"), "Assets of the discipline in the registry. OTHER LOADS is the load list without the motors and generators tiled beside it, so the four figures do not count the same machine twice; the full list is "+((DB.elecUi||[]).length)+" records. Switchgear is read from plant_assets, not from the load list."],
+    /* [ELEC-SLD 2026-07-29] ELECTRICAL is tiled straight off plant_assets by class,
+       and it is the ONLY box whose tiles add up to its own corner figure exactly —
+       308 + 107 + 14 + 11 + 10 + 9 + 7 + 6 + 6 + 4 + 2 + 2 + 2 = 488.
+
+       That is not a coincidence and it is not a new taxonomy: the electrical
+       registry IS the single line. A motor is one asset; the feeder position that
+       supplies it (480-JG-694-F422), the busbar it hangs off (…-BBM), the metering
+       (…-401), the board (480-JG-694) and the drive panel (690-JG-695) are each a
+       DIFFERENT asset, because each is a different object on the drawing. Counting
+       a motor and its feeder is not counting the motor twice.
+
+       Verified against the registry before this was written: no normalized_tag is
+       registered twice anywhere in plant_assets, and every v_sld_nodes row resolves
+       to exactly one ELECTRICAL asset by tag — except 21 driven consumers (16
+       heaters, 4 pumps, 1 compressor) which are correctly MECHANICAL assets sitting
+       at the end of an electrical feeder. Do NOT "fix" those into the electrical
+       discipline: they are one asset with two faces, and promoting them would be
+       the actual duplication.
+
+       The earlier version of this box mixed sources — MOTORS and GENERATORS from
+       v_electrical_ui, SWITCHGEAR from plant_assets, LOADS from the whole of
+       v_electrical_ui with the motors still inside it. One source, one class per
+       tile, and the arithmetic closes. */
+    ["ELECTRICAL", "#FBD000", "#9A6B00", elecClassCards(),
+      dc("ELECTRICAL"), "Assets of the discipline in the registry, tiled as the field assets (motors, heaters, auxiliary systems), the supply cubicles counted per type, and one distribution group for the boards, busbars, transformers and metering behind them. A motor, its cubicle, its busbar and its board are four different assets, not one counted four times, so the tiles add up to this figure exactly. See SQL/221."],
     ["INSTRUMENTATION", "#43B047", "#1F8A4C", [
       ["INSTP", instFam("P"),      "PRESSURE",    "nav('report/instruments')"],
       ["INSTT", instFam("T"),      "TEMPERATURE", "nav('report/instruments')"],
@@ -2932,11 +3003,15 @@ function renderArea(c, code){
    ["INSTF","F","FLOW"],["INSTZ","Z","POSITION"],["INSTA","A","ANALYSIS"]].forEach(([ic,l,lb])=>{
      if(instFamA(l)) instCards.push([ic, instFamA(l), lb, goto("instr","sec-inst")]); });
   if(vlvs.length) instCards.push(["VLV", vlvs.length, "ACT. VALVES", goto("instr","sec-vlv")]);
-  /* [DISC-SQUARES 2026-07-29] same partition fix as the home strip. motorRows is
-     built FROM eloads (every load carrying a motor datasheet) plus the remote-MCC
-     rows, so MOTORS and LOADS overlapped. OTHER LOADS is the feeders of this area
-     that are not the driven equipment of a motor already counted — area 330 reads
-     37 motors and the remainder of its 26 loads, instead of 37 + 26. */
+  /* [DISC-SQUARES 2026-07-29 · ELEC-SLD] the area box stays on the LOAD LIST, not on
+     the asset classes the home strip now tiles, because the switchboard objects are
+     not area-coded to a process unit: every POWER_FEEDER, busbar and board sits at
+     the power centres in area 480, so plant_assets knows only MOTOR inside 330/310
+     (37 + 3). One tile is not a square, so this box renders as cards either way.
+     The overlap is still removed: motorRows is built FROM eloads (every load with a
+     motor datasheet) plus the remote-MCC rows, so MOTORS and LOADS shared machines.
+     OTHER LOADS is this area's feeders that are not the driven equipment of a motor
+     already counted — 330 reads 37 motors and the remainder of its 26 loads. */
   const motorEquipTags=new Set(motorRows.map(m=>String(m.equip||"").trim()).filter(Boolean));
   const otherLoads=eloads.filter(l=>!motorEquipTags.has(String(l.tag||"").trim())).length;
   const elecCards=[];
