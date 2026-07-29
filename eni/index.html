@@ -1205,6 +1205,11 @@ function route(){
   else if(v==="reports") ROUTE={view:"reports"};
   else if(v==="report" && rest[0]) ROUTE={view:"report", rpt:rest[0]};
   else if(v==="search") ROUTE={view:"search", q:rest.join("/")||""};
+  /* #doc/<DOC_NO> — punto de entrada desde fuera del visor (los decks de formación
+     enlazan aqui). El bucket es privado, asi que esto abre el PDF firmado si hay
+     sesion y cae en needSignIn si no; nunca hay link muerto. La vista queda en
+     EI80 (docs) para que detras del PDF el usuario vea el registro completo. */
+  else if(v==="doc" && rest[0]){ ROUTE={view:"docs"}; setTimeout(function(){ openDocNo(rest[0]); }, 0); }
   else ROUTE={view:"home"};
   render();
 }
@@ -1869,7 +1874,7 @@ function renderHome(c){
   <h1>Tendrara Micro-LNG — Process View</h1>
   ${discBand([
     ["MECHANICAL", "#E52521", "#C8102E", [
-      ["EQ",   DB.equip.length,      "EQUIPMENT",   "nav('report/equipment')"],
+      ["EQ",   (DB.mechUi||[]).length,"EQUIPMENT",  "nav('report/equipment')"],   // [REG-CUTOVER] asset registry, not the grouped equipment sheet
       ["MECH", ac("PUMP"),           "PUMPS",       "nav('report/equipment')"],
       ["MECH", ac("COMPRESSOR"),     "COMPRESSORS", "nav('report/equipment')"],
       ["MECH", ac("HEAT_EXCHANGER"), "EXCHANGERS",  "nav('report/equipment')"],
@@ -2324,7 +2329,7 @@ const RPTS=[
       {label:"cos φ", get:r=>r.cos_phi, num:true, r:true, cls:"mono"},
       {label:"", get:r=>"pending", html:()=>`<span class="chip warn">NOT NORMALIZED</span>`}]},
   {id:"skids", no:"10", title:"Skid List", src:()=>[...DB.skids].sort((a,b)=>String(a.tag).localeCompare(String(b.tag)))
-      .map(s=>Object.assign({}, s, {eq_count:DB.equip.filter(e=>(e.skid_tag||"").trim()===(s.tag||"").trim()).length})),
+      .map(s=>Object.assign({}, s, {eq_count:(DB.mechUi||[]).filter(e=>(e.skid_tag||"").trim()===(s.tag||"").trim()).length})),
     cols:()=>[
       {label:"TAG", get:r=>r.tag, cls:"mono", html:(r,v)=>`<b style="color:var(--blue)">${esc(v||"—")}</b>`},
       {label:"DESCRIPTION", get:r=>r.description, cls:"dim"},
@@ -2642,7 +2647,18 @@ function renderArea(c, code){
   const inst=DB.inst.filter(r=>String(r.unit)===String(code));
   const vlvs=DB.valves.filter(r=>String(r.unit)===String(code));
   const alm=DB.alarms.filter(r=>String(r.area_code)===String(code));
-  const eq=DB.equip.filter(r=>String(r.area_code)===String(code));
+  /* [REG-CUTOVER 2026-07-29] the area's mechanical list comes from the ASSET
+     REGISTRY (v_mechanical_ui over plant_assets), not from the equipment sheet.
+     The sheet groups duty/standby into one row — "P-334A/B" — and the registry
+     never does: two pumps are two assets with two motors. Reading the sheet here
+     was why this card said 24 while the register holds 63 machines. */
+  const eq=(DB.mechUi||[]).filter(r=>String(r.area_code)===String(code))
+    .map(r=>({tag:r.tag, service:r.service, skid_tag:r.skid_tag, area_code:r.area_code,
+              cls:r.class_code, asset_id:r.asset_id}))
+    .sort((a,b)=>String(a.tag).localeCompare(String(b.tag),undefined,{numeric:true}));
+  // the motor that drives each machine, straight off the DRIVES relationship
+  const driverOf=r=>{ const rr=(IDX.drivenByAsset.get(r.asset_id)||[]);
+    return rr.map(x=>((IDX.assetById.get(x.from_asset_id)||{}).official_tag||"")).filter(Boolean).join(" · "); };
   const rios=DB.rios.filter(r=>String(r.unit)===String(code));
   const mcc=DB.mcc.filter(r=>String(r.area_code)===String(code));
   const eloads=DB.eloads.filter(r=>String(r.unit_tag)===String(code));
@@ -2663,10 +2679,12 @@ function renderArea(c, code){
   }).concat(orphanRios.map(r=>({panel:r.tag, rio:r.tag, service:r.service||"", ex:"", sys:sysOf(r)||"", ch:0, pct:0, orphan:true, nav:null})));
 
   // equipment first, then field devices, control, electrical, safety (operating-manual order)
-  const eqTbl = eq.length?dataTable("eq","EQ","Equipment",[
+  const eqTbl = eq.length?dataTable("eq","EQ","Equipment — asset registry",[
       {label:"TAG", get:r=>r.tag, cls:"tag"},
+      {label:"CLASS", get:r=>r.cls, html:(r,v)=>v?`<span class="chip dim">${esc(v)}</span>`:'<span class="dim">—</span>'},
       {label:"SERVICE", get:r=>r.service, cls:"dim"},
-      {label:"SKID", get:r=>r.skid_tag, cls:"mono"}
+      {label:"SKID", get:r=>r.skid_tag, cls:"mono"},
+      {label:"DRIVER", get:r=>driverOf(r), cls:"mono", html:(r,v)=>v?`<span style="color:var(--crimson)">${esc(v)}</span>`:'<span class="dim">—</span>'}
     ], eq, {rowClick:r=>`openEquip('${esc((r.tag||"").trim())}')`, sheet:"Equipment"}):"";
 
   const instTbl = inst.length?dataTable("inst","INST","Instruments",[
@@ -2758,6 +2776,12 @@ function renderArea(c, code){
       starting:sp.starting_method||"DOL", loc:(m.rio_panel||"")+(m.slot?(" / "+m.slot):""),
       v:sp.voltage_v||"", kw:m.power_rating, a:sp.rated_current_a||null, cosphi:sp.cos_phi||null,
       open:(m.tag||"").trim()}); });
+  /* [REG-CUTOVER] the registry decides what is a motor: X-332A/B carry a motor
+     datasheet (they are the anti-condensation heaters of the pump motors) and were
+     inflating this count to 39 against 37 MOTOR assets. */
+  const isMotorAsset=t=>{ const a=IDX.assetByTag.get(String(t||"").trim());
+    if(!a) return true; const cl=IDX.aclassById.get(a.asset_class_id); return !cl || cl.code==="MOTOR"; };
+  for(let i=motorRows.length-1;i>=0;i--) if(!isMotorAsset(motorRows[i].motor)) motorRows.splice(i,1);
   motorRows.sort((a,b)=>String(a.motor).localeCompare(String(b.motor),undefined,{numeric:true}));
   const srcOf=r=>{ const d=IDX.dsByTag.get(r.open); return (d&&d.source)||""; };
   const nMcc=motorRows.filter(r=>srcOf(r).indexOf("Remote MCC")>=0).length;
@@ -2802,8 +2826,8 @@ function renderArea(c, code){
   if(inst.length) facts+=fact("INST",inst.length, "INSTRUMENTS",    {link:goto("instr","sec-inst")});
   if(vlvs.length) facts+=fact("VLV", vlvs.length, "ACTUATED VALVES",{link:goto("instr","sec-vlv")});
   // Control
-  facts+=fact("ST",  st.length,  "IO STATIONS",    {link:goto("ctrl","sec-stations")});
-  facts+=fact("IO",  ioCh,       "IO CHANNELS",    {link:goto("ctrl","sec-io")});
+  facts+=fact("ST",  stationRows.length, "STATIONS",  {link:goto("ctrl","sec-stations")});
+  facts+=fact("IO",  DB.io.filter(r=>String(r.unit)===String(code)).length, "IO CHANNELS", {link:goto("ctrl","sec-io")});
   if(alm.length)  facts+=fact("ALM", alm.length,  "ALARMS",         {link:goto("ctrl","sec-alm")});
   if(ceR.length)  facts+=fact("CE",  ceObj.causes.length,"CAUSE & EFFECT",{link:goto("ctrl","sec-ce")});
 
