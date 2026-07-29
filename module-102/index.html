@@ -2090,13 +2090,13 @@
      card, so nobody adds the breakdown up and expects to land on them: manual valves are
      still their own Stage-2 register, and hand/F&G points are in the instrument total
      without a card of their own. */
-  /* ── tam-disc.js v0.2.0, INLINED ────────────────────────────────────────
+  /* ── tam-disc.js v0.3.0, INLINED ────────────────────────────────────────
      The deck is one file on purpose — it opens from a USB stick with no server
      and no network — so the pack is pasted in rather than linked. It is the same
      source as eni/tam-disc.js; if you change one, change both. Nothing below
      reads the DOM or the network. */
 /* ═══════════════════════════════════════════════════════════════════════════
-   tam-disc.js — DISCIPLINE SQUARES (treemap)  ·  v0.2.0
+   tam-disc.js — DISCIPLINE SQUARES (treemap)  ·  v0.3.0
    ─────────────────────────────────────────────────────────────────────────
    Four squares, one per discipline, all the SAME SIZE. Inside each square the
    asset classes of that discipline are tiled by area: a class with twice the
@@ -2302,20 +2302,37 @@
      the biggest tile is the darkest. Rank, not value: with 30 fans against 2
      heaters a value ramp would collapse every small tile into the same wash.
 
-     The ramp STARTS at the pure hue: the biggest tile of every square is the
-     discipline colour itself, undiluted, and only the smaller tiles are washed
-     toward white. So each square shows the pure red / yellow / green / blue at
-     its largest, which is where the reader looks first. */
+     The ramp STARTS at the pure hue and walks DOWN into deeper shades of it: the
+     biggest tile of every square is the discipline colour itself, undiluted, and
+     the smaller tiles get darker rather than paler.
+
+     [v0.3.0] It used to wash toward WHITE, which left the tail of a long square as
+     a row of near-white rectangles — legible up close, weak on a projector, and
+     nothing like the depth of the reference Mario sent. Multiplying down instead
+     keeps every tile saturated at any rank, which is what lets a square read as one
+     block of colour from the back of a room, and it puts white text on roughly two
+     tiles in three.
+
+     Direction note: the reference runs the other way — biggest tile darkest,
+     smaller ones lighter. Kept as biggest = PURE because "the ramp starts at the
+     pure hue" is a rule set earlier the same day, and the 3.4 px rule bar alone is
+     too thin to carry the discipline colour. To flip it, swap the `f` line for
+     `var f = (1 - DEEP) + DEEP * t;` — nothing else changes. */
+  var DEEP = 0.58;                              // how far down the smallest tile goes
   function ramp(hex, k, n) {
     var c = rgbOf(hex);
     var t = n > 1 ? (k / (n - 1)) : 0;          // 0 = biggest, 1 = smallest
-    var mix = 0.66 * t;                         // 0 = pure hue, toward white
-    return "rgb(" + Math.round(c[0] + (255 - c[0]) * mix) + "," +
-                    Math.round(c[1] + (255 - c[1]) * mix) + "," +
-                    Math.round(c[2] + (255 - c[2]) * mix) + ")";
+    var f = 1 - DEEP * t;                       // 1.00 pure hue  ->  0.42 deep shade
+    return "rgb(" + Math.round(c[0] * f) + "," +
+                    Math.round(c[1] * f) + "," +
+                    Math.round(c[2] * f) + ")";
   }
-  // black or white text, whichever survives on that fill (WCAG contrast, not a
-  // brightness guess — on pure yellow that is black, on pure red it is white)
+  /* Black or white per tile, whichever wins on WCAG contrast — not a brightness
+     guess. With the v0.3.0 ramp most tiles are deep enough that white wins, which
+     is the look asked for. The exceptions are the PURE top tiles of yellow, green
+     and blue: white on #FBD000 measures 1.7:1 and is unreadable, so those keep
+     black. That is the one place "white labels" is not followed, and it is not a
+     preference — it is the contrast. */
   function inkOn(rgb) {
     var m = /rgb\((\d+),(\d+),(\d+)\)/.exec(rgb);
     if (!m) return "#15171A";
@@ -2402,7 +2419,7 @@
   }
 
   var API = { square: square, band: band, squarify: squarify,
-              MARIO: MARIO, autoInk: autoInk, VERSION: "0.2.0" };
+              MARIO: MARIO, autoInk: autoInk, VERSION: "0.3.0" };
   if (typeof window !== "undefined") window.TamDisc = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
 })();
