@@ -2090,13 +2090,13 @@
      card, so nobody adds the breakdown up and expects to land on them: manual valves are
      still their own Stage-2 register, and hand/F&G points are in the instrument total
      without a card of their own. */
-  /* ── tam-disc.js v0.3.0, INLINED ────────────────────────────────────────
+  /* ── tam-disc.js v0.3.1, INLINED ────────────────────────────────────────
      The deck is one file on purpose — it opens from a USB stick with no server
      and no network — so the pack is pasted in rather than linked. It is the same
      source as eni/tam-disc.js; if you change one, change both. Nothing below
      reads the DOM or the network. */
 /* ═══════════════════════════════════════════════════════════════════════════
-   tam-disc.js — DISCIPLINE SQUARES (treemap)  ·  v0.3.0
+   tam-disc.js — DISCIPLINE SQUARES (treemap)  ·  v0.3.1
    ─────────────────────────────────────────────────────────────────────────
    Four squares, one per discipline, all the SAME SIZE. Inside each square the
    asset classes of that discipline are tiled by area: a class with twice the
@@ -2143,9 +2143,20 @@
      TamDisc.MARIO                → the four pure hues, keyed by discipline
      TamDisc.autoInk(hex)         → same hue, dark enough to read on the card
 
-   COLOUR — one pure Mario hue per discipline, no exceptions
-     MECHANICAL red #E52521 · ELECTRICAL yellow #FBD000 ·
-     INSTRUMENTATION green #43B047 · CONTROL blue #049CD8.
+   COLOUR — one pure hue per discipline, no exceptions
+     MECHANICAL red #E52521 · ELECTRICAL gold #F4C320 ·
+     INSTRUMENTATION green #3FA540 · CONTROL royal blue #2B6BD1.
+
+     [v0.3.1] Sampled pixel-for-pixel from the reference treemap Mario supplied
+     rather than guessed: red came back #E52521, identical to what we already had;
+     green #3FA540 and gold #F4C320 are a shade warmer than the #43B047 / #FBD000
+     they replace; and CONTROL moves from #049CD8 — a cyan — to the reference's
+     royal #2B6BD1, which is the difference Mario spotted. The DISCIPLINE MAPPING is
+     unchanged (the reference calls mechanical blue and electrical red; ours does
+     not, because that mapping is the product's discipline code).
+     Side effect worth having: #2B6BD1 is dark enough that white text wins on the
+     pure hue (5.09:1), so the control square reads white throughout like the
+     reference, and the title ink comes back as the pure blue itself.
      Those four values are the product's discipline code and they are used HERE
      AT FULL SATURATION: the rule bar and the biggest tile of every square carry
      the pure hue. Nothing is muted "for contrast" — the earlier v0.1.0 exception
@@ -2260,9 +2271,9 @@
      They are drawn at full saturation; nothing here is toned down. */
   var MARIO = {
     MECHANICAL:      "#E52521",   // red
-    ELECTRICAL:      "#FBD000",   // yellow
-    INSTRUMENTATION: "#43B047",   // green
-    CONTROL:         "#049CD8"    // blue
+    ELECTRICAL:      "#F4C320",   // gold
+    INSTRUMENTATION: "#3FA540",   // green
+    CONTROL:         "#2B6BD1"    // royal blue
   };
   var CARD = "#FBFCFD";           // the square's own background
 
@@ -2352,7 +2363,7 @@
        ELECTRICAL, INSTRUMENTATION and CONTROL each have exactly one pure hue
        and the library knows them, so a caller cannot accidentally ship a
        fifth red. An explicit `rule` still wins for anything off-register. */
-    var rule = group.rule || MARIO[String(group.title || "").toUpperCase()] || "#049CD8";
+    var rule = group.rule || MARIO[String(group.title || "").toUpperCase()] || "#2B6BD1";
     var ink  = group.ink  || autoInk(rule);
 
     var W = S - 2 * pad, H = S - 2 * pad - head;
@@ -2419,7 +2430,7 @@
   }
 
   var API = { square: square, band: band, squarify: squarify,
-              MARIO: MARIO, autoInk: autoInk, VERSION: "0.3.0" };
+              MARIO: MARIO, autoInk: autoInk, VERSION: "0.3.1" };
   if (typeof window !== "undefined") window.TamDisc = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
 })();
@@ -2514,9 +2525,9 @@
 
     var groups=[
       ['MECHANICAL',     '#E52521','#C8102E', items(C.MECH), S.dMECH, mv ],
-      ['ELECTRICAL',     '#FBD000','#9A6B00', items(C.ELEC), S.dELEC, '' ],
-      ['INSTRUMENTATION','#43B047','#1F8A4C', items(C.INST), S.dINST, '' ],
-      ['CONTROL',        '#049CD8','#0B5CAD', items(C.CTRL), S.dCTRL, alm]
+      ['ELECTRICAL',     '#F4C320','#8E7113', items(C.ELEC), S.dELEC, '' ],
+      ['INSTRUMENTATION','#3FA540','#328433', items(C.INST), S.dINST, '' ],
+      ['CONTROL',        '#2B6BD1','#2B6BD1', items(C.CTRL), S.dCTRL, alm]
     ];
 
     /* Equal columns, every discipline a square. The old row mixed squares with a
