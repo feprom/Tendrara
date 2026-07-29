@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<!-- BUILD STAMP — bump on every release. It prints in the header, so "which build
+     am I looking at?" is answered by the page itself instead of by guesswork. -->
 <title>TAM E&amp;I Navigator — Tendrara Micro-LNG</title>
 <style>
   :root{
@@ -386,7 +390,7 @@
 <header class="brandbar">
   <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'"></div>
   <div class="apptitle"><b>E&amp;I NAVIGATOR</b> · TENDRARA MICRO-LNG · ASSET / IO / INSTRUMENT MASTER</div>
-  <div class="apptitle" style="text-align:right">INTERNAL TOOL<br><span style="color:var(--crimson)">TECHNICAL AMERICA</span></div>
+  <div class="apptitle" style="text-align:right">INTERNAL TOOL<br><span style="color:var(--crimson)">TECHNICAL AMERICA</span><br><span class="mono" id="buildstamp" style="font-size:8.5px;letter-spacing:.08em;color:var(--ink-soft);font-weight:400"></span></div>
 </header>
 <div class="accent"></div>
 
@@ -488,6 +492,7 @@
 <script src="tam-sym.js?v=0.2.3"></script>
 <script src="tam-sym-elec.js?v=0.3.4"></script>
 <script src="tam-sym-proc.js?v=0.1.0"></script>
+<script src="tam-disc.js?v=0.2.0"></script>   <!-- discipline squares; renderHome/renderArea fall back to the card band if absent -->
 <script src="tam-flow.js?v=1.39.0"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
@@ -497,6 +502,8 @@
    Live reads from the plant_* star schema (Supabase, RLS read).
    Writes: plant_verifications (upsert) + plant_change_requests (insert).
    ════════════════════════════════════════════════════════════════ */
+const BUILD = "2026-07-29 · registry cutover";   // shown in the header — bump on every release
+document.addEventListener("DOMContentLoaded",()=>{const b=document.getElementById("buildstamp"); if(b) b.textContent="BUILD "+BUILD;});
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 const DB = {areas:[], io:[], jb:[], rios:[], inst:[], valves:[], alarms:[], equip:[], net:[], safety:[], crs:[], vers:[], drawings:[], adocs:[], mcc:[], eloads:[], ce:[], ceEffects:[], activity:[], mvalves:[], conns:[], plines:[], skids:[], atypes:[],
@@ -1628,7 +1635,8 @@ const PV_LABELS={
   AREA:"Areas & utilities", EQ:"Equipment", INST:"Instruments", IO:"IO channels",
   VLV:"Actuated valves", ST:"IO stations (RIO/JB)", ALM:"Alarms",
   DWG:"P&ID drawings", VERIFY:"Field-verified",
-  MCC:"MCC motors", LOAD:"Electrical loads", CE:"Cause & effect", RIO:"RIO nodes"
+  MCC:"MCC motors", LOAD:"Electrical loads", CE:"Cause & effect", RIO:"RIO nodes",
+  PUMP:"Pumps", HX:"Heat exchangers", FILTER:"Filters", FAN:"Fan banks", HEATER:"Heaters", MVLV:"Manual valves"
 };
 const PV_ICONS={
   // process areas / units — 2×2 block grid
@@ -1649,6 +1657,28 @@ const PV_ICONS={
   DWG:'<path d="M4 2.6h4.8l3.2 3.2V12.9a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V3.1a.5.5 0 0 1 .5-.5Z"/><path d="M8.6 2.7v3.2h3.2"/><line x1="5.6" y1="9" x2="10.4" y2="9"/><line x1="5.6" y1="11" x2="9" y2="11"/>',
   // field-verified — check in a circle
   VERIFY:'<circle cx="8" cy="8" r="5.5"/><path d="M5.6 8.2 L7.2 9.9 L10.6 6.2"/>',
+  // instrument by measured variable — the balloon letter is unreadable at card size,
+  // so each family carries the shape of the thing it measures
+  INSTP:'<circle cx="8" cy="8" r="5.4"/><path d="M8 8 L10.8 5.2"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/>',
+  INSTT:'<path d="M6.5 9.3V3.6a1.5 1.5 0 0 1 3 0v5.7a2.7 2.7 0 1 1-3 0Z"/><circle cx="8" cy="11.6" r="1.15" fill="currentColor" stroke="none"/>',
+  INSTL:'<rect x="3.8" y="2.6" width="8.4" height="10.8" rx="1.6"/><path d="M3.8 8.6c1.4 0 1.4 1.1 2.8 1.1s1.4-1.1 2.8-1.1 1.4 1.1 2.8 1.1"/>',
+  INSTF:'<path d="M2.2 8h9.4"/><path d="M9.2 5.3 12.6 8 9.2 10.7"/><path d="M5.4 5.4v5.2M7 5.4v5.2" opacity=".5"/>',
+  INSTZ:'<circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v3M8 10.4v3M2.6 8h3M10.4 8h3"/>',
+  INSTA:'<path d="M6.4 2.6h3.2M7.4 2.6v3.7L4.5 11.9a1.1 1.1 0 0 0 1 1.6h5a1.1 1.1 0 0 0 1-1.6L8.6 6.3V2.6"/><path d="M5.9 10.2h4.2"/>',
+  // compressor — machine circle with the flow wedge inside
+  COMP:'<circle cx="8" cy="8" r="5.2"/><path d="M5.7 5.4 L10.5 8 L5.7 10.6 Z"/>',
+  // pump — volute circle with suction and discharge nozzles on a base
+  PUMP:'<circle cx="7.6" cy="9.2" r="4"/><line x1="1.7" y1="9.2" x2="3.6" y2="9.2"/><path d="M7.6 5.2 V2.5 H12.7"/><line x1="4.1" y1="14.1" x2="11.1" y2="14.1"/>',
+  // heat exchanger — shell with the tube bundle turned back on itself
+  HX:'<rect x="2.1" y="3.9" width="11.8" height="8.2" rx="1.2"/><path d="M2.1 6.4 H9.4a1.6 1.6 0 0 1 0 3.2 H2.1"/>',
+  // filter — body with the screen across it
+  FILTER:'<rect x="3.7" y="2.6" width="8.6" height="10.8" rx="1.2"/><line x1="3.7" y1="5.6" x2="12.3" y2="5.6"/><line x1="3.7" y1="12.4" x2="12.3" y2="6.6"/>',
+  // air-cooled bank — tube bundle with the fan over it
+  FAN:'<rect x="2.4" y="9.3" width="11.2" height="4.2" rx="1"/><circle cx="8" cy="5" r="2.7"/><path d="M8 5V2.3M8 5l2.35 1.35M8 5L5.65 6.35"/>',
+  // electric heater — resistance in a box
+  HEATER:'<rect x="2.6" y="4.4" width="10.8" height="7.2" rx="1"/><path d="M4.9 9.8 L6.5 6.2 L8 9.8 L9.5 6.2 L11.1 9.8"/>',
+  // manual valve — bow-tie body with the hand-wheel bar (tam-sym-proc doctrine)
+  MVLV:'<path d="M3 5 L8 8.2 L3 11.4 Z"/><path d="M13 5 L8 8.2 L13 11.4 Z"/><line x1="8" y1="8.2" x2="8" y2="4"/><line x1="5.7" y1="3.6" x2="10.3" y2="3.6"/>',
   // MCC motor — motor body + terminal box
   MCC:'<rect x="2.4" y="4.6" width="8" height="6.8" rx="1"/><path d="M10.4 6.4h2.2a.6.6 0 0 1 .6.6v2a.6.6 0 0 1-.6.6h-2.2"/><path d="M4.5 8h3.8"/><path d="M6.4 6.1v3.8"/>',
   // electrical load — lightning bolt
@@ -1705,6 +1735,54 @@ function fact(kind,n,label,opts){
    electrical (generators, switchgear, loads), and safety (F&G, fire, SCEs).
    Every count is read from the asset registry by class code or from the domain
    list it belongs to; none is typed in. */
+function discBoxCard([title,rule,ink,items,total,totalTip]){
+    if(!items || !items.length) return "";
+    const cards = items.map(([icon,n,label,link]) => fact(icon,n,label,link?{link:link}:{})).join("");
+    const corner = (total==null)?"" :
+      `<span style="margin-left:auto;text-align:right;line-height:1"${totalTip?` title="${esc(totalTip)}"`:""}>`
+      + `<b style="font:700 15px Consolas,monospace;color:var(--ink)">${total}</b>`
+      + `<span style="display:block;font:700 7.5px Consolas,monospace;letter-spacing:.08em;color:var(--ink-soft)">ASSETS</span></span>`;
+    return `<div style="flex:1 1 auto;border:1px solid var(--line);border-top:3px solid ${rule};border-radius:8px;`
+      + `padding:6px 8px 8px;background:var(--paper,#FBFCFD)">`
+      + `<div style="display:flex;align-items:flex-start;gap:6px;margin:0 0 5px 2px">`
+      + `<span style="font:700 9px Consolas,monospace;color:${ink};letter-spacing:.09em;padding-top:3px">${esc(title)}</span>${corner}</div>`
+      + `<div class="facts" style="margin:0">${cards}</div></div>`;
+}
+
+/* ── discRow: the SAME groups, drawn as discipline squares ───────────────
+   [DISC-SQUARES 2026-07-29] tam-disc.js replaces the card row. Two rules live
+   HERE and not in the library, because they are judgements about this data and
+   not about treemaps:
+
+   1. A box with fewer than MIN_TILES classes falls back to its card row. Unit
+      310 electrical is MOTORS 3 / OTHER LOADS 26 — two tiles and a lot of air,
+      which reads as "this unit is empty" when it means "this unit has two kinds
+      of thing". The cards say the same numbers without the false impression.
+   2. No TamDisc → the card band, unchanged. The pack is one <script> and the
+      page must still render if it fails to load.
+
+   A square asserts a PARTITION: tile area is share of the box. That is a
+   stronger claim than a card row, which is only a list of facts. Every group
+   handed in here has been checked to be disjoint — see the ELECTRICAL note in
+   renderHome(). Do not add a card to one of these groups without asking whether
+   it overlaps a card already there. */
+const MIN_TILES = 3;
+function discRow(groups){
+  if(typeof TamDisc === "undefined") return discBand(groups);
+  const cells = groups.map(g=>{
+    const [title,rule,ink,items,total,totalTip] = g;
+    if(!items || !items.length) return "";
+    if(items.length < MIN_TILES) return discBoxCard(g);
+    const svg = TamDisc.square({
+      title, total, note: totalTip,
+      items: items.map(([icon,n,label,link]) => ({label, value:n, nav:link,
+        sub: totalTip ? `${label} · ${n}` : null}))
+    }, {size:210});
+    return `<div style="flex:1 1 0;min-width:0"${totalTip?` title="${esc(totalTip)}"`:""}>${svg}</div>`;
+  });
+  return `<div class="dband">${cells.join("")}</div>`;
+}
+
 function discBand(groups){
   /* Two colours per group, not one. Mario asked for a Mario-Bros palette — red,
      yellow, green, blue — and a 9 px bold label in #FBD000 on white is simply
@@ -1712,15 +1790,13 @@ function discBand(groups){
      the same hue. The palette reads as asked and the type stays legible; using
      one value for both would have meant either a muddy rule or an unreadable
      word, and neither is a choice worth making. */
-  const box = ([title,rule,ink,items]) => {
-    if(!items || !items.length) return "";
-    const cards = items.map(([icon,n,label,link]) => fact(icon,n,label,link?{link:link}:{})).join("");
-    return `<div style="flex:1 1 auto;border:1px solid var(--line);border-top:3px solid ${rule};border-radius:8px;`
-      + `padding:6px 8px 8px;background:var(--paper,#FBFCFD)">`
-      + `<div style="font:700 9px Consolas,monospace;color:${ink};letter-spacing:.09em;margin:0 0 5px 2px">${esc(title)}</div>`
-      + `<div class="facts" style="margin:0">${cards}</div></div>`;
-  };
-  return `<div class="dband">` + groups.map(box).join("") + `</div>`;
+  /* [DISC-TOTAL 2026-07-29] The discipline total moved OUT of the card row and into
+     the corner of the box. It was competing with its own breakdown: "EQUIPMENT 362"
+     next to "PUMPS 52 · VESSELS 54" invites the reader to add the row up and get a
+     number that is not the plant. The corner figure is the count of assets of that
+     discipline in the registry (plant_assets × plant_asset_classes.discipline); the
+     cards below are what the discipline is MADE OF, each clickable to its report. */
+  return `<div class="dband">` + groups.map(discBoxCard).join("") + `</div>`;
 }
 
 function discCard(key,icon,color,title,sub,content){
@@ -1869,29 +1945,51 @@ function renderHome(c){
      that came from the data. */
   const ac=code=>(DB.assets||[]).filter(a=>{
     const cl=IDX.aclassById.get(a.asset_class_id); return cl && cl.code===code; }).length;
+  // assets of a DISCIPLINE — the corner figure of each box
+  const dc=disc=>(DB.assets||[]).filter(a=>{
+    const cl=IDX.aclassById.get(a.asset_class_id); return cl && cl.discipline===disc; }).length;
+  // instrument families, ISA first letter of the tag (P pressure · T temperature ·
+  // L level · F flow · Z position · A analysis). Read off the registry, never typed.
+  const instFam=ltr=>(DB.instUi||[]).filter(r=>String(r.tag||"").trim().toUpperCase().startsWith(ltr)).length;
   c.innerHTML=`
   <div class="kicker">TX EI00 <span class="sub">· PROCESS VIEW · AREAS &amp; UTILITIES</span></div>
   <h1>Tendrara Micro-LNG — Process View</h1>
-  ${discBand([
+  ${discRow([
     ["MECHANICAL", "#E52521", "#C8102E", [
-      ["EQ",   (DB.mechUi||[]).length,"EQUIPMENT",  "nav('report/equipment')"],   // [REG-CUTOVER] asset registry, not the grouped equipment sheet
-      ["MECH", ac("PUMP"),           "PUMPS",       "nav('report/equipment')"],
-      ["MECH", ac("COMPRESSOR"),     "COMPRESSORS", "nav('report/equipment')"],
-      ["MECH", ac("HEAT_EXCHANGER"), "EXCHANGERS",  "nav('report/equipment')"],
-      ["MECH", ac("VESSEL")+ac("SEPARATOR")+ac("PROCESS_TANK")+ac("STORAGE_TANK"),
-                                      "VESSELS",     "nav('report/equipment')"]]],
+      ["PUMP", ac("PUMP"),           "PUMPS",       "nav('report/equipment')"],
+      ["COMP", ac("COMPRESSOR"),     "COMPRESSORS", "nav('report/equipment')"],
+      ["HX",   ac("HEAT_EXCHANGER"), "EXCHANGERS",  "nav('report/equipment')"],
+      ["EQ",   ac("VESSEL")+ac("SEPARATOR")+ac("PROCESS_TANK")+ac("STORAGE_TANK"),
+                                      "VESSELS",     "nav('report/equipment')"],
+      ["MVLV", (DB.mvalves||[]).length,"MANUAL VALVES","nav('report/manual-valves')"]],
+      dc("MECHANICAL"), "Assets of the discipline in the registry. Manual valves are still their own Stage-2 register and are not promoted to plant_assets yet, so they are not in this figure."],
+    /* [DISC-SQUARES 2026-07-29] the fourth card used to be LOADS = the WHOLE of
+       v_electrical_ui, next to MOTORS and GENERATORS read out of the same view.
+       Motors are loads: as a card row that was three true facts, as a treemap it
+       is the same machine claiming area twice. The card is now OTHER LOADS —
+       the load list minus the motors and generators already tiled — so the four
+       tiles partition the view. The figure still opens the full load report. */
     ["ELECTRICAL", "#FBD000", "#9A6B00", [
       ["MOT",  ec("MOTOR"),          "MOTORS",      "nav('report/motors')"],
       ["MOT",  ec("GENERATOR"),      "GENERATORS",  "nav('report/motors')"],
       ["MCC",  ac("SWITCHGEAR"),     "SWITCHGEAR",  "nav('sld')"],
-      ["LOAD", (DB.elecUi||[]).length,"LOADS",      "nav('report/loads')"]]],
+      ["LOAD", Math.max(0,(DB.elecUi||[]).length - ec("MOTOR") - ec("GENERATOR")),
+                                     "OTHER LOADS", "nav('report/loads')"]],
+      dc("ELECTRICAL"), "Assets of the discipline in the registry. OTHER LOADS is the load list without the motors and generators tiled beside it, so the four figures do not count the same machine twice; the full list is "+((DB.elecUi||[]).length)+" records. Switchgear is read from plant_assets, not from the load list."],
     ["INSTRUMENTATION", "#43B047", "#1F8A4C", [
-      ["INST", DB.inst.length,       "INSTRUMENTS", "nav('report/instruments')"],
-      ["VLV",  DB.valves.length,     "VALVES",      "nav('report/valves')"]]],
+      ["INSTP", instFam("P"),      "PRESSURE",    "nav('report/instruments')"],
+      ["INSTT", instFam("T"),      "TEMPERATURE", "nav('report/instruments')"],
+      ["INSTL", instFam("L"),      "LEVEL",       "nav('report/instruments')"],
+      ["INSTF", instFam("F"),      "FLOW",        "nav('report/instruments')"],
+      ["INSTZ", instFam("Z"),      "POSITION",    "nav('report/instruments')"],
+      ["INSTA", instFam("A"),      "ANALYSIS",    "nav('report/instruments')"],
+      ["VLV",  DB.valves.length,     "ACT. VALVES", "nav('report/valves')"]],
+      dc("INSTRUMENTATION"), "Assets of the discipline in the registry. The cards are the ISA measured-variable families read off the tag's first letter; hand switches, F&G and status points are in the total but not shown as cards."],
     ["CONTROL", "#049CD8", "#0B5CAD", [
       ["IO",   DB.io.length,         "IO CHANNELS", "nav('report/io')"],
       ["ST",   IDX.stations.size,    "IO STATIONS", "nav('report/panels')"],
-      ["ALM",  DB.alarms.length,     "ALARMS",      "nav('alarms')"]]]
+      ["ALM",  DB.alarms.length,     "ALARMS",      "nav('alarms')"]],
+      dc("CONTROL"), "Assets of the discipline in the registry."]
   ])}
   <div class="bfd">${bfdSvg(cnt)}</div>
   <div class="note">Transactions: <span class="mono">EI10 350</span> area · <span class="mono">EI20 P-PK-PK-341-1</span> station ·
@@ -2813,23 +2911,50 @@ function renderArea(c, code){
   const ids=["eq","inst","vlv","mvlv","stations","area-io","motors","eload","alm"].filter(id=>TBL.has(id));
   AREA_EXPORT={code, tables:ids, ce:ceObj};
 
-  // clickable summary chips → expand the owning discipline card + scroll to the section
+  /* [DISC-TOTAL] the area summary now reads like the home strip: four discipline boxes,
+     the count of assets of that discipline in the corner, and the breakdown as cards.
+     One layout for the plant and for the unit — a trainee who learns the home page can
+     read any area page. */
   const goto=(disc,sec)=>`revealDisc('${disc}','${sec}')`;
-  let facts="";
-  // Mechanical
-  if(eq.length)   facts+=fact("EQ",  eq.length,   "EQUIPMENT",      {link:goto("mech","sec-eq")});
-  if(mvs.length)  facts+=fact("VLV", mvs.length,  "MANUAL VALVES",  {link:goto("mech","sec-mvlv")});
-  // Electrical
-  if(motorRows.length) facts+=fact("MOT", motorRows.length, "MOTORS",          {link:goto("elec","sec-motors")});
-  if(eloads.length)    facts+=fact("LOAD",eloads.length,    "ELECTRICAL LOADS",{link:goto("elec","sec-eload")});
-  // Instrumentation
-  if(inst.length) facts+=fact("INST",inst.length, "INSTRUMENTS",    {link:goto("instr","sec-inst")});
-  if(vlvs.length) facts+=fact("VLV", vlvs.length, "ACTUATED VALVES",{link:goto("instr","sec-vlv")});
-  // Control
-  facts+=fact("ST",  stationRows.length, "STATIONS",  {link:goto("ctrl","sec-stations")});
-  facts+=fact("IO",  DB.io.filter(r=>String(r.unit)===String(code)).length, "IO CHANNELS", {link:goto("ctrl","sec-io")});
-  if(alm.length)  facts+=fact("ALM", alm.length,  "ALARMS",         {link:goto("ctrl","sec-alm")});
-  if(ceR.length)  facts+=fact("CE",  ceObj.causes.length,"CAUSE & EFFECT",{link:goto("ctrl","sec-ce")});
+  const eqCls=c=>eq.filter(r=>r.cls===c).length;
+  const dcA=disc=>(DB.assets||[]).filter(a=>{ if(String(a.area_code)!==String(code)) return false;
+    const cl=IDX.aclassById.get(a.asset_class_id); return cl && cl.discipline===disc; }).length;
+  const instFamA=ltr=>inst.filter(r=>String(r.tag||"").trim().toUpperCase().startsWith(ltr)).length;
+  const mechCards=[];
+  [["PUMP","PUMP","PUMPS"],["COMP","COMPRESSOR","COMPRESSORS"],["HX","HEAT_EXCHANGER","EXCHANGERS"],
+   ["FILTER","FILTER","FILTERS"],["FAN","FAN","FANS"],["HEATER","HEATER","HEATERS"]].forEach(([ic,cl,lb])=>{
+     if(eqCls(cl)) mechCards.push([ic, eqCls(cl), lb, goto("mech","sec-eq")]); });
+  const nVess=eqCls("VESSEL")+eqCls("SEPARATOR")+eqCls("PROCESS_TANK")+eqCls("STORAGE_TANK")+eqCls("COLUMN");
+  if(nVess) mechCards.push(["EQ", nVess, "VESSELS", goto("mech","sec-eq")]);
+  mechCards.push(["MVLV", mvs.length||"—", "MANUAL VALVES", goto("mech","sec-mvlv")]);
+  const instCards=[];
+  [["INSTP","P","PRESSURE"],["INSTT","T","TEMPERATURE"],["INSTL","L","LEVEL"],
+   ["INSTF","F","FLOW"],["INSTZ","Z","POSITION"],["INSTA","A","ANALYSIS"]].forEach(([ic,l,lb])=>{
+     if(instFamA(l)) instCards.push([ic, instFamA(l), lb, goto("instr","sec-inst")]); });
+  if(vlvs.length) instCards.push(["VLV", vlvs.length, "ACT. VALVES", goto("instr","sec-vlv")]);
+  /* [DISC-SQUARES 2026-07-29] same partition fix as the home strip. motorRows is
+     built FROM eloads (every load carrying a motor datasheet) plus the remote-MCC
+     rows, so MOTORS and LOADS overlapped. OTHER LOADS is the feeders of this area
+     that are not the driven equipment of a motor already counted — area 330 reads
+     37 motors and the remainder of its 26 loads, instead of 37 + 26. */
+  const motorEquipTags=new Set(motorRows.map(m=>String(m.equip||"").trim()).filter(Boolean));
+  const otherLoads=eloads.filter(l=>!motorEquipTags.has(String(l.tag||"").trim())).length;
+  const elecCards=[];
+  if(motorRows.length) elecCards.push(["MOT", motorRows.length, "MOTORS", goto("elec","sec-motors")]);
+  if(otherLoads)       elecCards.push(["LOAD", otherLoads, "OTHER LOADS", goto("elec","sec-eload")]);
+  const ctrlCards=[["IO", DB.io.filter(r=>String(r.unit)===String(code)).length, "IO CHANNELS", goto("ctrl","sec-io")],
+                   ["ST", stationRows.length, "STATIONS", goto("ctrl","sec-stations")]];
+  if(alm.length) ctrlCards.push(["ALM", alm.length, "ALARMS", goto("ctrl","sec-alm")]);
+  if(ceR.length) ctrlCards.push(["CE", ceObj.causes.length, "CAUSE & EFFECT", goto("ctrl","sec-ce")]);
+  const facts=discRow([
+    ["MECHANICAL","#E52521","#C8102E",mechCards,dcA("MECHANICAL"),
+     "Assets of the discipline in this area. Manual valves are their own Stage-2 register and are not in this figure."],
+    ["ELECTRICAL","#FBD000","#9A6B00",elecCards,dcA("ELECTRICAL"),
+     "Assets of the discipline in this area. OTHER LOADS is this area's feeders without the motors tiled beside them, so no machine is counted twice; the area holds "+eloads.length+" load-list records in total."],
+    ["INSTRUMENTATION","#43B047","#1F8A4C",instCards,dcA("INSTRUMENTATION"),
+     "Assets of the discipline in this area. The cards are the ISA measured-variable families; hand switches, F&G and status points are in the total but not shown as cards."],
+    ["CONTROL","#049CD8","#0B5CAD",ctrlCards,dcA("CONTROL"),"Assets of the discipline in this area."]
+  ]);
 
   // ── process topology (migrations 048/049/050) → tam-flow.js unit-flow diagram.
   //    ONE format per area (Mario 2026-07-18): the Manual §x.1 unit-summary + HMB cards.
@@ -2851,7 +2976,7 @@ function renderArea(c, code){
   c.innerHTML=`
   <div class="kicker">TX EI10 <span class="sub">· AREA / UNIT DETAIL</span></div>
   <h1>Area ${esc(code)} — ${esc(areaName(code))}</h1>
-  <div class="facts">${facts}</div>
+  ${facts}
   ${unitFlowBlock}
   <div class="toolrow" style="margin-top:14px">
     <span class="mono" style="font-size:10.5px;color:var(--ink-soft)">Cards grouped by discipline — click a chip or a discipline header to expand.</span>
