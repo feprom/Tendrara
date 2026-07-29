@@ -492,7 +492,7 @@
 <script src="tam-sym.js?v=0.2.3"></script>
 <script src="tam-sym-elec.js?v=0.3.4"></script>
 <script src="tam-sym-proc.js?v=0.1.0"></script>
-<script src="tam-disc.js?v=0.2.0"></script>   <!-- discipline squares; renderHome/renderArea fall back to the card band if absent -->
+<script src="tam-disc.js?v=0.4.1"></script>   <!-- discipline squares; renderHome/renderArea fall back to the card band if absent -->
 <script src="tam-flow.js?v=1.39.0"></script>  <!-- bump ?v= on every tam-flow.js release (browser cache) -->
 <script>
 "use strict";
@@ -2122,11 +2122,11 @@ function renderHome(c){
        v_electrical_ui, SWITCHGEAR from plant_assets, LOADS from the whole of
        v_electrical_ui with the motors still inside it. One source, one class per
        tile, and the arithmetic closes. */
-    ["ELECTRICAL", "#FBD000", "#9A6B00", classCards("ELECTRICAL", ELEC_TILES),
+    ["ELECTRICAL", "#F4C320", "#8E7113", classCards("ELECTRICAL", ELEC_TILES),
       dc("ELECTRICAL"), "Assets of the discipline in the registry, tiled as the field assets (motors, heaters, auxiliary systems), the supply cubicles counted per type, and one distribution group for the boards, busbars, transformers and metering behind them. A motor, its cubicle, its busbar and its board are four different assets, not one counted four times, so the tiles add up to this figure exactly. See SQL/221."],
-    ["INSTRUMENTATION", "#43B047", "#1F8A4C", classCards("INSTRUMENTATION", INST_TILES),
+    ["INSTRUMENTATION", "#3FA540", "#328433", classCards("INSTRUMENTATION", INST_TILES),
       dc("INSTRUMENTATION"), "Assets of the discipline in the registry, tiled by asset class, so the tiles add up to this figure exactly. The ISA measured-variable families (pressure, temperature, level, flow) are the first letter of the tag, not a class — they are in the instrument report."],
-    ["CONTROL", "#049CD8", "#0B5CAD", classCards("CONTROL", CTRL_TILES),
+    ["CONTROL", "#2B6BD1", "#2B6BD1", classCards("CONTROL", CTRL_TILES),
       dc("CONTROL"), "Assets of the discipline in the registry, tiled by asset class, so the tiles add up to this figure exactly. Alarms are not CONTROL assets — they have no class in the tree and are not in this figure; their count is printed under the square.",
       DB.alarms.length ? `<span style="cursor:pointer" onclick="nav('alarms')">+ ${DB.alarms.length} ALARMS <span style="font-weight:400">· alarm register, not registry assets</span></span>` : ""]
   ])}
@@ -3091,12 +3091,12 @@ function renderArea(c, code){
     ["MECHANICAL","#E52521","#C8102E",mechCards,dcA("MECHANICAL"),
      "Assets of the discipline in this area, tiled by asset class, so the tiles add up to this figure exactly. Manual valves are their own Stage-2 register and are not registry assets — their count is printed under the square.",
      mvFoot],
-    ["ELECTRICAL","#FBD000","#9A6B00",elecCards,dcA("ELECTRICAL"),
+    ["ELECTRICAL","#F4C320","#8E7113",elecCards,dcA("ELECTRICAL"),
      "Assets of the discipline in this area. The switchboard objects — feeders, busbars, boards — are not area-coded to a process unit: they sit at the power centres in area 480, so an area sees only its field assets. The area holds "+eloads.length+" load-list records in total.",
      eloads.length ? `<span style="cursor:pointer" onclick="${goto("elec","sec-eload")}">${eloads.length} LOAD-LIST RECORDS <span style="font-weight:400">· incl. feeders at the power centres</span></span>` : ""],
-    ["INSTRUMENTATION","#43B047","#1F8A4C",instCards,dcA("INSTRUMENTATION"),
+    ["INSTRUMENTATION","#3FA540","#328433",instCards,dcA("INSTRUMENTATION"),
      "Assets of the discipline in this area, tiled by asset class, so the tiles add up to this figure exactly. The ISA measured-variable families are the first letter of the tag, not a class — they are in the instrument section below."],
-    ["CONTROL","#049CD8","#0B5CAD",ctrlCards,dcA("CONTROL"),
+    ["CONTROL","#2B6BD1","#2B6BD1",ctrlCards,dcA("CONTROL"),
      "Assets of the discipline in this area, tiled by asset class, so the tiles add up to this figure exactly. Alarms are not CONTROL assets and are not in this figure.",
      alm.length ? `<span style="cursor:pointer" onclick="${goto("ctrl","sec-alm")}">+ ${alm.length} ALARMS <span style="font-weight:400">· alarm register, not registry assets</span></span>` : ""]
   ]);

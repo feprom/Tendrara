@@ -2090,13 +2090,13 @@
      card, so nobody adds the breakdown up and expects to land on them: manual valves are
      still their own Stage-2 register, and hand/F&G points are in the instrument total
      without a card of their own. */
-  /* ── tam-disc.js v0.3.1, INLINED ────────────────────────────────────────
+  /* ── tam-disc.js v0.4.1, INLINED ────────────────────────────────────────
      The deck is one file on purpose — it opens from a USB stick with no server
      and no network — so the pack is pasted in rather than linked. It is the same
      source as eni/tam-disc.js; if you change one, change both. Nothing below
      reads the DOM or the network. */
 /* ═══════════════════════════════════════════════════════════════════════════
-   tam-disc.js — DISCIPLINE SQUARES (treemap)  ·  v0.3.1
+   tam-disc.js — DISCIPLINE SQUARES (treemap)  ·  v0.4.1
    ─────────────────────────────────────────────────────────────────────────
    Four squares, one per discipline, all the SAME SIZE. Inside each square the
    asset classes of that discipline are tiled by area: a class with twice the
@@ -2329,7 +2329,28 @@
      pure hue" is a rule set earlier the same day, and the 3.4 px rule bar alone is
      too thin to carry the discipline colour. To flip it, swap the `f` line for
      `var f = (1 - DEEP) + DEEP * t;` — nothing else changes. */
+  /* [v0.4.1] The four hues are used EXACTLY as Mario supplied them, and every label
+     inside a square is WHITE. Both are his instruction, repeated, and neither is
+     traded against the other:
+
+       MECHANICAL #E52521 · ELECTRICAL #F4C320 · INSTRUMENTATION #3FA540 · CONTROL #2B6BD1
+
+     The biggest tile of every square carries its pure hue, undiluted; the ramp only
+     walks DOWN from there into deeper shades of the same colour, so nothing is ever
+     lightened or muted.
+
+     v0.4.0 briefly darkened the gold so white text would clear a contrast bound.
+     That was wrong of me — it is the same mistake v0.1.0 made with #E0A800, and it
+     changed a colour the owner had chosen. Reverted.
+
+     For the record, so nobody re-discovers it and "fixes" it again: white on pure
+     #F4C320 measures 1.66:1, which is below every WCAG bound. The number on the
+     largest electrical tile is therefore the weakest text in the set. It matches the
+     source treemap, which does the same thing at the same ratio. If a print or an
+     audit ever forces the issue, the fix is a text shadow or a darker gold — not a
+     silent change to the palette. */
   var DEEP = 0.58;                              // how far down the smallest tile goes
+
   function ramp(hex, k, n) {
     var c = rgbOf(hex);
     var t = n > 1 ? (k / (n - 1)) : 0;          // 0 = biggest, 1 = smallest
@@ -2338,18 +2359,9 @@
                     Math.round(c[1] * f) + "," +
                     Math.round(c[2] * f) + ")";
   }
-  /* Black or white per tile, whichever wins on WCAG contrast — not a brightness
-     guess. With the v0.3.0 ramp most tiles are deep enough that white wins, which
-     is the look asked for. The exceptions are the PURE top tiles of yellow, green
-     and blue: white on #FBD000 measures 1.7:1 and is unreadable, so those keep
-     black. That is the one place "white labels" is not followed, and it is not a
-     preference — it is the contrast. */
-  function inkOn(rgb) {
-    var m = /rgb\((\d+),(\d+),(\d+)\)/.exec(rgb);
-    if (!m) return "#15171A";
-    var t = [+m[1], +m[2], +m[3]];
-    return contrast(t, [21, 23, 26]) >= contrast(t, [255, 255, 255]) ? "#15171A" : "#FFFFFF";
-  }
+
+  // White, always — every label inside a square, at every rank.
+  function inkOn() { return "#FFFFFF"; }
 
   function square(group, opts) {
     opts = opts || {};
@@ -2430,7 +2442,7 @@
   }
 
   var API = { square: square, band: band, squarify: squarify,
-              MARIO: MARIO, autoInk: autoInk, VERSION: "0.3.1" };
+              MARIO: MARIO, autoInk: autoInk, VERSION: "0.4.1" };
   if (typeof window !== "undefined") window.TamDisc = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
 })();
