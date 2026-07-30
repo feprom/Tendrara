@@ -69,7 +69,7 @@
   .fact .n{font-size:24px;font-weight:700;color:var(--crimson);font-family:var(--mono);line-height:1;}
   .fact .l{font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.35;}
   .slide.cover3d{display:flex;flex-direction:column;color:#fff;
-    background:linear-gradient(180deg,rgba(11,13,15,.80),rgba(11,13,15,.55) 45%,rgba(11,13,15,.82)),url('/images/GA-330-310-bw.png') center/cover no-repeat;}
+    background:linear-gradient(180deg,rgba(11,13,15,.80),rgba(11,13,15,.55) 45%,rgba(11,13,15,.82)),url('/images/3D_330-bw.png') center/cover no-repeat;}
   .slide.cover3d h1{color:#fff;}
   .slide.cover3d .kicker{color:#ff6478;}
   .slide.cover3d .kicker .sub{color:#c9ccd1;}
@@ -1089,23 +1089,23 @@
       <div class="note">Set points print <b>&#8212;</b> on purpose: the drawing gives the calibrated range, the operating set points live in the setting sheets. Final elements that are packages rather than valves (P-333A/B/C, PK-514A/B, the MF-335 fan rows, X-V335/336) are in the table and on their own slides.</div>
     </section>
     <section class="slide" data-min="5" data-block="Block 1" data-presenter="Lorenzo"
-      data-notes='["The two operating screens of Unit 330 — Manual Figures 6.2 and 6.3, rotating; click to enlarge.", "Screen 1 — the columns: T-331 with its tray temperatures, the lean amine line with FV-3301, the flash separator, the regenerator with the reboiler.", "Screen 2 — the amine utilities: pumps, cooler and fan rows, the filter train with SDV-3304, the make-up tanks.", "Faceplates follow the same convention as every unit: PV, SP, OUT, MAN/REM, OVERRIDE."]'>
+      data-notes='["The two operating screens of Unit 330 — Manual Figures 6.2 and 6.3, rotating; click to enlarge.", "Screen 1 — the columns: T-331 with its tray temperatures, the lean amine line with FV-3301, the flash separator, the regenerator with the reboiler.", "Screen 2 — the amine utilities: pumps, cooler and fan rows, the filter train with SDV-3304, the make-up tanks.", "Faceplates follow the same convention as every unit: PV, SP, OUT, MAN/REM, OVERRIDE.", "These two captures are of a stopped unit -- the banner says NOT READY and almost every PV reads 0.00. That is useful, not a problem: it means the SP column is the only live number on the screen, and it is the fastest way to teach a trainee to read a faceplate top-down as SP, PV, OUT.", "The set points visible on this capture, for the room and not for the record: TDIC-3301 10 degrees C of delta T, LIC-3303 55 percent, LIC-3304 50 percent, LIC-3305A/B 55 percent, TIC-3333 40 degrees C, and the two lean-pump VFDs SIC-332A/B at 22 percent. Say out loud that these are as-captured on 16 January 2026, not a set-point list -- the setting sheets are the source of record.", "Three loops are shown DISABLED on the capture: LIC-3311 on V-331, and TIC-3323 / TIC-3324 on the two make-up tank heaters. The filter train is drawn greyed out, which is how this HMI shows equipment that is not in service.", "One discrepancy worth logging: the FIC-3301 faceplate on screen 2 is in kg/h, while the loop register gives its range as 0..100 cubic metres per hour. Same loop, two units. Do not correct it on the fly in the room -- it is a change request against either the HMI or the register.", "The screens confirm several things this module has been claiming from the P&ID: PT-3334 sits on the FV-3301 outlet, TSV-3305 protects E-332, RD-3320 is on V-334 next to PCV-3302 and PCV-3304, and XV-3302 goes to the closed drain through XEV-3302. Point at them.", "Navigation: the unit buttons across the top are how an operator moves between units, and UNIT 330 is highlighted. If the room asks where Unit 200 was, it is the first button."]'>
       <div class="kicker">Operating interface <span class="sub">— Manual §6.6.1, Fig. 6.2–6.3</span></div>
       <h2>PCS operating screens — Unit 330</h2>
       <div class="figrow" style="grid-template-columns:1fr 1.6fr;">
         <ul class="points">
-          <li><b>Screen 1 — columns:</b> T-331 tray profile · FV-3301 · V-332 flash · T-332 + E-333 · reflux loop.</li>
-          <li><b>Screen 2 — amine utilities:</b> P-332A/B selector · E-334 fans · filter train + SDV-3304 · make-up tanks.</li>
-          <li>Faceplates: <b>PV · SP · OUT · MAN/REM · OVERRIDE</b> — same convention on every screen.</li>
+          <li><b>Screen 1 — the columns:</b> E-331 · V-331 · T-331 with its twenty trays and the TT-3307/08/09 profile · T-332 · E-333 on hot oil. Faceplates <b>LIC-3311 · LIC-3303 · TIC-3333</b>.</li>
+          <li><b>Screen 2 — the amine utilities:</b> V-336 / V-335 and P-333A/B/C · the six filter vessels with SDV-3304 + FV-3301 · E-334 and <b>0 FANS RUNNING</b> · P-332A/B on <b>SIC-332A/B</b> with II-332A/B amps · the reflux group.</li>
+          <li>Every faceplate is three rows and a mode line: <b>SP · PV · OUT</b> then <b>OVERRIDE</b> or <b>DISABLED</b>; valves carry <b>MAN REM</b> or <b>MAN LOCAL</b>. Same convention on every screen in the plant.</li><li><b>Read the bottom bar first:</b> ALARMS · <b>NOT READY</b> · START · STOP · RESET · AUTO ALL — and <b>NO PERM</b>, which names the equipment blocking the start. On this capture it is <b>P-334B</b>.</li>
         </ul>
         <div class="carousel" id="hmi330" data-interval="5000">
-          <a class="cimg active" href="/images/HMI-330=1.png" target="_blank"><img src="/images/HMI-330=1.png" alt="Unit 330 HMI screen 1"></a>
-          <a class="cimg" href="/images/HMI-330=2.png" target="_blank"><img src="/images/HMI-330=2.png" alt="Unit 330 HMI screen 2"></a>
+          <a class="cimg active" href="/images/05-HMI-310=2.png" target="_blank"><img src="/images/05-HMI-310=2.png" alt="Unit 330 HMI screen 1"></a>
+          <a class="cimg" href="/images/06-HMI-310=2.png" target="_blank"><img src="/images/06-HMI-310=2.png" alt="Unit 330 HMI screen 2"></a>
           <div class="ccap">Auto-rotating · click to enlarge</div>
           <div class="cdots"><b class="active"></b><b></b></div>
         </div>
       </div>
-      <div class="note">Reference: HMI Philosophy <b>21044-AU-HMI-00002</b>.</div>
+      <div class="note">Captures: <b>21044-AU-HMI-00002</b> rev 2, screens <b>03</b> and <b>04</b>, taken 16/01/2026 with the unit <b>NOT READY</b> — the PVs read zero, so read the <b>SP</b> row, not the process values. HMI philosophy in the same document.</div>
     </section>
     <section class="slide" data-min="7" data-block="Block 1" data-presenter="Lorenzo"
       data-notes='["Twenty alarm rows for this unit — 19 in the register plus PSD05, which the manual lists and the database does not yet carry: the dagger row, same convention as Module 101.", "Read the pattern, not the list: every LL level stops the machine it starves or closes the outlet it seals; every HH level or pressure goes PSD; the two quality/flow trips — AAHH-3301 and FALL-3301 — are unit-level PSDs.", "Then hover the Cause & Effect matrix: Manual Table 6.11. Eight local rows — the loop protections. The unit-level PSD initiators act through the plant matrix in SAF12.", "Exam anchor: LALL-3306 stops P-332A/B (dry regenerator bottom), LALL-3305 stops P-334A/B (dry reflux drum), PAHH-3334 closes SDV-3304 (blocked filters)."]'>
@@ -1499,8 +1499,8 @@
           <li>Watch a <b>changeover</b> on the HMI: the sixteen XVs move in the KRC-3100 order.</li>
         </ul>
         <div class="carousel" id="hmi310" data-interval="5000">
-          <a class="cimg active" href="/images/HMI-310=1.png" target="_blank"><img src="/images/HMI-310=1.png" alt="Unit 310 HMI screen 1"></a>
-          <a class="cimg" href="/images/HMI-310=2.png" target="_blank"><img src="/images/HMI-310=2.png" alt="Unit 310 HMI screen 2"></a>
+          <a class="cimg active" href="/images/05-HMI-310=2.png" target="_blank"><img src="/images/05-HMI-310=2.png" alt="Unit 310 HMI screen 1"></a>
+          <a class="cimg" href="/images/06-HMI-310=2.png" target="_blank"><img src="/images/06-HMI-310=2.png" alt="Unit 310 HMI screen 2"></a>
           <div class="ccap">Auto-rotating · click to enlarge</div>
           <div class="cdots"><b class="active"></b><b></b></div>
         </div>
