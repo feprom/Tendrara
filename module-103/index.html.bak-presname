@@ -1096,7 +1096,7 @@
 
   present.onclick=openPresenter;
   function openPresenter(){
-    presenterWin=window.open('', 'tendrara_presenter103', 'width=560,height=720');
+    presenterWin=window.open('', 'tendrara_presenter102', 'width=560,height=720');
     if(!presenterWin){ alert('Please allow pop-ups to open the presenter view.'); return; }
     presenterWin.document.open();
     presenterWin.document.write(presenterHTML());
