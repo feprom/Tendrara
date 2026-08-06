@@ -1442,10 +1442,12 @@
   /* 5b · Slide 45 — the local panel. The hand-drawn SVG face was replaced by
         the manual figure itself (Mario, 2026-08-06): one portrait PNG that
         carries the dimensioned layout on top and the as-built panel below.
-        A portrait figure next to a ten-row table wants an ASYMMETRIC split —
-        296 px is the widest the image can be and still leave the table its
-        three columns without wrapping the Function cell. The image is capped
-        by height, not width, so the column never drives the stage past 587 px.
+        A portrait figure next to a ten-row table wants an ASYMMETRIC split, so
+        the grid is 292 px + rest instead of 1fr + 1fr: the table gets ~644 px
+        and stops wrapping its Function cells, and the figure gets a column it
+        exactly fills. The image is capped by HEIGHT, not width, because height
+        is what the 587 px stage rations: measured, .grid2 may reach 435 px, so
+        398 px is the tallest the figure can be with the caption under it.
         Scoped to this slide; .eqd350 keeps its symmetric grid everywhere else. */
   .slide.pnl350 .grid2{gap:8px 16px;align-items:start;}
   .slide.pnl350 .fig{margin-top:0;}
