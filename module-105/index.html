@@ -3889,15 +3889,21 @@
      key and the whole #ce350 block are proven at this size and are not
      re-measured here. `.ce105` is only the delta, and every rule is scoped to it.
 
-     The height budget of the 587 px stage, after both review passes:
-       header (kicker + h2)                 ~45 px
-       .gapkey    the documented gaps        ~28 px
-       #ce350     13 causes x 7 effects     ~275 px
-     ≈ 348 px + the 36 px of padding this slide declares.
+     The height budget of the 587 px stage, MEASURED on the built deck after all
+     three review passes (measure105 41 / the th.eff probe), not estimated:
+       .kicker                               26 px
+       h2                                    22 px
+       .gapkey    the documented gaps        23 px
+       #ce350     13 x 7, thead now 62 px   363 px
+     = 434 px + 17 px of padding this slide declares, and the slide still reports
+     129 px FREE at the bottom. Note that qa/verify print "content 586 of 586,
+     over 0" for this slide: the browser clamps scrollHeight to clientHeight, so
+     that zero means "does not overflow" and never "is full" - the 129 px is the
+     number to trust before anything else is added here.
      2026-08-10 · the count rail (~34 px) went in the first pass and the
-     protection band (~88 px) in the second. ~122 px of the merge budget are
-     handed back, and every one of them goes to the matrix — which is exactly
-     what both review comments asked for.
+     protection band (~88 px) in the second; the taller effect headers took 32 px
+     of that back in the third. Everything the merge gave up has gone to the
+     matrix, which is what all three review comments asked for.
 
      The description column stays at 400 px. It went 330 -> 400 to stop eight of
      the thirteen rows wrapping to two lines and two to three; that is a
@@ -3927,7 +3933,22 @@
   .slide.ce105 #ce350 table.cematrix{width:100%;}
   .slide.ce105 #ce350 table.cematrix th,
   .slide.ce105 #ce350 table.cematrix td{padding:1.5px 6px;}
-  .slide.ce105 #ce350 table.cematrix th.eff{height:30px;}
+  /* 2026-08-10, third pass · the effect headers were CLIPPED and this is the
+     measurement, not a guess. `th.eff` is `writing-mode:vertical-rl` with
+     `white-space:nowrap`, so the tag reads along the cell HEIGHT, and the
+     ancestor `.cematrix` gives it 104 px for exactly that reason. This slide had
+     crushed it to 30 px to help pay for the protection band. A headless probe
+     over the built deck measured the ink of all seven headers against their box:
+         XEV-3511.x / .2 / .3 / .4    ink 58 px   box 30   -> 28 px short
+         LSD-351-x                    ink 52 px   box 30   -> 22 px short
+         C-351H-x / C-351L-x          ink 46 px   box 30   -> 16 px short
+     `overflow` is `visible`, so they were not cut off cleanly - they spilled out
+     of the cell and over the row above, which is what reads as broken. 61 px is
+     the longest ink (58) plus this slide's own 1.5 px of cell padding top and
+     bottom; 62 px leaves a pixel of air and is what is set. The band is gone, so
+     the 32 px this costs come straight out of the slack it left behind - nothing
+     else on the slide is touched to pay for it. */
+  .slide.ce105 #ce350 table.cematrix th.eff{height:62px;}
   .slide.ce105 #ce350 .celegend{margin-top:4px;font-size:9.2px;line-height:1.34;}
   .slide.ce105 #ce350 .celegend{margin-top:6px;font-size:9.4px;line-height:1.4;}
   .slide.ce105 #ce350 .cehint{margin-top:3px;font-size:9.2px;}
