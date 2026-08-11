@@ -4128,9 +4128,118 @@
     return `<div style="margin-top:12px;border:1px solid ${LINE};border-radius:6px;background:#fff;padding:10px;overflow-x:auto;text-align:center">${g}</div>`;
   }
 
+  /* ── GA ELECTRICAL — the generation block drawn ON the plant GA ─────────
+     gaElectrical(o) → string SVG: a TRANSPARENT overlay (viewBox 0 0 W H)
+     meant to sit on top of images/tendrara_areas.png. Every anchor comes
+     from plant_asset_positions (surveyed off plot plan CWO02-ING-PR01
+     Rev.19B, fraction 0-1 of the tendrara frame) — this is online.html's
+     open point PA-2 resolved by data, not by exposing renderer coordinates.
+
+     o = {
+       gensets: [{tag,x,y,kw,fuel,feeder,pc,busbar,dq,meter,live}]   x/y 0..1
+       boards:  [{tag,x,y,cabin,sub,genKw,loadKw,dq,small}]
+       ties:    [{a,b,label,open,dq}]          a/b board tags; open ⇒ dashed
+       feeds:   [{a,b,label,dq}]               solid downstream feeds (F210…)
+       W:       logical canvas width (default 1600; H follows GA 4494×3179)
+       onEquip: global fn name for onclick
+     }
+     Caller resolves positions and the tag bridge (plant writes 480-GE-001,
+     v_sld_nodes says GE-001) and passes anything it could NOT place in its
+     own footer count — a missing anchor is a visible gap (G-4), never a
+     guessed point (G-3).
+
+     Breaker state: the database holds NO live or design open/closed for the
+     incomers (the ET-200 stations of 480-JG-691/692 carry it in hardware,
+     nothing historises it yet), so every breaker draws DESIGN. The badge
+     prints the design rating plainly; when a live value is passed in
+     (genset.live = {v,u}) the same slot shows it with the live marker and
+     nothing else changes — G-6, one slot, two marks, no second code path. */
+  const GA_ELEC_KINDS = ["GENERATOR", "CIRCUIT_BREAKER", "SWITCHBOARD"];
+
+  function gaElectrical(o) {
+    o = o || {};
+    const K = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (!K || !K.draw) return "";
+    const W = o.W || 1600, H = Math.round(W * 3179 / 4494);
+    const gens = o.gensets || [], boards = o.boards || [];
+    const bAt = new Map(boards.map(b => [b.tag, b]));
+    const px = p => ({ x: p.x * W, y: p.y * H });
+    const short = t => String(t || "").replace(/^480-JG-69\d-/, "");
+    const click = t => o.onEquip ? ` style="cursor:pointer" onclick="${o.onEquip}('${esc(t)}')"` : "";
+
+    let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">`;
+
+    /* conductors first, symbols on top. A feeder is drawn as ONE straight
+       run genset→board with its breaker riding the line on a paper plate:
+       this is a map overlay, so symbols stay upright like map markers —
+       rotating IEC glyphs to the cable angle makes half of them unreadable. */
+    gens.forEach(g => {
+      const b = bAt.get(g.pc); if (!b) return;
+      const A = px(g), B = px(b);
+      const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1;
+      const a2 = { x: A.x + dx / L * 16, y: A.y + dy / L * 16 };
+      const b2 = { x: B.x - dx / L * 20, y: B.y - dy / L * 20 };
+      s += `<line x1="${a2.x.toFixed(1)}" y1="${a2.y.toFixed(1)}" x2="${b2.x.toFixed(1)}" y2="${b2.y.toFixed(1)}" stroke="${INK}" stroke-width="1.5"/>`;
+      s += `<path d="M${(b2.x - dx / L * 9 - dy / L * 5).toFixed(1)},${(b2.y - dy / L * 9 + dx / L * 5).toFixed(1)} L${b2.x.toFixed(1)},${b2.y.toFixed(1)} L${(b2.x - dx / L * 9 + dy / L * 5).toFixed(1)},${(b2.y - dy / L * 9 - dx / L * 5).toFixed(1)} Z" fill="${INK}"/>`;
+      const mx = A.x + dx * 0.58, my = A.y + dy * 0.58;
+      s += `<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="13" fill="#fff" stroke="${LINE}"/>`;
+      s += K.draw("CIRCUIT_BREAKER", { x: mx, y: my, scale: 0.66, state: "DESIGN", dq: g.dq,
+        title: `${g.feeder} · incomer of ${g.tag} · busbar ${g.busbar || "?"} · state DESIGN (no live signal)` });
+      s += `<text x="${(mx + 14).toFixed(1)}" y="${(my + 4).toFixed(1)}" font-family="${MONO}" font-size="9.5" font-weight="700" fill="${SOFT}">${esc(short(g.feeder))}</text>`;
+    });
+
+    /* downstream feeds and normally-open couplers between boards */
+    (o.feeds || []).forEach(t => {
+      const a = bAt.get(t.a), b = bAt.get(t.b); if (!a || !b) return;
+      const A = px(a), B = px(b);
+      s += `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${SLD_BUSCOL}" stroke-width="1.4"/>` +
+        `<text x="${((A.x + B.x) / 2).toFixed(1)}" y="${((A.y + B.y) / 2 - 5).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="600" fill="${SLD_BUSCOL}">${esc(t.label || "")}</text>`;
+    });
+    (o.ties || []).forEach(t => {
+      const a = bAt.get(t.a), b = bAt.get(t.b); if (!a || !b) return;
+      const A = px(a), B = px(b);
+      /* dashed because it is normally open — a solid line would claim a feed
+         that does not exist (same rule as sldSummarySchematic) */
+      s += `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${SLD_BUSCOL}" stroke-width="1.4"${t.open ? ` stroke-dasharray="5 4"` : ""}/>` +
+        `<text x="${((A.x + B.x) / 2).toFixed(1)}" y="${((A.y + B.y) / 2 - 5).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="700" fill="${SLD_BUSCOL}">${esc(t.label || "")}${t.open ? " · N.O." : ""}</text>`;
+    });
+
+    /* the canvas carries tag + cabin only; ratings, busbars and coupler notes
+       live in the side panel — at map zoom three stacked text lines per board
+       overwrite each other and the drawing stops being readable */
+    boards.forEach(b => {
+      const B = px(b), sc = b.small ? 0.8 : 1.15;
+      const ly = b.labelBelow ? B.y + 26 * sc + 8 : B.y - 20 * sc;
+      s += `<g${click(b.tag)}>`;
+      s += K.draw("SWITCHBOARD", { x: B.x, y: B.y, scale: sc, state: "DESIGN", dq: b.dq,
+        title: `${b.tag} · ${b.sub || ""} · cabin ${b.cabin || "?"}` });
+      s += `<text x="${B.x}" y="${ly.toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="${b.small ? 8.5 : 11}" font-weight="700" fill="${CRIMSON}">${esc(b.tag)}</text>`;
+      if (b.cabin) s += `<text x="${B.x}" y="${(ly + (b.labelBelow ? 9 : -9)).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="7.5" fill="${SOFT}">${esc(b.cabin)}</text>`;
+      s += `</g>`;
+    });
+
+    gens.forEach(g => {
+      const A = px(g);
+      const vals = g.live && g.live.v != null
+        ? [{ k: "P", v: g.live.v, u: g.live.u || "kW" }]
+        : (g.kw != null ? [{ k: "P", v: g.kw, u: "kW" }] : []);
+      s += `<g${click(g.tag)}>`;
+      /* fuel and voltage go to the tooltip, not the canvas: nine "gas · 690 V"
+         lines on a map say nothing the legend row does not */
+      s += K.draw("GENERATOR", { x: A.x, y: A.y, scale: 0.95, state: "DESIGN", dq: g.dq,
+        label: g.tag, values: vals, live: !!(g.live && g.live.v != null),
+        title: `${g.tag} · ${g.fuel || ""} · feeder ${g.feeder} → ${g.pc} busbar ${g.busbar || "?"}` +
+               (g.meter ? ` · meter ${g.meter}` : "") });
+      s += `</g>`;
+    });
+
+    return s + `</svg>`;
+  }
+
   /* ── export ───────────────────────────────────────────────────────────── */
   const API = { load, fromViewer, plantMap, areaBlock, unitSummary, processView, hmbCards, svcClass, hmbChip, indexData,
                 loadSld, sldFromViewer, indexSld, sldBoards, sld,
+                gaElectrical, GA_ELEC_KINDS,
                 sldSummary, sldSummaryCards, sldSummarySchematic, sldBoardStats,
                 get sldSymbolStyle() { return sldSymbolStyle; },
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
@@ -4144,7 +4253,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.39.0" };
+                version: "1.40.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;

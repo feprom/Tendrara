@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<title>Daily Report — Comisionamiento E&amp;I — Tendrara Micro-LNG</title>
+<title>Daily Report — E&amp;I Commissioning — Tendrara Micro-LNG</title>
 <style>
   :root{
     --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
@@ -114,7 +114,6 @@
   .sys{font-family:var(--mono);font-size:10px;font-weight:700;}
   .sys.PCS{color:var(--blue);} .sys.ESD{color:var(--esd-ink);}
   .cat{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
-  .kindtag{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
   .empty{color:var(--muted);font-size:13px;padding:18px 4px;text-align:center;}
   td .minibar{width:110px;display:inline-block;vertical-align:middle;}
   td.rem b{color:var(--crimson);font-family:var(--mono);}
@@ -143,13 +142,35 @@
   .note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
 
   /* ── print / PDF ── */
+  @page{size:A4;margin:10mm 9mm 12mm;}
   @media print{
-    body{background:#fff;}
-    .cmdbar,.noprint{display:none !important;}
-    .wrap{max-width:none;padding:0 6mm;}
-    .card,.fact,.syscard,.catcard{border-color:#bbb;break-inside:avoid;}
-    h2{break-after:avoid;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    html,body{background:#fff;font-size:11px;}
+    .cmdbar,.noprint,.tip{display:none !important;}
+    .wrap{max-width:none;padding:0;}
+    .brandbar{padding:4px 0 6px;}
+    .brandbar .vendor img{height:30px;}
+    h1{font-size:19px;}
+    h2{font-size:13.5px;margin:13px 0 7px;break-after:avoid;}
+    .subtitle{font-size:11px;margin-bottom:8px;}
+    .facts{grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 4px;}
+    .fact{padding:8px 11px;} .fact .fv{font-size:20px;}
+    .sysgrid{grid-template-columns:1fr 1fr;gap:8px;}
+    .syscard{padding:9px 12px;} .syscard .sp{font-size:18px;}
+    .catgrid{grid-template-columns:repeat(4,1fr);gap:8px;}
+    .catcard{padding:8px 11px;} .catcard .cp{font-size:15px;}
+    .cardgrid{grid-template-columns:1fr 1fr;gap:8px;}
+    .card{padding:10px 12px;margin-bottom:8px;}
+    .card,.fact,.syscard,.catcard,.uchip{border-color:#bbb;break-inside:avoid;}
+    .tcard{break-inside:auto;}
+    .prow{padding:3px 0;grid-template-columns:200px 1fr 140px;}
+    table{font-size:9.5px;}
+    th{font-size:8px;padding:4px 7px;}
+    td{padding:3px 7px;}
+    thead{display:table-header-group;}
     tr{break-inside:avoid;}
+    td .minibar{width:70px;}
+    .note{font-size:8.5px;}
   }
 </style>
 </head>
@@ -162,23 +183,23 @@
 <div class="accent"></div>
 
 <div class="cmdbar noprint">
-  <label>Fecha del reporte</label>
-  <button id="prevBtn" title="Día anterior">◀</button>
+  <label>Report date</label>
+  <button id="prevBtn" title="Previous day">◀</button>
   <input type="date" id="datePick">
-  <button id="nextBtn" title="Día siguiente">▶</button>
-  <button id="todayBtn">Hoy</button>
-  <button id="reloadBtn">⟳ Actualizar</button>
-  <button id="printBtn">🖨 Imprimir / PDF</button>
+  <button id="nextBtn" title="Next day">▶</button>
+  <button id="todayBtn">Today</button>
+  <button id="reloadBtn">⟳ Refresh</button>
+  <button id="printBtn">🖨 Print / PDF</button>
   <span class="stamp" id="stamp"></span>
 </div>
 
 <div class="wrap">
-  <div class="kicker">Instrumentación &amp; Control <span class="sub">· IO loop tests — incluye verificación en pantalla PCS (OK en ENI)</span></div>
+  <div class="kicker">Instrumentation &amp; Control <span class="sub">· IO loop tests — includes PCS screen checks (OK in ENI)</span></div>
   <h1 id="repTitle">Daily Report</h1>
-  <p class="subtitle" id="repSub">Cargando datos en vivo desde Supabase…</p>
+  <p class="subtitle" id="repSub">Loading live data from Supabase…</p>
 
   <div class="err" id="errBox"></div>
-  <div class="loading" id="loadBox">Consultando Supabase…</div>
+  <div class="loading" id="loadBox">Querying Supabase…</div>
 
   <div id="report" style="display:none">
 
@@ -186,54 +207,54 @@
     <div class="facts" id="facts"></div>
 
     <!-- by system -->
-    <h2>Por sistema <span class="h2sub">canales activos (spares excluidos)</span></h2>
+    <h2>By system <span class="h2sub">active channels (spares excluded)</span></h2>
     <div class="sysgrid" id="sysGrid"></div>
 
     <!-- by category -->
-    <h2>Por categoría <span class="h2sub">esfuerzo total vs ejecutado</span></h2>
+    <h2>By category <span class="h2sub">total effort vs executed</span></h2>
     <div class="catgrid" id="catGrid"></div>
 
     <!-- global cumulative -->
-    <h2>Avance total <span class="h2sub" id="globalSub"></span></h2>
+    <h2>Overall progress <span class="h2sub" id="globalSub"></span></h2>
     <div class="card chartbox" id="cumCard"></div>
 
     <!-- daily / weekly -->
     <div class="cardgrid">
       <div>
-        <h2>Loop tests por día <span class="h2sub">últimos 28 días</span></h2>
+        <h2>Loop tests per day <span class="h2sub">last 28 days</span></h2>
         <div class="card chartbox" id="dayCard"></div>
       </div>
       <div>
-        <h2>Por semana <span class="h2sub">semanas ISO</span></h2>
+        <h2>Per week <span class="h2sub">ISO weeks</span></h2>
         <div class="card chartbox" id="weekCard"></div>
       </div>
     </div>
 
     <!-- by area -->
-    <h2>Por área <span class="h2sub">acumulado a la fecha · ejecutado / por ejecutar</span></h2>
+    <h2>By area <span class="h2sub">as of report date · executed / to go</span></h2>
     <div class="card" id="areaCard"></div>
 
     <!-- day detail -->
-    <h2 id="dayTitle">Verificado el día</h2>
+    <h2 id="dayTitle">Loop tests of the day</h2>
     <div class="userrow" id="userRow"></div>
-    <div class="card" style="padding:0;overflow-x:auto">
+    <div class="card tcard" style="padding:0;overflow-x:auto">
       <table id="dayTable">
         <thead><tr>
-          <th>Hora</th><th>Tag</th><th>Descripción</th><th>Panel RIO</th><th>Sist.</th><th>Cat.</th>
-          <th>Resultado</th><th>Verificado por</th>
+          <th>Time</th><th>Tag</th><th>Description</th><th>RIO panel</th><th>Sys.</th><th>Cat.</th>
+          <th>Result</th><th>Verified by</th>
         </tr></thead>
         <tbody></tbody>
       </table>
-      <div class="empty" id="dayEmpty" style="display:none">Sin loop tests registrados este día.</div>
+      <div class="empty" id="dayEmpty" style="display:none">No loop tests recorded on this day.</div>
     </div>
 
     <!-- panel table -->
-    <h2>Por tablero <span class="h2sub" id="panelSub">acumulado a la fecha</span></h2>
-    <div class="card" style="padding:0;overflow-x:auto">
+    <h2>By panel <span class="h2sub" id="panelSub">as of report date</span></h2>
+    <div class="card tcard" style="padding:0;overflow-x:auto">
       <table id="panelTable">
         <thead><tr>
-          <th>Panel</th><th>Sist.</th><th class="num">Canales</th><th class="num">Ejecutado</th>
-          <th class="num">Por ejecutar</th><th class="num">Spares</th><th>Avance</th><th class="num">%</th>
+          <th>Panel</th><th>Sys.</th><th class="num">Channels</th><th class="num">Executed</th>
+          <th class="num">To go</th><th class="num">Spares</th><th>Progress</th><th class="num">%</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -266,14 +287,14 @@ async function fetchAll(path){
   }
 }
 
-/* ── local-date helpers (el "día" es el día local de quien mira el reporte) ── */
+/* ── local-date helpers (the report "day" is the viewer's local day) ── */
 const p2 = n => String(n).padStart(2,"0");
 const dayStr = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const parseDay = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
 const endOfDay = s => { const d = parseDay(s); d.setHours(23,59,59,999); return d; };
 const addDays = (s,n) => { const d = parseDay(s); d.setDate(d.getDate()+n); return dayStr(d); };
-const fmtLong = s => parseDay(s).toLocaleDateString("es-ES",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-const fmtShort = s => parseDay(s).toLocaleDateString("es-ES",{day:"2-digit",month:"short"});
+const fmtLong = s => parseDay(s).toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+const fmtShort = s => parseDay(s).toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
 function isoWeek(s){
   const d = parseDay(s); const t = new Date(d); t.setHours(0,0,0,0);
   t.setDate(t.getDate() + 3 - ((t.getDay()+6)%7));           // Thursday of this week
@@ -282,12 +303,12 @@ function isoWeek(s){
   return `${t.getFullYear()}-W${p2(wk)}`;
 }
 
-/* ── clasificación de canales ──
-   spare  : sin tag, o el tag/descripción dice SPARE → fuera del denominador.
-   safety : todo canal del sistema ESD (F&G, shutdowns).
-   valves : canal PCS de válvula — prefijo Z* (ZSH/ZSL/ZT/ZEV), solenoides *EV(H/L),
-            salidas de posicionador *VY, retroalimentación *VZ, SV/LV/XV.
-   analog : resto de AI/AO del PCS.  digital: resto de DI/DO del PCS. */
+/* ── channel classification ──
+   spare  : no tag, or tag/description says SPARE → excluded from the denominator.
+   safety : every ESD-system channel (F&G, shutdowns).
+   valves : PCS valve channel — Z* prefix (ZSH/ZSL/ZT/ZEV), solenoids *EV(H/L),
+            positioner outputs *VY, position feedback *VZ, SV/LV/XV.
+   analog : remaining PCS AI/AO.  digital: remaining PCS DI/DO. */
 const isSpare = r => !r.tag || /spare/i.test(r.tag) || /spare/i.test(r.description||"");
 function catOf(r){
   if(r.system==="ESD") return "safety";
@@ -296,10 +317,10 @@ function catOf(r){
   return (r.io_kind==="AI"||r.io_kind==="AO") ? "analog" : "digital";
 }
 const CATS = {
-  analog:  {name:"Analógicas",   color:"var(--blue)",    desc:"AI/AO de proceso (PCS)"},
-  digital: {name:"Digitales",    color:"#4A4F57",        desc:"DI/DO de proceso (PCS)"},
-  safety:  {name:"Safety (ESD)", color:"var(--esd-line)",desc:"F&G y shutdowns"},
-  valves:  {name:"Válvulas",     color:"#6C3FA6",        desc:"solenoides, ZS, posicionadores"},
+  analog:  {name:"Analog",       color:"var(--blue)",    desc:"process AI/AO (PCS)"},
+  digital: {name:"Digital",      color:"#4A4F57",        desc:"process DI/DO (PCS)"},
+  safety:  {name:"Safety (ESD)", color:"var(--esd-line)",desc:"F&G and shutdowns"},
+  valves:  {name:"Valves",       color:"#6C3FA6",        desc:"solenoids, ZS, positioners"},
 };
 
 /* ── state ── */
@@ -336,7 +357,7 @@ function bindTips(root){
   });
 }
 
-/* ── charts (SVG a mano: barras finas, tope redondeado, una sola escala) ── */
+/* ── charts (hand-built SVG: thin bars, rounded tops, single scale) ── */
 const XML = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
 function roundTopBar(x,y,w,h,r){
   if(h<=0) return "";
@@ -393,7 +414,7 @@ function barChart(el, items, opts){
 function cumChart(el, pts, denom){
   const W = 1120, H = 230, mL = 44, mR = 96, mT = 14, mB = 26;
   const iw = W-mL-mR, ih = H-mT-mB;
-  if(!pts.length){ el.innerHTML = `<div class="empty">Sin datos a la fecha.</div>`; return; }
+  if(!pts.length){ el.innerHTML = `<div class="empty">No data as of this date.</div>`; return; }
   const max = niceMax(Math.max(5, pts[pts.length-1].cum*1.15));
   const x = i => pts.length===1 ? mL+iw/2 : mL + (i/(pts.length-1))*iw;
   const y = v => mT + ih - (v/max)*ih;
@@ -407,7 +428,7 @@ function cumChart(el, pts, denom){
   const area = line + ` L${x(pts.length-1)},${mT+ih} L${x(0)},${mT+ih} Z`;
   let dots = "";
   pts.forEach((p,i)=>{
-    dots += `<circle cx="${x(i)}" cy="${y(p.cum)}" r="9" fill="transparent" data-tip="<b>${fmtShort(p.day)}</b><div class='tl'>${p.cum} canales ejecutados · ${(100*p.cum/denom).toFixed(1)}%</div>"/>`;
+    dots += `<circle cx="${x(i)}" cy="${y(p.cum)}" r="9" fill="transparent" data-tip="<b>${fmtShort(p.day)}</b><div class='tl'>${p.cum} channels executed · ${(100*p.cum/denom).toFixed(1)}%</div>"/>`;
   });
   const last = pts[pts.length-1];
   const lx = x(pts.length-1), ly = y(last.cum);
@@ -423,30 +444,30 @@ function cumChart(el, pts, denom){
     <path d="${line}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round"/>
     <circle cx="${lx}" cy="${ly}" r="4" fill="var(--blue)" stroke="#fff" stroke-width="2"/>
     <text x="${lx+10}" y="${ly-8}" font-size="13" font-weight="700" fill="var(--ink)">${last.cum}</text>
-    <text x="${lx+10}" y="${ly+6}" font-size="10.5" fill="var(--ink-soft)">${(100*last.cum/denom).toFixed(1)}% de ${denom}</text>
+    <text x="${lx+10}" y="${ly+6}" font-size="10.5" fill="var(--ink-soft)">${(100*last.cum/denom).toFixed(1)}% of ${denom}</text>
     ${dots}${xlabels}
   </svg>`;
   bindTips(el);
 }
 
-/* ── agregador: canales de un grupo vs canales ejecutados (tag con OK) ── */
+/* ── aggregator: channels in a group vs executed channels (tag has an OK) ── */
 function agg(rows, okTags){
   const t = rows.length, d = rows.filter(r=>okTags.has(r.tag)).length;
   return {t, d, rem:t-d, pct: t? 100*d/t : 0};
 }
 
-/* ── report render: TODO calculado "a la fecha" seleccionada ── */
+/* ── report render: EVERYTHING computed "as of" the selected date ── */
 function render(){
   const D = curDate, cut = endOfDay(D);
   const upto = VER.filter(v => v.ts <= cut);
   const today = upto.filter(v => v.day === D);
 
   document.getElementById("repTitle").textContent = `Daily Report — ${fmtLong(D)}`;
-  document.getElementById("dayTitle").textContent = `Loop tests del ${fmtLong(D)}`;
+  document.getElementById("dayTitle").textContent = `Loop tests on ${fmtLong(D)}`;
   document.getElementById("repSub").textContent =
-    `Avance de IO loop tests (incluye verificación en pantalla PCS) · corte al ${fmtLong(D)} 23:59 (hora local)`;
+    `IO loop test progress (includes PCS screen checks) · cut-off ${fmtLong(D)} 23:59 (local time)`;
 
-  /* universe: canales activos (spares fuera) */
+  /* universe: active channels (spares out) */
   const live = IO.filter(r=>!isSpare(r));
   const spares = IO.length - live.length;
   const okTags = new Set(upto.filter(v=>v.result==="OK").map(v=>v.object_tag));
@@ -456,7 +477,7 @@ function render(){
   const failToday = today.filter(v=>v.result==="FAIL");
   const usersToday = [...new Set(today.map(v=>v.verified_by_name))];
 
-  /* canales por tag + primer OK por tag (para acumulado y "canales nuevos hoy") */
+  /* channels per tag + first OK per tag (for cumulative and "new channels today") */
   const chanByTag = new Map();
   for(const r of live){ chanByTag.set(r.tag,(chanByTag.get(r.tag)||0)+1); }
   const firstOk = new Map();
@@ -466,20 +487,20 @@ function render(){
 
   /* hero tiles */
   document.getElementById("facts").innerHTML = `
-    <div class="fact hero"><div class="fk">Avance total</div>
+    <div class="fact hero"><div class="fk">Overall progress</div>
       <div class="fv">${total.pct.toFixed(1)}<small>%</small></div>
-      <div class="fd">${total.d} de ${total.t} canales activos ejecutados</div></div>
-    <div class="fact"><div class="fk">Loop tests del día</div>
+      <div class="fd">${total.d} of ${total.t} active channels executed</div></div>
+    <div class="fact"><div class="fk">Loop tests today</div>
       <div class="fv">${okToday.length}${failToday.length?` <span class="failn">· ${failToday.length} FAIL</span>`:""}</div>
-      <div class="fd">${newChanToday} canales nuevos ejecutados</div></div>
-    <div class="fact"><div class="fk">Por ejecutar</div>
+      <div class="fd">${newChanToday} new channels executed</div></div>
+    <div class="fact"><div class="fk">To go</div>
       <div class="fv">${total.rem}</div>
-      <div class="fd">canales pendientes · ${spares} spares fuera del alcance</div></div>
-    <div class="fact"><div class="fk">Usuarios activos hoy</div>
+      <div class="fd">channels pending · ${spares} spares out of scope</div></div>
+    <div class="fact"><div class="fk">Active users today</div>
       <div class="fv">${usersToday.length}</div>
       <div class="fd">${XML(usersToday.slice(0,3).join(", "))||"—"}</div></div>`;
   document.getElementById("globalSub").textContent =
-    `canales activos ejecutados (spares excluidos) — corte ${fmtShort(D)}`;
+    `active channels executed (spares excluded) — cut-off ${fmtShort(D)}`;
 
   /* by system */
   document.getElementById("sysGrid").innerHTML = ["PCS","ESD"].map(sys=>{
@@ -488,7 +509,7 @@ function render(){
     return `<div class="syscard ${cls}">
       <div class="sh"><span class="sn">${sys}</span><span class="sp">${a.pct.toFixed(1)}%</span></div>
       <div class="pbar"><div class="fill ${cls==='esd'?'esd':''}" style="width:${a.pct.toFixed(1)}%"></div></div>
-      <div class="nums"><span>Ejecutado <b>${a.d}</b></span><span class="rem">Por ejecutar <b>${a.rem}</b></span><span>Total <b>${a.t}</b></span></div>
+      <div class="nums"><span>Executed <b>${a.d}</b></span><span class="rem">To go <b>${a.rem}</b></span><span>Total <b>${a.t}</b></span></div>
     </div>`;
   }).join("");
 
@@ -499,11 +520,11 @@ function render(){
       <div class="ch"><span class="dot" style="background:${c.color}"></span>${c.name}</div>
       <div class="cp">${a.pct.toFixed(1)}%</div>
       <div class="pbar" style="margin:2px 0 6px"><div class="fill" style="width:${a.pct.toFixed(1)}%;background:${c.color}"></div></div>
-      <div class="cd"><b>${a.d}</b> ejecutados · <b>${a.rem}</b> por ejecutar · ${c.desc}</div>
+      <div class="cd"><b>${a.d}</b> executed · <b>${a.rem}</b> to go · ${c.desc}</div>
     </div>`;
   }).join("");
 
-  /* cumulative: canales ejecutados por día (primer OK del tag × sus canales) */
+  /* cumulative: channels executed per day (tag's first OK × its channels) */
   const byDay = new Map();
   for(const [tg,d0] of firstOk) byDay.set(d0,(byDay.get(d0)||0)+(chanByTag.get(tg)||0));
   const cumPts = [];
@@ -538,10 +559,10 @@ function render(){
   const wkItems = wkKeys.slice(-12).map(k=>{
     const o = wkMap.get(k);
     return {label:k.slice(5), ok:o.ok, fail:o.fail,
-      tipHtml:`<b>Semana ${k}</b><div class='tl'>${o.ok} OK${o.fail?` · ${o.fail} FAIL`:""}</div>`};
+      tipHtml:`<b>Week ${k}</b><div class='tl'>${o.ok} OK${o.fail?` · ${o.fail} FAIL`:""}</div>`};
   });
   if(wkItems.length) barChart(document.getElementById("weekCard"), wkItems, {legend:true});
-  else document.getElementById("weekCard").innerHTML = `<div class="empty">Sin datos a la fecha.</div>`;
+  else document.getElementById("weekCard").innerHTML = `<div class="empty">No data as of this date.</div>`;
 
   /* by area */
   const areaMap = new Map();
@@ -586,7 +607,7 @@ function render(){
     const sys = v.rio_panel && v.rio_panel.startsWith("E-") ? "ESD" : (m.system||"");
     const cat = m.tag ? CATS[catOf(m)].name : "";
     return `<tr>
-      <td class="mono">${v.ts.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}</td>
+      <td class="mono">${v.ts.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</td>
       <td><span class="tag">${XML(v.object_tag||"—")}</span></td>
       <td>${XML(m.description||v.notes||"")}</td>
       <td class="mono">${XML(v.rio_panel||m.rio_panel||"—")}</td>
@@ -599,10 +620,10 @@ function render(){
   document.getElementById("dayEmpty").style.display = rows.length? "none":"block";
   document.getElementById("dayTable").style.display = rows.length? "":"none";
 
-  /* panel table: ejecutado / por ejecutar / spares por tablero */
+  /* panel table: executed / to go / spares per panel */
   const panMap = new Map();
   for(const r of IO){
-    const p = r.rio_panel || "(sin panel)";
+    const p = r.rio_panel || "(no panel)";
     if(!panMap.has(p)) panMap.set(p,{live:[],spare:0,sys:r.system});
     const o = panMap.get(p);
     if(isSpare(r)) o.spare++; else o.live.push(r);
@@ -622,18 +643,17 @@ function render(){
       <td class="num mono">${a.pct.toFixed(0)}%</td>
     </tr>`).join("");
 
-  /* totals row via tfoot-like last line in note */
   document.getElementById("noteBox").innerHTML =
-    `Alcance: <span class="mono">plant_verifications</span> con <span class="mono">object_table=plant_io_list</span> — solo IO loop tests
-     dados por usuarios en ENI (el loop test incluye la verificación en pantalla PCS, así que es la vista completa del canal).
-     Denominador: canales de <span class="mono">plant_io_list</span> excluyendo <b>${spares} spares</b>
-     (sin tag o marcados SPARE). Un canal cuenta como ejecutado cuando su tag tiene al menos un OK acumulado a la fecha.
-     Categorías: <b>Safety</b> = sistema ESD; <b>Válvulas</b> = solenoides (*EV), finales de carrera (ZSH/ZSL),
-     posicionadores (*VY/*VZ), ZT/XV/SV/LV del PCS; <b>Analógicas</b>/<b>Digitales</b> = resto AI-AO / DI-DO del PCS.
-     Todo se recalcula en vivo desde Supabase al abrir la página o cambiar la fecha.`;
+    `Scope: <span class="mono">plant_verifications</span> with <span class="mono">object_table=plant_io_list</span> — IO loop tests
+     signed off by users in ENI only (the loop test includes the PCS screen check, so it is the full view of the channel).
+     Denominator: <span class="mono">plant_io_list</span> channels excluding <b>${spares} spares</b>
+     (no tag, or marked SPARE). A channel counts as executed once its tag has at least one OK as of the report date.
+     Categories: <b>Safety</b> = ESD system; <b>Valves</b> = solenoids (*EV), limit switches (ZSH/ZSL),
+     positioners (*VY/*VZ), ZT/XV/SV/LV on PCS; <b>Analog</b>/<b>Digital</b> = remaining PCS AI-AO / DI-DO.
+     Everything is recomputed live from Supabase on page load or date change.`;
 
   document.getElementById("stamp").innerHTML =
-    `<b>●</b> en vivo · actualizado ${new Date().toLocaleTimeString("es-ES")}`;
+    `<b>●</b> live · updated ${new Date().toLocaleTimeString("en-GB")}`;
 }
 
 /* ── orchestration ── */
@@ -647,7 +667,7 @@ async function refresh(refetch){
     render();
   }catch(e){
     load.style.display = "none";
-    err.textContent = "Error consultando Supabase: " + e.message;
+    err.textContent = "Supabase query failed: " + e.message;
     err.style.display = "block";
   }
 }
