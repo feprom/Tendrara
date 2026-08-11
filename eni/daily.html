@@ -12,6 +12,7 @@
     --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA;
     --ok:#1F8A4C; --fail:#B3261E; --blue:#0B5CAD; --blue-soft:#E3EDF7;
     --grid:#ECEDF0; --baseline:#C9CED4;
+    --esd-ink:#7A5B00; --esd-line:#E5B800;
     --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif;
     --mono:"Consolas","SF Mono","Courier New",monospace;
   }
@@ -57,6 +58,32 @@
   .fact.hero .fv{color:var(--crimson);}
   .fact .fv .failn{color:var(--fail);font-size:14px;font-weight:700;}
 
+  /* ── system / category cards ── */
+  .sysgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 12px;}
+  @media(max-width:700px){.sysgrid{grid-template-columns:1fr;}}
+  .syscard{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:13px 16px;}
+  .syscard.esd{border-top:3px solid var(--esd-line);}
+  .syscard.pcs{border-top:3px solid var(--blue);}
+  .syscard .sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:7px;}
+  .syscard .sn{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.06em;}
+  .syscard.pcs .sn{color:var(--blue);} .syscard.esd .sn{color:var(--esd-ink);}
+  .syscard .sp{font-size:23px;font-weight:700;letter-spacing:-.02em;}
+  .syscard .nums{display:flex;gap:18px;font-size:11.5px;color:var(--ink-soft);margin-top:7px;}
+  .syscard .nums b{font-family:var(--mono);font-size:12.5px;color:var(--ink);}
+  .syscard .nums .rem b{color:var(--crimson);}
+  .catgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;}
+  .catcard{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:11px 14px;}
+  .catcard .ch{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;margin-bottom:6px;}
+  .catcard .dot{width:9px;height:9px;border-radius:2px;flex:none;}
+  .catcard .cp{font-size:19px;font-weight:700;letter-spacing:-.02em;margin:2px 0 4px;}
+  .catcard .cd{font-size:10.5px;color:var(--muted);}
+  .catcard .cd b{color:var(--ink-soft);font-family:var(--mono);}
+
+  /* ── progress bars ── */
+  .pbar{height:11px;background:var(--bg-soft);border:1px solid var(--line);border-radius:4px;overflow:hidden;}
+  .pbar .fill{height:100%;background:var(--blue);border-radius:3px 0 0 3px;}
+  .pbar .fill.esd{background:var(--esd-line);}
+
   /* ── cards / charts ── */
   .card{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:16px 18px;margin:0 0 14px;}
   .cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
@@ -70,10 +97,11 @@
   .tip b{font-family:var(--mono);font-size:11px;}
   .tip .tl{color:var(--ink-soft);}
 
-  /* ── day detail table ── */
+  /* ── tables ── */
   table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;}
   th{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);
     text-align:left;padding:7px 10px;border-bottom:2px solid var(--line-strong);white-space:nowrap;}
+  th.num, td.num{text-align:right;}
   td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
   tr:hover td{background:var(--bg-soft);}
   td.mono, .mono{font-family:var(--mono);font-size:11.5px;}
@@ -83,8 +111,14 @@
   .pill.OK{color:var(--ok);background:#E6F4EC;}
   .pill.FAIL{color:#fff;background:var(--fail);}
   .pill.NA{color:var(--ink-soft);background:var(--bg-soft);border:1px solid var(--line);}
+  .sys{font-family:var(--mono);font-size:10px;font-weight:700;}
+  .sys.PCS{color:var(--blue);} .sys.ESD{color:var(--esd-ink);}
+  .cat{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
   .kindtag{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
   .empty{color:var(--muted);font-size:13px;padding:18px 4px;text-align:center;}
+  td .minibar{width:110px;display:inline-block;vertical-align:middle;}
+  td.rem b{color:var(--crimson);font-family:var(--mono);}
+  td.done b{color:var(--ok);font-family:var(--mono);}
 
   /* ── per-user chips ── */
   .userrow{display:flex;flex-wrap:wrap;gap:9px;margin:8px 0 4px;}
@@ -96,13 +130,13 @@
   .uchip .n{font-family:var(--mono);font-size:11px;color:var(--ok);font-weight:700;}
   .uchip .nf{font-family:var(--mono);font-size:11px;color:var(--fail);font-weight:700;}
 
-  /* ── panel progress ── */
-  .prow{display:grid;grid-template-columns:190px 1fr 110px;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid var(--grid);}
-  .prow .pname{font-family:var(--mono);font-size:11.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .pbar{height:12px;background:var(--bg-soft);border:1px solid var(--line);border-radius:4px;overflow:hidden;position:relative;}
-  .pbar .fill{height:100%;background:var(--blue);border-radius:3px 0 0 3px;}
+  /* ── area progress rows ── */
+  .prow{display:grid;grid-template-columns:230px 1fr 150px;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid var(--grid);}
+  .prow:last-child{border-bottom:none;}
+  .prow .pname{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .prow .pname b{font-family:var(--mono);color:var(--crimson);margin-right:6px;}
   .prow .pnum{font-family:var(--mono);font-size:11px;color:var(--ink-soft);text-align:right;white-space:nowrap;}
-  .pmore{font-size:11.5px;color:var(--muted);padding:7px 0 0;}
+  .prow .pnum .r{color:var(--crimson);font-weight:700;}
 
   .loading{padding:60px;text-align:center;color:var(--ink-soft);font-size:14px;}
   .err{background:#FDECEA;border:1px solid #F2B8B5;color:var(--fail);border-radius:5px;padding:12px 15px;font-size:12.5px;margin:16px 0;display:none;}
@@ -113,7 +147,7 @@
     body{background:#fff;}
     .cmdbar,.noprint{display:none !important;}
     .wrap{max-width:none;padding:0 6mm;}
-    .card,.fact{border-color:#bbb;break-inside:avoid;}
+    .card,.fact,.syscard,.catcard{border-color:#bbb;break-inside:avoid;}
     h2{break-after:avoid;}
     tr{break-inside:avoid;}
   }
@@ -139,7 +173,7 @@
 </div>
 
 <div class="wrap">
-  <div class="kicker">Instrumentación &amp; Control <span class="sub">· avance de comisionamiento (OK en ENI)</span></div>
+  <div class="kicker">Instrumentación &amp; Control <span class="sub">· IO loop tests — incluye verificación en pantalla PCS (OK en ENI)</span></div>
   <h1 id="repTitle">Daily Report</h1>
   <p class="subtitle" id="repSub">Cargando datos en vivo desde Supabase…</p>
 
@@ -151,14 +185,22 @@
     <!-- hero stats -->
     <div class="facts" id="facts"></div>
 
+    <!-- by system -->
+    <h2>Por sistema <span class="h2sub">canales activos (spares excluidos)</span></h2>
+    <div class="sysgrid" id="sysGrid"></div>
+
+    <!-- by category -->
+    <h2>Por categoría <span class="h2sub">esfuerzo total vs ejecutado</span></h2>
+    <div class="catgrid" id="catGrid"></div>
+
     <!-- global cumulative -->
-    <h2>Avance global <span class="h2sub" id="globalSub"></span></h2>
+    <h2>Avance total <span class="h2sub" id="globalSub"></span></h2>
     <div class="card chartbox" id="cumCard"></div>
 
     <!-- daily / weekly -->
     <div class="cardgrid">
       <div>
-        <h2>Por día <span class="h2sub">últimos 28 días</span></h2>
+        <h2>Loop tests por día <span class="h2sub">últimos 28 días</span></h2>
         <div class="card chartbox" id="dayCard"></div>
       </div>
       <div>
@@ -167,29 +209,37 @@
       </div>
     </div>
 
+    <!-- by area -->
+    <h2>Por área <span class="h2sub">acumulado a la fecha · ejecutado / por ejecutar</span></h2>
+    <div class="card" id="areaCard"></div>
+
     <!-- day detail -->
     <h2 id="dayTitle">Verificado el día</h2>
     <div class="userrow" id="userRow"></div>
     <div class="card" style="padding:0;overflow-x:auto">
       <table id="dayTable">
         <thead><tr>
-          <th>Hora</th><th>Tag</th><th>Descripción</th><th>Panel RIO</th><th>Sistema</th>
-          <th>Check</th><th>Resultado</th><th>Verificado por</th>
+          <th>Hora</th><th>Tag</th><th>Descripción</th><th>Panel RIO</th><th>Sist.</th><th>Cat.</th>
+          <th>Resultado</th><th>Verificado por</th>
         </tr></thead>
         <tbody></tbody>
       </table>
-      <div class="empty" id="dayEmpty" style="display:none">Sin verificaciones registradas este día.</div>
+      <div class="empty" id="dayEmpty" style="display:none">Sin loop tests registrados este día.</div>
     </div>
 
-    <!-- panel progress -->
-    <h2>Avance por panel RIO <span class="h2sub" id="panelSub">acumulado a la fecha</span></h2>
-    <div class="card" id="panelCard"></div>
+    <!-- panel table -->
+    <h2>Por tablero <span class="h2sub" id="panelSub">acumulado a la fecha</span></h2>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table id="panelTable">
+        <thead><tr>
+          <th>Panel</th><th>Sist.</th><th class="num">Canales</th><th class="num">Ejecutado</th>
+          <th class="num">Por ejecutar</th><th class="num">Spares</th><th>Avance</th><th class="num">%</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
 
-    <p class="note">Fuente: <span class="mono">plant_verifications</span> (OK dados por usuarios en ENI, vía
-      <span class="mono">v_verifications_ui</span>) contra el universo de señales de
-      <span class="mono">plant_io_list</span>. Todo se recalcula en vivo al abrir la página o cambiar la fecha;
-      los checks automáticos del sistema (CROSS_CHECK de QA de datos) quedan excluidos.
-      El % global = tags de la IO List con al menos un OK acumulado a la fecha ÷ total de tags de la IO List.</p>
+    <p class="note" id="noteBox"></p>
   </div>
 </div>
 
@@ -232,22 +282,45 @@ function isoWeek(s){
   return `${t.getFullYear()}-W${p2(wk)}`;
 }
 
+/* ── clasificación de canales ──
+   spare  : sin tag, o el tag/descripción dice SPARE → fuera del denominador.
+   safety : todo canal del sistema ESD (F&G, shutdowns).
+   valves : canal PCS de válvula — prefijo Z* (ZSH/ZSL/ZT/ZEV), solenoides *EV(H/L),
+            salidas de posicionador *VY, retroalimentación *VZ, SV/LV/XV.
+   analog : resto de AI/AO del PCS.  digital: resto de DI/DO del PCS. */
+const isSpare = r => !r.tag || /spare/i.test(r.tag) || /spare/i.test(r.description||"");
+function catOf(r){
+  if(r.system==="ESD") return "safety";
+  const p = ((r.tag||"").match(/^[A-Z]+/)||[""])[0];
+  if(/^Z/.test(p) || /EV[HL]?$/.test(p) || /V[YZ]$/.test(p) || p==="SV" || p==="LV" || p==="XV") return "valves";
+  return (r.io_kind==="AI"||r.io_kind==="AO") ? "analog" : "digital";
+}
+const CATS = {
+  analog:  {name:"Analógicas",   color:"var(--blue)",    desc:"AI/AO de proceso (PCS)"},
+  digital: {name:"Digitales",    color:"#4A4F57",        desc:"DI/DO de proceso (PCS)"},
+  safety:  {name:"Safety (ESD)", color:"var(--esd-line)",desc:"F&G y shutdowns"},
+  valves:  {name:"Válvulas",     color:"#6C3FA6",        desc:"solenoides, ZS, posicionadores"},
+};
+
 /* ── state ── */
-let VER = [];      // human verifications (each with .day local)
-let IO  = [];      // plant_io_list rows
-let ioMeta = new Map();   // tag -> {rio_panel, system, unit, description}
+let VER = [];             // human IO-loop verifications (each with .day local)
+let IO  = [];             // plant_io_list rows
+let AREAS = new Map();    // area_code -> description
+let ioMeta = new Map();   // tag -> first live row
 const qsDate = new URLSearchParams(location.search).get("date");
 let curDate = /^\d{4}-\d{2}-\d{2}$/.test(qsDate||"") ? qsDate : dayStr(new Date());
 
 async function loadData(){
-  const [ver, io] = await Promise.all([
-    fetchAll("v_verifications_ui?select=created_at,object_table,object_tag,rio_panel,check_kind,result,notes,verified_by_name&verified_by_id=not.is.null&order=created_at.asc"),
-    fetchAll("plant_io_list?select=tag,rio_panel,system,unit,description&order=id.asc")
+  const [ver, io, areas] = await Promise.all([
+    fetchAll("v_verifications_ui?select=created_at,object_table,object_tag,rio_panel,check_kind,result,notes,verified_by_name&verified_by_id=not.is.null&object_table=eq.plant_io_list&order=created_at.asc"),
+    fetchAll("plant_io_list?select=tag,rio_panel,system,unit,description,io_kind&order=id.asc"),
+    fetchAll("plant_areas?select=area_code,description")
   ]);
   VER = ver.map(v => { const t = new Date(v.created_at); return {...v, ts:t, day:dayStr(t)}; });
   IO = io;
+  AREAS = new Map(areas.map(a=>[a.area_code, a.description]));
   ioMeta = new Map();
-  for(const r of IO) if(r.tag && !ioMeta.has(r.tag)) ioMeta.set(r.tag, r);
+  for(const r of IO) if(r.tag && !isSpare(r) && !ioMeta.has(r.tag)) ioMeta.set(r.tag, r);
 }
 
 /* ── tooltip ── */
@@ -277,7 +350,6 @@ function niceMax(v){
   return 10*mag;
 }
 function barChart(el, items, opts){
-  // items: [{label, tipHtml, ok, fail, faded?}]
   const W = 560, H = 220, mL = 34, mR = 6, mT = 12, mB = 26;
   const iw = W-mL-mR, ih = H-mT-mB;
   const max = niceMax(Math.max(1, ...items.map(i=>i.ok+i.fail)));
@@ -297,15 +369,14 @@ function barChart(el, items, opts){
     const cx = mL + step*i + (step-bw)/2;
     const total = it.ok + it.fail;
     const yOk = y(it.ok), hOk = mT+ih-yOk;
-    const opac = it.faded ? .34 : 1;
     const t = `data-tip="${XML(it.tipHtml)}"`;
     bars += `<g ${t} style="cursor:default">`;
     bars += `<rect x="${mL+step*i}" y="${mT}" width="${step}" height="${ih}" fill="transparent"/>`;
     if(it.fail>0){
       const hF = (it.fail/max)*ih;
-      bars += `<path d="${roundTopBar(cx, yOk-hF-2, bw, hF, 2)}" fill="var(--fail)" opacity="${opac}"/>`;
+      bars += `<path d="${roundTopBar(cx, yOk-hF-2, bw, hF, 2)}" fill="var(--fail)"/>`;
     }
-    bars += `<path d="${roundTopBar(cx, yOk, bw, hOk, 4)}" fill="var(--blue)" opacity="${opac}"/>`;
+    bars += `<path d="${roundTopBar(cx, yOk, bw, hOk, 4)}" fill="var(--blue)"/>`;
     bars += `</g>`;
     if(total>0 && total===maxVal)
       labels += `<text x="${cx+bw/2}" y="${y(total)-(it.fail?6:4)}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink-soft)">${total}</text>`;
@@ -320,8 +391,7 @@ function barChart(el, items, opts){
   bindTips(el);
 }
 function cumChart(el, pts, denom){
-  // pts: [{day, cum}] cumulative distinct OK tags per day
-  const W = 1120, H = 230, mL = 40, mR = 90, mT = 14, mB = 26;
+  const W = 1120, H = 230, mL = 44, mR = 96, mT = 14, mB = 26;
   const iw = W-mL-mR, ih = H-mT-mB;
   if(!pts.length){ el.innerHTML = `<div class="empty">Sin datos a la fecha.</div>`; return; }
   const max = niceMax(Math.max(5, pts[pts.length-1].cum*1.15));
@@ -337,7 +407,7 @@ function cumChart(el, pts, denom){
   const area = line + ` L${x(pts.length-1)},${mT+ih} L${x(0)},${mT+ih} Z`;
   let dots = "";
   pts.forEach((p,i)=>{
-    dots += `<circle cx="${x(i)}" cy="${y(p.cum)}" r="9" fill="transparent" data-tip="<b>${fmtShort(p.day)}</b><div class='tl'>${p.cum} tags OK acumulados · ${(100*p.cum/denom).toFixed(1)}%</div>"/>`;
+    dots += `<circle cx="${x(i)}" cy="${y(p.cum)}" r="9" fill="transparent" data-tip="<b>${fmtShort(p.day)}</b><div class='tl'>${p.cum} canales ejecutados · ${(100*p.cum/denom).toFixed(1)}%</div>"/>`;
   });
   const last = pts[pts.length-1];
   const lx = x(pts.length-1), ly = y(last.cum);
@@ -359,6 +429,12 @@ function cumChart(el, pts, denom){
   bindTips(el);
 }
 
+/* ── agregador: canales de un grupo vs canales ejecutados (tag con OK) ── */
+function agg(rows, okTags){
+  const t = rows.length, d = rows.filter(r=>okTags.has(r.tag)).length;
+  return {t, d, rem:t-d, pct: t? 100*d/t : 0};
+}
+
 /* ── report render: TODO calculado "a la fecha" seleccionada ── */
 function render(){
   const D = curDate, cut = endOfDay(D);
@@ -366,50 +442,77 @@ function render(){
   const today = upto.filter(v => v.day === D);
 
   document.getElementById("repTitle").textContent = `Daily Report — ${fmtLong(D)}`;
-  document.getElementById("dayTitle").textContent = `Verificado el ${fmtLong(D)}`;
+  document.getElementById("dayTitle").textContent = `Loop tests del ${fmtLong(D)}`;
   document.getElementById("repSub").textContent =
-    `Avance de comisionamiento de instrumentación y control · corte al ${fmtLong(D)} 23:59 (hora local)`;
+    `Avance de IO loop tests (incluye verificación en pantalla PCS) · corte al ${fmtLong(D)} 23:59 (hora local)`;
 
-  /* universe */
-  const allTags = new Set(IO.map(r=>r.tag).filter(Boolean));
-  const denom = allTags.size;
-  const okIoTags = new Set(upto.filter(v=>v.result==="OK" && v.object_table==="plant_io_list").map(v=>v.object_tag));
+  /* universe: canales activos (spares fuera) */
+  const live = IO.filter(r=>!isSpare(r));
+  const spares = IO.length - live.length;
+  const okTags = new Set(upto.filter(v=>v.result==="OK").map(v=>v.object_tag));
+  const total = agg(live, okTags);
+
   const okToday = today.filter(v=>v.result==="OK");
   const failToday = today.filter(v=>v.result==="FAIL");
   const usersToday = [...new Set(today.map(v=>v.verified_by_name))];
-  const newTagsToday = new Set(okToday.filter(v=>v.object_table==="plant_io_list").map(v=>v.object_tag));
+
+  /* canales por tag + primer OK por tag (para acumulado y "canales nuevos hoy") */
+  const chanByTag = new Map();
+  for(const r of live){ chanByTag.set(r.tag,(chanByTag.get(r.tag)||0)+1); }
+  const firstOk = new Map();
+  for(const v of upto) if(v.result==="OK" && !firstOk.has(v.object_tag)) firstOk.set(v.object_tag, v.day);
+  let newChanToday = 0;
+  for(const [tg,d0] of firstOk) if(d0===D) newChanToday += chanByTag.get(tg)||0;
 
   /* hero tiles */
-  const pct = denom? (100*okIoTags.size/denom) : 0;
   document.getElementById("facts").innerHTML = `
-    <div class="fact hero"><div class="fk">Avance global</div>
-      <div class="fv">${pct.toFixed(1)}<small>%</small></div>
-      <div class="fd">${okIoTags.size} de ${denom} tags de la IO List con OK</div></div>
-    <div class="fact"><div class="fk">OK del día</div>
+    <div class="fact hero"><div class="fk">Avance total</div>
+      <div class="fv">${total.pct.toFixed(1)}<small>%</small></div>
+      <div class="fd">${total.d} de ${total.t} canales activos ejecutados</div></div>
+    <div class="fact"><div class="fk">Loop tests del día</div>
       <div class="fv">${okToday.length}${failToday.length?` <span class="failn">· ${failToday.length} FAIL</span>`:""}</div>
-      <div class="fd">${newTagsToday.size} tags nuevos verificados</div></div>
+      <div class="fd">${newChanToday} canales nuevos ejecutados</div></div>
+    <div class="fact"><div class="fk">Por ejecutar</div>
+      <div class="fv">${total.rem}</div>
+      <div class="fd">canales pendientes · ${spares} spares fuera del alcance</div></div>
     <div class="fact"><div class="fk">Usuarios activos hoy</div>
       <div class="fv">${usersToday.length}</div>
-      <div class="fd">${XML(usersToday.slice(0,3).join(", "))||"—"}</div></div>
-    <div class="fact"><div class="fk">Verificaciones acumuladas</div>
-      <div class="fv">${upto.length}</div>
-      <div class="fd">desde ${upto.length?fmtShort(upto[0].day):"—"} · en vivo desde Supabase</div></div>`;
+      <div class="fd">${XML(usersToday.slice(0,3).join(", "))||"—"}</div></div>`;
   document.getElementById("globalSub").textContent =
-    `tags de IO List con OK acumulado — corte ${fmtShort(D)}`;
+    `canales activos ejecutados (spares excluidos) — corte ${fmtShort(D)}`;
 
-  /* cumulative series: one point per calendar day from first OK to D */
-  const okEvents = upto.filter(v=>v.result==="OK" && v.object_table==="plant_io_list");
+  /* by system */
+  document.getElementById("sysGrid").innerHTML = ["PCS","ESD"].map(sys=>{
+    const a = agg(live.filter(r=>r.system===sys), okTags);
+    const cls = sys.toLowerCase();
+    return `<div class="syscard ${cls}">
+      <div class="sh"><span class="sn">${sys}</span><span class="sp">${a.pct.toFixed(1)}%</span></div>
+      <div class="pbar"><div class="fill ${cls==='esd'?'esd':''}" style="width:${a.pct.toFixed(1)}%"></div></div>
+      <div class="nums"><span>Ejecutado <b>${a.d}</b></span><span class="rem">Por ejecutar <b>${a.rem}</b></span><span>Total <b>${a.t}</b></span></div>
+    </div>`;
+  }).join("");
+
+  /* by category */
+  document.getElementById("catGrid").innerHTML = Object.entries(CATS).map(([k,c])=>{
+    const a = agg(live.filter(r=>catOf(r)===k), okTags);
+    return `<div class="catcard">
+      <div class="ch"><span class="dot" style="background:${c.color}"></span>${c.name}</div>
+      <div class="cp">${a.pct.toFixed(1)}%</div>
+      <div class="pbar" style="margin:2px 0 6px"><div class="fill" style="width:${a.pct.toFixed(1)}%;background:${c.color}"></div></div>
+      <div class="cd"><b>${a.d}</b> ejecutados · <b>${a.rem}</b> por ejecutar · ${c.desc}</div>
+    </div>`;
+  }).join("");
+
+  /* cumulative: canales ejecutados por día (primer OK del tag × sus canales) */
+  const byDay = new Map();
+  for(const [tg,d0] of firstOk) byDay.set(d0,(byDay.get(d0)||0)+(chanByTag.get(tg)||0));
   const cumPts = [];
-  if(okEvents.length){
-    const seen = new Set();
-    const byDay = new Map();
-    for(const v of okEvents){
-      if(!seen.has(v.object_tag)){ seen.add(v.object_tag); byDay.set(v.day,(byDay.get(v.day)||0)+1); }
-    }
-    let d = okEvents[0].day, cum = 0;
+  const days = [...byDay.keys()].sort();
+  if(days.length){
+    let d = days[0], cum = 0;
     while(d <= D){ cum += byDay.get(d)||0; cumPts.push({day:d, cum}); d = addDays(d,1); }
   }
-  cumChart(document.getElementById("cumCard"), cumPts, denom||1);
+  cumChart(document.getElementById("cumCard"), cumPts, total.t||1);
 
   /* daily bars: last 28 days ending D */
   const dayItems = [];
@@ -418,12 +521,12 @@ function render(){
     const rows = upto.filter(v=>v.day===d);
     const ok = rows.filter(v=>v.result==="OK").length, fail = rows.filter(v=>v.result==="FAIL").length;
     const who = [...new Set(rows.map(v=>v.verified_by_name))].join(", ");
-    dayItems.push({label:fmtShort(d), ok, fail, faded:false,
+    dayItems.push({label:fmtShort(d), ok, fail,
       tipHtml:`<b>${fmtLong(d)}</b><div class='tl'>${ok} OK${fail?` · ${fail} FAIL`:""}${who?`<br>${who}`:""}</div>`});
   }
   barChart(document.getElementById("dayCard"), dayItems, {legend:true});
 
-  /* weekly bars: every ISO week from first data to D */
+  /* weekly bars */
   const wkMap = new Map();
   for(const v of upto){
     const k = isoWeek(v.day);
@@ -439,6 +542,25 @@ function render(){
   });
   if(wkItems.length) barChart(document.getElementById("weekCard"), wkItems, {legend:true});
   else document.getElementById("weekCard").innerHTML = `<div class="empty">Sin datos a la fecha.</div>`;
+
+  /* by area */
+  const areaMap = new Map();
+  for(const r of live){
+    const a = r.unit || "—";
+    if(!areaMap.has(a)) areaMap.set(a,[]);
+    areaMap.get(a).push(r);
+  }
+  document.getElementById("areaCard").innerHTML = [...areaMap.entries()]
+    .sort((a,b)=> a[0].localeCompare(b[0]))
+    .map(([code,rows])=>{
+      const a = agg(rows, okTags);
+      const nm = AREAS.get(code) || "";
+      return `<div class="prow">
+        <div class="pname"><b>${XML(code)}</b>${XML(nm)}</div>
+        <div class="pbar"><div class="fill" style="width:${a.pct.toFixed(1)}%"></div></div>
+        <div class="pnum"><span style="color:var(--ok)">${a.d} ✓</span> · <span class="r">${a.rem} ⌛</span> · ${a.pct.toFixed(0)}%</div>
+      </div>`;
+    }).join("");
 
   /* per-user chips of the day */
   const byUser = new Map();
@@ -461,13 +583,15 @@ function render(){
   tb.innerHTML = rows.map(v=>{
     const m = ioMeta.get(v.object_tag)||{};
     const res = (v.result==="OK"||v.result==="FAIL") ? v.result : "NA";
+    const sys = v.rio_panel && v.rio_panel.startsWith("E-") ? "ESD" : (m.system||"");
+    const cat = m.tag ? CATS[catOf(m)].name : "";
     return `<tr>
       <td class="mono">${v.ts.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}</td>
       <td><span class="tag">${XML(v.object_tag||"—")}</span></td>
       <td>${XML(m.description||v.notes||"")}</td>
       <td class="mono">${XML(v.rio_panel||m.rio_panel||"—")}</td>
-      <td class="mono">${XML(m.system||m.unit||"—")}</td>
-      <td><span class="kindtag">${XML(v.check_kind||"")}</span></td>
+      <td><span class="sys ${XML(sys)}">${XML(sys||"—")}</span></td>
+      <td><span class="cat">${XML(cat)}</span></td>
       <td><span class="pill ${res}">${XML(v.result||"—")}</span></td>
       <td>${XML(v.verified_by_name||"—")}</td>
     </tr>`;
@@ -475,25 +599,38 @@ function render(){
   document.getElementById("dayEmpty").style.display = rows.length? "none":"block";
   document.getElementById("dayTable").style.display = rows.length? "":"none";
 
-  /* panel progress (acumulado a la fecha) */
-  const panelTotals = new Map();
-  for(const r of IO){ if(!r.tag) continue;
-    const p = r.rio_panel||"(sin panel)";
-    const o = panelTotals.get(p)||{total:new Set(), ok:new Set()};
-    o.total.add(r.tag);
-    if(okIoTags.has(r.tag)) o.ok.add(r.tag);
-    panelTotals.set(p,o);
+  /* panel table: ejecutado / por ejecutar / spares por tablero */
+  const panMap = new Map();
+  for(const r of IO){
+    const p = r.rio_panel || "(sin panel)";
+    if(!panMap.has(p)) panMap.set(p,{live:[],spare:0,sys:r.system});
+    const o = panMap.get(p);
+    if(isSpare(r)) o.spare++; else o.live.push(r);
   }
-  const started = [...panelTotals.entries()].filter(([,o])=>o.ok.size>0)
-    .sort((a,b)=> b[1].ok.size/b[1].total.size - a[1].ok.size/a[1].total.size);
-  const notStarted = [...panelTotals.entries()].filter(([,o])=>o.ok.size===0);
-  document.getElementById("panelCard").innerHTML = (started.map(([p,o])=>{
-    const pc = 100*o.ok.size/o.total.size;
-    return `<div class="prow"><div class="pname" title="${XML(p)}">${XML(p)}</div>
-      <div class="pbar"><div class="fill" style="width:${pc.toFixed(1)}%"></div></div>
-      <div class="pnum">${o.ok.size}/${o.total.size} · ${pc.toFixed(0)}%</div></div>`;
-  }).join("") || `<div class="empty">Ningún panel iniciado a la fecha.</div>`)
-  + (notStarted.length? `<div class="pmore">+ ${notStarted.length} paneles sin iniciar (0 %) — ${XML(notStarted.slice(0,8).map(([p])=>p).join(", "))}${notStarted.length>8?"…":""}</div>`:"");
+  const ptb = document.querySelector("#panelTable tbody");
+  ptb.innerHTML = [...panMap.entries()]
+    .map(([p,o])=>({p, o, a:agg(o.live, okTags)}))
+    .sort((x,y)=> y.a.pct - x.a.pct || x.p.localeCompare(y.p))
+    .map(({p,o,a})=>`<tr>
+      <td class="mono">${XML(p)}</td>
+      <td><span class="sys ${XML(o.sys||"")}">${XML(o.sys||"—")}</span></td>
+      <td class="num mono">${a.t}</td>
+      <td class="num done"><b>${a.d}</b></td>
+      <td class="num rem"><b>${a.rem}</b></td>
+      <td class="num mono" style="color:var(--muted)">${o.spare||""}</td>
+      <td><span class="minibar pbar"><span class="fill" style="display:block;width:${a.pct.toFixed(1)}%"></span></span></td>
+      <td class="num mono">${a.pct.toFixed(0)}%</td>
+    </tr>`).join("");
+
+  /* totals row via tfoot-like last line in note */
+  document.getElementById("noteBox").innerHTML =
+    `Alcance: <span class="mono">plant_verifications</span> con <span class="mono">object_table=plant_io_list</span> — solo IO loop tests
+     dados por usuarios en ENI (el loop test incluye la verificación en pantalla PCS, así que es la vista completa del canal).
+     Denominador: canales de <span class="mono">plant_io_list</span> excluyendo <b>${spares} spares</b>
+     (sin tag o marcados SPARE). Un canal cuenta como ejecutado cuando su tag tiene al menos un OK acumulado a la fecha.
+     Categorías: <b>Safety</b> = sistema ESD; <b>Válvulas</b> = solenoides (*EV), finales de carrera (ZSH/ZSL),
+     posicionadores (*VY/*VZ), ZT/XV/SV/LV del PCS; <b>Analógicas</b>/<b>Digitales</b> = resto AI-AO / DI-DO del PCS.
+     Todo se recalcula en vivo desde Supabase al abrir la página o cambiar la fecha.`;
 
   document.getElementById("stamp").innerHTML =
     `<b>●</b> en vivo · actualizado ${new Date().toLocaleTimeString("es-ES")}`;
