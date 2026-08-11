@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<title>Daily Report — Comisionamiento E&amp;I — Tendrara Micro-LNG</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --muted:#898781;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA;
+    --ok:#1F8A4C; --fail:#B3261E; --blue:#0B5CAD; --blue-soft:#E3EDF7;
+    --grid:#ECEDF0; --baseline:#C9CED4;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{font-family:var(--sans);color:var(--ink);background:#ECEEF1;-webkit-font-smoothing:antialiased;}
+
+  /* ── brandbar ── */
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:9px 24px;border-bottom:1px solid var(--line);background:#fff;}
+  .brandbar .vendor img{height:38px;display:block;}
+  .brandbar .apptitle{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);}
+  .brandbar .apptitle b{color:var(--crimson);}
+  .accent{height:3px;background:var(--crimson);}
+
+  /* ── command bar: date navigation ── */
+  .cmdbar{display:flex;align-items:center;gap:10px;padding:8px 24px;background:var(--bg-soft);
+    border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .cmdbar label{font-family:var(--mono);font-size:10px;color:var(--ink-soft);letter-spacing:.08em;text-transform:uppercase;}
+  .cmdbar input[type=date]{font-family:var(--mono);font-size:12.5px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:3px;background:#fff;}
+  .cmdbar button{font-family:var(--mono);font-size:11.5px;padding:5px 11px;border:1px solid var(--line-strong);
+    border-radius:3px;background:#fff;cursor:pointer;color:var(--ink);}
+  .cmdbar button:hover{border-color:var(--crimson);color:var(--crimson);}
+  .cmdbar .stamp{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted);}
+  .cmdbar .stamp b{color:var(--ok);font-weight:700;}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 26px 70px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--crimson);font-weight:700;margin:2px 0 6px;}
+  .kicker .sub{color:var(--ink-soft);font-weight:400;}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:-.01em;line-height:1.15;}
+  .subtitle{color:var(--ink-soft);font-size:13px;margin:0 0 18px;}
+  h2{font-size:16px;margin:26px 0 10px;letter-spacing:-.005em;}
+  h2 .h2sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);font-weight:400;margin-left:8px;letter-spacing:.04em;}
+
+  /* ── stat tiles ── */
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0 6px;}
+  .fact{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:12px 15px;}
+  .fact .fk{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px;}
+  .fact .fv{font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1;}
+  .fact .fv small{font-size:13px;font-weight:400;color:var(--ink-soft);margin-left:3px;}
+  .fact .fd{font-size:11px;color:var(--muted);margin-top:5px;}
+  .fact.hero .fv{color:var(--crimson);}
+  .fact .fv .failn{color:var(--fail);font-size:14px;font-weight:700;}
+
+  /* ── cards / charts ── */
+  .card{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:16px 18px;margin:0 0 14px;}
+  .cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:860px){.cardgrid{grid-template-columns:1fr;}}
+  .chartbox{position:relative;}
+  .chartbox svg{display:block;width:100%;height:auto;}
+  .legend{display:flex;gap:16px;align-items:center;margin:2px 0 8px;font-size:11.5px;color:var(--ink-soft);}
+  .legend .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+  .tip{position:fixed;z-index:50;pointer-events:none;background:#fff;border:1px solid var(--line-strong);
+    border-radius:4px;box-shadow:0 3px 10px rgba(21,23,26,.14);padding:7px 10px;font-size:11.5px;display:none;max-width:260px;}
+  .tip b{font-family:var(--mono);font-size:11px;}
+  .tip .tl{color:var(--ink-soft);}
+
+  /* ── day detail table ── */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;}
+  th{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);
+    text-align:left;padding:7px 10px;border-bottom:2px solid var(--line-strong);white-space:nowrap;}
+  td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tr:hover td{background:var(--bg-soft);}
+  td.mono, .mono{font-family:var(--mono);font-size:11.5px;}
+  td .tag{font-family:var(--mono);font-weight:700;color:var(--blue);}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em;
+    border-radius:3px;padding:2px 7px;}
+  .pill.OK{color:var(--ok);background:#E6F4EC;}
+  .pill.FAIL{color:#fff;background:var(--fail);}
+  .pill.NA{color:var(--ink-soft);background:var(--bg-soft);border:1px solid var(--line);}
+  .kindtag{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
+  .empty{color:var(--muted);font-size:13px;padding:18px 4px;text-align:center;}
+
+  /* ── per-user chips ── */
+  .userrow{display:flex;flex-wrap:wrap;gap:9px;margin:8px 0 4px;}
+  .uchip{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line-strong);
+    border-radius:20px;padding:5px 13px 5px 6px;font-size:12px;}
+  .uchip .avatar{width:24px;height:24px;border-radius:50%;background:var(--crimson);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;font-family:var(--mono);}
+  .uchip b{font-weight:600;}
+  .uchip .n{font-family:var(--mono);font-size:11px;color:var(--ok);font-weight:700;}
+  .uchip .nf{font-family:var(--mono);font-size:11px;color:var(--fail);font-weight:700;}
+
+  /* ── panel progress ── */
+  .prow{display:grid;grid-template-columns:190px 1fr 110px;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid var(--grid);}
+  .prow .pname{font-family:var(--mono);font-size:11.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pbar{height:12px;background:var(--bg-soft);border:1px solid var(--line);border-radius:4px;overflow:hidden;position:relative;}
+  .pbar .fill{height:100%;background:var(--blue);border-radius:3px 0 0 3px;}
+  .prow .pnum{font-family:var(--mono);font-size:11px;color:var(--ink-soft);text-align:right;white-space:nowrap;}
+  .pmore{font-size:11.5px;color:var(--muted);padding:7px 0 0;}
+
+  .loading{padding:60px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .err{background:#FDECEA;border:1px solid #F2B8B5;color:var(--fail);border-radius:5px;padding:12px 15px;font-size:12.5px;margin:16px 0;display:none;}
+  .note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+
+  /* ── print / PDF ── */
+  @media print{
+    body{background:#fff;}
+    .cmdbar,.noprint{display:none !important;}
+    .wrap{max-width:none;padding:0 6mm;}
+    .card,.fact{border-color:#bbb;break-inside:avoid;}
+    h2{break-after:avoid;}
+    tr{break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+
+<div class="brandbar">
+  <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'"></div>
+  <div class="apptitle">TAM E&amp;I · <b>DAILY COMMISSIONING REPORT</b> · TENDRARA MICRO-LNG</div>
+</div>
+<div class="accent"></div>
+
+<div class="cmdbar noprint">
+  <label>Fecha del reporte</label>
+  <button id="prevBtn" title="Día anterior">◀</button>
+  <input type="date" id="datePick">
+  <button id="nextBtn" title="Día siguiente">▶</button>
+  <button id="todayBtn">Hoy</button>
+  <button id="reloadBtn">⟳ Actualizar</button>
+  <button id="printBtn">🖨 Imprimir / PDF</button>
+  <span class="stamp" id="stamp"></span>
+</div>
+
+<div class="wrap">
+  <div class="kicker">Instrumentación &amp; Control <span class="sub">· avance de comisionamiento (OK en ENI)</span></div>
+  <h1 id="repTitle">Daily Report</h1>
+  <p class="subtitle" id="repSub">Cargando datos en vivo desde Supabase…</p>
+
+  <div class="err" id="errBox"></div>
+  <div class="loading" id="loadBox">Consultando Supabase…</div>
+
+  <div id="report" style="display:none">
+
+    <!-- hero stats -->
+    <div class="facts" id="facts"></div>
+
+    <!-- global cumulative -->
+    <h2>Avance global <span class="h2sub" id="globalSub"></span></h2>
+    <div class="card chartbox" id="cumCard"></div>
+
+    <!-- daily / weekly -->
+    <div class="cardgrid">
+      <div>
+        <h2>Por día <span class="h2sub">últimos 28 días</span></h2>
+        <div class="card chartbox" id="dayCard"></div>
+      </div>
+      <div>
+        <h2>Por semana <span class="h2sub">semanas ISO</span></h2>
+        <div class="card chartbox" id="weekCard"></div>
+      </div>
+    </div>
+
+    <!-- day detail -->
+    <h2 id="dayTitle">Verificado el día</h2>
+    <div class="userrow" id="userRow"></div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table id="dayTable">
+        <thead><tr>
+          <th>Hora</th><th>Tag</th><th>Descripción</th><th>Panel RIO</th><th>Sistema</th>
+          <th>Check</th><th>Resultado</th><th>Verificado por</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="empty" id="dayEmpty" style="display:none">Sin verificaciones registradas este día.</div>
+    </div>
+
+    <!-- panel progress -->
+    <h2>Avance por panel RIO <span class="h2sub" id="panelSub">acumulado a la fecha</span></h2>
+    <div class="card" id="panelCard"></div>
+
+    <p class="note">Fuente: <span class="mono">plant_verifications</span> (OK dados por usuarios en ENI, vía
+      <span class="mono">v_verifications_ui</span>) contra el universo de señales de
+      <span class="mono">plant_io_list</span>. Todo se recalcula en vivo al abrir la página o cambiar la fecha;
+      los checks automáticos del sistema (CROSS_CHECK de QA de datos) quedan excluidos.
+      El % global = tags de la IO List con al menos un OK acumulado a la fecha ÷ total de tags de la IO List.</p>
+  </div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script src="/supabase-config.js"></script>
+<script>
+"use strict";
+const SB_URL = window.SUPABASE_URL, SB_KEY = window.SUPABASE_ANON_KEY;
+
+/* ── data access: paginated REST fetch (PostgREST caps at 1000 rows/req) ── */
+async function fetchAll(path){
+  const out = []; const page = 1000; let from = 0;
+  for(;;){
+    const r = await fetch(`${SB_URL}/rest/v1/${path}`, {headers:{
+      apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+      Range: `${from}-${from+page-1}`, Prefer: "count=none"
+    }});
+    if(!r.ok) throw new Error(`${path.split("?")[0]}: HTTP ${r.status} — ${await r.text()}`);
+    const rows = await r.json();
+    out.push(...rows);
+    if(rows.length < page) return out;
+    from += page;
+  }
+}
+
+/* ── local-date helpers (el "día" es el día local de quien mira el reporte) ── */
+const p2 = n => String(n).padStart(2,"0");
+const dayStr = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+const parseDay = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const endOfDay = s => { const d = parseDay(s); d.setHours(23,59,59,999); return d; };
+const addDays = (s,n) => { const d = parseDay(s); d.setDate(d.getDate()+n); return dayStr(d); };
+const fmtLong = s => parseDay(s).toLocaleDateString("es-ES",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+const fmtShort = s => parseDay(s).toLocaleDateString("es-ES",{day:"2-digit",month:"short"});
+function isoWeek(s){
+  const d = parseDay(s); const t = new Date(d); t.setHours(0,0,0,0);
+  t.setDate(t.getDate() + 3 - ((t.getDay()+6)%7));           // Thursday of this week
+  const w1 = new Date(t.getFullYear(),0,4);
+  const wk = 1 + Math.round(((t - w1)/86400000 - 3 + ((w1.getDay()+6)%7))/7);
+  return `${t.getFullYear()}-W${p2(wk)}`;
+}
+
+/* ── state ── */
+let VER = [];      // human verifications (each with .day local)
+let IO  = [];      // plant_io_list rows
+let ioMeta = new Map();   // tag -> {rio_panel, system, unit, description}
+const qsDate = new URLSearchParams(location.search).get("date");
+let curDate = /^\d{4}-\d{2}-\d{2}$/.test(qsDate||"") ? qsDate : dayStr(new Date());
+
+async function loadData(){
+  const [ver, io] = await Promise.all([
+    fetchAll("v_verifications_ui?select=created_at,object_table,object_tag,rio_panel,check_kind,result,notes,verified_by_name&verified_by_id=not.is.null&order=created_at.asc"),
+    fetchAll("plant_io_list?select=tag,rio_panel,system,unit,description&order=id.asc")
+  ]);
+  VER = ver.map(v => { const t = new Date(v.created_at); return {...v, ts:t, day:dayStr(t)}; });
+  IO = io;
+  ioMeta = new Map();
+  for(const r of IO) if(r.tag && !ioMeta.has(r.tag)) ioMeta.set(r.tag, r);
+}
+
+/* ── tooltip ── */
+const tip = document.getElementById("tip");
+function bindTips(root){
+  root.querySelectorAll("[data-tip]").forEach(el=>{
+    el.addEventListener("mousemove", e=>{
+      tip.innerHTML = el.dataset.tip; tip.style.display = "block";
+      const w = tip.offsetWidth, x = Math.min(e.clientX+14, innerWidth - w - 10);
+      tip.style.left = x+"px"; tip.style.top = (e.clientY+16)+"px";
+    });
+    el.addEventListener("mouseleave", ()=> tip.style.display = "none");
+  });
+}
+
+/* ── charts (SVG a mano: barras finas, tope redondeado, una sola escala) ── */
+const XML = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+function roundTopBar(x,y,w,h,r){
+  if(h<=0) return "";
+  r = Math.min(r, w/2, h);
+  return `M${x},${y+h} L${x},${y+r} Q${x},${y} ${x+r},${y} L${x+w-r},${y} Q${x+w},${y} ${x+w},${y+r} L${x+w},${y+h} Z`;
+}
+function niceMax(v){
+  if(v<=5) return 5;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  for(const m of [1,2,2.5,5,10]) if(v <= m*mag) return m*mag;
+  return 10*mag;
+}
+function barChart(el, items, opts){
+  // items: [{label, tipHtml, ok, fail, faded?}]
+  const W = 560, H = 220, mL = 34, mR = 6, mT = 12, mB = 26;
+  const iw = W-mL-mR, ih = H-mT-mB;
+  const max = niceMax(Math.max(1, ...items.map(i=>i.ok+i.fail)));
+  const bw = Math.min(26, Math.max(4, iw/items.length - 3));
+  const step = iw/items.length;
+  const y = v => mT + ih - (v/max)*ih;
+  let g = "";
+  const ticks = 4;
+  for(let t=0;t<=ticks;t++){
+    const v = max*t/ticks, yy = y(v);
+    g += `<line x1="${mL}" y1="${yy}" x2="${W-mR}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>`;
+    g += `<text x="${mL-6}" y="${yy+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)" font-family="var(--mono)">${v%1?v.toFixed(1):v}</text>`;
+  }
+  let bars = "", labels = "";
+  const maxVal = Math.max(...items.map(i=>i.ok+i.fail));
+  items.forEach((it,i)=>{
+    const cx = mL + step*i + (step-bw)/2;
+    const total = it.ok + it.fail;
+    const yOk = y(it.ok), hOk = mT+ih-yOk;
+    const opac = it.faded ? .34 : 1;
+    const t = `data-tip="${XML(it.tipHtml)}"`;
+    bars += `<g ${t} style="cursor:default">`;
+    bars += `<rect x="${mL+step*i}" y="${mT}" width="${step}" height="${ih}" fill="transparent"/>`;
+    if(it.fail>0){
+      const hF = (it.fail/max)*ih;
+      bars += `<path d="${roundTopBar(cx, yOk-hF-2, bw, hF, 2)}" fill="var(--fail)" opacity="${opac}"/>`;
+    }
+    bars += `<path d="${roundTopBar(cx, yOk, bw, hOk, 4)}" fill="var(--blue)" opacity="${opac}"/>`;
+    bars += `</g>`;
+    if(total>0 && total===maxVal)
+      labels += `<text x="${cx+bw/2}" y="${y(total)-(it.fail?6:4)}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink-soft)">${total}</text>`;
+    if(items.length<=14 || i%Math.ceil(items.length/9)===0 || i===items.length-1)
+      labels += `<text x="${cx+bw/2}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${XML(it.label)}</text>`;
+  });
+  const base = `<line x1="${mL}" y1="${mT+ih}" x2="${W-mR}" y2="${mT+ih}" stroke="var(--baseline)" stroke-width="1"/>`;
+  const legend = (opts&&opts.legend)
+    ? `<div class="legend"><span><span class="sw" style="background:var(--blue)"></span>OK</span>
+       <span><span class="sw" style="background:var(--fail)"></span>✗ FAIL</span></div>` : "";
+  el.innerHTML = legend + `<svg viewBox="0 0 ${W} ${H}" role="img">${g}${base}${bars}${labels}</svg>`;
+  bindTips(el);
+}
+function cumChart(el, pts, denom){
+  // pts: [{day, cum}] cumulative distinct OK tags per day
+  const W = 1120, H = 230, mL = 40, mR = 90, mT = 14, mB = 26;
+  const iw = W-mL-mR, ih = H-mT-mB;
+  if(!pts.length){ el.innerHTML = `<div class="empty">Sin datos a la fecha.</div>`; return; }
+  const max = niceMax(Math.max(5, pts[pts.length-1].cum*1.15));
+  const x = i => pts.length===1 ? mL+iw/2 : mL + (i/(pts.length-1))*iw;
+  const y = v => mT + ih - (v/max)*ih;
+  let g = "";
+  for(let t=0;t<=4;t++){
+    const v = max*t/4, yy = y(v);
+    g += `<line x1="${mL}" y1="${yy}" x2="${W-mR}" y2="${yy}" stroke="var(--grid)"/>`;
+    g += `<text x="${mL-6}" y="${yy+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)" font-family="var(--mono)">${Math.round(v)}</text>`;
+  }
+  const line = pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.cum).toFixed(1)}`).join(" ");
+  const area = line + ` L${x(pts.length-1)},${mT+ih} L${x(0)},${mT+ih} Z`;
+  let dots = "";
+  pts.forEach((p,i)=>{
+    dots += `<circle cx="${x(i)}" cy="${y(p.cum)}" r="9" fill="transparent" data-tip="<b>${fmtShort(p.day)}</b><div class='tl'>${p.cum} tags OK acumulados · ${(100*p.cum/denom).toFixed(1)}%</div>"/>`;
+  });
+  const last = pts[pts.length-1];
+  const lx = x(pts.length-1), ly = y(last.cum);
+  let xlabels = "";
+  const li = [0, Math.floor((pts.length-1)/2), pts.length-1];
+  new Set(li).forEach(i=>{
+    xlabels += `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${fmtShort(pts[i].day)}</text>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">
+    ${g}
+    <line x1="${mL}" y1="${mT+ih}" x2="${W-mR}" y2="${mT+ih}" stroke="var(--baseline)"/>
+    <path d="${area}" fill="var(--blue-soft)" opacity=".55"/>
+    <path d="${line}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${lx}" cy="${ly}" r="4" fill="var(--blue)" stroke="#fff" stroke-width="2"/>
+    <text x="${lx+10}" y="${ly-8}" font-size="13" font-weight="700" fill="var(--ink)">${last.cum}</text>
+    <text x="${lx+10}" y="${ly+6}" font-size="10.5" fill="var(--ink-soft)">${(100*last.cum/denom).toFixed(1)}% de ${denom}</text>
+    ${dots}${xlabels}
+  </svg>`;
+  bindTips(el);
+}
+
+/* ── report render: TODO calculado "a la fecha" seleccionada ── */
+function render(){
+  const D = curDate, cut = endOfDay(D);
+  const upto = VER.filter(v => v.ts <= cut);
+  const today = upto.filter(v => v.day === D);
+
+  document.getElementById("repTitle").textContent = `Daily Report — ${fmtLong(D)}`;
+  document.getElementById("dayTitle").textContent = `Verificado el ${fmtLong(D)}`;
+  document.getElementById("repSub").textContent =
+    `Avance de comisionamiento de instrumentación y control · corte al ${fmtLong(D)} 23:59 (hora local)`;
+
+  /* universe */
+  const allTags = new Set(IO.map(r=>r.tag).filter(Boolean));
+  const denom = allTags.size;
+  const okIoTags = new Set(upto.filter(v=>v.result==="OK" && v.object_table==="plant_io_list").map(v=>v.object_tag));
+  const okToday = today.filter(v=>v.result==="OK");
+  const failToday = today.filter(v=>v.result==="FAIL");
+  const usersToday = [...new Set(today.map(v=>v.verified_by_name))];
+  const newTagsToday = new Set(okToday.filter(v=>v.object_table==="plant_io_list").map(v=>v.object_tag));
+
+  /* hero tiles */
+  const pct = denom? (100*okIoTags.size/denom) : 0;
+  document.getElementById("facts").innerHTML = `
+    <div class="fact hero"><div class="fk">Avance global</div>
+      <div class="fv">${pct.toFixed(1)}<small>%</small></div>
+      <div class="fd">${okIoTags.size} de ${denom} tags de la IO List con OK</div></div>
+    <div class="fact"><div class="fk">OK del día</div>
+      <div class="fv">${okToday.length}${failToday.length?` <span class="failn">· ${failToday.length} FAIL</span>`:""}</div>
+      <div class="fd">${newTagsToday.size} tags nuevos verificados</div></div>
+    <div class="fact"><div class="fk">Usuarios activos hoy</div>
+      <div class="fv">${usersToday.length}</div>
+      <div class="fd">${XML(usersToday.slice(0,3).join(", "))||"—"}</div></div>
+    <div class="fact"><div class="fk">Verificaciones acumuladas</div>
+      <div class="fv">${upto.length}</div>
+      <div class="fd">desde ${upto.length?fmtShort(upto[0].day):"—"} · en vivo desde Supabase</div></div>`;
+  document.getElementById("globalSub").textContent =
+    `tags de IO List con OK acumulado — corte ${fmtShort(D)}`;
+
+  /* cumulative series: one point per calendar day from first OK to D */
+  const okEvents = upto.filter(v=>v.result==="OK" && v.object_table==="plant_io_list");
+  const cumPts = [];
+  if(okEvents.length){
+    const seen = new Set();
+    const byDay = new Map();
+    for(const v of okEvents){
+      if(!seen.has(v.object_tag)){ seen.add(v.object_tag); byDay.set(v.day,(byDay.get(v.day)||0)+1); }
+    }
+    let d = okEvents[0].day, cum = 0;
+    while(d <= D){ cum += byDay.get(d)||0; cumPts.push({day:d, cum}); d = addDays(d,1); }
+  }
+  cumChart(document.getElementById("cumCard"), cumPts, denom||1);
+
+  /* daily bars: last 28 days ending D */
+  const dayItems = [];
+  for(let i=27;i>=0;i--){
+    const d = addDays(D,-i);
+    const rows = upto.filter(v=>v.day===d);
+    const ok = rows.filter(v=>v.result==="OK").length, fail = rows.filter(v=>v.result==="FAIL").length;
+    const who = [...new Set(rows.map(v=>v.verified_by_name))].join(", ");
+    dayItems.push({label:fmtShort(d), ok, fail, faded:false,
+      tipHtml:`<b>${fmtLong(d)}</b><div class='tl'>${ok} OK${fail?` · ${fail} FAIL`:""}${who?`<br>${who}`:""}</div>`});
+  }
+  barChart(document.getElementById("dayCard"), dayItems, {legend:true});
+
+  /* weekly bars: every ISO week from first data to D */
+  const wkMap = new Map();
+  for(const v of upto){
+    const k = isoWeek(v.day);
+    const o = wkMap.get(k)||{ok:0,fail:0};
+    if(v.result==="OK") o.ok++; else if(v.result==="FAIL") o.fail++;
+    wkMap.set(k,o);
+  }
+  const wkKeys = [...wkMap.keys()].sort();
+  const wkItems = wkKeys.slice(-12).map(k=>{
+    const o = wkMap.get(k);
+    return {label:k.slice(5), ok:o.ok, fail:o.fail,
+      tipHtml:`<b>Semana ${k}</b><div class='tl'>${o.ok} OK${o.fail?` · ${o.fail} FAIL`:""}</div>`};
+  });
+  if(wkItems.length) barChart(document.getElementById("weekCard"), wkItems, {legend:true});
+  else document.getElementById("weekCard").innerHTML = `<div class="empty">Sin datos a la fecha.</div>`;
+
+  /* per-user chips of the day */
+  const byUser = new Map();
+  for(const v of today){
+    const o = byUser.get(v.verified_by_name)||{ok:0,fail:0};
+    if(v.result==="FAIL") o.fail++; else o.ok++;
+    byUser.set(v.verified_by_name,o);
+  }
+  document.getElementById("userRow").innerHTML = [...byUser.entries()]
+    .sort((a,b)=>b[1].ok-a[1].ok)
+    .map(([name,o])=>{
+      const ini = (name||"?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+      return `<div class="uchip"><span class="avatar">${XML(ini)}</span><b>${XML(name||"—")}</b>
+        <span class="n">${o.ok} OK</span>${o.fail?`<span class="nf">${o.fail} FAIL</span>`:""}</div>`;
+    }).join("");
+
+  /* day detail table */
+  const tb = document.querySelector("#dayTable tbody");
+  const rows = [...today].sort((a,b)=>a.ts-b.ts);
+  tb.innerHTML = rows.map(v=>{
+    const m = ioMeta.get(v.object_tag)||{};
+    const res = (v.result==="OK"||v.result==="FAIL") ? v.result : "NA";
+    return `<tr>
+      <td class="mono">${v.ts.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}</td>
+      <td><span class="tag">${XML(v.object_tag||"—")}</span></td>
+      <td>${XML(m.description||v.notes||"")}</td>
+      <td class="mono">${XML(v.rio_panel||m.rio_panel||"—")}</td>
+      <td class="mono">${XML(m.system||m.unit||"—")}</td>
+      <td><span class="kindtag">${XML(v.check_kind||"")}</span></td>
+      <td><span class="pill ${res}">${XML(v.result||"—")}</span></td>
+      <td>${XML(v.verified_by_name||"—")}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("dayEmpty").style.display = rows.length? "none":"block";
+  document.getElementById("dayTable").style.display = rows.length? "":"none";
+
+  /* panel progress (acumulado a la fecha) */
+  const panelTotals = new Map();
+  for(const r of IO){ if(!r.tag) continue;
+    const p = r.rio_panel||"(sin panel)";
+    const o = panelTotals.get(p)||{total:new Set(), ok:new Set()};
+    o.total.add(r.tag);
+    if(okIoTags.has(r.tag)) o.ok.add(r.tag);
+    panelTotals.set(p,o);
+  }
+  const started = [...panelTotals.entries()].filter(([,o])=>o.ok.size>0)
+    .sort((a,b)=> b[1].ok.size/b[1].total.size - a[1].ok.size/a[1].total.size);
+  const notStarted = [...panelTotals.entries()].filter(([,o])=>o.ok.size===0);
+  document.getElementById("panelCard").innerHTML = (started.map(([p,o])=>{
+    const pc = 100*o.ok.size/o.total.size;
+    return `<div class="prow"><div class="pname" title="${XML(p)}">${XML(p)}</div>
+      <div class="pbar"><div class="fill" style="width:${pc.toFixed(1)}%"></div></div>
+      <div class="pnum">${o.ok.size}/${o.total.size} · ${pc.toFixed(0)}%</div></div>`;
+  }).join("") || `<div class="empty">Ningún panel iniciado a la fecha.</div>`)
+  + (notStarted.length? `<div class="pmore">+ ${notStarted.length} paneles sin iniciar (0 %) — ${XML(notStarted.slice(0,8).map(([p])=>p).join(", "))}${notStarted.length>8?"…":""}</div>`:"");
+
+  document.getElementById("stamp").innerHTML =
+    `<b>●</b> en vivo · actualizado ${new Date().toLocaleTimeString("es-ES")}`;
+}
+
+/* ── orchestration ── */
+async function refresh(refetch){
+  const load = document.getElementById("loadBox"), rep = document.getElementById("report"),
+        err = document.getElementById("errBox");
+  err.style.display = "none";
+  try{
+    if(refetch){ load.style.display = "block"; await loadData(); }
+    load.style.display = "none"; rep.style.display = "block";
+    render();
+  }catch(e){
+    load.style.display = "none";
+    err.textContent = "Error consultando Supabase: " + e.message;
+    err.style.display = "block";
+  }
+}
+
+const pick = document.getElementById("datePick");
+pick.value = curDate;
+pick.addEventListener("change", ()=>{ if(pick.value){ curDate = pick.value; refresh(true); } });
+document.getElementById("prevBtn").onclick = ()=>{ curDate = addDays(curDate,-1); pick.value = curDate; refresh(false); };
+document.getElementById("nextBtn").onclick = ()=>{ curDate = addDays(curDate, 1); pick.value = curDate; refresh(false); };
+document.getElementById("todayBtn").onclick = ()=>{ curDate = dayStr(new Date()); pick.value = curDate; refresh(true); };
+document.getElementById("reloadBtn").onclick = ()=> refresh(true);
+document.getElementById("printBtn").onclick = ()=> print();
+
+refresh(true);
+</script>
+</body>
+</html>
