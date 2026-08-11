@@ -218,18 +218,6 @@
     <h2>Overall progress <span class="h2sub" id="globalSub"></span></h2>
     <div class="card chartbox" id="cumCard"></div>
 
-    <!-- daily / weekly -->
-    <div class="cardgrid">
-      <div>
-        <h2>Loop tests per day <span class="h2sub">last 28 days</span></h2>
-        <div class="card chartbox" id="dayCard"></div>
-      </div>
-      <div>
-        <h2>Per week <span class="h2sub">ISO weeks</span></h2>
-        <div class="card chartbox" id="weekCard"></div>
-      </div>
-    </div>
-
     <!-- by area -->
     <h2>By area <span class="h2sub">as of report date · executed / to go</span></h2>
     <div class="card" id="areaCard"></div>
@@ -295,14 +283,6 @@ const endOfDay = s => { const d = parseDay(s); d.setHours(23,59,59,999); return 
 const addDays = (s,n) => { const d = parseDay(s); d.setDate(d.getDate()+n); return dayStr(d); };
 const fmtLong = s => parseDay(s).toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
 const fmtShort = s => parseDay(s).toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
-function isoWeek(s){
-  const d = parseDay(s); const t = new Date(d); t.setHours(0,0,0,0);
-  t.setDate(t.getDate() + 3 - ((t.getDay()+6)%7));           // Thursday of this week
-  const w1 = new Date(t.getFullYear(),0,4);
-  const wk = 1 + Math.round(((t - w1)/86400000 - 3 + ((w1.getDay()+6)%7))/7);
-  return `${t.getFullYear()}-W${p2(wk)}`;
-}
-
 /* ── channel classification ──
    spare  : no tag, or tag/description says SPARE → excluded from the denominator.
    safety : every ESD-system channel (F&G, shutdowns).
@@ -359,57 +339,11 @@ function bindTips(root){
 
 /* ── charts (hand-built SVG: thin bars, rounded tops, single scale) ── */
 const XML = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
-function roundTopBar(x,y,w,h,r){
-  if(h<=0) return "";
-  r = Math.min(r, w/2, h);
-  return `M${x},${y+h} L${x},${y+r} Q${x},${y} ${x+r},${y} L${x+w-r},${y} Q${x+w},${y} ${x+w},${y+r} L${x+w},${y+h} Z`;
-}
 function niceMax(v){
   if(v<=5) return 5;
   const mag = Math.pow(10, Math.floor(Math.log10(v)));
   for(const m of [1,2,2.5,5,10]) if(v <= m*mag) return m*mag;
   return 10*mag;
-}
-function barChart(el, items, opts){
-  const W = 560, H = 220, mL = 34, mR = 6, mT = 12, mB = 26;
-  const iw = W-mL-mR, ih = H-mT-mB;
-  const max = niceMax(Math.max(1, ...items.map(i=>i.ok+i.fail)));
-  const bw = Math.min(26, Math.max(4, iw/items.length - 3));
-  const step = iw/items.length;
-  const y = v => mT + ih - (v/max)*ih;
-  let g = "";
-  const ticks = 4;
-  for(let t=0;t<=ticks;t++){
-    const v = max*t/ticks, yy = y(v);
-    g += `<line x1="${mL}" y1="${yy}" x2="${W-mR}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>`;
-    g += `<text x="${mL-6}" y="${yy+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)" font-family="var(--mono)">${v%1?v.toFixed(1):v}</text>`;
-  }
-  let bars = "", labels = "";
-  const maxVal = Math.max(...items.map(i=>i.ok+i.fail));
-  items.forEach((it,i)=>{
-    const cx = mL + step*i + (step-bw)/2;
-    const total = it.ok + it.fail;
-    const yOk = y(it.ok), hOk = mT+ih-yOk;
-    const t = `data-tip="${XML(it.tipHtml)}"`;
-    bars += `<g ${t} style="cursor:default">`;
-    bars += `<rect x="${mL+step*i}" y="${mT}" width="${step}" height="${ih}" fill="transparent"/>`;
-    if(it.fail>0){
-      const hF = (it.fail/max)*ih;
-      bars += `<path d="${roundTopBar(cx, yOk-hF-2, bw, hF, 2)}" fill="var(--fail)"/>`;
-    }
-    bars += `<path d="${roundTopBar(cx, yOk, bw, hOk, 4)}" fill="var(--blue)"/>`;
-    bars += `</g>`;
-    if(total>0 && total===maxVal)
-      labels += `<text x="${cx+bw/2}" y="${y(total)-(it.fail?6:4)}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink-soft)">${total}</text>`;
-    if(items.length<=14 || i%Math.ceil(items.length/9)===0 || i===items.length-1)
-      labels += `<text x="${cx+bw/2}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${XML(it.label)}</text>`;
-  });
-  const base = `<line x1="${mL}" y1="${mT+ih}" x2="${W-mR}" y2="${mT+ih}" stroke="var(--baseline)" stroke-width="1"/>`;
-  const legend = (opts&&opts.legend)
-    ? `<div class="legend"><span><span class="sw" style="background:var(--blue)"></span>OK</span>
-       <span><span class="sw" style="background:var(--fail)"></span>✗ FAIL</span></div>` : "";
-  el.innerHTML = legend + `<svg viewBox="0 0 ${W} ${H}" role="img">${g}${base}${bars}${labels}</svg>`;
-  bindTips(el);
 }
 function cumChart(el, pts, denom){
   const W = 1120, H = 230, mL = 44, mR = 96, mT = 14, mB = 26;
@@ -534,35 +468,6 @@ function render(){
     while(d <= D){ cum += byDay.get(d)||0; cumPts.push({day:d, cum}); d = addDays(d,1); }
   }
   cumChart(document.getElementById("cumCard"), cumPts, total.t||1);
-
-  /* daily bars: last 28 days ending D */
-  const dayItems = [];
-  for(let i=27;i>=0;i--){
-    const d = addDays(D,-i);
-    const rows = upto.filter(v=>v.day===d);
-    const ok = rows.filter(v=>v.result==="OK").length, fail = rows.filter(v=>v.result==="FAIL").length;
-    const who = [...new Set(rows.map(v=>v.verified_by_name))].join(", ");
-    dayItems.push({label:fmtShort(d), ok, fail,
-      tipHtml:`<b>${fmtLong(d)}</b><div class='tl'>${ok} OK${fail?` · ${fail} FAIL`:""}${who?`<br>${who}`:""}</div>`});
-  }
-  barChart(document.getElementById("dayCard"), dayItems, {legend:true});
-
-  /* weekly bars */
-  const wkMap = new Map();
-  for(const v of upto){
-    const k = isoWeek(v.day);
-    const o = wkMap.get(k)||{ok:0,fail:0};
-    if(v.result==="OK") o.ok++; else if(v.result==="FAIL") o.fail++;
-    wkMap.set(k,o);
-  }
-  const wkKeys = [...wkMap.keys()].sort();
-  const wkItems = wkKeys.slice(-12).map(k=>{
-    const o = wkMap.get(k);
-    return {label:k.slice(5), ok:o.ok, fail:o.fail,
-      tipHtml:`<b>Week ${k}</b><div class='tl'>${o.ok} OK${o.fail?` · ${o.fail} FAIL`:""}</div>`};
-  });
-  if(wkItems.length) barChart(document.getElementById("weekCard"), wkItems, {legend:true});
-  else document.getElementById("weekCard").innerHTML = `<div class="empty">No data as of this date.</div>`;
 
   /* by area */
   const areaMap = new Map();
