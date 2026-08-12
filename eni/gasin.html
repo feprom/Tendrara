@@ -10,8 +10,15 @@
     --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
     --muted:#898781;
     --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA;
-    --ok:#1F8A4C; --fail:#B3261E; --blue:#0B5CAD; --blue-soft:#E3EDF7;
+    --ok:#1F8A4C; --fail:#B3261E; --blue:#0B5CAD;
     --grid:#ECEDF0; --baseline:#C9CED4;
+    /* data-mark roles — validated categorical trio (all-pairs CVD + normal-vision
+       pass on a #fff surface; see the palette note in the source footer).
+       --series-1 is the one hue every "executed" mark wears; --series-1-soft is
+       the lighter step of the SAME ramp used for the daily columns, so the two
+       marks read as one family. --blue stays a TEXT token (tags), never a mark. */
+    --series-1:#2a78d6; --series-1-soft:#86b6ef; --series-1-wash:#EAF2FC;
+    --cat-analog:#2a78d6; --cat-digital:#eb6834; --cat-valves:#4a3aa7;
     --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif;
     --mono:"Consolas","SF Mono","Courier New",monospace;
   }
@@ -76,14 +83,28 @@
   .fact.hero .fv{color:var(--crimson);}
   .fact .fv .failn{color:var(--fail);font-size:14px;font-weight:700;}
 
-  /* ── progress bars ── */
+  /* ── progress bars: 4px rounded data-end, square at the baseline ── */
   .pbar{height:11px;background:var(--bg-soft);border:1px solid var(--line);border-radius:4px;overflow:hidden;}
-  .pbar .fill{height:100%;background:var(--blue);border-radius:3px 0 0 3px;}
+  .pbar .fill{height:100%;background:var(--series-1);border-radius:0 4px 4px 0;}
 
   /* ── cards / charts ── */
   .card{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:16px 18px;margin:0 0 14px;}
   .chartbox{position:relative;}
   .chartbox svg{display:block;width:100%;height:auto;}
+  .chartcap{font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;}
+  .chartcap b{font-family:var(--mono);font-size:11.5px;color:var(--ink);}
+  /* legend: mirrors the mark — a rect for the columns, a stroke for the line */
+  .legend{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:0 0 4px;font-size:11.5px;color:var(--ink-soft);}
+  .legend .k{display:flex;align-items:center;gap:7px;}
+  .legend .sw{width:11px;height:11px;border-radius:2px;background:var(--series-1-soft);}
+  .legend .ln{width:16px;height:2px;border-radius:1px;background:var(--series-1);}
+  .legend .gl{width:16px;height:1px;background:var(--crimson);}
+  /* table view twin — every value in the chart is reachable without hovering */
+  .tview{margin:10px 0 0;font-size:11.5px;}
+  .tview summary{cursor:pointer;color:var(--ink-soft);font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.08em;text-transform:uppercase;}
+  .tview summary:hover{color:var(--crimson);}
+  .tview table{margin-top:8px;font-variant-numeric:tabular-nums;}
   .tip{position:fixed;z-index:50;pointer-events:none;background:#fff;border:1px solid var(--line-strong);
     border-radius:4px;box-shadow:0 3px 10px rgba(21,23,26,.14);padding:7px 10px;font-size:11.5px;display:none;max-width:260px;}
   .tip b{font-family:var(--mono);font-size:11px;}
@@ -152,6 +173,8 @@
     .catcard{padding:8px 11px;} .catcard .cp{font-size:15px;}
     .card{padding:10px 12px;margin-bottom:8px;}
     .card,.fact,.catcard,.uchip,.scopebar{border-color:#bbb;break-inside:avoid;}
+    .chartcap{font-size:9px;margin-bottom:5px;} .legend{font-size:9px;gap:12px;}
+    .tview summary{display:none;} .tview[open] table{font-size:8.5px;}
     .tcard{break-inside:auto;}
     .prow{padding:3px 0;grid-template-columns:240px 1fr 140px;}
     table{font-size:9.5px;}
@@ -203,7 +226,22 @@
 
     <!-- global cumulative -->
     <h2>Gas In progress <span class="h2sub" id="globalSub"></span></h2>
-    <div class="card chartbox" id="cumCard"></div>
+    <div class="card">
+      <p class="chartcap" id="chartCap"></p>
+      <div class="legend">
+        <span class="k"><span class="sw"></span>Executed per day</span>
+        <span class="k"><span class="ln"></span>Cumulative executed</span>
+        <span class="k"><span class="gl"></span>Gas In scope (100%)</span>
+      </div>
+      <div class="chartbox" id="cumCard"></div>
+      <details class="tview" id="cumTable">
+        <summary>Day by day — table view</summary>
+        <div style="overflow-x:auto"><table>
+          <thead><tr><th>Day</th><th class="num">Executed that day</th><th class="num">Cumulative</th><th class="num">%</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </details>
+    </div>
 
     <!-- by area -->
     <h2>By area <span class="h2sub">as of report date · executed / to go</span></h2>
@@ -302,10 +340,14 @@ function catOf(r){
   if(/^Z/.test(p) || /EV[HL]?$/.test(p) || /V[YZ]$/.test(p) || p==="SV" || p==="LV" || p==="XV") return "valves";
   return (r.io_kind==="AI"||r.io_kind==="AO") ? "analog" : "digital";
 }
+/* Three nominal categories → three categorical slots, in fixed order. The trio
+   clears every all-pairs gate on a white surface (CVD ΔE 13.0, normal-vision
+   16.3, all ≥3:1): the previous gray for Digital failed the chroma floor and
+   sat 14.3 from the blue. Colour follows the category, never its size. */
 const CATS = {
-  analog:  {name:"Analog",  color:"var(--blue)", desc:"process AI/AO"},
-  digital: {name:"Digital", color:"#4A4F57",     desc:"process DI/DO"},
-  valves:  {name:"Valves",  color:"#6C3FA6",     desc:"solenoids, ZS, positioners"},
+  analog:  {name:"Analog",  color:"var(--cat-analog)",  desc:"process AI/AO"},
+  digital: {name:"Digital", color:"var(--cat-digital)", desc:"process DI/DO"},
+  valves:  {name:"Valves",  color:"var(--cat-valves)",  desc:"solenoids, ZS, positioners"},
 };
 
 /* ── state ── */
@@ -334,62 +376,105 @@ async function loadData(){
 
 /* ── tooltip ── */
 const tip = document.getElementById("tip");
-function bindTips(root){
-  root.querySelectorAll("[data-tip]").forEach(el=>{
-    el.addEventListener("mousemove", e=>{
-      tip.innerHTML = el.dataset.tip; tip.style.display = "block";
-      const w = tip.offsetWidth, x = Math.min(e.clientX+14, innerWidth - w - 10);
-      tip.style.left = x+"px"; tip.style.top = (e.clientY+16)+"px";
-    });
-    el.addEventListener("mouseleave", ()=> tip.style.display = "none");
-  });
-}
 
-/* ── charts (hand-built SVG: thin bars, rounded tops, single scale) ── */
+/* ── charts (hand-built SVG: thin marks, hairline chrome, one scale) ── */
 const XML = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
-function niceMax(v){
-  if(v<=5) return 5;
-  const mag = Math.pow(10, Math.floor(Math.log10(v)));
-  for(const m of [1,2,2.5,5,10]) if(v <= m*mag) return m*mag;
-  return 10*mag;
-}
-function cumChart(el, pts, denom){
-  const W = 1120, H = 230, mL = 44, mR = 96, mT = 14, mB = 26;
-  const iw = W-mL-mR, ih = H-mT-mB;
-  if(!pts.length){ el.innerHTML = `<div class="empty">No data as of this date.</div>`; return; }
-  const max = niceMax(Math.max(5, pts[pts.length-1].cum*1.15));
+/* Progress chart — S-curve against the Gas In scope.
+   Window: ALWAYS 1 August → report date, one point per calendar day with no
+   gaps, so a week with no loop tests reads as a flat week instead of vanishing.
+   Work executed before 1 August is not dropped — it enters as the carry-in at
+   the left edge (`base`), stated in the caption rather than drawn as a rule.
+   Scale: the scope itself (`denom`), never the last value, so the curve is read
+   against what is left to do. Two marks, one unit (channels) and therefore ONE
+   axis: columns = executed that day, line = cumulative. They are two steps of
+   the same blue ramp, keyed by the legend above the plot. */
+function cumChart(el, pts, denom, base){
+  const W = 1120, H = 250, mL = 48, mR = 104, mT = 16, mB = 30;
+  const iw = W-mL-mR, ih = H-mT-mB, y0 = mT+ih;
+  if(!pts.length){ el.innerHTML = `<div class="empty">Nothing to plot yet — the window opens on 1 August.</div>`; return; }
+  const max = Math.max(denom, 1);
   const x = i => pts.length===1 ? mL+iw/2 : mL + (i/(pts.length-1))*iw;
-  const y = v => mT + ih - (v/max)*ih;
+  const y = v => y0 - (v/max)*ih;
+  const slot = iw/Math.max(pts.length-1, 1);
+  const bw = Math.max(3, Math.min(18, slot-2));   /* the 2px surface gap, capped at 18 */
+
+  /* Chrome: solid hairlines only, never dashed. The axis is per-cent of scope —
+     quarters of the scope are clean in % (0/25/50/75/100) and ugly in channels
+     (0/49/97/146), and the raw counts are carried by the endpoint label, the
+     tooltip and the table view. The top line IS the goal, so it is drawn once,
+     in the accent, instead of adding a second threshold rule beside it. */
   let g = "";
   for(let t=0;t<=4;t++){
-    const v = max*t/4, yy = y(v);
-    g += `<line x1="${mL}" y1="${yy}" x2="${W-mR}" y2="${yy}" stroke="var(--grid)"/>`;
-    g += `<text x="${mL-6}" y="${yy+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)" font-family="var(--mono)">${Math.round(v)}</text>`;
+    const yy = y(max*t/4), top = t===4;
+    g += `<line x1="${mL}" y1="${yy.toFixed(1)}" x2="${W-mR}" y2="${yy.toFixed(1)}" stroke="${top?"var(--crimson)":"var(--grid)"}"${top?' opacity=".5"':""}/>`;
+    g += `<text x="${mL-7}" y="${(yy+3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="${top?"var(--crimson)":"var(--muted)"}" font-family="var(--mono)">${t*25}%</text>`;
   }
-  const line = pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.cum).toFixed(1)}`).join(" ");
-  const area = line + ` L${x(pts.length-1)},${mT+ih} L${x(0)},${mT+ih} Z`;
-  let dots = "";
+  g += `<text x="${W-mR+7}" y="${(y(max)+3.5).toFixed(1)}" font-size="9" fill="var(--crimson)" font-family="var(--mono)">${denom} in scope</text>`;
+
+  /* columns: channels executed that day, rounded data-end, square at the baseline */
+  let bars = "";
   pts.forEach((p,i)=>{
-    dots += `<circle cx="${x(i)}" cy="${y(p.cum)}" r="9" fill="transparent" data-tip="<b>${fmtShort(p.day)}</b><div class='tl'>${p.cum} channels executed · ${(100*p.cum/denom).toFixed(1)}%</div>"/>`;
+    if(!p.add) return;
+    const h = Math.max(2, y0 - y(p.add)), r = Math.min(4, bw/2, h);
+    /* first and last columns sit ON the axis ends — clamp so no column bleeds
+       outside the plot area */
+    const x0 = Math.max(mL, Math.min(x(i)-bw/2, W-mR-bw)), yt = y0-h;
+    bars += `<path d="M${x0.toFixed(1)},${y0} V${(yt+r).toFixed(1)} q0,${-r} ${r},${-r} h${(bw-2*r).toFixed(1)} q${r},0 ${r},${r} V${y0} Z" fill="var(--series-1-soft)"/>`;
   });
+
+  const line = pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.cum).toFixed(1)}`).join(" ");
+  const area = line + ` L${x(pts.length-1).toFixed(1)},${y0} L${x(0).toFixed(1)},${y0} Z`;
   const last = pts[pts.length-1];
   const lx = x(pts.length-1), ly = y(last.cum);
+
+  /* x labels: every day while the window is short, then thinned as it grows */
+  const step = pts.length<=16 ? 1 : (pts.length<=40 ? 3 : 7);
   let xlabels = "";
-  const li = [0, Math.floor((pts.length-1)/2), pts.length-1];
-  new Set(li).forEach(i=>{
-    xlabels += `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${fmtShort(pts[i].day)}</text>`;
-  });
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">
+  for(let i=pts.length-1; i>=0; i-=step){
+    xlabels += `<text x="${x(i).toFixed(1)}" y="${H-9}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${fmtShort(pts[i].day)}</text>`;
+  }
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative Gas In loop test progress from 1 August">
     ${g}
-    <line x1="${mL}" y1="${mT+ih}" x2="${W-mR}" y2="${mT+ih}" stroke="var(--baseline)"/>
-    <path d="${area}" fill="var(--blue-soft)" opacity=".55"/>
-    <path d="${line}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round"/>
-    <circle cx="${lx}" cy="${ly}" r="4" fill="var(--blue)" stroke="#fff" stroke-width="2"/>
-    <text x="${lx+10}" y="${ly-8}" font-size="13" font-weight="700" fill="var(--ink)">${last.cum}</text>
-    <text x="${lx+10}" y="${ly+6}" font-size="10.5" fill="var(--ink-soft)">${(100*last.cum/denom).toFixed(1)}% of ${denom}</text>
-    ${dots}${xlabels}
+    <line x1="${mL}" y1="${y0}" x2="${W-mR}" y2="${y0}" stroke="var(--baseline)"/>
+    <line id="xh" x1="0" y1="${mT}" x2="0" y2="${y0}" stroke="var(--line-strong)" stroke-width="1" opacity="0"/>
+    <path d="${area}" fill="var(--series-1)" opacity=".10"/>
+    ${bars}
+    <path d="${line}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4.5" fill="var(--series-1)" stroke="#fff" stroke-width="2"/>
+    <text x="${(lx+10).toFixed(1)}" y="${(ly-8).toFixed(1)}" font-size="13" font-weight="700" fill="var(--ink)">${last.cum}</text>
+    <text x="${(lx+10).toFixed(1)}" y="${(ly+6).toFixed(1)}" font-size="10.5" fill="var(--ink-soft)">${(100*last.cum/denom).toFixed(1)}% of ${denom}</text>
+    <circle id="xd" r="4.5" fill="var(--series-1)" stroke="#fff" stroke-width="2" opacity="0"/>
+    ${xlabels}
+    <rect x="${mL}" y="${mT}" width="${iw}" height="${ih}" fill="transparent" id="xhit"/>
   </svg>`;
-  bindTips(el);
+
+  /* hover layer: the crosshair finds the X, so the reader aims at a date and
+     never at a 2px line. Both marks are read out at that date in one tooltip. */
+  const svg = el.querySelector("svg"), xh = svg.querySelector("#xh"), xd = svg.querySelector("#xd");
+  const at = e => {
+    const r = svg.getBoundingClientRect();
+    const vx = (e.clientX - r.left) / r.width * W;
+    let i = pts.length===1 ? 0 : Math.round((vx-mL)/iw*(pts.length-1));
+    return Math.max(0, Math.min(pts.length-1, i));
+  };
+  svg.addEventListener("mousemove", e=>{
+    const i = at(e), p = pts[i], px = x(i);
+    xh.setAttribute("x1", px); xh.setAttribute("x2", px); xh.setAttribute("opacity", ".9");
+    xd.setAttribute("cx", px); xd.setAttribute("cy", y(p.cum)); xd.setAttribute("opacity", "1");
+    tip.innerHTML =
+      `<b>${fmtShort(p.day)}</b>
+       <div class="tl" style="margin-top:3px"><span style="display:inline-block;width:14px;height:2px;background:var(--series-1-soft);vertical-align:3px;margin-right:6px"></span>
+         <b>${p.add||0}</b> executed that day</div>
+       <div class="tl"><span style="display:inline-block;width:14px;height:2px;background:var(--series-1);vertical-align:3px;margin-right:6px"></span>
+         <b>${p.cum}</b> of ${denom} · ${(100*p.cum/denom).toFixed(1)}%</div>`;
+    tip.style.display = "block";
+    const w = tip.offsetWidth, tx = Math.min(e.clientX+14, innerWidth - w - 10);
+    tip.style.left = tx+"px"; tip.style.top = (e.clientY+16)+"px";
+  });
+  svg.addEventListener("mouseleave", ()=>{
+    tip.style.display = "none"; xh.setAttribute("opacity","0"); xd.setAttribute("opacity","0");
+  });
 }
 
 /* ── aggregator: channels in a group vs executed channels (tag has an OK) ── */
@@ -464,16 +549,33 @@ function render(){
     </div>`;
   }).join("");
 
-  /* cumulative: channels executed per day (tag's first OK × its channels) */
+  /* cumulative: channels executed per day (tag's first OK × its channels).
+     The chart window always opens on 1 August — never earlier — and runs one
+     point per day to the report date. Anything executed before that date is the
+     carry-in, so no work is lost, it just is not re-plotted day by day. */
   const byDay = new Map();
   for(const [tg,d0] of firstOk) byDay.set(d0,(byDay.get(d0)||0)+(chanByTag.get(tg)||0));
+  const yr = Number(D.slice(0,4));
+  const START = D >= `${yr}-08-01` ? `${yr}-08-01` : `${yr-1}-08-01`;
+  let base = 0;
+  for(const [d0,n] of byDay) if(d0 < START) base += n;
   const cumPts = [];
-  const days = [...byDay.keys()].sort();
-  if(days.length){
-    let d = days[0], cum = 0;
-    while(d <= D){ cum += byDay.get(d)||0; cumPts.push({day:d, cum}); d = addDays(d,1); }
+  for(let d = START, cum = base; d <= D; d = addDays(d,1)){
+    const add = byDay.get(d)||0; cum += add;
+    cumPts.push({day:d, add, cum});
   }
-  cumChart(document.getElementById("cumCard"), cumPts, total.t||1);
+  cumChart(document.getElementById("cumCard"), cumPts, total.t||1, base);
+  document.getElementById("chartCap").innerHTML =
+    `Continuous from <b>1 ${parseDay(START).toLocaleDateString("en-GB",{month:"long",year:"numeric"})}</b> to the report date — every calendar day is a point, including days with no loop tests.` +
+    (base? ` The curve opens at <b>${base}</b> channel${base===1?"":"s"} already executed before that date.` : ``);
+
+  /* table-view twin of the chart: most recent day first */
+  document.querySelector("#cumTable tbody").innerHTML = [...cumPts].reverse().map(p=>`<tr>
+      <td class="mono">${XML(p.day)}</td>
+      <td class="num mono">${p.add||"—"}</td>
+      <td class="num mono">${p.cum}</td>
+      <td class="num mono">${(100*p.cum/(total.t||1)).toFixed(1)}%</td>
+    </tr>`).join("");
 
   /* by area — every scope area always shows, in scope-list order */
   document.getElementById("areaCard").innerHTML = SCOPE.map(s=>{
@@ -559,6 +661,9 @@ function render(){
      (no tag, or marked SPARE). A channel counts as executed once its tag has at least one OK as of the report date.
      Categories: <b>Valves</b> = solenoids (*EV), limit switches (ZSH/ZSL), positioners (*VY/*VZ), ZT/XV/SV/LV;
      <b>Analog</b>/<b>Digital</b> = remaining AI-AO / DI-DO.
+     The progress chart always runs from <b>1 August</b> to the report date, one point per calendar day; the category
+     colours are a colour-blind-safe trio validated against a white surface, and every plotted value is also in the
+     day-by-day table under the chart.
      Everything is recomputed live from Supabase on page load or date change.`;
 
   document.getElementById("stamp").innerHTML =
