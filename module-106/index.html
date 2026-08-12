@@ -2511,27 +2511,27 @@
      declared here, and both are forced by the background.
 
      1 · .cov360 has to define its own background, because it is new. The image
-         is images/360_ga_bw.png, the grey render of Figure 9.1 (Unit 360 GA,
-         manual p. 183), root-absolute per house rule 6.
+         is images/3D_360-bw.png, the black-and-white 3D plot render of the area
+         (1495x819), root-absolute per house rule 6.
 
-     2 · IT IS A FULL PDF PAGE, NOT A FIGURE. It carries the manual header, the
-         section heading, the figure caption, the page number and wide white
-         margins. At center/cover all of that would sit ghosted behind the title.
-         So it is cropped here rather than in the file: 165 % width at 49 % / 38 %
-         puts the visible window at x 19..79 % and y 14..62 % of the render, which
-         is the drawing band and nothing else. Measured off the 2977x2105 render;
-         both numbers are percentages, so the crop holds if the deck is narrower.
+     2 · IT IS A RENDER, SO IT NEEDS NO CROP. center/cover, the way .cov350 and
+         .cov340 do it. 1.83:1 on a 1.77:1 stage takes a sliver off each side and
+         leaves S-361 centred. (The file this replaced, 360_ga_bw.png, was a full
+         PDF page and had to be cropped in CSS to 165 % at 49 %/38 % to keep the
+         manual header, caption and page number out of frame. That is gone.)
 
-     The gradient is heavier than the inherited .80/.55/.82 because that one was
-     measured over a dark 3D render and this is a white line drawing: at the
-     inherited weight the h1 does not read. Nothing outside .cov360 / .cov106 is
-     touched - every size override below is on .cov106, this slide own class, so
-     no shared band moves. */
+     The gradient is .84/.66/.88 against the inherited .80/.55/.82: the two end
+     stops are the inherited ones and only the middle is bought back, because the
+     skid is the brightest thing in the render and it sits in the middle band,
+     which is exactly where the inherited gradient is lightest. It is far lighter
+     than the .88/.78/.90 the white line drawing needed. Nothing outside
+     .cov360 / .cov106 is touched - every size override below is on .cov106, this
+     slide own class, so no shared band moves. */
   .slide.cover3d.cov360{
-    background:linear-gradient(180deg,rgba(11,13,15,.88),rgba(11,13,15,.78) 45%,
-      rgba(11,13,15,.90)),url('/images/360_ga_bw.png');
-    background-size:auto,165% auto;
-    background-position:center,49% 38%;
+    background:linear-gradient(180deg,rgba(11,13,15,.84),rgba(11,13,15,.66) 45%,
+      rgba(11,13,15,.88)),url('/images/3D_360-bw.png');
+    background-size:auto,cover;
+    background-position:center,center;
     background-repeat:no-repeat,no-repeat;}
 
   /* the eyebrow under the title, in the same treatment slide 01 of Module 105
