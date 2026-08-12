@@ -79,7 +79,20 @@
     FAULT:        CRIMSON,
     ALARM:        "#B26A00",
     UNKNOWN:      "#8A9099",
-    DESIGN:       INK         // no live value bound — the default
+    DESIGN:       INK,        // no live value bound — the default
+    /* v0.2.5 — the three states a MACHINE has once a measurement is bound to
+       it. They are not the same question as CLOSED/OPEN (that is switchgear):
+       a generator can be stopped with its breaker closed. RUNNING is drawn in
+       the entity's own series colour when the caller has one (the palette is
+       per-machine, so the kernel cannot own it) and falls back to this green.
+       NO_MEASURE is deliberately NOT a shade of "off": absence of measurement
+       is its own state, the pixel equivalent of powermanager's white "no
+       information about messages" band, and it must never read as zero. */
+    RUNNING:      "#1F8A4C",
+    STOPPED:      "#8A9099",
+    /* lighter than STOPPED but darker than LINE: it has to read as a drawn
+       mark at 1×, not as a rule the eye skips */
+    NO_MEASURE:   "#A7ADB5"
   };
   const DQ = { VERIFIED: "#1F8A4C", NEEDS_REVIEW: "#B26A00", CONFLICT: CRIMSON, REJECTED: SOFT };
 
@@ -88,8 +101,36 @@
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const num = v => (Math.round(v * 1000) / 1000);
   const clip = (s, n) => { s = String(s == null ? "" : s); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
-  const fmt = v => v == null ? "—" : Math.abs(+v) >= 100 ? Math.round(+v).toLocaleString("en-US")
-    : (+v).toLocaleString("en-US", { maximumFractionDigits: 2 });
+  /* greedy word wrap into at most `max` lines; the last line still clips, so a
+     runaway string cannot silently grow the drawing */
+  const wrap = (s, n, max) => {
+    const words = String(s == null ? "" : s).split(/\s+/).filter(Boolean), out = [];
+    let cur = "";
+    words.forEach(w => {
+      if (!cur) cur = w;
+      else if (cur.length + 1 + w.length <= n) cur += " " + w;
+      else { out.push(cur); cur = w; }
+    });
+    if (cur) out.push(cur);
+    return out.length > max ? out.slice(0, max - 1).concat(clip(out.slice(max - 1).join(" "), n)) : out;
+  };
+
+  /* ── v0.2.5 · one number format per drawing ───────────────────────────────
+     A sheet that lives inside a Spanish page was printing `1,822` next to the
+     page's own `1.822` (ELEC_FUNCTIONAL §2d l3): two formatters, one number.
+     The rule now has ONE knob, and the page sets the kernel to whatever it
+     uses itself, so the two can be pinned by a test instead of by eye:
+        TamSym.locale = "es-MA"; TamSym.grouping = "always";
+     Defaults are the old behaviour exactly ("en-US" / "auto"), so every
+     existing caller stays byte-identical. `grouping:"always"` is what makes
+     Spanish print 1.823 rather than 1823 — Spanish suppresses the separator
+     on four digits and an engineering sheet should not change punctuation at
+     the 10.000 kW mark. */
+  let numLocale = "en-US", numGrouping = "auto";
+  const fmt = v => v == null ? "—"
+    : Math.abs(+v) >= 100
+      ? Math.round(+v).toLocaleString(numLocale, { useGrouping: numGrouping })
+      : (+v).toLocaleString(numLocale, { maximumFractionDigits: 2, useGrouping: numGrouping });
 
   const REG = new Map();
 
@@ -187,8 +228,17 @@
       const sy = subRight ? 3
         : lp === "above" ? top - 5
         : bot + (o.label ? 20 : 11);
-      g += `<text x="${num(sx)}" y="${num(sy)}" text-anchor="${subRight ? "start" : "middle"}" ` +
-        `font-family="${MONO}" font-size="${tz(6.8)}" font-weight="600" fill="${SOFT}">${esc(clip(o.sub, 22))}</text>`;
+      /* v0.2.5 — `subWrap` sets a line budget in characters and the sub folds
+         onto up to three lines instead of being cut. An approval sheet that
+         prints "400 V system (not sup…" is a sheet whose reader cannot tell
+         whether the missing words matter (ELEC_FUNCTIONAL §2d i6): a label
+         that ends in an ellipsis has stopped being a label. Default 0 keeps
+         the old single clipped line for every existing caller. */
+      const lines = o.subWrap > 0 ? wrap(o.sub, o.subWrap, 3) : [clip(o.sub, 22)];
+      lines.forEach((t, i) => {
+        g += `<text x="${num(sx)}" y="${num(sy + i * (tz(6.8) + 1.6))}" text-anchor="${subRight ? "start" : "middle"}" ` +
+          `font-family="${MONO}" font-size="${tz(6.8)}" font-weight="600" fill="${SOFT}">${esc(t)}</text>`;
+      });
     }
     /* measurement badge — always to the right, beside the symbol, so it never
        fights the tag whichever side the tag is on. When the sub already
@@ -230,10 +280,59 @@
     const dy = Math.max(9, tz(6.8) + 2.4);
     let s = `<g>`;
     if (o.live) s += `<circle cx="${num(x - 4)}" cy="${num(y - 3)}" r="2" fill="#1F8A4C"><title>live</title></circle>`;
-    v.forEach((m, i) => {
-      const label = (m.k ? m.k + " " : "") + fmt(m.v) + (m.u ? " " + m.u : "");
-      s += `<text x="${num(x)}" y="${num(y + i * dy)}" text-anchor="${anchor}" font-family="${MONO}" ` +
-        `font-size="${tz(6.8)}" font-weight="600" fill="${m.alarm ? CRIMSON : SOFT}">${esc(label)}</text>`;
+    /* ── v0.2.5 · the badge has a TYPE SCALE ────────────────────────────────
+       Five numbers around a 24 px symbol, all at 6.8 px and all the same
+       grey, is a badge with no answer in it (ELEC_FUNCTIONAL §2d l1). Three
+       optional per-value knobs give the caller a hierarchy without a second
+       badge implementation, and every default is the old value, so a caller
+       that passes none renders byte-identical:
+         m.size    font size in symbol units (default 6.8)
+         m.weight  font weight (default 600)
+         m.color   fill (default SOFT; m.alarm still wins with CRIMSON)
+         m.rule    hairline separator drawn ABOVE this line — the filete that
+                   splits "what it is doing now" from "what it has produced"
+         m.gap     extra leading before this line
+         m.t       ready-made text, used INSTEAD of k/v/u (for a value the
+                   caller has already composed, e.g. "24,0 h · 0 arr.")
+         m.parts   [{t, slot, size, weight, color, sep}] — one line, several
+                   addressable pieces. Two quantities that are read together
+                   (PF and f) belong on one line; two data-slots still have to
+                   come out of it, so they are tspans, not two <text>. */
+    let cy = y, prevSize = null;
+    v.forEach(m => {
+      const size = tz(m.size == null ? 6.8 : m.size);
+      const weight = m.weight == null ? 600 : m.weight;
+      const fill = m.alarm ? CRIMSON : (m.color || SOFT);
+      if (prevSize != null) cy += Math.max(9, prevSize + 2.4) + (m.gap || 0);
+      if (m.rule) {
+        cy += 4;
+        s += `<line x1="${num(x)}" y1="${num(cy - size - 1)}" x2="${num(x + (o.ruleW || 84))}" ` +
+          `y2="${num(cy - size - 1)}" stroke="${LINE}" stroke-width="0.8"/>`;
+      }
+      /* v0.2.4 — every value names its slot in the DOM (`data-slot`), so a
+         page can address "the P of GE-002" with one querySelector instead of
+         parsing text. The slot is the quantity symbol unless the caller
+         passes m.slot. This is the smart-SVG contract of ELEC_FUNCTIONAL §2b. */
+      const slot = m.slot || m.k;
+      let inner;
+      if (m.parts && m.parts.length) {
+        inner = m.parts.map((p, j) =>
+          /* p.dx, not spaces: SVG collapses whitespace between tspans, which
+             is how "P 752 kW" and "41 %" ended up glued together */
+          `<tspan${p.slot ? ` data-slot="${esc(p.slot)}"` : ""}` +
+          (p.dx ? ` dx="${num(p.dx)}"` : "") +
+          (p.size ? ` font-size="${tz(p.size)}"` : "") +
+          (p.weight ? ` font-weight="${p.weight}"` : "") +
+          (p.color ? ` fill="${p.color}"` : "") +
+          `>${esc((j ? (p.sep == null ? " · " : p.sep) : (p.sep || "")) + p.t)}</tspan>`).join("");
+      } else {
+        inner = esc(m.t != null ? m.t
+          : (m.k ? m.k + " " : "") + fmt(m.v) + (m.u ? " " + m.u : ""));
+      }
+      s += `<text x="${num(x)}" y="${num(cy)}" text-anchor="${anchor}" font-family="${MONO}" ` +
+        `font-size="${size}" font-weight="${weight}" fill="${fill}"` +
+        (slot ? ` data-slot="${esc(slot)}"` : "") + `>${inner}</text>`;
+      prevSize = size;
     });
     return s + `</g>`;
   }
@@ -275,11 +374,17 @@
     const ks = (list && list.length ? list : kinds()).filter(has);
     const cols = o.cols || 6, cw = o.cellW || 118, ch = o.cellH || 44;
     let s = "";
+    const sc = o.scale || 0.62;
     ks.forEach((k, i) => {
       const cx = (o.x || 0) + (i % cols) * cw + 22, cy = (o.y || 0) + Math.floor(i / cols) * ch + 16;
-      s += draw(k, { x: cx, y: cy, scale: o.scale || 0.62 });
-      s += `<text x="${num(cx + 16)}" y="${num(cy + 3)}" font-family="${MONO}" font-size="7" fill="${SOFT}">` +
-        esc(clip(spec(k).name || k, 16)) + `</text>`;
+      s += draw(k, { x: cx, y: cy, scale: sc });
+      /* v0.2.5 — the label clears the symbol it names. A fixed +16 put the
+         word "Busbar" underneath the busbar, because a 100-unit-wide symbol
+         is 55 px at legend scale and the key became unreadable exactly for
+         the widest shapes. The offset is now the symbol's own half-width. */
+      const dx = Math.max(16, (spec(k).w || 24) * sc / 2 + 5);
+      s += `<text x="${num(cx + dx)}" y="${num(cy + 3)}" font-family="${MONO}" font-size="7" fill="${SOFT}">` +
+        esc(clip(spec(k).name || k, o.nameMax || 16)) + `</text>`;
     });
     return s;
   }
@@ -295,7 +400,14 @@
   const API = { def, has, kinds, spec, draw, ports, badge, flow, legend,
                 get textScale() { return textScale; },
                 set textScale(v) { textScale = (+v > 0 ? +v : 1); },
-                STATE, DQ, esc, fmt, MONO, INK, SOFT, LINE, CRIMSON, version: "0.2.3" };
+                /* number format — see fmt() above. A renderer that needs a
+                   locale sets it around its own draw and restores it, so one
+                   sheet's typography never leaks into the next one. */
+                get locale() { return numLocale; },
+                set locale(v) { numLocale = v || "en-US"; },
+                get grouping() { return numGrouping; },
+                set grouping(v) { numGrouping = v || "auto"; },
+                STATE, DQ, esc, fmt, wrap, MONO, INK, SOFT, LINE, CRIMSON, version: "0.2.5" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamSym = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;

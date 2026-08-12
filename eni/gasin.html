@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<title>Phase 0 — Gas In — E&amp;I Commissioning — Tendrara Micro-LNG</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --muted:#898781;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA;
+    --ok:#1F8A4C; --fail:#B3261E; --blue:#0B5CAD; --blue-soft:#E3EDF7;
+    --grid:#ECEDF0; --baseline:#C9CED4;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{font-family:var(--sans);color:var(--ink);background:#ECEEF1;-webkit-font-smoothing:antialiased;}
+
+  /* ── brandbar ── */
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:9px 24px;border-bottom:1px solid var(--line);background:#fff;}
+  .brandbar .vendor img{height:38px;display:block;}
+  .brandbar .apptitle{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);}
+  .brandbar .apptitle b{color:var(--crimson);}
+  .accent{height:3px;background:var(--crimson);}
+
+  /* ── command bar: date navigation ── */
+  .cmdbar{display:flex;align-items:center;gap:10px;padding:8px 24px;background:var(--bg-soft);
+    border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .cmdbar label{font-family:var(--mono);font-size:10px;color:var(--ink-soft);letter-spacing:.08em;text-transform:uppercase;}
+  .cmdbar input[type=date]{font-family:var(--mono);font-size:12.5px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:3px;background:#fff;}
+  .cmdbar button{font-family:var(--mono);font-size:11.5px;padding:5px 11px;border:1px solid var(--line-strong);
+    border-radius:3px;background:#fff;cursor:pointer;color:var(--ink);}
+  .cmdbar button:hover{border-color:var(--crimson);color:var(--crimson);}
+  .cmdbar .stamp{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted);}
+  .cmdbar .stamp b{color:var(--ok);font-weight:700;}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 26px 70px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--crimson);font-weight:700;margin:2px 0 6px;}
+  .kicker .sub{color:var(--ink-soft);font-weight:400;}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:-.01em;line-height:1.15;}
+  .subtitle{color:var(--ink-soft);font-size:13px;margin:0 0 8px;}
+  h2{font-size:16px;margin:26px 0 10px;letter-spacing:-.005em;}
+  h2 .h2sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);font-weight:400;margin-left:8px;letter-spacing:.04em;}
+
+  /* ── scope banner: what Phase 0 / Gas In means, stated on the page ── */
+  .scopebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;
+    border:1px solid var(--line-strong);border-left:3px solid var(--crimson);border-radius:5px;
+    padding:9px 13px;margin:0 0 16px;font-size:12px;color:var(--ink-soft);}
+  .scopebar .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--crimson);font-weight:700;margin-right:2px;}
+  .scopebar .achip{font-family:var(--mono);font-size:11px;background:var(--bg-soft);
+    border:1px solid var(--line);border-radius:3px;padding:2px 7px;color:var(--ink);}
+  .scopebar .achip b{color:var(--crimson);}
+
+  /* ── category cards ── */
+  .catgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;}
+  .catcard{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:11px 14px;}
+  .catcard .ch{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;margin-bottom:6px;}
+  .catcard .dot{width:9px;height:9px;border-radius:2px;flex:none;}
+  .catcard .cp{font-size:19px;font-weight:700;letter-spacing:-.02em;margin:2px 0 4px;}
+  .catcard .cd{font-size:10.5px;color:var(--muted);}
+  .catcard .cd b{color:var(--ink-soft);font-family:var(--mono);}
+
+  /* ── stat tiles ── */
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0 6px;}
+  .fact{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:12px 15px;}
+  .fact .fk{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px;}
+  .fact .fv{font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1;}
+  .fact .fv small{font-size:13px;font-weight:400;color:var(--ink-soft);margin-left:3px;}
+  .fact .fd{font-size:11px;color:var(--muted);margin-top:5px;}
+  .fact.hero .fv{color:var(--crimson);}
+  .fact .fv .failn{color:var(--fail);font-size:14px;font-weight:700;}
+
+  /* ── progress bars ── */
+  .pbar{height:11px;background:var(--bg-soft);border:1px solid var(--line);border-radius:4px;overflow:hidden;}
+  .pbar .fill{height:100%;background:var(--blue);border-radius:3px 0 0 3px;}
+
+  /* ── cards / charts ── */
+  .card{background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:16px 18px;margin:0 0 14px;}
+  .chartbox{position:relative;}
+  .chartbox svg{display:block;width:100%;height:auto;}
+  .tip{position:fixed;z-index:50;pointer-events:none;background:#fff;border:1px solid var(--line-strong);
+    border-radius:4px;box-shadow:0 3px 10px rgba(21,23,26,.14);padding:7px 10px;font-size:11.5px;display:none;max-width:260px;}
+  .tip b{font-family:var(--mono);font-size:11px;}
+  .tip .tl{color:var(--ink-soft);}
+
+  /* ── tables ── */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;}
+  th{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);
+    text-align:left;padding:7px 10px;border-bottom:2px solid var(--line-strong);white-space:nowrap;}
+  th.num, td.num{text-align:right;}
+  td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tr:hover td{background:var(--bg-soft);}
+  td.mono, .mono{font-family:var(--mono);font-size:11.5px;}
+  td .tag{font-family:var(--mono);font-weight:700;color:var(--blue);}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em;
+    border-radius:3px;padding:2px 7px;}
+  .pill.OK{color:var(--ok);background:#E6F4EC;}
+  .pill.FAIL{color:#fff;background:var(--fail);}
+  .pill.NA{color:var(--ink-soft);background:var(--bg-soft);border:1px solid var(--line);}
+  .area{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--crimson);}
+  .cat{font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
+  .empty{color:var(--muted);font-size:13px;padding:18px 4px;text-align:center;}
+  td .minibar{width:110px;display:inline-block;vertical-align:middle;}
+  td.rem b{color:var(--crimson);font-family:var(--mono);}
+  td.done b{color:var(--ok);font-family:var(--mono);}
+
+  /* ── per-user chips ── */
+  .userrow{display:flex;flex-wrap:wrap;gap:9px;margin:8px 0 4px;}
+  .uchip{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line-strong);
+    border-radius:20px;padding:5px 13px 5px 6px;font-size:12px;}
+  .uchip .avatar{width:24px;height:24px;border-radius:50%;background:var(--crimson);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;font-family:var(--mono);}
+  .uchip b{font-weight:600;}
+  .uchip .n{font-family:var(--mono);font-size:11px;color:var(--ok);font-weight:700;}
+  .uchip .nf{font-family:var(--mono);font-size:11px;color:var(--fail);font-weight:700;}
+
+  /* ── area progress rows ── */
+  .prow{display:grid;grid-template-columns:280px 1fr 150px;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid var(--grid);}
+  .prow:last-child{border-bottom:none;}
+  .prow .pname{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .prow .pname b{font-family:var(--mono);color:var(--crimson);margin-right:6px;}
+  .prow .pname .skid{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-left:6px;}
+  .prow .pnum{font-family:var(--mono);font-size:11px;color:var(--ink-soft);text-align:right;white-space:nowrap;}
+  .prow .pnum .r{color:var(--crimson);font-weight:700;}
+
+  .loading{padding:60px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .err{background:#FDECEA;border:1px solid #F2B8B5;color:var(--fail);border-radius:5px;padding:12px 15px;font-size:12.5px;margin:16px 0;display:none;}
+  .note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+
+  /* ── print / PDF ── */
+  @page{size:A4;margin:10mm 9mm 12mm;}
+  @media print{
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    html,body{background:#fff;font-size:11px;}
+    .cmdbar,.noprint,.tip{display:none !important;}
+    .wrap{max-width:none;padding:0;}
+    .brandbar{padding:4px 0 6px;}
+    .brandbar .vendor img{height:30px;}
+    h1{font-size:19px;}
+    h2{font-size:13.5px;margin:13px 0 7px;break-after:avoid;}
+    .subtitle{font-size:11px;margin-bottom:6px;}
+    .scopebar{padding:6px 10px;margin-bottom:10px;font-size:10px;}
+    .facts{grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 4px;}
+    .fact{padding:8px 11px;} .fact .fv{font-size:20px;}
+    .catgrid{grid-template-columns:repeat(3,1fr);gap:8px;}
+    .catcard{padding:8px 11px;} .catcard .cp{font-size:15px;}
+    .card{padding:10px 12px;margin-bottom:8px;}
+    .card,.fact,.catcard,.uchip,.scopebar{border-color:#bbb;break-inside:avoid;}
+    .tcard{break-inside:auto;}
+    .prow{padding:3px 0;grid-template-columns:240px 1fr 140px;}
+    table{font-size:9.5px;}
+    th{font-size:8px;padding:4px 7px;}
+    td{padding:3px 7px;}
+    thead{display:table-header-group;}
+    tr{break-inside:avoid;}
+    td .minibar{width:70px;}
+    .note{font-size:8.5px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="brandbar">
+  <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'"></div>
+  <div class="apptitle">TAM E&amp;I · <b>PHASE 0 — GAS IN</b> · TENDRARA MICRO-LNG</div>
+</div>
+<div class="accent"></div>
+
+<div class="cmdbar noprint">
+  <label>Report date</label>
+  <button id="prevBtn" title="Previous day">◀</button>
+  <input type="date" id="datePick">
+  <button id="nextBtn" title="Next day">▶</button>
+  <button id="todayBtn">Today</button>
+  <button id="reloadBtn">⟳ Refresh</button>
+  <button id="printBtn">🖨 Print / PDF</button>
+  <span class="stamp" id="stamp"></span>
+</div>
+
+<div class="wrap">
+  <div class="kicker">Instrumentation &amp; Control <span class="sub">· PCS IO loop tests — includes PCS screen checks (OK in ENI)</span></div>
+  <h1 id="repTitle">Phase 0 — Gas In</h1>
+  <p class="subtitle" id="repSub">Loading live data from Supabase…</p>
+  <div class="scopebar" id="scopeBar"></div>
+
+  <div class="err" id="errBox"></div>
+  <div class="loading" id="loadBox">Querying Supabase…</div>
+
+  <div id="report" style="display:none">
+
+    <!-- hero stats -->
+    <div class="facts" id="facts"></div>
+
+    <!-- by category -->
+    <h2>By category <span class="h2sub">total effort vs executed · PCS only</span></h2>
+    <div class="catgrid" id="catGrid"></div>
+
+    <!-- global cumulative -->
+    <h2>Gas In progress <span class="h2sub" id="globalSub"></span></h2>
+    <div class="card chartbox" id="cumCard"></div>
+
+    <!-- by area -->
+    <h2>By area <span class="h2sub">as of report date · executed / to go</span></h2>
+    <div class="card" id="areaCard"></div>
+
+    <!-- day detail -->
+    <h2 id="dayTitle">Loop tests of the day</h2>
+    <div class="userrow" id="userRow"></div>
+    <div class="card tcard" style="padding:0;overflow-x:auto">
+      <table id="dayTable">
+        <thead><tr>
+          <th>Time</th><th>Tag</th><th>Description</th><th>RIO panel</th><th>Area</th><th>Cat.</th>
+          <th>Result</th><th>Verified by</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="empty" id="dayEmpty" style="display:none">No Gas In loop tests recorded on this day.</div>
+    </div>
+
+    <!-- panel table -->
+    <h2>By panel <span class="h2sub" id="panelSub">as of report date</span></h2>
+    <div class="card tcard" style="padding:0;overflow-x:auto">
+      <table id="panelTable">
+        <thead><tr>
+          <th>Panel</th><th>Areas</th><th class="num">Channels</th><th class="num">Executed</th>
+          <th class="num">To go</th><th class="num">Spares</th><th>Progress</th><th class="num">%</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <p class="note" id="noteBox"></p>
+  </div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script src="/supabase-config.js"></script>
+<script>
+"use strict";
+const SB_URL = window.SUPABASE_URL, SB_KEY = window.SUPABASE_ANON_KEY;
+
+/* ── PHASE 0 / GAS IN SCOPE ──────────────────────────────────────────────────
+   The only knob in this file. Widen the list when the phase widens.
+   `code` is the number the project uses on the Gas In scope list; `unit` is the
+   value that actually lives in plant_io_list.unit. They differ where the scope
+   names a SKID rather than an area: 371 is skid S-371 inside area 370, and 413
+   is skid S-413 inside area 410. Both skids own their whole area's IO here
+   (area 370 hangs entirely off panel 0S371.1; area 413 = the 12 hot-oil PCS
+   channels), so unit-level filtering is exact for this scope.
+   ESD is deliberately OUT: Phase 0 / Gas In tracks PCS loop tests only.        */
+const SCOPE = [
+  {code:"200", unit:"200"},
+  {code:"310", unit:"310"},
+  {code:"330", unit:"330"},
+  {code:"371", unit:"370", skid:"S-371"},
+  {code:"413", unit:"410", skid:"S-413"},
+  {code:"530", unit:"530"},
+];
+const SYSTEM = "PCS";
+const UNIT2CODE = new Map(SCOPE.map(s=>[s.unit, s.code]));
+const inScope = r => r.system === SYSTEM && UNIT2CODE.has(String(r.unit));
+
+/* ── data access: paginated REST fetch (PostgREST caps at 1000 rows/req) ── */
+async function fetchAll(path){
+  const out = []; const page = 1000; let from = 0;
+  for(;;){
+    const r = await fetch(`${SB_URL}/rest/v1/${path}`, {headers:{
+      apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+      Range: `${from}-${from+page-1}`, Prefer: "count=none"
+    }});
+    if(!r.ok) throw new Error(`${path.split("?")[0]}: HTTP ${r.status} — ${await r.text()}`);
+    const rows = await r.json();
+    out.push(...rows);
+    if(rows.length < page) return out;
+    from += page;
+  }
+}
+
+/* ── local-date helpers (the report "day" is the viewer's local day) ── */
+const p2 = n => String(n).padStart(2,"0");
+const dayStr = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+const parseDay = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const endOfDay = s => { const d = parseDay(s); d.setHours(23,59,59,999); return d; };
+const addDays = (s,n) => { const d = parseDay(s); d.setDate(d.getDate()+n); return dayStr(d); };
+const fmtLong = s => parseDay(s).toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+const fmtShort = s => parseDay(s).toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
+/* ── channel classification (PCS only — no Safety/ESD bucket in this report) ──
+   spare  : no tag, or tag/description says SPARE → excluded from the denominator.
+   valves : Z* prefix (ZSH/ZSL/ZT/ZEV), solenoids *EV(H/L), positioner outputs
+            *VY, position feedback *VZ, SV/LV/XV.
+   analog : remaining AI/AO.  digital: remaining DI/DO. */
+const isSpare = r => !r.tag || /spare/i.test(r.tag) || /spare/i.test(r.description||"");
+function catOf(r){
+  const p = ((r.tag||"").match(/^[A-Z]+/)||[""])[0];
+  if(/^Z/.test(p) || /EV[HL]?$/.test(p) || /V[YZ]$/.test(p) || p==="SV" || p==="LV" || p==="XV") return "valves";
+  return (r.io_kind==="AI"||r.io_kind==="AO") ? "analog" : "digital";
+}
+const CATS = {
+  analog:  {name:"Analog",  color:"var(--blue)", desc:"process AI/AO"},
+  digital: {name:"Digital", color:"#4A4F57",     desc:"process DI/DO"},
+  valves:  {name:"Valves",  color:"#6C3FA6",     desc:"solenoids, ZS, positioners"},
+};
+
+/* ── state ── */
+let VER = [];             // human IO-loop verifications, Gas-In tags only
+let IO  = [];             // plant_io_list rows, Gas-In scope only
+let AREAS = new Map();    // area_code -> description
+let ioMeta = new Map();   // tag -> first live row
+const qsDate = new URLSearchParams(location.search).get("date");
+let curDate = /^\d{4}-\d{2}-\d{2}$/.test(qsDate||"") ? qsDate : dayStr(new Date());
+
+async function loadData(){
+  const [ver, io, areas] = await Promise.all([
+    fetchAll("v_verifications_ui?select=created_at,object_table,object_tag,rio_panel,check_kind,result,notes,verified_by_name&verified_by_id=not.is.null&object_table=eq.plant_io_list&order=created_at.asc"),
+    fetchAll("plant_io_list?select=tag,rio_panel,system,unit,description,io_kind&order=id.asc"),
+    fetchAll("plant_areas?select=area_code,description")
+  ]);
+  /* cut the universe to the Gas In scope FIRST — every number below is scoped */
+  IO = io.filter(inScope);
+  AREAS = new Map(areas.map(a=>[a.area_code, a.description]));
+  ioMeta = new Map();
+  for(const r of IO) if(r.tag && !isSpare(r) && !ioMeta.has(r.tag)) ioMeta.set(r.tag, r);
+  /* a verification counts only if its tag is a live channel inside the scope */
+  VER = ver.filter(v => ioMeta.has(v.object_tag))
+           .map(v => { const t = new Date(v.created_at); return {...v, ts:t, day:dayStr(t)}; });
+}
+
+/* ── tooltip ── */
+const tip = document.getElementById("tip");
+function bindTips(root){
+  root.querySelectorAll("[data-tip]").forEach(el=>{
+    el.addEventListener("mousemove", e=>{
+      tip.innerHTML = el.dataset.tip; tip.style.display = "block";
+      const w = tip.offsetWidth, x = Math.min(e.clientX+14, innerWidth - w - 10);
+      tip.style.left = x+"px"; tip.style.top = (e.clientY+16)+"px";
+    });
+    el.addEventListener("mouseleave", ()=> tip.style.display = "none");
+  });
+}
+
+/* ── charts (hand-built SVG: thin bars, rounded tops, single scale) ── */
+const XML = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+function niceMax(v){
+  if(v<=5) return 5;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  for(const m of [1,2,2.5,5,10]) if(v <= m*mag) return m*mag;
+  return 10*mag;
+}
+function cumChart(el, pts, denom){
+  const W = 1120, H = 230, mL = 44, mR = 96, mT = 14, mB = 26;
+  const iw = W-mL-mR, ih = H-mT-mB;
+  if(!pts.length){ el.innerHTML = `<div class="empty">No data as of this date.</div>`; return; }
+  const max = niceMax(Math.max(5, pts[pts.length-1].cum*1.15));
+  const x = i => pts.length===1 ? mL+iw/2 : mL + (i/(pts.length-1))*iw;
+  const y = v => mT + ih - (v/max)*ih;
+  let g = "";
+  for(let t=0;t<=4;t++){
+    const v = max*t/4, yy = y(v);
+    g += `<line x1="${mL}" y1="${yy}" x2="${W-mR}" y2="${yy}" stroke="var(--grid)"/>`;
+    g += `<text x="${mL-6}" y="${yy+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)" font-family="var(--mono)">${Math.round(v)}</text>`;
+  }
+  const line = pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.cum).toFixed(1)}`).join(" ");
+  const area = line + ` L${x(pts.length-1)},${mT+ih} L${x(0)},${mT+ih} Z`;
+  let dots = "";
+  pts.forEach((p,i)=>{
+    dots += `<circle cx="${x(i)}" cy="${y(p.cum)}" r="9" fill="transparent" data-tip="<b>${fmtShort(p.day)}</b><div class='tl'>${p.cum} channels executed · ${(100*p.cum/denom).toFixed(1)}%</div>"/>`;
+  });
+  const last = pts[pts.length-1];
+  const lx = x(pts.length-1), ly = y(last.cum);
+  let xlabels = "";
+  const li = [0, Math.floor((pts.length-1)/2), pts.length-1];
+  new Set(li).forEach(i=>{
+    xlabels += `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${fmtShort(pts[i].day)}</text>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">
+    ${g}
+    <line x1="${mL}" y1="${mT+ih}" x2="${W-mR}" y2="${mT+ih}" stroke="var(--baseline)"/>
+    <path d="${area}" fill="var(--blue-soft)" opacity=".55"/>
+    <path d="${line}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${lx}" cy="${ly}" r="4" fill="var(--blue)" stroke="#fff" stroke-width="2"/>
+    <text x="${lx+10}" y="${ly-8}" font-size="13" font-weight="700" fill="var(--ink)">${last.cum}</text>
+    <text x="${lx+10}" y="${ly+6}" font-size="10.5" fill="var(--ink-soft)">${(100*last.cum/denom).toFixed(1)}% of ${denom}</text>
+    ${dots}${xlabels}
+  </svg>`;
+  bindTips(el);
+}
+
+/* ── aggregator: channels in a group vs executed channels (tag has an OK) ── */
+function agg(rows, okTags){
+  const t = rows.length, d = rows.filter(r=>okTags.has(r.tag)).length;
+  return {t, d, rem:t-d, pct: t? 100*d/t : 0};
+}
+
+/* ── report render: EVERYTHING computed "as of" the selected date ── */
+function render(){
+  const D = curDate, cut = endOfDay(D);
+  const upto = VER.filter(v => v.ts <= cut);
+  const today = upto.filter(v => v.day === D);
+
+  document.getElementById("repTitle").textContent = `Phase 0 — Gas In — ${fmtLong(D)}`;
+  document.getElementById("dayTitle").textContent = `Loop tests on ${fmtLong(D)}`;
+  document.getElementById("repSub").textContent =
+    `PCS IO loop test progress (includes PCS screen checks) · cut-off ${fmtLong(D)} 23:59 (local time)`;
+
+  /* universe: active PCS channels of the Gas In areas (spares out) */
+  const live = IO.filter(r=>!isSpare(r));
+  const spares = IO.length - live.length;
+  const okTags = new Set(upto.filter(v=>v.result==="OK").map(v=>v.object_tag));
+  const total = agg(live, okTags);
+
+  const okToday = today.filter(v=>v.result==="OK");
+  const failToday = today.filter(v=>v.result==="FAIL");
+  const usersToday = [...new Set(today.map(v=>v.verified_by_name))];
+
+  /* channels per tag + first OK per tag (for cumulative and "new channels today") */
+  const chanByTag = new Map();
+  for(const r of live){ chanByTag.set(r.tag,(chanByTag.get(r.tag)||0)+1); }
+  const firstOk = new Map();
+  for(const v of upto) if(v.result==="OK" && !firstOk.has(v.object_tag)) firstOk.set(v.object_tag, v.day);
+  let newChanToday = 0;
+  for(const [tg,d0] of firstOk) if(d0===D) newChanToday += chanByTag.get(tg)||0;
+
+  /* scope banner */
+  document.getElementById("scopeBar").innerHTML =
+    `<span class="lbl">Scope</span>` +
+    SCOPE.map(s=>{
+      const nm = AREAS.get(s.unit) || "";
+      return `<span class="achip"><b>${XML(s.code)}</b> ${XML(nm)}${s.skid?` · ${XML(s.skid)}`:""}</span>`;
+    }).join("") +
+    `<span style="margin-left:4px">PCS only — ESD out of scope</span>`;
+
+  /* hero tiles */
+  document.getElementById("facts").innerHTML = `
+    <div class="fact hero"><div class="fk">Gas In progress</div>
+      <div class="fv">${total.pct.toFixed(1)}<small>%</small></div>
+      <div class="fd">${total.d} of ${total.t} active PCS channels executed</div></div>
+    <div class="fact"><div class="fk">Loop tests today</div>
+      <div class="fv">${okToday.length}${failToday.length?` <span class="failn">· ${failToday.length} FAIL</span>`:""}</div>
+      <div class="fd">${newChanToday} new channels executed</div></div>
+    <div class="fact"><div class="fk">To go</div>
+      <div class="fv">${total.rem}</div>
+      <div class="fd">channels pending · ${spares} spares out of scope</div></div>
+    <div class="fact"><div class="fk">Active users today</div>
+      <div class="fv">${usersToday.length}</div>
+      <div class="fd">${XML(usersToday.slice(0,3).join(", "))||"—"}</div></div>`;
+  document.getElementById("globalSub").textContent =
+    `Gas In channels executed (spares excluded) — cut-off ${fmtShort(D)}`;
+
+  /* by category */
+  document.getElementById("catGrid").innerHTML = Object.entries(CATS).map(([k,c])=>{
+    const a = agg(live.filter(r=>catOf(r)===k), okTags);
+    return `<div class="catcard">
+      <div class="ch"><span class="dot" style="background:${c.color}"></span>${c.name}</div>
+      <div class="cp">${a.pct.toFixed(1)}%</div>
+      <div class="pbar" style="margin:2px 0 6px"><div class="fill" style="width:${a.pct.toFixed(1)}%;background:${c.color}"></div></div>
+      <div class="cd"><b>${a.d}</b> executed · <b>${a.rem}</b> to go · ${c.desc}</div>
+    </div>`;
+  }).join("");
+
+  /* cumulative: channels executed per day (tag's first OK × its channels) */
+  const byDay = new Map();
+  for(const [tg,d0] of firstOk) byDay.set(d0,(byDay.get(d0)||0)+(chanByTag.get(tg)||0));
+  const cumPts = [];
+  const days = [...byDay.keys()].sort();
+  if(days.length){
+    let d = days[0], cum = 0;
+    while(d <= D){ cum += byDay.get(d)||0; cumPts.push({day:d, cum}); d = addDays(d,1); }
+  }
+  cumChart(document.getElementById("cumCard"), cumPts, total.t||1);
+
+  /* by area — every scope area always shows, in scope-list order */
+  document.getElementById("areaCard").innerHTML = SCOPE.map(s=>{
+    const a = agg(live.filter(r=>String(r.unit)===s.unit), okTags);
+    const nm = AREAS.get(s.unit) || "";
+    return `<div class="prow">
+      <div class="pname"><b>${XML(s.code)}</b>${XML(nm)}${s.skid?`<span class="skid">skid ${XML(s.skid)}</span>`:""}</div>
+      <div class="pbar"><div class="fill" style="width:${a.pct.toFixed(1)}%"></div></div>
+      <div class="pnum"><span style="color:var(--ok)">${a.d} ✓</span> · <span class="r">${a.rem} ⌛</span> · ${a.pct.toFixed(0)}%</div>
+    </div>`;
+  }).join("");
+
+  /* per-user chips of the day */
+  const byUser = new Map();
+  for(const v of today){
+    const o = byUser.get(v.verified_by_name)||{ok:0,fail:0};
+    if(v.result==="FAIL") o.fail++; else o.ok++;
+    byUser.set(v.verified_by_name,o);
+  }
+  document.getElementById("userRow").innerHTML = [...byUser.entries()]
+    .sort((a,b)=>b[1].ok-a[1].ok)
+    .map(([name,o])=>{
+      const ini = (name||"?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+      return `<div class="uchip"><span class="avatar">${XML(ini)}</span><b>${XML(name||"—")}</b>
+        <span class="n">${o.ok} OK</span>${o.fail?`<span class="nf">${o.fail} FAIL</span>`:""}</div>`;
+    }).join("");
+
+  /* day detail table */
+  const tb = document.querySelector("#dayTable tbody");
+  const rows = [...today].sort((a,b)=>a.ts-b.ts);
+  tb.innerHTML = rows.map(v=>{
+    const m = ioMeta.get(v.object_tag)||{};
+    const res = (v.result==="OK"||v.result==="FAIL") ? v.result : "NA";
+    const code = UNIT2CODE.get(String(m.unit)) || "";
+    const cat = m.tag ? CATS[catOf(m)].name : "";
+    return `<tr>
+      <td class="mono">${v.ts.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</td>
+      <td><span class="tag">${XML(v.object_tag||"—")}</span></td>
+      <td>${XML(m.description||v.notes||"")}</td>
+      <td class="mono">${XML(v.rio_panel||m.rio_panel||"—")}</td>
+      <td><span class="area">${XML(code||"—")}</span></td>
+      <td><span class="cat">${XML(cat)}</span></td>
+      <td><span class="pill ${res}">${XML(v.result||"—")}</span></td>
+      <td>${XML(v.verified_by_name||"—")}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("dayEmpty").style.display = rows.length? "none":"block";
+  document.getElementById("dayTable").style.display = rows.length? "":"none";
+
+  /* panel table: executed / to go / spares per panel — Gas In channels only.
+     Panels are shared across areas (0S412.1 feeds 200/330/413), so the row
+     shows which scope areas it carries, not a single system column. */
+  const panMap = new Map();
+  for(const r of IO){
+    const p = r.rio_panel || "(no panel)";
+    if(!panMap.has(p)) panMap.set(p,{live:[],spare:0,areas:new Set()});
+    const o = panMap.get(p);
+    if(isSpare(r)) o.spare++; else { o.live.push(r); o.areas.add(UNIT2CODE.get(String(r.unit))); }
+  }
+  const ptb = document.querySelector("#panelTable tbody");
+  ptb.innerHTML = [...panMap.entries()]
+    .map(([p,o])=>({p, o, a:agg(o.live, okTags)}))
+    .sort((x,y)=> y.a.pct - x.a.pct || x.p.localeCompare(y.p))
+    .map(({p,o,a})=>`<tr>
+      <td class="mono">${XML(p)}</td>
+      <td><span class="area">${XML([...o.areas].sort().join(" · ")||"—")}</span></td>
+      <td class="num mono">${a.t}</td>
+      <td class="num done"><b>${a.d}</b></td>
+      <td class="num rem"><b>${a.rem}</b></td>
+      <td class="num mono" style="color:var(--muted)">${o.spare||""}</td>
+      <td><span class="minibar pbar"><span class="fill" style="display:block;width:${a.pct.toFixed(1)}%"></span></span></td>
+      <td class="num mono">${a.pct.toFixed(0)}%</td>
+    </tr>`).join("");
+
+  document.getElementById("noteBox").innerHTML =
+    `Scope: <b>Phase 0 — Gas In</b>. Areas ${SCOPE.map(s=>`<span class="mono">${XML(s.code)}</span>`).join(", ")},
+     <b>PCS only</b> — ESD channels are excluded from this report end to end (numerator, denominator, charts and tables).
+     Areas <span class="mono">371</span> and <span class="mono">413</span> are the skids S-371 and S-413, which carry all the
+     IO of <span class="mono">plant_io_list.unit</span> 370 and 410 respectively.
+     Source: <span class="mono">plant_verifications</span> with <span class="mono">object_table=plant_io_list</span> — IO loop tests
+     signed off by users in ENI only (the loop test includes the PCS screen check, so it is the full view of the channel).
+     Denominator: in-scope <span class="mono">plant_io_list</span> channels excluding <b>${spares} spares</b>
+     (no tag, or marked SPARE). A channel counts as executed once its tag has at least one OK as of the report date.
+     Categories: <b>Valves</b> = solenoids (*EV), limit switches (ZSH/ZSL), positioners (*VY/*VZ), ZT/XV/SV/LV;
+     <b>Analog</b>/<b>Digital</b> = remaining AI-AO / DI-DO.
+     Everything is recomputed live from Supabase on page load or date change.`;
+
+  document.getElementById("stamp").innerHTML =
+    `<b>●</b> live · updated ${new Date().toLocaleTimeString("en-GB")}`;
+}
+
+/* ── orchestration ── */
+async function refresh(refetch){
+  const load = document.getElementById("loadBox"), rep = document.getElementById("report"),
+        err = document.getElementById("errBox");
+  err.style.display = "none";
+  try{
+    if(refetch){ load.style.display = "block"; await loadData(); }
+    load.style.display = "none"; rep.style.display = "block";
+    render();
+  }catch(e){
+    load.style.display = "none";
+    err.textContent = "Supabase query failed: " + e.message;
+    err.style.display = "block";
+  }
+}
+
+const pick = document.getElementById("datePick");
+pick.value = curDate;
+pick.addEventListener("change", ()=>{ if(pick.value){ curDate = pick.value; refresh(true); } });
+document.getElementById("prevBtn").onclick = ()=>{ curDate = addDays(curDate,-1); pick.value = curDate; refresh(false); };
+document.getElementById("nextBtn").onclick = ()=>{ curDate = addDays(curDate, 1); pick.value = curDate; refresh(false); };
+document.getElementById("todayBtn").onclick = ()=>{ curDate = dayStr(new Date()); pick.value = curDate; refresh(true); };
+document.getElementById("reloadBtn").onclick = ()=> refresh(true);
+document.getElementById("printBtn").onclick = ()=> print();
+
+refresh(true);
+</script>
+</body>
+</html>

@@ -4136,13 +4136,17 @@
      open point PA-2 resolved by data, not by exposing renderer coordinates.
 
      o = {
-       gensets: [{tag,x,y,kw,fuel,feeder,pc,busbar,dq,meter,live}]   x/y 0..1
-       boards:  [{tag,x,y,cabin,sub,genKw,loadKw,dq,small}]
-       ties:    [{a,b,label,open,dq}]          a/b board tags; open ⇒ dashed
-       feeds:   [{a,b,label,dq}]               solid downstream feeds (F210…)
-       W:       logical canvas width (default 1600; H follows GA 4494×3179)
+       gensets: [{tag,x,y,kw,fuel,feeder,busbar,vendor,vendorDq,dq,meter,live}]
+       busbars: [{code,pc,x,y0,y1,lvmd,genKw,loadKw,nOut,dq}]   the ladder,
+                one vertical section per busbar inside its real cabin
+       ties:    [{a,b,label,open}]     busbar codes; the T1/T2/T3 of ELD11
+       feeds:   [{bus,panel,label}]    solid busbar→panel feeds (F210/F211)
+       panels:  [{tag,x,y,label,sub,kind,dq}]  400 V panel, ET-001/2, S-435
+       W,H:     logical canvas size (the area crop, e.g. 2208×1924)
        onEquip: global fn name for onclick
      }
+     All x/y are FRACTIONS of the canvas; the caller owns the frame
+     conversion (tendrara fraction → area-crop fraction) and the tag bridge.
      Caller resolves positions and the tag bridge (plant writes 480-GE-001,
      v_sld_nodes says GE-001) and passes anything it could NOT place in its
      own footer count — a missing anchor is a visible gap (G-4), never a
@@ -4154,67 +4158,96 @@
      prints the design rating plainly; when a live value is passed in
      (genset.live = {v,u}) the same slot shows it with the live marker and
      nothing else changes — G-6, one slot, two marks, no second code path. */
-  const GA_ELEC_KINDS = ["GENERATOR", "CIRCUIT_BREAKER", "SWITCHBOARD"];
+  const GA_ELEC_KINDS = ["GENERATOR", "CIRCUIT_BREAKER", "BUSBAR", "TRANSFORMER", "SWITCHBOARD"];
 
   function gaElectrical(o) {
     o = o || {};
     const K = (typeof window !== "undefined" ? window : globalThis).TamSym;
     if (!K || !K.draw) return "";
-    const W = o.W || 1600, H = Math.round(W * 3179 / 4494);
-    const gens = o.gensets || [], boards = o.boards || [];
-    const bAt = new Map(boards.map(b => [b.tag, b]));
+    const W = o.W || 1600, H = o.H || Math.round(W * 3179 / 4494);
+    /* zoom: the 300-dpi area crop is far denser than the 1600-px plant canvas
+       the defaults were sized for — one factor scales every symbol, font and
+       offset together so the overlay stays proportionate to its background */
+    const z = +o.zoom > 0 ? +o.zoom : 1;
+    const gens = o.gensets || [], busbars = o.busbars || [], panels = o.panels || [];
+    const busAt = new Map(busbars.map(b => [b.code, b]));
+    const pAt = new Map(panels.map(p => [p.tag, p]));
     const px = p => ({ x: p.x * W, y: p.y * H });
     const short = t => String(t || "").replace(/^480-JG-69\d-/, "");
     const click = t => o.onEquip ? ` style="cursor:pointer" onclick="${o.onEquip}('${esc(t)}')"` : "";
 
     let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">`;
 
-    /* conductors first, symbols on top. A feeder is drawn as ONE straight
-       run genset→board with its breaker riding the line on a paper plate:
-       this is a map overlay, so symbols stay upright like map markers —
-       rotating IEC glyphs to the cable angle makes half of them unreadable. */
+    /* conductors first, symbols on top. One elbow per genset: a horizontal
+       run at the machine's own latitude, then a straight leg to its busbar
+       SECTION (clamped into the section span, so a machine that sits below
+       its bar joins the bar's end, not a neighbouring section). The breaker
+       rides the horizontal leg on a paper plate — this is a map overlay, so
+       symbols stay upright like map markers; a rotated IEC glyph is
+       unreadable. */
     gens.forEach(g => {
-      const b = bAt.get(g.pc); if (!b) return;
-      const A = px(g), B = px(b);
-      const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1;
-      const a2 = { x: A.x + dx / L * 16, y: A.y + dy / L * 16 };
-      const b2 = { x: B.x - dx / L * 20, y: B.y - dy / L * 20 };
-      s += `<line x1="${a2.x.toFixed(1)}" y1="${a2.y.toFixed(1)}" x2="${b2.x.toFixed(1)}" y2="${b2.y.toFixed(1)}" stroke="${INK}" stroke-width="1.5"/>`;
-      s += `<path d="M${(b2.x - dx / L * 9 - dy / L * 5).toFixed(1)},${(b2.y - dy / L * 9 + dx / L * 5).toFixed(1)} L${b2.x.toFixed(1)},${b2.y.toFixed(1)} L${(b2.x - dx / L * 9 + dy / L * 5).toFixed(1)},${(b2.y - dy / L * 9 - dx / L * 5).toFixed(1)} Z" fill="${INK}"/>`;
-      const mx = A.x + dx * 0.58, my = A.y + dy * 0.58;
-      s += `<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="13" fill="#fff" stroke="${LINE}"/>`;
-      s += K.draw("CIRCUIT_BREAKER", { x: mx, y: my, scale: 0.66, state: "DESIGN", dq: g.dq,
+      const b = busAt.get(g.busbar); if (!b) return;
+      const A = px(g), bx = b.x * W;
+      const gy = Math.min(Math.max(A.y, b.y0 * H + 8 * z), b.y1 * H - 8 * z);
+      const sgn = A.x < bx ? 1 : -1;
+      const ax = A.x + sgn * 15 * z, kx = bx - sgn * 46 * z;      /* elbow knee */
+      s += `<path d="M${ax.toFixed(1)},${A.y.toFixed(1)} L${kx.toFixed(1)},${A.y.toFixed(1)} L${(bx - sgn * 5 * z).toFixed(1)},${gy.toFixed(1)}" fill="none" stroke="${INK}" stroke-width="${1.5 * z}"/>`;
+      s += `<path d="M${(bx - sgn * 11 * z).toFixed(1)},${(gy - 4.5 * z).toFixed(1)} L${(bx - sgn * 2 * z).toFixed(1)},${gy.toFixed(1)} L${(bx - sgn * 11 * z).toFixed(1)},${(gy + 4.5 * z).toFixed(1)} Z" fill="${INK}"/>`;
+      const mx = (ax + kx) / 2, my = A.y;
+      s += `<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="${13 * z}" fill="#fff" stroke="${LINE}"/>`;
+      s += K.draw("CIRCUIT_BREAKER", { x: mx, y: my, scale: 0.66 * z, state: "DESIGN", dq: g.dq,
         title: `${g.feeder} · incomer of ${g.tag} · busbar ${g.busbar || "?"} · state DESIGN (no live signal)` });
-      s += `<text x="${(mx + 14).toFixed(1)}" y="${(my + 4).toFixed(1)}" font-family="${MONO}" font-size="9.5" font-weight="700" fill="${SOFT}">${esc(short(g.feeder))}</text>`;
+      s += `<text x="${(mx + 14 * z).toFixed(1)}" y="${(my - 8 * z).toFixed(1)}" font-family="${MONO}" font-size="${9.5 * z}" font-weight="700" fill="${SOFT}">${esc(short(g.feeder))}</text>`;
     });
 
-    /* downstream feeds and normally-open couplers between boards */
+    /* feeds busbar→panel (solid, they exist) and the tie-breakers between
+       adjacent sections — dashed when normally open: a solid line would
+       claim a feed that does not exist (same rule as sldSummarySchematic) */
     (o.feeds || []).forEach(t => {
-      const a = bAt.get(t.a), b = bAt.get(t.b); if (!a || !b) return;
-      const A = px(a), B = px(b);
-      s += `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${SLD_BUSCOL}" stroke-width="1.4"/>` +
-        `<text x="${((A.x + B.x) / 2).toFixed(1)}" y="${((A.y + B.y) / 2 - 5).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="600" fill="${SLD_BUSCOL}">${esc(t.label || "")}</text>`;
+      const a = busAt.get(t.bus), p = pAt.get(t.panel); if (!a || !p) return;
+      const x = a.x * W, y0 = a.y0 * H, P = px(p);
+      s += `<path d="M${x.toFixed(1)},${y0.toFixed(1)} L${x.toFixed(1)},${(P.y + 26 * z).toFixed(1)} L${P.x.toFixed(1)},${(P.y + 26 * z).toFixed(1)} L${P.x.toFixed(1)},${(P.y + 16 * z).toFixed(1)}" fill="none" stroke="${SLD_BUSCOL}" stroke-width="${1.4 * z}"/>` +
+        `<text x="${(x + 6 * z).toFixed(1)}" y="${((y0 + P.y + 26 * z) / 2).toFixed(1)}" font-family="${MONO}" font-size="${9 * z}" font-weight="600" fill="${SLD_BUSCOL}">${esc(t.label || "")}</text>`;
     });
     (o.ties || []).forEach(t => {
-      const a = bAt.get(t.a), b = bAt.get(t.b); if (!a || !b) return;
-      const A = px(a), B = px(b);
-      /* dashed because it is normally open — a solid line would claim a feed
-         that does not exist (same rule as sldSummarySchematic) */
-      s += `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${SLD_BUSCOL}" stroke-width="1.4"${t.open ? ` stroke-dasharray="5 4"` : ""}/>` +
-        `<text x="${((A.x + B.x) / 2).toFixed(1)}" y="${((A.y + B.y) / 2 - 5).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="700" fill="${SLD_BUSCOL}">${esc(t.label || "")}${t.open ? " · N.O." : ""}</text>`;
+      const a = busAt.get(t.a), b = busAt.get(t.b); if (!a || !b) return;
+      const x = ((a.x + b.x) / 2) * W;
+      const ya = (a.y0 < b.y0 ? a.y1 : a.y0) * H, yb = (a.y0 < b.y0 ? b.y0 : b.y1) * H;
+      s += `<line x1="${x.toFixed(1)}" y1="${ya.toFixed(1)}" x2="${x.toFixed(1)}" y2="${yb.toFixed(1)}" stroke="${SLD_BUSCOL}" stroke-width="${1.6 * z}"${t.open ? ` stroke-dasharray="${5 * z} ${4 * z}"` : ""}/>` +
+        `<text x="${(x + 8 * z).toFixed(1)}" y="${((ya + yb) / 2 + 3 * z).toFixed(1)}" font-family="${MONO}" font-size="${9 * z}" font-weight="700" fill="${SLD_BUSCOL}">${esc(t.label || "")}${t.open ? " · N.O." : ""}</text>`;
     });
 
-    /* the canvas carries tag + cabin only; ratings, busbars and coupler notes
-       live in the side panel — at map zoom three stacked text lines per board
-       overwrite each other and the drawing stops being readable */
-    boards.forEach(b => {
-      const B = px(b), sc = b.small ? 0.8 : 1.15;
-      const ly = b.labelBelow ? B.y + 26 * sc + 8 : B.y - 20 * sc;
-      s += `<g${click(b.tag)}>`;
-      s += K.draw("SWITCHBOARD", { x: B.x, y: B.y, scale: sc, state: "DESIGN", dq: b.dq,
-        title: `${b.tag} · ${b.sub || ""} · cabin ${b.cabin || "?"}` });
-      s += `<text x="${B.x}" y="${ly.toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="${b.small ? 8.5 : 11}" font-weight="700" fill="${CRIMSON}">${esc(b.tag)}</text>`;
-      if (b.cabin) s += `<text x="${B.x}" y="${(ly + (b.labelBelow ? 9 : -9)).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="7.5" fill="${SOFT}">${esc(b.cabin)}</text>`;
+    /* the busbar ladder: one vertical section per busbar, inside the cabin
+       it really sits in. The bar carries code + vendor LVMD name and its
+       design generation/load; the outgoing count leaves as one generic
+       arrow (the 44 motors are on the SLD sheet — this is the summary). */
+    busbars.forEach(b => {
+      const x = b.x * W, y0 = b.y0 * H, y1 = b.y1 * H;
+      s += `<g${click(b.pc || "")}>`;
+      s += `<line x1="${x}" y1="${y0.toFixed(1)}" x2="${x}" y2="${y1.toFixed(1)}" stroke="${SLD_BUSCOL}" stroke-width="${5 * z}"/>`;
+      if (b.dq && K.DQ && K.DQ[b.dq])
+        s += `<circle cx="${x}" cy="${(y0 - 6 * z).toFixed(1)}" r="${2.6 * z}" fill="${K.DQ[b.dq]}"><title>${esc(b.dq)}</title></circle>`;
+      s += `<text x="${(x + 9 * z).toFixed(1)}" y="${(y0 + 12 * z).toFixed(1)}" font-family="${MONO}" font-size="${11 * z}" font-weight="700" fill="${SLD_BUSCOL}">${esc(b.code)}</text>`;
+      if (b.lvmd) s += `<text x="${(x + 9 * z).toFixed(1)}" y="${(y0 + 23 * z).toFixed(1)}" font-family="${MONO}" font-size="${8 * z}" font-weight="600" fill="${SOFT}">${esc(b.lvmd)}</text>`;
+      if (b.genKw != null || b.loadKw != null)
+        s += `<text x="${(x + 9 * z).toFixed(1)}" y="${(y1 - 14 * z).toFixed(1)}" font-family="${MONO}" font-size="${8 * z}" font-weight="600" fill="${INK}">${b.genKw != null ? n0(b.genKw) + "↦" : ""}${b.loadKw != null ? n0(b.loadKw) + " kW" : ""}</text>`;
+      if (b.nOut != null) {
+        s += `<line x1="${x}" y1="${(y1 - 4 * z).toFixed(1)}" x2="${(x + 26 * z).toFixed(1)}" y2="${(y1 + 14 * z).toFixed(1)}" stroke="${INK}" stroke-width="${1.2 * z}"/>` +
+          `<path d="M${(x + 30 * z).toFixed(1)},${(y1 + 17 * z).toFixed(1)} l${-8 * z},${-1.5 * z} l${3.5 * z},${-7 * z} Z" fill="${INK}"/>` +
+          `<text x="${(x + 33 * z).toFixed(1)}" y="${(y1 + 21 * z).toFixed(1)}" font-family="${MONO}" font-size="${8.5 * z}" font-weight="600" fill="${SOFT}">${b.nOut} out</text>`;
+      }
+      s += `</g>`;
+    });
+
+    /* panels and transformers of the block (400 V panel, ET-001/2, control
+       room): tag + one sub line; anything longer belongs in the side panel */
+    panels.forEach(p => {
+      const P = px(p), kind = p.kind || "SWITCHBOARD";
+      s += `<g${click(p.tag)}>`;
+      s += K.draw(kind, { x: P.x, y: P.y, scale: 0.95 * z, state: "DESIGN", dq: p.dq,
+        title: `${p.tag} · ${p.sub || ""}` });
+      s += `<text x="${P.x}" y="${(P.y - 18 * z).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="${9.5 * z}" font-weight="700" fill="${CRIMSON}">${esc(p.label || p.tag)}</text>`;
+      if (p.sub) s += `<text x="${P.x}" y="${(P.y + 24 * z).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="${7.5 * z}" fill="${SOFT}">${esc(p.sub)}</text>`;
       s += `</g>`;
     });
 
@@ -4225,14 +4258,1642 @@
         : (g.kw != null ? [{ k: "P", v: g.kw, u: "kW" }] : []);
       s += `<g${click(g.tag)}>`;
       /* fuel and voltage go to the tooltip, not the canvas: nine "gas · 690 V"
-         lines on a map say nothing the legend row does not */
-      s += K.draw("GENERATOR", { x: A.x, y: A.y, scale: 0.95, state: "DESIGN", dq: g.dq,
+         lines on a map say nothing the legend row does not. The vendor module
+         (+Gn) prints under the tag; an AMBIGUOUS attribution (CR-00357) gets a
+         visible "?" — a gap the operator can see, never a silent guess. */
+      s += K.draw("GENERATOR", { x: A.x, y: A.y, scale: 0.95 * z, state: "DESIGN", dq: g.dq,
         label: g.tag, values: vals, live: !!(g.live && g.live.v != null),
-        title: `${g.tag} · ${g.fuel || ""} · feeder ${g.feeder} → ${g.pc} busbar ${g.busbar || "?"}` +
+        title: `${g.tag} · ${g.fuel || ""} · feeder ${g.feeder} → busbar ${g.busbar || "?"}` +
+               (g.vendor ? ` · vendor ${g.vendor} (${g.vendorDq || "?"})` : "") +
                (g.meter ? ` · meter ${g.meter}` : "") });
+      if (g.vendor)
+        s += `<text x="${A.x}" y="${(A.y + 22 * z).toFixed(1)}" text-anchor="middle" font-family="${MONO}" font-size="${8 * z}" font-weight="600" fill="${g.vendorDq === "VERIFIED" ? SOFT : "#B26A00"}">${esc(g.vendor)}${g.vendorDq === "VERIFIED" ? "" : "?"}</text>`;
       s += `</g>`;
     });
 
+    return s + `</svg>`;
+  }
+
+  /* ── ELECTRICAL FUNCTIONAL — the generation block as a BLOCK SHEET ──────
+     elecFunctional(o) → string SVG. The sibling of gaElectrical() with the
+     opposite premise: no plot-plan background, no surveyed coordinates.
+     gaElectrical() answers "where does it sit"; this sheet answers "how is
+     it organised and what is it producing" — the busbar ladder laid flat,
+     one reusable GENSET BLOCK per machine, outgoing branches underneath.
+
+     The GENSET BLOCK is a COMPOSITION, not a new symbol (G-5): GENERATOR
+     glyph + incomer breaker riding the drop + the kernel measure badge
+     (design rating plain, live P/PF/f with the live dot — G-6, one slot,
+     two marks) + the day chips (run h, starts, integrated kWh) the caller
+     computed. Defined once below, instanced per data row: a tenth genset
+     is a row, not code.
+
+     o = {
+       busbars:  [{code,pc,lvmd,genKw,loadKw,nOut,dq}] drawn left→right in
+                 array order — the ladder A·B·C·D. `pc` labels group into
+                 a bracket over consecutive bars sharing it.
+       gensets:  [{tag,busbar,kw,fuel,feeder,vendor,vendorDq,dq,meter,
+                  live:{p,pf,f,age},day:{h,kwh,starts},comms,noMeter}]
+                 live absent + noMeter → grey "meter not located": absence
+                 of measure is printed, never zero (VIZ rule).
+                 live.age is a preformatted string ("4 min") printed under
+                 the badge — the AGE of the newest good sample, so a live
+                 number can never masquerade as current (SICAM "not up to
+                 date"). comms: "OK"|"STALE"|"GAP"|null drives the comms
+                 lamp (powermanager §1c.2); null → WHITE, because absence
+                 of information has its own colour, it is not green.
+                 The second lamp (sum-alert) is ALWAYS white today: no
+                 alarm signal exists in the DB, and a lamp with no signal
+                 shows "no info", never "no alarms" (G-3).
+       ties:     [{a,b,label,open,f7,dq}] `open` is the ELD11 design;
+                 `f7` the operating-concept claim. When they disagree the
+                 tie prints BOTH with its CONFLICT dot (CR-00348) — the
+                 sheet shows the dispute, it does not referee it (G-3).
+       branches: [{fromBus,tag,label,sub,kind,posCode,cable,kw,dq}]
+                 outgoing blocks under the ladder (PC3/PC4, trafos,
+                 inverters, PK-361). Unknown `kind` → dashed "?" (G-4).
+       onEquip:  global fn name for onclick
+     }
+     Anything that cannot be placed (genset/branch naming a busbar the
+     ladder does not have) lands in the UNPLACED footer line — a visible
+     hole (G-4), never a silently dropped row. Breaker state: the database
+     holds no open/closed for the incomers, so every breaker draws DESIGN
+     and the footer says so (same declaration as gaElectrical).
+
+     ══ v1.44.0 · P5, the icon and label pass (ELEC_FUNCTIONAL §2d) ═════════
+     The v1 sheet was correct and honest and completely FLAT: the same "G"
+     circle whether the machine carried the plant or was stopped, five lines
+     of text at one size around it, and a design rating typeset exactly like
+     a reading. Three seconds of looking told you nothing. What changed, and
+     the industry convention each change comes from:
+
+       STATE RING (i1)   thin ring just outside the glyph. Running = solid,
+                         in the machine's own series colour; stopped = thin
+                         grey; no measurement = grey DASHED. This is
+                         powermanager's background-colour-is-the-state rule
+                         (§1c.3) moved onto the glyph, and it is the one mark
+                         that answers "who is carrying the plant" from across
+                         a room.
+       LOAD GAUGE (i2)   300° arc outside the ring, 0–100 % of the nameplate,
+                         opening at the bottom so the conductor leaves through
+                         it — the genset-card gauge of DEIF/ComAp, and the
+                         3-band KPI gauge of powermanager (§1c.5). NO TRACK IS
+                         DRAWN WHEN THERE IS NO MEASUREMENT: an empty gauge
+                         would read as 0 %. A measured zero gets the track and
+                         no arc; an unmeasured machine gets neither. That is
+                         the difference the whole sheet exists to keep.
+       BREAKER DISC (i3) the r=13 white disc is no longer drawing residue: it
+                         is the breaker's MESSAGE background — white "no
+                         information", pale green none, amber warning, red
+                         trip (powermanager 3WL/3VA colour code). Today every
+                         disc is white, because no such signal exists (G-3).
+       LAMPS (i4)        comms + sum-alert, 7 px and named in the legend.
+       FUEL CHIP (i5)    GA / DI beside the tag: gas and diesel are different
+                         machines and the sheet stopped making you read a
+                         vendor string to find out which.
+       NO ELLIPSIS (i6)  branch subs wrap (kernel `subWrap`) instead of being
+                         cut. A label ending in "…" on an approval sheet.
+       LEGEND (i7)       generated from the registry (G-7) plus a status key
+                         for the marks a registry cannot know: ring states,
+                         gauge, DQ dots, lamps, open tie, and the provenance
+                         suffixes.
+       BAR TOTALS (i8)   moved out of the tie's way to under the bar, and
+                         typeset as DESIGN. When the caller supplies measured
+                         generation it prints as a SECOND figure with the live
+                         dot and its "n of m" — design and measurement are
+                         never added together.
+       TYPE SCALE (l1)   P at 10.5 px bold ink is the number of the block;
+                         PF and f share one 7 px line; the produced-today
+                         figures sit under a hairline rule.
+       nom. (l2)         a design rating prints `nom. 1.823 kW` in grey, with
+                         no quantity letter and no live dot. Only a reading
+                         gets `P` and the dot (G-6, made visible in type).
+       ONE FORMAT (l3)   the kernel's locale is set from this sheet's `lang`
+                         so the SVG and the page around it punctuate numbers
+                         the same way — en-US with grouping always (1,823 ·
+                         50.02), and es-MA (1.823 · 50,02) if ever switched.
+                         The rule is that there is ONE formatter, not which
+                         locale it is.
+       STALE / GAP (l6)  past STALE the whole figure goes grey and the age
+                         turns amber; in a Gap the figure DISAPPEARS and the
+                         block says since when. A stale number that still
+                         looks fresh is worse than no number.
+       MICRO-TREND       24 h polyline inside the block — the one chart
+                         allowed into the mimic (§2c R-4), because there the
+                         series is an attribute of the equipment. Gaps lift
+                         the pen; they are never drawn as zero.
+
+     LANGUAGE. G-9 holds here too, with no exception: the sheet draws in
+     ENGLISH by default, and so does the page it lives in (Mario, 2026-08-11:
+     "todo en inglés"). The two-entry label table stays because it is what
+     keeps strings out of the drawing code and because §2d's own examples are
+     written in Spanish — `lang:"es"` renders the identical sheet with es-MA
+     numbers — but nothing calls it, and no string lives outside EF_L. */
+  const ELEC_FUNC_KINDS = ["GENERATOR", "CIRCUIT_BREAKER", "BUSBAR",
+                           "SWITCHBOARD", "MCC_PANEL", "TRANSFORMER", "INVERTER"];
+
+  const EF_L = {
+    es: { loc: "es-MA", nom: "nom.", run: "marcha", starts: n => `${n} arr.`, ago: a => "hace " + a,
+          noMeas: "sin medida", noMeter: "medidor sin localizar", since: "sin dato desde",
+          noData: "sin dato", gen: "gen", load: "carga", meas: "medido", of: "de",
+          groups: "grupos", out: "salidas", closed: "cerrado",
+          brkDesign: "interruptores en DESIGN — la BD no tiene estado vivo de apertura/cierre",
+          unplaced: "SIN SITIO", lampC: "comunicación", lampA: "alarma agregada",
+          noInfo: "sin información", legend: "Leyenda",
+          kRun: "en marcha", kStop: "parado (medido)", kNo: "sin medida — nunca cero",
+          kGauge: "carga sobre el nominal (0–100 %)", kLive: "valor vivo",
+          kStale: "dato viejo: la cifra pasa a gris y la edad a ámbar",
+          kDq: "calidad del dato: verificado · revisar · conflicto",
+          kLamps: "lámparas: izq. comunicación · der. alarma agregada",
+          kWhite: "blanco = sin información (no es «sin alarmas»)",
+          kTie: "acoplamiento normalmente abierto",
+          kSrc: "nom. = diseño · cont. = contador · int. = integral de P",
+          kSpark: "P de las últimas 24 h; el hueco levanta el trazo",
+          /* elecOverview() */
+          bandGen: "GENERACIÓN", bandDist: "DISTRIBUCIÓN", bandLoads: "CARGAS PRINCIPALES",
+          sets: "grupos", mainFeeders: "salidas de carga principal", connected: "conectados",
+          running: "en marcha", signals: "señales",
+          stRUN: "en marcha — la máquina lo dice (QRUN o cuentahoras avanzando)",
+          stSTOP: "parada — la misma señal lo dice",
+          stRAW: "palabra de estado sin decodificar — hay señal, falta la clave (CR)",
+          stNOSIG: "sin señal historizada",
+          ovRing: "anillo del grupo: macizo = en marcha · fino = parado (medido) · discontinuo = sin medida",
+          /* elecSld() */
+          bandSld: "UNIFILAR · DISTRIBUCIÓN PRINCIPAL 690 V",
+          sldBasis: "arquitectura ELD11 · salidas ELD03 · interruptores en DESIGN — la BD no tiene abierto/cerrado vivo",
+          bandTrend: "TENDENCIA DE GENERACIÓN",
+          busbar: "BARRA", peak: "máx.", plantTotal: "total de planta (medido)",
+          eld11Says: (tag, a, b) => `ELD11 rev.2 pone ${tag} en la barra ${a}; ELD03 y el wiring diagram lo ponen en la ${b} — se dibuja ELD03 (CR-00392)`,
+          kAnalyzer: "analizador de red — de aquí sale el valor vivo de la bahía",
+          kFlow: "sentido de la corriente (ELD11)",
+          kConflict: "ELD11 rev.2 sitúa este grupo en otra barra — CR-00392",
+          kCable: "% de tendido de cable (ELD11)",
+          kEld11Only: "recuadro discontinuo: solo ELD11 — no está modelado en la BD del unifilar",
+          kGap: "banda sombreada: sin dato en el historiador — nunca se dibuja como cero",
+          bandTotals: "ACUMULADO POR MÁQUINA · CUENTAHORAS Y CONTADOR DE ENERGÍA",
+          colHours: "horas de marcha (contador)", colEnergy: "energía (contador)",
+          seen: "visto", fleetRow: "flota", counterSince: "serie del contador",
+          noMeterRow: "sin medidor localizado — ningún cuentahoras llega a este sistema",
+          elapsed: "transcurrido", covered: "cubierto",
+          bandLdc: "CURVA DE DURACIÓN DE CARGA", ldcSub: "P de planta ordenada de mayor a menor",
+          ofWindow: "de la ventana", median: "mediana", instCap: "del nominal instalado" },
+    en: { loc: "en-US", nom: "rated", run: "run", starts: n => `${n} start${n === 1 ? "" : "s"}`, ago: a => a + " ago",
+          noMeas: "no measure", noMeter: "meter not located", since: "no data since",
+          noData: "no data", gen: "gen", load: "load", meas: "measured", of: "of",
+          groups: "sets", out: "out", closed: "closed",
+          brkDesign: "breakers DESIGN throughout — no live open/closed signal in DB",
+          unplaced: "UNPLACED", lampC: "comms", lampA: "sum-alert",
+          noInfo: "no information", legend: "Legend",
+          kRun: "running", kStop: "stopped (measured)", kNo: "no measure — never zero",
+          kGauge: "load against nameplate (0–100 %)", kLive: "live value",
+          kStale: "stale: the figure goes grey and the age amber",
+          kDq: "data quality: verified · review · conflict",
+          kLamps: "lamps: left comms · right sum-alert",
+          kWhite: "white = no information (not «no alarms»)",
+          kTie: "normally open bus coupler",
+          kSrc: "rated = design · cont. = meter register · int. = integral of P",
+          kSpark: "P over the last 24 h; a gap lifts the pen",
+          /* elecOverview() */
+          bandGen: "GENERATION", bandDist: "DISTRIBUTION", bandLoads: "MAIN LOADS",
+          sets: "sets", mainFeeders: "main-load feeders", connected: "connected",
+          running: "running", signals: "signals",
+          stRUN: "running — the machine says so (QRUN, or its hour meter advancing)",
+          stSTOP: "stopped — the same signal says so",
+          stRAW: "status word not decoded — the signal is there, the key is not (CR)",
+          stNOSIG: "nothing historised for this unit",
+          ovRing: "genset ring: solid = running · thin = stopped (measured) · dashed = no measure",
+          /* elecSld() */
+          bandSld: "SINGLE LINE · 690 V MAIN DISTRIBUTION",
+          sldBasis: "ELD11 architecture · ELD03 feeders · breakers DESIGN — no live open/closed in the DB",
+          bandTrend: "GENERATION TREND",
+          busbar: "BUSBAR", peak: "peak", plantTotal: "plant total (measured)",
+          eld11Says: (tag, a, b) => `ELD11 rev.2 puts ${tag} on busbar ${a}; ELD03 and the wiring diagram put it on ${b} — ELD03 is drawn (CR-00392)`,
+          kAnalyzer: "network analyser — where the bay's live value is measured",
+          kFlow: "current flow direction (ELD11)",
+          kConflict: "ELD11 rev.2 places this set on another busbar — CR-00392",
+          kCable: "% of power cable laydown (ELD11)",
+          kEld11Only: "dashed plate: ELD11 only — not modelled in the single-line database",
+          kGap: "shaded band: no data in the historian — never drawn as zero",
+          bandTotals: "MACHINE TOTALS · HOUR METER AND ENERGY REGISTER",
+          colHours: "running hours (register)", colEnergy: "energy (register)",
+          seen: "seen", fleetRow: "fleet", counterSince: "counter series",
+          noMeterRow: "no meter located — no hour meter reaches this system",
+          elapsed: "elapsed", covered: "covered",
+          bandLdc: "LOAD DURATION CURVE", ldcSub: "plant P, sorted high to low",
+          ofWindow: "of the window", median: "median", instCap: "of installed rating" }
+  };
+
+  function elecFunctional(o) {
+    o = o || {};
+    const K = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (!K || !K.draw) return "";
+    const bars = o.busbars || [], gens = o.gensets || [], ties = o.ties || [], brs = o.branches || [];
+    if (!bars.length) return "";
+    const T = EF_L[o.lang === "es" ? "es" : "en"];   /* G-9: English default */
+    const click = t => o.onEquip ? ` style="cursor:pointer" onclick="${o.onEquip}('${esc(t)}')"` : "";
+
+    /* ── one number format for the sheet AND the page around it (§2d l3) ───
+       The kernel is switched for the length of this draw and restored on the
+       way out, so a Spanish sheet can never re-punctuate the English viewer's
+       single-line. Everything this function prints goes through f0/f1/f2. */
+    const LOC = o.locale || T.loc, GRP = o.grouping || "always";
+    const K_LOC = K.locale, K_GRP = K.grouping;
+    K.locale = LOC; K.grouping = GRP;
+    const nf = (v, d) => v == null ? "—" : (+v).toLocaleString(LOC,
+      { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: GRP });
+    const f0 = v => nf(v, 0), f1 = v => nf(v, 1), f2 = v => nf(v, 2);
+    /* the kernel floors type at 8 px; the block's own offsets have to use the
+       same function or the stack drifts from the badge it sits under */
+    const tzf = n => Math.max(8, +(n * (K.textScale || 1)).toFixed(1));
+    /* "running" is a threshold, so it is DECLARED (and printed in the legend),
+       never assumed: the same 50 kW floor queries.ts uses for run hours */
+    const RUN_KW = o.runKw == null ? 50 : o.runKw;
+    const AMBER = "#B26A00", GREY = "#8A9099", DESIGN_INK = "#828994";
+
+    /* ── layout: each bar earns the width its rows need ─────────────────── */
+    /* the genset block is asymmetric — vendor and fuel chip to the left of the
+       glyph, the value column to its right — so it declares both halves and
+       the layout centres THE BLOCK in its slot, not the glyph */
+    const PADX = 30, BLK_L = 50, BLK_R = 118, SG = BLK_L + BLK_R, SB = 150, TIE_GAP = 116;
+    const GEN_Y = 116, BRK_Y = 228, BUS_Y = 292, BR_Y = 392;
+    const VX = 27;                        /* value column, from glyph centre */
+    /* the two radii are far enough apart to read as two marks: any closer and
+       the state ring merges with the glyph's own outline, which is exactly how
+       the first cut of this pass failed at 2× */
+    const R_ST = 15.5, R_GA = 21.5;       /* state ring · load gauge radii    */
+    const SPARK_W = 74, SPARK_H = 13, LEG_H = 176;
+    /* no branch row → no empty band under the ladder */
+    const BASE = brs.length ? 466 : 344;
+    const H = BASE + LEG_H;
+    const gOf = b => gens.filter(g => g.busbar === b.code);
+    const bOf = b => brs.filter(x => x.fromBus === b.code);
+    const at = new Map();                       /* code → {x0,x1,bar} */
+    let x = PADX;
+    bars.forEach((b, i) => {
+      if (i) x += TIE_GAP;
+      const w = Math.max(gOf(b).length * SG, bOf(b).length * SB, 240);
+      at.set(b.code, { x0: x, x1: x + w, bar: b });
+      x += w;
+    });
+    /* the right margin has to hold the last bar's "N salidas" chip, which sits
+       OUTSIDE the bar: 30 px clipped it to "12 sal" */
+    const W = Math.max(x + PADX + 46, 1000);   /* the legend has a floor too */
+    const unplaced = [];
+
+    /* ── arcs: the load gauge, opening at the bottom so the conductor leaves
+       through it (120° → 420°, 300° of travel = 0…100 %) ─────────────────── */
+    const pol = (cx, cy, r, deg) => {
+      const a = deg * Math.PI / 180;
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    };
+    const arc = (cx, cy, r, d0, d1, col, w) => {
+      const A = pol(cx, cy, r, d0), B = pol(cx, cy, r, d1);
+      return `<path d="M${A[0].toFixed(1)},${A[1].toFixed(1)} A${r},${r} 0 ` +
+        `${Math.abs(d1 - d0) > 180 ? 1 : 0} 1 ${B[0].toFixed(1)},${B[1].toFixed(1)}" ` +
+        `fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
+    };
+    /* ── the micro-trend: 24 h of P as an attribute of the machine (§2c R-4).
+       A gap lifts the pen — a hole is never drawn as a zero (R-2). ───────── */
+    const sparkline = (sx, sy, vals, col, maxKw) => {
+      const pts = (vals || []).filter(v => v === null || v === undefined || isFinite(v));
+      const good = pts.filter(v => v != null);
+      if (pts.length < 2 || !good.length) return "";
+      const max = Math.max(maxKw || 0, Math.max.apply(null, good)) || 1;
+      let d = "", pen = false;
+      pts.forEach((v, i) => {
+        if (v == null) { pen = false; return; }
+        const px = sx + (i / (pts.length - 1)) * SPARK_W;
+        const py = sy + SPARK_H - (Math.min(Math.max(v, 0), max) / max) * SPARK_H;
+        d += `${pen ? "L" : "M"}${px.toFixed(1)},${py.toFixed(1)}`;
+        pen = true;
+      });
+      return `<line x1="${sx}" y1="${(sy + SPARK_H).toFixed(1)}" x2="${(sx + SPARK_W).toFixed(1)}" ` +
+        `y2="${(sy + SPARK_H).toFixed(1)}" stroke="${LINE}" stroke-width="0.7"/>` +
+        `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.4" stroke-linejoin="round" ` +
+        `stroke-linecap="round" data-slot="spark"><title>${esc(T.kSpark)}</title></path>`;
+    };
+
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">` +
+      `<rect width="${W}" height="${H}" fill="#fff"/>`;
+
+    /* ── the Power Center bracket over consecutive bars that share it ───── */
+    for (let i = 0; i < bars.length;) {
+      let j = i; while (j + 1 < bars.length && bars[j + 1].pc === bars[i].pc) j++;
+      if (bars[i].pc) {
+        const a = at.get(bars[i].code), b = at.get(bars[j].code);
+        s += `<path d="M${a.x0},${34} L${a.x0},${28} L${b.x1},${28} L${b.x1},${34}" fill="none" stroke="${LINE}" stroke-width="1.2"/>` +
+          `<text x="${(a.x0 + b.x1) / 2}" y="${22}" text-anchor="middle" font-family="${MONO}" font-size="10.5" font-weight="700" fill="${CRIMSON}"${click(bars[i].pc.split(" ")[0])}>${esc(bars[i].pc)}</text>`;
+      }
+      i = j + 1;
+    }
+
+    /* ── busbar ladder, laid flat ───────────────────────────────────────── */
+    /* every group carries data-tag/data-kind/data-state: the SVG is a
+       queryable model, not a picture — one delegated listener in the page
+       resolves click/hover for any block (smart-SVG plan §2b). Slot-level
+       data attributes on badge values need the kernel and wait for P2. */
+    bars.forEach(b => {
+      const p = at.get(b.code);
+      s += `<g data-tag="${esc(b.code)}" data-kind="BUSBAR" data-state="DESIGN"${click(b.code)}>`;
+      s += `<line x1="${p.x0}" y1="${BUS_Y}" x2="${p.x1}" y2="${BUS_Y}" stroke="${SLD_BUSCOL}" stroke-width="5"/>`;
+      if (b.dq && K.DQ && K.DQ[b.dq])
+        s += `<circle cx="${p.x0 - 6}" cy="${BUS_Y}" r="2.6" fill="${K.DQ[b.dq]}"><title>${esc(b.dq)}</title></circle>`;
+      s += `<text x="${p.x0}" y="${BUS_Y - 8}" font-family="${MONO}" font-size="11" font-weight="700" fill="${SLD_BUSCOL}">${esc(b.code)}${b.lvmd ? ` · ${esc(b.lvmd)}` : ""}</text>`;
+      /* i8 — the totals moved OUT of the tie's elbow to the empty band under
+         the bar, and they now say what they are. The design figures are
+         typeset as design (grey, `nom.`); a measured generation total, when
+         the caller has one, prints as a SECOND line with the live dot and its
+         "n of m" coverage. Design and measurement are never one figure. The
+         white halo keeps them legible where a branch drop crosses. */
+      const halo = ` paint-order="stroke" stroke="#fff" stroke-width="3"`;
+      if (b.genKw != null || b.loadKw != null)
+        s += `<text x="${p.x0 + 2}" y="${BUS_Y + 16}" font-family="${MONO}" font-size="8.5" font-weight="600" fill="${DESIGN_INK}"${halo} data-slot="bar-design">` +
+          `${T.nom} ${b.genKw != null ? T.gen + " " + f0(b.genKw) : ""}` +
+          `${b.loadKw != null ? " · " + T.load + " " + f0(b.loadKw) : ""} kW</text>`;
+      if (b.genMeasKw != null)
+        s += `<circle cx="${p.x0 + 4}" cy="${BUS_Y + 23}" r="2" fill="#1F8A4C"/>` +
+          `<text x="${p.x0 + 10}" y="${BUS_Y + 26}" font-family="${MONO}" font-size="8.5" font-weight="700" fill="${INK}"${halo} data-slot="bar-meas">` +
+          `${T.meas} ${f0(b.genMeasKw)} kW${b.nMeas != null ? ` · ${b.nMeas} ${T.of} ${gOf(b).length} ${T.groups}` : ""}</text>`;
+      if (b.nOut != null)
+        s += `<line x1="${p.x1 - 3}" y1="${BUS_Y + 3}" x2="${p.x1 + 16}" y2="${BUS_Y + 18}" stroke="${INK}" stroke-width="1.2"/>` +
+          `<path d="M${p.x1 + 20},${BUS_Y + 21} l-8,-1.5 l3.5,-7 Z" fill="${INK}"/>` +
+          `<text x="${p.x1 + 4}" y="${BUS_Y + 30}" font-family="${MONO}" font-size="8.5" font-weight="600" fill="${SOFT}">${b.nOut} ${T.out}</text>`;
+      s += `</g>`;
+    });
+
+    /* ── ties: both claims printed, never refereed ──────────────────────── */
+    ties.forEach(t => {
+      const a = at.get(t.a), b = at.get(t.b);
+      if (!a || !b) { unplaced.push(t.label || `${t.a}-${t.b}`); return; }
+      const l = a.x0 < b.x0 ? a : b, r = a.x0 < b.x0 ? b : a, mx = (l.x1 + r.x0) / 2;
+      s += `<g data-tag="${esc(t.label || `${t.a}-${t.b}`)}" data-kind="TIE" data-state="${t.dq === "CONFLICT" ? "CONFLICT" : "DESIGN"}">`;
+      s += `<line x1="${l.x1}" y1="${BUS_Y}" x2="${r.x0}" y2="${BUS_Y}" stroke="${SLD_BUSCOL}" stroke-width="1.6"${t.open ? ` stroke-dasharray="5 4"` : ""}/>`;
+      if (t.dq && K.DQ && K.DQ[t.dq])
+        s += `<circle cx="${mx - 30}" cy="${BUS_Y - 14}" r="2.6" fill="${K.DQ[t.dq]}"><title>${esc(t.dq)}</title></circle>`;
+      s += `<text x="${mx}" y="${BUS_Y - 10}" text-anchor="middle" font-family="${MONO}" font-size="9" font-weight="700" fill="${SLD_BUSCOL}">${esc(t.label || "")}</text>` +
+        `<text x="${mx}" y="${BUS_Y + 13}" text-anchor="middle" font-family="${MONO}" font-size="7.5" font-weight="600" fill="${SOFT}">ELD11 ${t.open ? "N.O." : T.closed}</text>` +
+        (t.f7 ? `<text x="${mx}" y="${BUS_Y + 22}" text-anchor="middle" font-family="${MONO}" font-size="7.5" font-weight="600" fill="${t.dq === "CONFLICT" ? AMBER : SOFT}">F7 ${esc(t.f7)}</text>` : "") +
+        `</g>`;
+    });
+
+    /* ── the genset blocks, one per row ─────────────────────────────────── */
+    bars.forEach(b => {
+      const p = at.get(b.code), rows = gOf(b), slot = (p.x1 - p.x0) / Math.max(rows.length, 1);
+      rows.forEach((g, i) => {
+        /* the BLOCK is centred in its slot, not the glyph: the value column
+           is 118 wide and the vendor/fuel side only 50 */
+        const gx = p.x0 + slot * i + BLK_L + (slot - SG) / 2;
+        const live = g.live && g.live.p != null ? g.live : null;
+        const gap = g.comms === "GAP", stale = g.comms === "STALE";
+        const measured = !!live && !gap;
+        const running = measured && live.p >= RUN_KW;
+        const state = gap ? "GAP" : measured ? (running ? "RUNNING" : "STOPPED") : "NO_MEASURE";
+        /* the entity's own series colour, from the caller's palette (§2c R-6:
+           MG1 is the same blue in the block, the stack and the bars) */
+        const ser = g.color || K.STATE.RUNNING;
+        const pct = measured && g.kw ? live.p / g.kw : null;
+        const inkP = stale ? GREY : INK;          /* l6: a stale figure is grey */
+        s += `<g data-tag="${esc(g.tag)}" data-kind="GENSET_BLOCK" data-state="${state}"${click(g.tag)}>`;
+        /* the drop, drawn first so every symbol sits on top of it. It leaves
+           through the gauge's opening, which is why the gauge opens at all. */
+        s += `<line x1="${gx}" y1="${GEN_Y + R_ST}" x2="${gx}" y2="${BUS_Y}" stroke="${INK}" stroke-width="1.5"/>` +
+          `<path d="M${gx - 4.5},${BUS_Y - 9} L${gx + 4.5},${BUS_Y - 9} L${gx},${BUS_Y - 1} Z" fill="${INK}"/>`;
+        /* i3 — the disc is the breaker's MESSAGE background, not leftover
+           drawing: white = no information about messages, which is exactly
+           what the database holds today. The glyph stays IEC 60617-07. */
+        const BRK_BG = { OK: "#E7F3EC", WARN: "#FBF0DC", TRIP: "#FAE1E6" };
+        s += `<circle cx="${gx}" cy="${BRK_Y}" r="13" fill="${BRK_BG[g.brkMsg] || "#fff"}" stroke="${LINE}" stroke-width="0.9">` +
+          `<title>${esc(g.feeder || "")} · ${esc(g.tag)} · ${esc(T.lampA)}: ${esc(g.brkMsg || T.noInfo)}</title></circle>`;
+        s += K.draw("CIRCUIT_BREAKER", { x: gx, y: BRK_Y, scale: 0.8, state: "DESIGN", dq: g.dq,
+          title: `${g.feeder} · incomer ${g.tag} · ${b.code} · DESIGN` });
+        s += `<text x="${gx + 14}" y="${BRK_Y - 8}" font-family="${MONO}" font-size="9" font-weight="700" fill="${SOFT}">${esc(String(g.feeder || "").replace(/^480-JG-69\d-/, ""))}</text>`;
+        /* ── i2 · the load gauge. NO TRACK WITHOUT A MEASUREMENT: an empty
+           gauge reads as 0 %, and 0 % is a reading. A measured zero gets the
+           track and no arc; an unmeasured machine gets neither. ──────────── */
+        if (pct != null) {
+          s += `<g><title>${f0(pct * 100)} % — ${esc(T.kGauge)}</title>` +
+            arc(gx, GEN_Y, R_GA, 120, 420, "#E4E8EC", 2.8) +
+            (pct > 0.004
+              ? arc(gx, GEN_Y, R_GA, 120, 120 + 300 * Math.min(pct, 1),
+                  pct > 1 ? CRIMSON : (stale ? GREY : ser), 2.8)
+              : "") + `</g>`;
+        }
+        /* ── i1 · the state ring ─────────────────────────────────────────── */
+        s += `<circle cx="${gx}" cy="${GEN_Y}" r="${R_ST}" fill="none" ` +
+          `stroke="${running ? ser : measured ? K.STATE.STOPPED : K.STATE.NO_MEASURE}" ` +
+          `stroke-width="${running ? 2.4 : 1.3}"${measured ? "" : ` stroke-dasharray="2.5 2.5"`}>` +
+          `<title>${esc(running ? T.kRun : measured ? T.kStop : T.kNo)}</title></circle>`;
+        /* the machine itself — the badge is composed below, so the kernel is
+           asked only for the glyph, its tag and its DQ dot */
+        s += K.draw("GENERATOR", { x: gx, y: GEN_Y, scale: 1, state: "DESIGN", dq: g.dq,
+          label: g.tag,
+          title: `${g.tag} · ${g.fuel || ""} · feeder ${g.feeder} → busbar ${b.code}` +
+                 (g.vendor ? ` · vendor ${g.vendor} (${g.vendorDq || "?"})` : "") +
+                 (g.meter ? ` · meter ${g.meter}` : "") });
+        /* i5 — fuel chip beside the tag: gas and diesel are different machines
+           and the sheet stopped hiding it inside a vendor string */
+        if (g.fuel) {
+          const di = /dies|gasoil|diés/i.test(g.fuel);
+          s += `<rect x="${gx - 32}" y="${GEN_Y - 26.5}" width="15" height="9.5" rx="2" ` +
+            `fill="${di ? "#F1F2F4" : "#EAF1FB"}" stroke="${di ? LINE : "#BBD3F0"}" stroke-width="0.8"/>` +
+            `<text x="${gx - 24.5}" y="${GEN_Y - 19.5}" text-anchor="middle" font-family="${MONO}" ` +
+            `font-size="7" font-weight="700" fill="${di ? SOFT : "#0B5CAD"}"><title>${esc(g.fuel)}</title>${di ? "DI" : "GA"}</text>`;
+        }
+        if (g.vendor)
+          s += `<text x="${gx - 24}" y="${GEN_Y + 3}" text-anchor="end" font-family="${MONO}" font-size="8" font-weight="600" fill="${g.vendorDq === "VERIFIED" || g.vendorDq === "CONFIRMED" ? SOFT : AMBER}">${esc(g.vendor)}${g.vendorDq === "VERIFIED" || g.vendorDq === "CONFIRMED" ? "" : "?"}</text>`;
+        /* i4 — the two powermanager lamps (§1c.2), 7 px and named in the
+           legend: comms + sum-alert. WHITE is a state of its own, "no
+           information about messages", so a lamp without a bound signal draws
+           white, never green. Sum-alert has no source in the DB today and is
+           therefore always white (G-3). */
+        const LAMP = { OK: "#1F8A4C", STALE: AMBER, GAP: CRIMSON };
+        const lamp = (lx, fill, tt) =>
+          `<rect x="${lx}" y="${(GEN_Y - 26).toFixed(1)}" width="7" height="7" rx="1" ` +
+          `fill="${fill || "#fff"}" stroke="${fill || SOFT}" stroke-width="0.8"><title>${esc(tt)}</title></rect>`;
+        s += lamp(gx + 17, LAMP[g.comms], `${T.lampC}: ${g.comms || T.noInfo}`) +
+          lamp(gx + 26, null, `${T.lampA}: ${T.noInfo}`);
+        /* ── l1/l2/l5 · the value stack, with a type scale ────────────────── */
+        const vals = [];
+        if (measured) {
+          const head = [{ t: `P ${f0(live.p)} kW`, slot: "P", sep: "" }];
+          if (pct != null)
+            /* the % wears the series colour only when there IS load behind it:
+               a "0 %" shouted in orange is an emphasis on nothing */
+            head.push({ t: `${f0(pct * 100)} %`, slot: "load", size: 7, sep: "", dx: 7,
+              color: pct > 1 ? CRIMSON : !running || stale ? GREY : ser });
+          vals.push({ parts: head, size: 10.5, weight: 700, color: inkP, slot: "p-row" });
+          const sec = [];
+          if (live.pf != null) sec.push({ t: `PF ${f2(live.pf)}`, slot: "PF", sep: "" });
+          if (live.f != null) sec.push({ t: `f ${f2(live.f)} Hz`, slot: "f" });
+          if (o.showQ && live.q != null) sec.push({ t: `Q ${f0(live.q)} kvar`, slot: "Q" });
+          if (sec.length) vals.push({ parts: sec, size: 7, color: stale ? GREY : SOFT, slot: "sec" });
+        } else if (gap) {
+          /* l6 — in a Gap the figure DISAPPEARS and the block says since when */
+          vals.push({ t: g.live && g.live.since ? `${T.since} ${g.live.since}` : T.noData,
+            size: 7.5, color: AMBER, slot: "gap" });
+        } else {
+          vals.push({ t: T.noMeas, size: 7.5, slot: "nomeas" });
+          if (g.noMeter) vals.push({ t: T.noMeter, size: 7, slot: "nometer" });
+        }
+        /* l2 — a design rating is never typeset as a reading: no quantity
+           letter, no live dot, grey */
+        if (g.kw != null)
+          vals.push({ t: `${T.nom} ${f0(g.kw)} kW`, size: 7, color: DESIGN_INK, slot: "nom" });
+        /* the day strip, under its hairline rule: what this block PRODUCED.
+           l5 — the provenance is part of the figure, not a footnote: `cont.`
+           when it comes from the PAC totaliser, `int.` when it is the LOCF
+           integral of P_TOTAL. */
+        if (g.day) {
+          const dayParts = [];
+          if (g.day.h != null) dayParts.push({ t: `${T.run} ${f1(g.day.h)} h`, slot: "h", sep: "" });
+          if (g.day.starts != null) dayParts.push({ t: T.starts(g.day.starts), slot: "starts" });
+          if (dayParts.length)
+            vals.push({ parts: dayParts, size: 7, color: INK, rule: true, slot: "day" });
+          if (g.day.kwh != null)
+            vals.push({ t: `${f0(g.day.kwh)} kWh ${g.day.src === "cont" ? "cont." : "int."}`,
+              size: 7, color: INK, slot: "kwh", rule: !dayParts.length });
+        }
+        s += K.badge(vals, gx + VX, GEN_Y - 6, { live: measured, ruleW: 86 });
+        /* where the stack ended — the badge's own advance, mirrored */
+        let by = GEN_Y - 6, prev = null;
+        vals.forEach(m => {
+          const size = tzf(m.size == null ? 6.8 : m.size);
+          if (prev != null) by += Math.max(9, prev + 2.4) + (m.gap || 0);
+          if (m.rule) by += 4;
+          prev = size;
+        });
+        by += 8;
+        if (measured && g.spark && g.spark.length > 1) {
+          s += sparkline(gx + VX, by, g.spark, stale ? GREY : ser, g.kw);
+          by += SPARK_H + 10;
+        }
+        /* the age of the newest good sample, printed WITH the figure it dates
+           (SICAM "not up to date"): amber the moment it stops being current */
+        if (live && live.age)
+          s += `<text x="${gx + VX}" y="${by.toFixed(1)}" font-family="${MONO}" font-size="7" ` +
+            `font-weight="600" fill="${stale || gap ? AMBER : SOFT}" data-slot="age">${esc(T.ago(live.age))}</text>`;
+        s += `</g>`;
+      });
+    });
+    gens.forEach(g => { if (!at.has(g.busbar)) unplaced.push(g.tag); });
+
+    /* ── outgoing branches under the ladder ─────────────────────────────── */
+    bars.forEach(b => {
+      const p = at.get(b.code), rows = bOf(b), slot = (p.x1 - p.x0) / Math.max(rows.length, 1);
+      rows.forEach((br, i) => {
+        const bx2 = p.x0 + slot * (i + 0.5);
+        const kind = br.kind || "SWITCHBOARD";
+        s += `<g data-tag="${esc(br.tag)}" data-kind="${esc(kind)}" data-state="DESIGN"${click(br.tag)}>`;
+        s += `<line x1="${bx2}" y1="${BUS_Y}" x2="${bx2}" y2="${BR_Y - 15}" stroke="${INK}" stroke-width="1.4"/>` +
+          `<path d="M${bx2 - 4.5},${BR_Y - 23} L${bx2 + 4.5},${BR_Y - 23} L${bx2},${BR_Y - 15} Z" fill="${INK}"/>`;
+        if (br.posCode || br.cable)
+          s += `<text x="${bx2 + 5}" y="${BUS_Y + 32}" font-family="${MONO}" font-size="8" font-weight="600" fill="${SLD_BUSCOL}">${esc(br.posCode || "")}${br.cable ? " · " + esc(br.cable) : ""}</text>`;
+        if (K.has && K.has(kind)) {
+          /* i6 — `subWrap`: the sub folds instead of being cut. No label on an
+             approval sheet may end in an ellipsis. The rating is a DESIGN
+             figure, so it prints `nom. …` in grey like every other one (l2). */
+          s += K.draw(kind, { x: bx2, y: BR_Y, scale: 1, state: "DESIGN", dq: br.dq,
+            label: br.label || br.tag, sub: br.sub, subWrap: 18,
+            values: br.kw != null ? [{ t: `${T.nom} ${f0(br.kw)} kW`, slot: "nom", color: DESIGN_INK }] : [],
+            title: `${br.tag} · fed from busbar ${b.code}${br.sub ? " · " + br.sub : ""}` });
+        } else {
+          /* unmapped kind: a dashed hole with its name, never a blank (G-4) */
+          s += `<rect x="${bx2 - 15}" y="${BR_Y - 13}" width="30" height="26" fill="#fff" stroke="${SOFT}" stroke-dasharray="3 3" stroke-width="1.4"/>` +
+            `<text x="${bx2}" y="${BR_Y + 4}" text-anchor="middle" font-family="${MONO}" font-size="11" font-weight="700" fill="${SOFT}">?</text>` +
+            `<text x="${bx2}" y="${BR_Y + 26}" text-anchor="middle" font-family="${MONO}" font-size="8" font-weight="700" fill="${INK}">${esc(br.label || br.tag)}</text>`;
+        }
+        s += `</g>`;
+      });
+    });
+    brs.forEach(br => { if (!at.has(br.fromBus)) unplaced.push(br.tag); });
+
+    /* ── i7 · the legend ─────────────────────────────────────────────────────
+       Two bands. The symbols come from the registry (G-7), so a symbol added
+       to the pack appears here without anyone remembering to. The status key
+       under it is hand-built on purpose: ring states, gauge, DQ dots, lamps
+       and the provenance suffixes are marks a symbol registry cannot know,
+       and a sheet whose marks are unexplained is a sheet that gets read
+       wrong. The threshold of "running" is printed, not assumed. */
+    const LY = BASE + 4;
+    s += `<line x1="${PADX}" y1="${LY - 6}" x2="${W - PADX}" y2="${LY - 6}" stroke="${LINE}" stroke-width="0.8"/>` +
+      `<text x="${PADX}" y="${LY + 10}" font-family="${MONO}" font-size="9.5" font-weight="700" fill="${INK}">${esc(T.legend)}</text>` +
+      /* four columns, two rows: seven symbols in one row forced the names to
+         clip at 16 characters, and "Transformer, 2 …" is exactly the kind of
+         half-word this pass exists to remove (i6) */
+      K.legend(ELEC_FUNC_KINDS, { cols: 4, cellW: 152, cellH: 34, scale: 0.55,
+        nameMax: 22, x: PADX + 56, y: LY - 4 });
+
+    const ring = (cx, cy, col, w, dash) =>
+      `<circle cx="${cx}" cy="${cy}" r="5.4" fill="none" stroke="${col}" stroke-width="${w}"${dash ? ` stroke-dasharray="2.5 2.5"` : ""}/>`;
+    const serDemo = (gens.find(g => g.color) || {}).color || K.STATE.RUNNING;
+    const KEYS = [
+      [c => ring(c[0], c[1], serDemo, 2.2), `${T.kRun} — P ≥ ${f0(RUN_KW)} kW`],
+      [c => ring(c[0], c[1], K.STATE.STOPPED, 1.1), T.kStop],
+      [c => ring(c[0], c[1], LINE, 1.1, true), T.kNo],
+      [c => arc(c[0], c[1], 5.6, 120, 420, "#E4E8EC", 2) + arc(c[0], c[1], 5.6, 120, 300, serDemo, 2), T.kGauge],
+      [c => `<path d="M${c[0] - 7},${c[1] + 3} L${c[0] - 3},${c[1] - 2} L${c[0] + 1},${c[1] + 1} L${c[0] + 7},${c[1] - 4}" fill="none" stroke="${serDemo}" stroke-width="1.4"/>`, T.kSpark],
+      [c => `<circle cx="${c[0]}" cy="${c[1]}" r="2.2" fill="#1F8A4C"/>`, T.kLive],
+      [c => `<text x="${c[0] - 7}" y="${c[1] + 3}" font-family="${MONO}" font-size="8" font-weight="700" fill="${GREY}">0,0</text>`, T.kStale],
+      [c => `<circle cx="${c[0] - 6}" cy="${c[1]}" r="2.4" fill="${K.DQ.VERIFIED}"/><circle cx="${c[0]}" cy="${c[1]}" r="2.4" fill="${K.DQ.NEEDS_REVIEW}"/><circle cx="${c[0] + 6}" cy="${c[1]}" r="2.4" fill="${K.DQ.CONFLICT}"/>`, T.kDq],
+      [c => `<rect x="${c[0] - 8}" y="${c[1] - 3.5}" width="7" height="7" rx="1" fill="#1F8A4C" stroke="#1F8A4C" stroke-width="0.8"/><rect x="${c[0] + 1}" y="${c[1] - 3.5}" width="7" height="7" rx="1" fill="#fff" stroke="${SOFT}" stroke-width="0.8"/>`, `${T.kLamps} · ${T.kWhite}`],
+      [c => `<line x1="${c[0] - 8}" y1="${c[1]}" x2="${c[0] + 8}" y2="${c[1]}" stroke="${SLD_BUSCOL}" stroke-width="1.6" stroke-dasharray="5 4"/>`, T.kTie],
+      [null, T.kSrc],
+      [null, T.brkDesign]
+    ];
+    const COLW = Math.max(330, (W - 2 * PADX) / 2), KY = LY + 80;
+    KEYS.forEach((k, i) => {
+      const kx = PADX + (i % 2) * COLW, ky = KY + Math.floor(i / 2) * 15;
+      if (k[0]) s += k[0]([kx + 8, ky - 3]);
+      s += `<text x="${kx + 20}" y="${ky}" font-family="${MONO}" font-size="8" font-weight="600" fill="${SOFT}">${esc(k[1])}</text>`;
+    });
+
+    /* ── the footer states what the sheet could not: G-4 in one line ────── */
+    if (unplaced.length)
+      s += `<text x="${PADX}" y="${H - 8}" font-family="${MONO}" font-size="8.5" font-weight="700" fill="${CRIMSON}">` +
+        `${T.unplaced} (${unplaced.length}): ${esc(unplaced.join(", "))}</text>`;
+
+    K.locale = K_LOC; K.grouping = K_GRP;   /* the sheet's typography stays here */
+    return s + `</svg>`;
+  }
+
+  /* ══ ELECTRICAL OVERVIEW — the whole plant on ONE page ═══════════════════
+     elecOverview(o) → string SVG. The third electrical sheet, and the one
+     that answers a different question from the other two:
+
+       gaElectrical()    where does it sit          (plot plan)
+       elecFunctional()  how is generation organised and what is it doing
+       elecOverview()    IS THE PLANT ALL RIGHT     (one screen, no detail)
+
+     Mario's brief: "all the generators and status of main loads (compressor),
+     NOT each generator's data and historical, and a general data summary".
+     So this sheet deliberately DROPS what /unifilar shows per machine — PF,
+     f, run hours, energy, the 24 h micro-trend — and adds the half of the
+     plant that mimic never had: THE LOADS. It is the SICAM "System Overview"
+     tier above the Station Overview, and the powermanager "system dashboard"
+     tier above the device view (§1b.6, §1c.6).
+
+     FOUR BANDS, top to bottom, widest question first:
+       0 · SUMMARY   six numbers: generation now, sets running, frequency,
+                     spinning reserve, connected main load, motors running
+       1 · GENERATION one compact tile per genset, grouped by power centre —
+                     state ring + tag + P. Nothing else: that is the point.
+       2 · DISTRIBUTION the A·B·C·D ladder in miniature with its couplers,
+                     each bar carrying what hangs off it
+       3 · MAIN LOADS one row per service group (MR compressor, ammonia
+                     compressor, flash, BOG, amine pumps, cooler banks), with
+                     connected kW, which busbars feed it, a PILL PER UNIT and
+                     the running count.
+
+     THE STATUS PILL is the heart of band 3 and it has four states, because
+     the plant genuinely has four (G-3/G-4 — none of them is invented):
+       RUN    the machine says it runs: QRUN = 1, or its own hour meter
+              advanced inside the window. Direct evidence, no inference.
+       STOP   the same signal says it does not.
+       RAW    a packed status word exists (QdwState/QwState) and NOBODY HAS
+              THE KEY yet: it is drawn as its own mark, because "we have the
+              signal and cannot read it" is not the same fact as "no signal".
+              That distinction is the difference between a CR to the
+              integrator and a cable to pull.
+       NOSIG  nothing is historised for that unit.
+     The caller classifies; this function only draws, and prints the counts
+     so a reader can see how much of the row is actually known.
+
+     o = {
+       title, stamp, lang, locale, grouping,
+       summary: [{k, v, u, sub, tone:"ink"|"good"|"warn"|"bad"|"soft"}]
+       centers: [{code, label, gensets:[{tag,kw,fuel,color,live:{p},comms,noMeter,dq}]}]
+       busbars: [{code, lvmd, genKw, loadKw, nOut, nMain}]
+       ties:    [{a,b,label,open,f7,dq}]
+       loads:   [{group, service, n, kwUnit, kwTotal, bars:[{code,n}],
+                  units:[{tag,state}], nRun, nSignal, note, dq}]
+       notes:   [] printed in the footer, one line, never dropped (G-4)
+     } */
+  const OVERVIEW_TONE = { good: "#1F8A4C", warn: "#B26A00", bad: CRIMSON, soft: SOFT };
+
+  function elecOverview(o) {
+    o = o || {};
+    const K = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (!K || !K.draw) return "";
+    const T = EF_L[o.lang === "es" ? "es" : "en"];
+    const cen = o.centers || [], bars = o.busbars || [], ties = o.ties || [], loads = o.loads || [];
+    const click = t => o.onEquip ? ` style="cursor:pointer" onclick="${o.onEquip}('${esc(t)}')"` : "";
+    const LOC = o.locale || T.loc, GRP = o.grouping || "always";
+    const K_LOC = K.locale, K_GRP = K.grouping;
+    K.locale = LOC; K.grouping = GRP;
+    const f0 = v => v == null ? "—" : (+v).toLocaleString(LOC, { maximumFractionDigits: 0, useGrouping: GRP });
+
+    const AMBER_OV = "#B26A00";
+    const PADX = 26, W = 1280;
+    /* the bands are laid out with a cursor, not with constants: a sheet with
+       no busbars (the legend demo of the approval page) must not print an
+       empty DISTRIBUTION strip. An absent band takes no height. */
+    const SUM_Y = 58, SUM_H = 58, TILE_W = 116, TILE_H = 86, ROW_H = 34;
+    const nGenRows = cen.length ? Math.max(1, ...cen.map(c => Math.ceil((c.gensets || []).length / 3))) : 0;
+    let cur = (o.summary && o.summary.length ? SUM_Y + SUM_H : SUM_Y) + 12;
+    const GEN_Y = cur + 42;
+    if (cen.length) cur = GEN_Y + nGenRows * TILE_H + 6;
+    const BUS_Y = cur + 36;
+    if (bars.length) cur = BUS_Y + 58;
+    const LOAD_Y = cur + 42;
+    if (loads.length) cur = LOAD_Y + loads.length * ROW_H;
+    const H = cur + 96;
+
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">` +
+      `<rect width="${W}" height="${H}" fill="#fff"/>`;
+
+    /* section rule + title, used by every band */
+    const band = (y, label, right) =>
+      `<line x1="${PADX}" y1="${y}" x2="${W - PADX}" y2="${y}" stroke="${LINE}" stroke-width="0.8"/>` +
+      `<text x="${PADX}" y="${y + 14}" font-family="${MONO}" font-size="9.5" font-weight="700" ` +
+      `fill="${INK}" letter-spacing="1.2">${esc(label)}</text>` +
+      (right ? `<text x="${W - PADX}" y="${y + 14}" text-anchor="end" font-family="${MONO}" font-size="8" ` +
+        `font-weight="600" fill="${SOFT}">${esc(right)}</text>` : "");
+
+    /* ── header ──────────────────────────────────────────────────────────── */
+    s += `<text x="${PADX}" y="30" font-family="${MONO}" font-size="15" font-weight="700" fill="${INK}">${esc(o.title || "Plant electrical overview")}</text>`;
+    if (o.stamp)
+      s += `<text x="${W - PADX}" y="30" text-anchor="end" font-family="${MONO}" font-size="9" font-weight="600" fill="${SOFT}">${esc(o.stamp)}</text>`;
+
+    /* ── band 0 · the six numbers ────────────────────────────────────────── */
+    const sum = (o.summary || []).slice(0, 6);
+    const cw = (W - 2 * PADX) / Math.max(sum.length, 1);
+    sum.forEach((m, i) => {
+      const x = PADX + i * cw;
+      s += `<rect x="${x.toFixed(1)}" y="${SUM_Y}" width="${(cw - 8).toFixed(1)}" height="${SUM_H}" rx="4" fill="#F7F8F9" stroke="${LINE}" stroke-width="0.8"/>`;
+      s += `<text x="${(x + 12).toFixed(1)}" y="${SUM_Y + 16}" font-family="${MONO}" font-size="7.5" font-weight="700" fill="${SOFT}" letter-spacing="0.8">${esc(m.k)}</text>`;
+      s += `<text x="${(x + 12).toFixed(1)}" y="${SUM_Y + 38}" font-family="${MONO}" font-size="18" font-weight="700" fill="${OVERVIEW_TONE[m.tone] || INK}" data-slot="${esc(m.k)}">${esc(m.v)}` +
+        (m.u ? `<tspan font-size="9" font-weight="600" fill="${SOFT}" dx="4">${esc(m.u)}</tspan>` : "") + `</text>`;
+      if (m.sub)
+        s += `<text x="${(x + 12).toFixed(1)}" y="${SUM_Y + 51}" font-family="${MONO}" font-size="7" font-weight="600" fill="${SOFT}">${esc(m.sub)}</text>`;
+    });
+
+    /* ── band 1 · generation, one compact tile per set ───────────────────── */
+    const nSets = cen.reduce((a, c) => a + (c.gensets || []).length, 0);
+    if (cen.length) s += band(GEN_Y - 34, T.bandGen, `${nSets} ${T.sets}`);
+    let cx0 = PADX;
+    cen.forEach(c => {
+      const rows = c.gensets || [], colW = Math.min(3, Math.max(rows.length, 1)) * TILE_W;
+      s += `<text x="${cx0}" y="${GEN_Y - 6}" font-family="${MONO}" font-size="8.5" font-weight="700" fill="${CRIMSON}"${click(c.code)}>${esc(c.label || c.code)}</text>`;
+      rows.forEach((g, i) => {
+        const gx = cx0 + (i % 3) * TILE_W + TILE_W / 2, gy = GEN_Y + Math.floor(i / 3) * TILE_H + 34;
+        const live = g.live && g.live.p != null ? g.live : null;
+        const gap = g.comms === "GAP", stale = g.comms === "STALE";
+        const measured = !!live && !gap;
+        const running = measured && live.p >= (o.runKw == null ? 50 : o.runKw);
+        const ser = g.color || K.STATE.RUNNING;
+        s += `<g data-tag="${esc(g.tag)}" data-kind="GENSET_TILE" data-state="${gap ? "GAP" : measured ? (running ? "RUNNING" : "STOPPED") : "NO_MEASURE"}"${click(g.tag)}>`;
+        /* the same three marks as the block sheet, at tile scale — one
+           vocabulary across the whole view (§2d i1) */
+        s += `<circle cx="${gx}" cy="${gy}" r="13.5" fill="none" ` +
+          `stroke="${running ? ser : measured ? K.STATE.STOPPED : K.STATE.NO_MEASURE}" ` +
+          `stroke-width="${running ? 2.2 : 1.2}"${measured ? "" : ` stroke-dasharray="2.5 2.5"`}/>`;
+        s += K.draw("GENERATOR", { x: gx, y: gy, scale: 0.82, state: "DESIGN", dq: g.dq, label: g.tag,
+          title: `${g.tag} · ${g.fuel || ""} · ${f0(g.kw)} kW rated${g.meter ? " · meter " + g.meter : ""}` });
+        s += `<text x="${gx}" y="${gy + 26}" text-anchor="middle" font-family="${MONO}" font-size="10" font-weight="700" ` +
+          `fill="${stale ? "#8A9099" : measured ? INK : SOFT}" data-slot="P">` +
+          (measured ? `${f0(live.p)} kW` : gap ? T.noData : T.noMeas) + `</text>`;
+        s += `<text x="${gx}" y="${gy + 37}" text-anchor="middle" font-family="${MONO}" font-size="7" font-weight="600" fill="${"#828994"}">${T.nom} ${f0(g.kw)} kW</text>`;
+        s += `</g>`;
+      });
+      cx0 += colW + 46;
+    });
+
+    /* ── band 2 · the ladder, in miniature ───────────────────────────────── */
+    if (bars.length) s += band(BUS_Y - 26, T.bandDist, T.brkDesign);
+    const bw = (W - 2 * PADX - (bars.length - 1) * 78) / Math.max(bars.length, 1);
+    const bx = {};
+    bars.forEach((b, i) => {
+      const x = PADX + i * (bw + 78);
+      bx[b.code] = { x0: x, x1: x + bw };
+      s += `<g data-tag="${esc(b.code)}" data-kind="BUSBAR" data-state="DESIGN"${click(b.code)}>`;
+      s += `<line x1="${x.toFixed(1)}" y1="${BUS_Y + 14}" x2="${(x + bw).toFixed(1)}" y2="${BUS_Y + 14}" stroke="${SLD_BUSCOL}" stroke-width="4.5"/>`;
+      s += `<text x="${x.toFixed(1)}" y="${BUS_Y + 7}" font-family="${MONO}" font-size="10.5" font-weight="700" fill="${SLD_BUSCOL}">${esc(b.code)}${b.lvmd ? " · " + esc(b.lvmd) : ""}</text>`;
+      s += `<text x="${x.toFixed(1)}" y="${BUS_Y + 28}" font-family="${MONO}" font-size="8" font-weight="600" fill="#828994">` +
+        `${T.nom} ${T.gen} ${f0(b.genKw)} · ${T.load} ${f0(b.loadKw)} kW</text>`;
+      s += `<text x="${x.toFixed(1)}" y="${BUS_Y + 39}" font-family="${MONO}" font-size="8" font-weight="600" fill="${SOFT}">` +
+        `${b.nOut != null ? b.nOut + " " + T.out : ""}${b.nMain ? " · " + b.nMain + " " + T.mainFeeders : ""}</text>`;
+      s += `</g>`;
+    });
+    ties.forEach(t => {
+      const a = bx[t.a], b = bx[t.b]; if (!a || !b) return;
+      const l = a.x0 < b.x0 ? a : b, r = a.x0 < b.x0 ? b : a, mx = (l.x1 + r.x0) / 2;
+      s += `<line x1="${l.x1}" y1="${BUS_Y + 14}" x2="${r.x0}" y2="${BUS_Y + 14}" stroke="${SLD_BUSCOL}" stroke-width="1.4"${t.open ? ` stroke-dasharray="5 4"` : ""}/>`;
+      /* the coupler label goes ABOVE the ladder: under it, it collided with
+         the next bar's design figures, and a tie is not a busbar datum */
+      if (t.dq && K.DQ && K.DQ[t.dq])
+        s += `<circle cx="${(mx - 26).toFixed(1)}" cy="${BUS_Y - 1}" r="2.4" fill="${K.DQ[t.dq]}"><title>${esc(t.dq)}</title></circle>`;
+      s += `<text x="${mx}" y="${BUS_Y + 2}" text-anchor="middle" font-family="${MONO}" font-size="7.5" font-weight="700" fill="${SOFT}">${esc((t.label || "").slice(0, 12))}</text>`;
+    });
+
+    /* ── band 3 · the loads, one row per service group ───────────────────── */
+    const kwAll = loads.reduce((a, l) => a + (l.kwTotal || 0), 0);
+    const runAll = loads.reduce((a, l) => a + (l.nRun || 0), 0);
+    const unitsAll = loads.reduce((a, l) => a + (l.n || 0), 0);
+    if (loads.length) s += band(LOAD_Y - 26, T.bandLoads,
+      `${f0(kwAll)} kW ${T.connected} · ${runAll} ${T.of} ${unitsAll} ${T.running}`);
+    const PILL = { RUN: ["#1F8A4C", "#1F8A4C"], STOP: ["#fff", "#8A9099"], RAW: ["#FBF0DC", "#B26A00"], NOSIG: ["#fff", LINE] };
+    const CX = { name: PADX, unit: PADX + 300, tot: PADX + 396, bars: PADX + 470, pill: PADX + 610, cnt: W - PADX };
+    loads.forEach((l, i) => {
+      const y = LOAD_Y + i * ROW_H;
+      if (i) s += `<line x1="${PADX}" y1="${y - 8}" x2="${W - PADX}" y2="${y - 8}" stroke="#EEF0F2" stroke-width="0.8"/>`;
+      s += `<g data-tag="${esc(l.group)}" data-kind="LOAD_GROUP" data-state="${l.nRun ? "RUNNING" : "STOPPED"}"${click(l.group)}>`;
+      s += `<text x="${CX.name}" y="${y + 6}" font-family="${MONO}" font-size="9.5" font-weight="700" fill="${INK}">${esc(l.group)}</text>`;
+      s += `<text x="${CX.name}" y="${y + 17}" font-family="${MONO}" font-size="7.5" font-weight="600" fill="${SOFT}">${esc(l.service || "")}</text>`;
+      if (l.dq && K.DQ && K.DQ[l.dq])
+        s += `<circle cx="${CX.name - 8}" cy="${y + 3}" r="2.4" fill="${K.DQ[l.dq]}"><title>${esc(l.dq)}</title></circle>`;
+      if (l.kwUnit != null)
+        s += `<text x="${CX.unit}" y="${y + 6}" font-family="${MONO}" font-size="8.5" font-weight="600" fill="${SOFT}">${l.n} × ${f0(l.kwUnit)} kW</text>`;
+      if (l.kwTotal != null)
+        s += `<text x="${CX.tot}" y="${y + 6}" font-family="${MONO}" font-size="10" font-weight="700" fill="#828994" data-slot="kw">${f0(l.kwTotal)} kW</text>`;
+      s += `<text x="${CX.bars}" y="${y + 6}" font-family="${MONO}" font-size="8" font-weight="600" fill="${SLD_BUSCOL}">` +
+        (l.bars || []).map(b => `${b.code} ${b.n}`).join(" · ") + `</text>`;
+      /* one pill per unit — the row is a census, not a summary: a group of 12
+         shows twelve marks and you can count them */
+      (l.units || []).forEach((u, j) => {
+        const px = CX.pill + j * 11, c = PILL[u.state] || PILL.NOSIG;
+        s += `<rect x="${px}" y="${y - 3}" width="8.5" height="8.5" rx="1.5" fill="${c[0]}" stroke="${c[1]}" stroke-width="1"` +
+          (u.state === "NOSIG" ? ` stroke-dasharray="2 1.6"` : "") +
+          `><title>${esc(u.tag)} — ${esc(T["st" + u.state] || u.state)}</title></rect>`;
+      });
+      s += `<text x="${CX.cnt}" y="${y + 6}" text-anchor="end" font-family="${MONO}" font-size="9" font-weight="700" ` +
+        `fill="${l.nRun ? "#1F8A4C" : SOFT}" data-slot="run">${l.nRun} ${T.of} ${l.n} ${T.running}</text>`;
+      s += `<text x="${CX.cnt}" y="${y + 17}" text-anchor="end" font-family="${MONO}" font-size="7.5" font-weight="600" fill="${SOFT}">` +
+        `${T.signals} ${l.nSignal}/${l.n}${l.note ? " · " + esc(l.note) : ""}</text>`;
+      s += `</g>`;
+    });
+
+    /* ── legend + footer ─────────────────────────────────────────────────── */
+    const LY = cur + 14;
+    s += `<line x1="${PADX}" y1="${LY}" x2="${W - PADX}" y2="${LY}" stroke="${LINE}" stroke-width="0.8"/>`;
+    /* two columns, not four: these keys are sentences, and a key that has to
+       be truncated to fit its column explains nothing */
+    const keys = [
+      [PILL.RUN, T.stRUN], [PILL.RAW, T.stRAW], [PILL.STOP, T.stSTOP], [PILL.NOSIG, T.stNOSIG]
+    ];
+    keys.forEach((k, i) => {
+      const kx = PADX + (i % 2) * 620, ky = LY + 14 + Math.floor(i / 2) * 13;
+      s += `<rect x="${kx}" y="${ky - 7}" width="8.5" height="8.5" rx="1.5" fill="${k[0][0]}" stroke="${k[0][1]}" stroke-width="1"` +
+        (k[1] === T.stNOSIG ? ` stroke-dasharray="2 1.6"` : "") + `/>` +
+        `<text x="${kx + 14}" y="${ky}" font-family="${MONO}" font-size="8" font-weight="600" fill="${SOFT}">${esc(k[1])}</text>`;
+    });
+    s += `<text x="${PADX}" y="${LY + 53}" font-family="${MONO}" font-size="8" font-weight="600" fill="${SOFT}">${esc(T.ovRing)}</text>`;
+    (o.notes || []).slice(0, 3).forEach((n, i) => {
+      s += `<text x="${PADX}" y="${LY + 68 + i * 11}" font-family="${MONO}" font-size="7.5" font-weight="600" fill="${AMBER_OV}">${esc(n)}</text>`;
+    });
+
+    K.locale = K_LOC; K.grouping = K_GRP;
+    return s + `</svg>`;
+  }
+
+  /* ── ELECTRICAL SINGLE LINE — the plant the way ELD11 draws it ──────────
+     elecSld(o) → string SVG. The fourth electrical sheet. The other three:
+
+       gaElectrical()    where does it sit            (plot plan)
+       elecFunctional()  how is generation organised  (block sheet, /unifilar)
+       elecOverview()    is the plant all right       (census, no drawing)
+       elecSld()         WHAT IS CONNECTED TO WHAT    (the single line itself)
+
+     Mario, 2026-08-12: «para el overview eléctrico, la distribución, single
+     line diagram, como vimos en Siemens SICAM PAS; usar como base de
+     distribución la arquitectura documentada en ELD11-ING-PR01 rev.2; mejorar
+     la parte visual de la generación con un SLD moderno, grande, claro, con
+     información útil y curvas históricas.»
+
+     ══ WHERE EVERY LINE ON THIS SHEET COMES FROM ═══════════════════════════
+     TWO documents, and the sheet says which is which rather than blending
+     them, because they do not agree everywhere (see the CONFLICT mark below):
+
+       ELD11-ING-PR01 rev.2 · ELECTRICAL SYSTEM ARCHITECTURE — the FRAME.
+         Two switchgear enclosures (480-S-436 = busbars A+B, 480-S-437 = C+D),
+         the three tie-breakers T1/T2/T3 in exactly those three places, and —
+         the part no other document in this model carries — everything BELOW
+         the 690 V bar: the technical room 480-S-435 with its two 690 V panels,
+         the pair of 690/400 V 3P+N transformers 480-ET-001/002, the 400 V
+         panel 480-S-438, and the "% of power cable laydown" figures.
+       ELD03-ING-PR01…PR04 · switchboard single lines — the CONTENT. Every
+         incomer, feeder, cable tag, network analyser and rating drawn here is
+         a row of v_sld_nodes / v_sld_edges, digitised from those four sheets.
+         The 400 V world is NOT in them: the model stops at 690 V, so the 400 V
+         panel prints DASHED and labelled as ELD11-only. That dashed plate is
+         the honest shape of "documented, not modelled" (G-4).
+
+     ══ SICAM PAS / SCC — WHAT IS ADOPTED (plan §1b) ════════════════════════
+       Station Overview as the central screen: horizontal bars, bays above and
+       outgoing ways below, measured values in boxes BESIDE the equipment that
+       produces them. That is why live P sits in the generator bay instead of a
+       table, and why the network analyser (FMGn) is drawn on the drop: that
+       glyph is where the number physically comes from, and a reader who wants
+       to know "says who?" can point at it.
+       Topological colouring is NOT simulated: the database holds no live
+       open/closed for any breaker, so every breaker draws DESIGN and the band
+       header says so (G-3). The slot stays ready for scada_current.
+       Current-flow arrows are ELD11's own legend entry, kept.
+
+     ══ THE CONFLICT THIS SHEET MADE VISIBLE ════════════════════════════════
+     ELD11 rev.2 and ELD03 + the INNIO wiring diagram DISAGREE about which gas
+     engine sits on which busbar. Both say 3 · 2 · 2 · 2 machines per bar, both
+     put the same diesel on B and the same one on C — and yet six of the nine
+     boxes name a different machine:
+
+        set     ELD03 + WD (drawn)   ELD11 rev.2      agree
+        GE-001  A                    D                no
+        GE-002  A                    B                no
+        GE-003  A                    D                no
+        GE-004  B                    A                no
+        GE-005  C                    C                yes
+        GE-006  D                    A                no
+        GE-007  D                    A                no
+        GE-008  B                    B                yes
+        GE-009  C                    C                yes
+
+     The sheet DRAWS the ELD03 + wiring-diagram attribution — that is what five
+     independent sources inside the WD carry (CR-00307) and what the live
+     metering, the protection settings and the rest of the plant model already
+     use — and it puts a CONFLICT dot on each of the six bays ELD11 places
+     elsewhere, naming the other busbar in the tooltip. It does not referee the
+     dispute; it makes it impossible to miss (CR-00392).
+
+     o = {
+       title, stamp, lang, locale, grouping, onEquip, runKw,
+       basis:   ["ELD11-ING-PR01 rev.2 …", …]   document chips under the title
+       summary: [{k,v,u,sub,tone}]              six numbers, as elecOverview()
+       boards:  [{tag, alt, label, bars:["A","B"]}]      the ELD11 enclosures
+       busbars: [{code, lvmd, v, genKw, loadKw, measKw, nMeas, nGen, nOut,
+                  gensets:[…], feeders:[…]}]
+       gensets: [{tag, kw, fuel, feeder, analyzer, meter, color, dq, eld11Bar,
+                  comms:"OK"|"STALE"|"GAP"|null, noMeter,
+                  live:{p, pf, f, v, age}}]
+                 live absent + noMeter → "meter not located". The absence of a
+                 measurement is printed; it is never drawn as a zero.
+       feeders: [{tag, label, sub, extra, kind, kw, unit, n, cable, dq, dashed,
+                  cablePct, down:[{…same…}]}]
+                 `kind` is a pack symbol drawn IN THE LINE between breaker and
+                 destination plate — an unmapped kind draws the pack's dashed
+                 "?" (G-4). `down` hangs one more tier under the plate: that is
+                 the 400 V panel, and it is the only place this sheet leaves
+                 690 V. Where a way carries N identical feeders it is drawn as
+                 ONE way with its count and total; the tags are in the tooltip
+                 and the count is printed, so nobody has to trust the grouping.
+       ties:    [{a, b, label, open, f7, dq, cable}]
+                 `open` is the ELD11 claim (the tie is drawn there as a
+                 diagonal = open link); `f7` is the operating concept.
+                 Disagreement prints BOTH with the CONFLICT dot — CR-00348.
+       trend:   {sub, unit, series:[{tag,label,color,kw:[…]}], total:[…],
+                 ticks:[{i,label}], note}
+                 a null anywhere is a GAP: the pen lifts AND the band behind it
+                 shades. An hour with no data must not look like an hour at
+                 zero (VIZ R-2).
+       notes:   [] printed in the footer, one line each, never dropped (G-4)
+     }
+
+     LANGUAGE: G-9. English by default; the `es` table exists so that no string
+     lives outside EF_L, and nothing calls it.                                */
+  const SLD_SHEET_KINDS = ["GENERATOR", "CIRCUIT_BREAKER", "BUSBAR", "BUS_COUPLER",
+                           "NETWORK_ANALYZER", "SWITCHBOARD", "MCC_PANEL",
+                           "TRANSFORMER", "INVERTER", "COMPRESSOR", "PUMP", "SPARE"];
+
+  function elecSld(o) {
+    o = o || {};
+    const K = (typeof window !== "undefined" ? window : globalThis).TamSym;
+    if (!K || !K.draw) return "";
+    const T = EF_L[o.lang === "es" ? "es" : "en"];
+    const bars = o.busbars || [], boards = o.boards || [], ties = o.ties || [];
+    const tr = o.trend && o.trend.series && o.trend.series.length ? o.trend : null;
+    /* the accumulated band: the hour meter and the energy register per machine,
+       plus the load duration curve beside them. Either half can be absent. */
+    const tot = o.totals && o.totals.rows && o.totals.rows.length ? o.totals : null;
+    const ldc = o.ldc && o.ldc.kw && o.ldc.kw.length > 1 ? o.ldc : null;
+    /* every band is independent: a sheet with no busbars still draws its trend
+       (that is how the approval page inspects the gap on its own), and a sheet
+       with no trend takes no height for one */
+    if (!bars.length && !tr && !tot && !ldc) return "";
+    const click = t => o.onEquip ? ` style="cursor:pointer" onclick="${o.onEquip}('${esc(t)}')"` : "";
+    const LOC = o.locale || T.loc, GRP = o.grouping || "always";
+    const K_LOC = K.locale, K_GRP = K.grouping;
+    K.locale = LOC; K.grouping = GRP;
+    const f0 = v => v == null ? "—" : (+v).toLocaleString(LOC, { maximumFractionDigits: 0, useGrouping: GRP });
+    const fd = (v, d) => v == null ? "—" : (+v).toLocaleString(LOC, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: GRP });
+    const runKw = o.runKw == null ? 50 : o.runKw;
+
+    const AMBER = "#B26A00", GREY = "#8A9099", GREEN = "#1F8A4C";
+    const CABLE = "#2E9E4F";                 /* ELD11's green: cable laydown */
+    const PADX = 30, W = 1780, IW = W - 2 * PADX, GAP = 66;
+
+    /* A busbar is as long as what it carries: its column budget is the larger
+       of its incomers and its outgoing ways. Bar D carries the whole LV plant
+       and comes out seven columns wide; bar C carries three compressors and
+       comes out two. That is the drawing telling the truth about the load
+       split before a single number has been read. */
+    const cols = bars.map(b => Math.max(1, (b.gensets || []).length, (b.feeders || []).length));
+    const nCols = cols.reduce((a, c) => a + c, 0) || 1;
+    const colW = (IW - Math.max(0, bars.length - 1) * GAP) / nCols;
+    const at = {};
+    (function () {
+      let x = PADX;
+      bars.forEach((b, i) => {
+        at[b.code] = { x0: x, x1: x + cols[i] * colW, w: cols[i] * colW };
+        x += cols[i] * colW + GAP;
+      });
+    })();
+
+    /* ── vertical cursor: an absent band takes no height ─────────────────── */
+    const HEAD_H = 58;
+    const hasSum = !!(o.summary && o.summary.length);
+    const SUM_Y = HEAD_H + 4, SUM_H = 62;
+    let cur = (hasSum ? SUM_Y + SUM_H : HEAD_H) + 18;
+    const SLD_Y = cur;                                    /* band rule */
+    const BOARD_Y = SLD_Y + 26;
+    const BAY_Y = BOARD_Y + 22, BAY_H = 136, DROP_H = 78;
+    const BUS_Y = BAY_Y + BAY_H + DROP_H;
+    const OUT_CB = BUS_Y + 70, OUT_GL = BUS_Y + 96, OUT_Y = BUS_Y + 112, OUT_H = 66;
+    const BOARD_B = BUS_Y + 52;
+    const hasDown = bars.some(b => (b.feeders || []).some(f => f.down && f.down.length));
+    const OUT2_Y = OUT_Y + OUT_H + 30;
+    if (bars.length) cur = (hasDown ? OUT2_Y + OUT_H : OUT_Y + OUT_H) + 32;
+    const TRD_Y = cur + 26, PY0 = TRD_Y + 34, PH = 140, PY1 = PY0 + PH;
+    if (tr) cur = PY1 + 60;
+    const TOT_Y = cur + 26, TOT_ROW = 21;
+    const totH = tot ? 30 + tot.rows.length * TOT_ROW + 24 +
+      (tot.coverage || []).length * 21 + (tot.note ? 26 : 6) : 0;
+    const ldcH = ldc ? 200 : 0;
+    if (tot || ldc) cur = TOT_Y + Math.max(totH, ldcH) + 10;
+    const LEG_Y = cur + 8;
+    const H = LEG_Y + 104 + (o.notes || []).length * 12;
+
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" font-family="${SANS}">` +
+      `<rect width="${W}" height="${H}" fill="#fff"/>`;
+
+    /* ── shared marks ────────────────────────────────────────────────────── */
+    /* a halo, not a background plate: the bar name has to stay readable where
+       a drop crosses it without punching a hole in the conductor */
+    const halo = (x, y, t, size, weight, fill) =>
+      `<text x="${(+x).toFixed(1)}" y="${(+y).toFixed(1)}" font-family="${MONO}" font-size="${size}" ` +
+      `font-weight="${weight || 600}" fill="${fill}" stroke="#fff" stroke-width="3" paint-order="stroke" ` +
+      `stroke-linejoin="round">${esc(t)}</text>`;
+    const pol = (cx, cy, r, deg) => { const a = (deg - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+    const arc = (cx, cy, r, d0, d1, col, w) => {
+      const A = pol(cx, cy, r, d0), B = pol(cx, cy, r, d1);
+      return `<path d="M${A[0].toFixed(1)},${A[1].toFixed(1)} A${r},${r} 0 ${Math.abs(d1 - d0) > 180 ? 1 : 0} 1 ` +
+        `${B[0].toFixed(1)},${B[1].toFixed(1)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
+    };
+    /* the board prefix comes off a feeder tag: the column is FG1, not
+       480-JG-691-FG1 — the board is already written on the box around it */
+    const short = t => String(t || "").replace(/^\d+-[A-Z]{1,3}-\d+-/, "");
+    /* ELD11's green "% of power cable laydown" arrow, kept as its own mark
+       because it is a CABLING quantity and must never read as a load */
+    const cableChip = (x, y, label) =>
+      `<path d="M${x},${y} L${x},${y + 10} M${x - 3.2},${y + 6.6} L${x},${y + 10.6} L${x + 3.2},${y + 6.6}" ` +
+      `fill="none" stroke="${CABLE}" stroke-width="1.3" stroke-linecap="round"/>` +
+      `<text x="${x + 6}" y="${y + 10}" font-family="${MONO}" font-size="6.8" font-weight="700" fill="${CABLE}">${esc(label)}</text>`;
+
+    const band = (y, label, right) =>
+      `<line x1="${PADX}" y1="${y}" x2="${W - PADX}" y2="${y}" stroke="${LINE}" stroke-width="0.8"/>` +
+      `<text x="${PADX}" y="${y + 15}" font-family="${MONO}" font-size="10" font-weight="700" ` +
+      `fill="${INK}" letter-spacing="1.3">${esc(label)}</text>` +
+      (right ? `<text x="${W - PADX}" y="${y + 15}" text-anchor="end" font-family="${MONO}" font-size="8" ` +
+        `font-weight="600" fill="${SOFT}">${esc(right)}</text>` : "");
+
+    /* ── header: the title, and the documents the drawing stands on ──────── */
+    s += `<text x="${PADX}" y="30" font-family="${MONO}" font-size="17" font-weight="700" fill="${INK}">${esc(o.title || "Plant single line")}</text>`;
+    if (o.stamp)
+      s += `<text x="${W - PADX}" y="30" text-anchor="end" font-family="${MONO}" font-size="9" font-weight="600" fill="${SOFT}">${esc(o.stamp)}</text>`;
+    /* the basis goes ON the drawing, not in a caption: a single line whose
+       source document is not printed on it is a picture, not a document */
+    let bcx = PADX;
+    (o.basis || []).forEach(b => {
+      const bw = 11 + String(b).length * 4.9;
+      s += `<rect x="${bcx.toFixed(1)}" y="40" width="${bw.toFixed(1)}" height="15" rx="3" fill="#F1F3F5" stroke="${LINE}" stroke-width="0.7"/>` +
+        `<text x="${(bcx + 5.5).toFixed(1)}" y="50.5" font-family="${MONO}" font-size="7.4" font-weight="700" fill="${SOFT}">${esc(b)}</text>`;
+      bcx += bw + 7;
+    });
+
+    /* ── the six numbers ─────────────────────────────────────────────────── */
+    if (hasSum) {
+      const sum = o.summary.slice(0, 6), cw = IW / sum.length;
+      sum.forEach((m, i) => {
+        const x = PADX + i * cw;
+        s += `<rect x="${x.toFixed(1)}" y="${SUM_Y}" width="${(cw - 9).toFixed(1)}" height="${SUM_H}" rx="4" fill="#F7F8F9" stroke="${LINE}" stroke-width="0.8"/>` +
+          `<text x="${(x + 13).toFixed(1)}" y="${SUM_Y + 17}" font-family="${MONO}" font-size="7.6" font-weight="700" fill="${SOFT}" letter-spacing="0.8">${esc(m.k)}</text>` +
+          `<text x="${(x + 13).toFixed(1)}" y="${SUM_Y + 41}" font-family="${MONO}" font-size="20" font-weight="700" fill="${OVERVIEW_TONE[m.tone] || INK}" data-slot="${esc(m.k)}">${esc(m.v)}` +
+          (m.u ? `<tspan font-size="9.5" font-weight="600" fill="${SOFT}" dx="4">${esc(m.u)}</tspan>` : "") + `</text>` +
+          (m.sub ? `<text x="${(x + 13).toFixed(1)}" y="${SUM_Y + 55}" font-family="${MONO}" font-size="7" font-weight="600" fill="${SOFT}">${esc(m.sub)}</text>` : "");
+      });
+    }
+
+    if (bars.length) s += band(SLD_Y, T.bandSld, T.sldBasis);
+
+    /* ── the two ELD11 enclosures ────────────────────────────────────────── */
+    boards.forEach(bd => {
+      const ends = (bd.bars || []).map(c => at[c]).filter(Boolean);
+      if (!ends.length) return;
+      const x0 = Math.min.apply(null, ends.map(e => e.x0)) - 18;
+      const x1 = Math.max.apply(null, ends.map(e => e.x1)) + 18;
+      s += `<g data-tag="${esc(bd.alt || bd.tag)}" data-kind="SWITCHBOARD" data-state="DESIGN"${click(bd.alt || bd.tag)}>` +
+        `<rect x="${x0.toFixed(1)}" y="${BOARD_Y}" width="${(x1 - x0).toFixed(1)}" height="${BOARD_B - BOARD_Y}" rx="6" ` +
+        `fill="#FAFBFC" stroke="${LINE}" stroke-width="1.1"/>` +
+        `<text x="${(x0 + 12).toFixed(1)}" y="${BOARD_Y + 14}" font-family="${MONO}" font-size="10.5" font-weight="700" fill="${CRIMSON}">${esc(bd.tag)}` +
+        (bd.alt ? `<tspan fill="${SOFT}" font-size="9"> · ${esc(bd.alt)}</tspan>` : "") +
+        (bd.label ? `<tspan fill="${SOFT}" font-size="8.5" font-weight="600"> — ${esc(bd.label)}</tspan>` : "") +
+        `</text></g>`;
+    });
+
+    /* ── GENERATION: one bay card per set, on its own busbar ──────────────
+       The card is powermanager's device widget and SICAM's bay detail in one:
+       name, the three marks (state ring, load gauge, comms lamp), the measured
+       values, and the drop that ties it to the bar through its incomer and its
+       network analyser. Enough to answer "who is carrying the plant" without
+       reading a single number, and enough to answer "says who" if you do. */
+    bars.forEach(b => {
+      const p = at[b.code], gs = b.gensets || [];
+      /* the bays CLUSTER and the group centres on its bar: bar D is seven
+         columns wide because of what hangs UNDER it, and spreading its two
+         machines across all seven would make the bar look half empty when it
+         is the busiest one on the sheet */
+      const pitch = Math.min(p.w / Math.max(gs.length, 1), 168);
+      const gx0 = p.x0 + (p.w - pitch * gs.length) / 2;
+      gs.forEach((g, i) => {
+        const cx = gx0 + pitch * (i + 0.5);
+        const cw = Math.min(pitch - 14, 148), cx0 = cx - cw / 2;
+        const live = g.live && g.live.p != null ? g.live : null;
+        const gap = g.comms === "GAP", stale = g.comms === "STALE";
+        const measured = !!live && !gap;
+        const running = measured && live.p >= runKw;
+        const ser = g.color || K.STATE.RUNNING;
+        const conflict = !!(g.eld11Bar && g.eld11Bar !== b.code);
+
+        s += `<g data-tag="${esc(g.tag)}" data-kind="GENSET_BAY" ` +
+          `data-state="${gap ? "GAP" : measured ? (running ? "RUNNING" : "STOPPED") : "NO_MEASURE"}"${click(g.tag)}>`;
+        /* a running machine wears its series colour on the card border: the
+           one mark that carries across a control room */
+        s += `<rect x="${cx0.toFixed(1)}" y="${BAY_Y}" width="${cw.toFixed(1)}" height="${BAY_H}" rx="6" ` +
+          `fill="#fff" stroke="${running ? ser : LINE}" stroke-width="${running ? 1.7 : 0.9}"/>`;
+        s += `<text x="${(cx0 + 11).toFixed(1)}" y="${BAY_Y + 17}" font-family="${MONO}" font-size="11" font-weight="700" fill="${INK}">${esc(g.tag)}</text>`;
+        /* fuel: gas and diesel are different machines, and the sheet stopped
+           making anyone read a vendor string to find out which (§2d i5) */
+        const dsl = g.fuel === "diesel";
+        s += `<rect x="${(cx0 + cw - 28).toFixed(1)}" y="${BAY_Y + 7}" width="19" height="12" rx="2.5" ` +
+          `fill="${dsl ? "#F4EDFB" : "#E9F1FB"}" stroke="${LINE}" stroke-width="0.6"/>` +
+          `<text x="${(cx0 + cw - 18.5).toFixed(1)}" y="${BAY_Y + 16}" text-anchor="middle" font-family="${MONO}" ` +
+          `font-size="7" font-weight="700" fill="${SOFT}">${dsl ? "DI" : "GA"}</text>`;
+        /* comms lamp — white is "no information", never "no alarms" (§1c.3) */
+        const lamp = g.comms === "OK" ? GREEN : g.comms === "STALE" ? AMBER : g.comms === "GAP" ? CRIMSON : "#fff";
+        s += `<rect x="${(cx0 + cw - 40).toFixed(1)}" y="${BAY_Y + 9}" width="8" height="8" rx="1.5" fill="${lamp}" ` +
+          `stroke="${LINE}" stroke-width="0.8"><title>${esc(T.lampC)}: ${esc(g.comms || T.noInfo)}</title></rect>`;
+        /* the ELD11 disagreement, marked on the bay it disagrees about */
+        if (conflict)
+          s += `<circle cx="${(cx0 + 6).toFixed(1)}" cy="${BAY_Y + 6}" r="3.6" fill="${CRIMSON}">` +
+            `<title>${esc(T.eld11Says(g.tag, g.eld11Bar, b.code))}</title></circle>`;
+        else if (g.dq && K.DQ && K.DQ[g.dq])
+          s += `<circle cx="${(cx0 + 6).toFixed(1)}" cy="${BAY_Y + 6}" r="2.8" fill="${K.DQ[g.dq]}"><title>${esc(g.dq)}</title></circle>`;
+
+        /* load gauge (i2): 300°, opening at the bottom so the conductor leaves
+           through it. NO TRACK WHEN THERE IS NO MEASUREMENT — an empty gauge
+           reads as 0 %. A measured zero gets the track and no arc; that is the
+           difference the whole sheet exists to keep. */
+        const gy = BAY_Y + 55;
+        if (measured) {
+          s += arc(cx, gy, 25, 210, 510, "#E9ECEF", 3.6);
+          const frac = g.kw ? Math.min(1, Math.max(0, live.p / g.kw)) : 0;
+          if (frac > 0.004) s += arc(cx, gy, 25, 210, 210 + 300 * frac, ser, 3.6);
+        }
+        s += `<circle cx="${cx.toFixed(1)}" cy="${gy}" r="18" fill="none" ` +
+          `stroke="${running ? ser : measured ? K.STATE.STOPPED : K.STATE.NO_MEASURE}" ` +
+          `stroke-width="${running ? 2.4 : 1.2}"${measured ? "" : ` stroke-dasharray="2.6 2.6"`}/>`;
+        s += K.draw("GENERATOR", {
+          x: cx, y: gy, scale: 1.05, state: "DESIGN",
+          title: `${g.tag} · ${g.fuel || ""} · ${f0(g.kw)} kW rated · ${short(g.feeder)} → busbar ${b.code}` +
+            (g.meter ? ` · meter ${g.meter}` : "") + (conflict ? ` · ${T.eld11Says(g.tag, g.eld11Bar, b.code)}` : "")
+        });
+
+        /* the numbers, one type scale: P is the number of the bay */
+        const vy = BAY_Y + 93;
+        /* the absence of a measurement gets the SLOT, not a zero — but it gets
+           it at a size that fits the card: the long form ("meter not located")
+           goes on the line underneath, where it has the width to be read */
+        s += `<text x="${cx.toFixed(1)}" y="${vy}" text-anchor="middle" font-family="${MONO}" font-size="15" font-weight="700" ` +
+          `fill="${stale ? GREY : measured ? INK : SOFT}" data-slot="P">` +
+          (measured ? `${f0(live.p)}<tspan font-size="9" font-weight="600" fill="${SOFT}" dx="3">kW</tspan>`
+            : `<tspan font-size="11">${esc(gap ? T.noData : T.noMeas)}</tspan>`) + `</text>`;
+        if (!measured && !gap && g.noMeter)
+          s += `<text x="${cx.toFixed(1)}" y="${vy + 12}" text-anchor="middle" font-family="${MONO}" font-size="7" ` +
+            `font-weight="600" fill="${SOFT}">${esc(T.noMeter)}</text>`;
+        /* a design rating prints `rated 1,822 kW` with no quantity letter and
+           no live dot; only a reading gets P and the dot (G-6, made visible) */
+        s += `<text x="${cx.toFixed(1)}" y="${vy + (measured || gap || !g.noMeter ? 13 : 23)}" text-anchor="middle" ` +
+          `font-family="${MONO}" font-size="7.2" font-weight="600" fill="#828994">${T.nom} ${f0(g.kw)} kW` +
+          (measured && g.kw ? ` · ${Math.round(live.p / g.kw * 100)} %` : "") + `</text>`;
+        /* U and f are read AT THIS BAY'S ANALYSER. They are the bay's
+           measurement, not the busbar's, and the sheet does not promote them
+           into a bar datum on the strength of one meter. */
+        /* U, f and PF share ONE line: they are the same reading from the same
+           analyser at the same instant, and three stacked lines pushed the age
+           off the bottom of the card */
+        if (measured && (live.v != null || live.f != null || live.pf != null))
+          s += `<text x="${cx.toFixed(1)}" y="${vy + 24}" text-anchor="middle" font-family="${MONO}" font-size="6.8" ` +
+            `font-weight="600" fill="${stale ? GREY : SOFT}" data-slot="U">` +
+            [live.v != null ? `${f0(live.v)} V` : null,
+             live.f != null ? `${fd(live.f, 2)} Hz` : null,
+             live.pf != null ? `PF ${fd(live.pf, 2)}` : null].filter(Boolean).join(" · ") + `</text>`;
+        /* the AGE of the newest good sample: a live number can never pass for
+           current without saying how current it is (SICAM "not up to date") */
+        if (live && live.age)
+          s += `<text x="${cx.toFixed(1)}" y="${vy + 35}" text-anchor="middle" font-family="${MONO}" font-size="6.8" ` +
+            `font-weight="600" fill="${stale ? AMBER : "#9AA1A9"}">${esc(T.ago(live.age))}</text>`;
+
+        /* ── the drop: analyser, incomer, infeed arrow ────────────────────── */
+        const d0 = BAY_Y + BAY_H;
+        s += `<line x1="${cx.toFixed(1)}" y1="${d0}" x2="${cx.toFixed(1)}" y2="${BUS_Y}" stroke="${SLD_BUSCOL}" stroke-width="1.8"/>`;
+        if (g.analyzer) {
+          const ax = cx + 26, ay = d0 + 16;
+          s += K.draw("NETWORK_ANALYZER", { x: ax, y: ay, scale: 0.6, color: measured ? SLD_BUSCOL : LINE,
+            title: `${g.analyzer}${g.meter ? " · " + g.meter : ""} — network analyser on ${short(g.feeder)}` });
+          s += `<line x1="${(ax - 8.4).toFixed(1)}" y1="${ay}" x2="${cx.toFixed(1)}" y2="${ay}" stroke="${measured ? SLD_BUSCOL : LINE}" stroke-width="1"/>`;
+          s += `<text x="${(ax + 9).toFixed(1)}" y="${ay + 2.5}" font-family="${MONO}" font-size="6.6" font-weight="700" ` +
+            `fill="${measured ? SLD_BUSCOL : GREY}">${esc(short(g.analyzer))}${g.meter ? " · " + esc(g.meter) : ""}</text>`;
+        }
+        const by = BUS_Y - 30;
+        s += K.draw("CIRCUIT_BREAKER", { x: cx, y: by, scale: 0.95, state: "DESIGN",
+          title: `${g.feeder} — generator incomer · DESIGN (${T.brkDesign})` });
+        s += `<text x="${(cx - 15).toFixed(1)}" y="${by + 3}" text-anchor="end" font-family="${MONO}" font-size="7" ` +
+          `font-weight="700" fill="${SOFT}">${esc(short(g.feeder))}</text>`;
+        /* ELD11's own legend entry: current flow direction */
+        s += `<path d="M${(cx - 4.4).toFixed(1)},${BUS_Y - 9} L${(cx + 4.4).toFixed(1)},${BUS_Y - 9} L${cx.toFixed(1)},${BUS_Y - 2} Z" ` +
+          `fill="${running ? ser : SLD_BUSCOL}"/>`;
+        s += `</g>`;
+      });
+    });
+
+    /* ── the three ties ──────────────────────────────────────────────────
+       Drawn as a bridge OVER the gap between two bars with the coupler in the
+       vertical leg — which is where the breaker is, which keeps the pack's own
+       "N.O." mark upright, and which leaves the whole area under the bar to
+       the outgoing ways. T1 and T3 bridge inside their own enclosure; T2 is
+       the only one that crosses between the two boxes, and it is the only one
+       with a cable tag, exactly as ELD11 and plant_bus_couplings both say. */
+    ties.forEach(t => {
+      const a = at[t.a], b = at[t.b]; if (!a || !b) return;
+      const l = a.x0 < b.x0 ? a : b, r = a.x0 < b.x0 ? b : a;
+      const mx = (l.x1 + r.x0) / 2, yU = BUS_Y - 48, cyT = BUS_Y - 24;
+      s += `<g data-tag="${esc(String(t.label || "").split(/\s+/).pop())}" data-kind="BUS_COUPLER" ` +
+        `data-state="${t.open ? "OPEN" : "CLOSED"}">`;
+      s += `<path d="M${l.x1.toFixed(1)},${BUS_Y} L${l.x1.toFixed(1)},${cyT + 12} M${l.x1.toFixed(1)},${cyT - 12} ` +
+        `L${l.x1.toFixed(1)},${yU} L${r.x0.toFixed(1)},${yU} L${r.x0.toFixed(1)},${BUS_Y}" fill="none" ` +
+        `stroke="${SLD_BUSCOL}" stroke-width="1.8"${t.open ? ` stroke-dasharray="6 4"` : ""}/>`;
+      s += K.draw("BUS_COUPLER", { x: l.x1, y: cyT, scale: 0.92, open: !!t.open, color: SLD_BUSCOL,
+        title: `${t.label} · ${t.a}–${t.b}${t.cable ? " · cable " + t.cable : ""}` });
+      /* the tie's text goes BELOW the bar, in the gap column, which is the only
+         strip of this sheet with nothing else in it: above the bar it collided
+         with the bay analysers, and a coupler label is not worth a collision */
+      s += `<text x="${mx.toFixed(1)}" y="${BUS_Y + 16}" text-anchor="middle" font-family="${MONO}" font-size="8.2" ` +
+        `font-weight="700" fill="${SLD_BUSCOL}">${esc(t.label || "")}</text>`;
+      /* the two claims, stacked. The sheet shows the dispute; it does not
+         referee it (CR-00348). */
+      s += `<text x="${mx.toFixed(1)}" y="${BUS_Y + 27}" text-anchor="middle" font-family="${MONO}" font-size="6.8" ` +
+        `font-weight="600" fill="${SOFT}">ELD11 ${t.open ? "N.O." : "N.C."}</text>`;
+      if (t.f7)
+        s += `<text x="${mx.toFixed(1)}" y="${BUS_Y + 37}" text-anchor="middle" font-family="${MONO}" font-size="6.8" ` +
+          `font-weight="700" fill="${t.dq === "CONFLICT" ? CRIMSON : SOFT}">F7 ${esc(t.f7)}</text>`;
+      if (t.dq && K.DQ && K.DQ[t.dq])
+        s += `<circle cx="${(mx - 28).toFixed(1)}" cy="${BUS_Y + 34}" r="2.8" fill="${K.DQ[t.dq]}"><title>${esc(t.dq)}</title></circle>`;
+      if (t.cable)
+        s += `<text x="${mx.toFixed(1)}" y="${BUS_Y + 47}" text-anchor="middle" font-family="${MONO}" font-size="6.6" ` +
+          `font-weight="600" fill="${GREY}">${esc(t.cable)}</text>`;
+      s += `</g>`;
+    });
+
+    /* ── the busbars ─────────────────────────────────────────────────────── */
+    bars.forEach(b => {
+      const p = at[b.code];
+      s += `<g data-tag="${esc(b.code)}" data-kind="BUSBAR" data-state="DESIGN"${click(b.code)}>`;
+      s += `<line x1="${p.x0.toFixed(1)}" y1="${BUS_Y}" x2="${p.x1.toFixed(1)}" y2="${BUS_Y}" ` +
+        `stroke="${SLD_BUSCOL}" stroke-width="6.5" stroke-linecap="round"/>`;
+      /* the name starts 14 px in so the tie's dip leg, which lands exactly on
+         the bar end, never runs through the first letter */
+      const name = `${T.busbar} ${b.code}`, nx = p.x0 + 14;
+      s += halo(nx, BUS_Y + 19, name, 12.5, 700, SLD_BUSCOL);
+      s += halo(nx + 2 + name.length * 7.6, BUS_Y + 19,
+        `${b.lvmd ? b.lvmd : ""}${b.lvmd && b.v ? " · " : ""}${b.v ? b.v + " V" : ""}`, 8.5, 600, SOFT);
+      s += halo(nx, BUS_Y + 31,
+        `${T.nom} ${T.gen} ${f0(b.genKw)} · ${T.load} ${f0(b.loadKw)} kW` +
+        (b.nOut != null ? ` · ${b.nOut} ${T.out}` : ""), 8, 600, "#828994");
+      /* a measured total is a SECOND figure with its own coverage: design and
+         measurement are never added into one number (G-6) */
+      if (b.measKw != null) {
+        s += `<circle cx="${(nx + 2).toFixed(1)}" cy="${BUS_Y + 40}" r="2.4" fill="${SLD_BUSCOL}"/>`;
+        s += halo(nx + 9, BUS_Y + 43, `${T.meas} ${f0(b.measKw)} kW · ${b.nMeas} ${T.of} ${b.nGen} ${T.sets}`, 8, 700, INK);
+      }
+      s += `</g>`;
+    });
+
+    /* ── the outgoing ways ───────────────────────────────────────────────
+       Breaker, then the kind symbol IN THE LINE (a transformer is a symbol on
+       a conductor, not a picture in a box), then the destination plate. */
+    const drawWay = (cx, wTop, wW, f, tier) => {
+      const kind = f.kind && K.has(f.kind) ? f.kind : "UNKNOWN";
+      let g = `<g data-tag="${esc(f.tag)}" data-kind="${esc(kind)}" data-state="DESIGN"${click(f.tag)}>`;
+      /* a grouped way carries every tag it stands for in its tooltip: the
+         drawing aggregates, the model never loses a row */
+      if (f.title) g += `<title>${esc(f.title)}</title>`;
+      if (!tier) {
+        g += `<line x1="${cx.toFixed(1)}" y1="${BUS_Y}" x2="${cx.toFixed(1)}" y2="${wTop}" stroke="${SLD_BUSCOL}" stroke-width="1.5"/>`;
+        g += K.draw("CIRCUIT_BREAKER", { x: cx, y: OUT_CB, scale: 0.78, state: "DESIGN",
+          title: `${f.tag} — outgoing way · DESIGN (${T.brkDesign})` });
+        g += `<text x="${(cx + 12).toFixed(1)}" y="${OUT_CB + 1}" font-family="${MONO}" font-size="6.6" ` +
+          `font-weight="700" fill="${SOFT}">${esc(short(f.tag))}${f.n > 1 ? " ×" + f.n : ""}</text>`;
+        /* the cable tag belongs ON THE CABLE, beside the way it names — inside
+           the destination plate it fought the plate's own title */
+        if (f.cable)
+          g += `<text x="${(cx + 12).toFixed(1)}" y="${OUT_CB + 10}" font-family="${MONO}" font-size="6.2" ` +
+            `font-weight="600" fill="${GREY}">${esc(f.cable)}</text>`;
+        g += K.draw(kind, { x: cx, y: OUT_GL, scale: kind === "UNKNOWN" ? 0.7 : 0.62, state: "DESIGN",
+          color: f.dashed ? LINE : INK });
+        g += `<path d="M${(cx - 3.8).toFixed(1)},${wTop - 10} L${(cx + 3.8).toFixed(1)},${wTop - 10} L${cx.toFixed(1)},${wTop - 4} Z" fill="${SLD_BUSCOL}"/>`;
+      } else {
+        g += `<line x1="${cx.toFixed(1)}" y1="${wTop - 28}" x2="${cx.toFixed(1)}" y2="${wTop}" stroke="${LINE}" ` +
+          `stroke-width="1.4" stroke-dasharray="4 3"/>`;
+      }
+      const px = cx - wW / 2;
+      g += `<rect x="${px.toFixed(1)}" y="${wTop}" width="${wW.toFixed(1)}" height="${OUT_H}" rx="4" fill="#fff" ` +
+        `stroke="${f.dashed ? LINE : "#B7BEC6"}" stroke-width="1"${f.dashed ? ` stroke-dasharray="4 3"` : ""}/>`;
+      if (f.dq && K.DQ && K.DQ[f.dq])
+        g += `<circle cx="${(px + 6).toFixed(1)}" cy="${wTop + 6}" r="2.6" fill="${K.DQ[f.dq]}"><title>${esc(f.dq)}</title></circle>`;
+      /* the plate title shrinks rather than spilling: a destination name is
+         the one string on this sheet that must never be cut */
+      const ttl = String(f.label || f.tag);
+      g += `<text x="${cx.toFixed(1)}" y="${wTop + 15}" text-anchor="middle" font-family="${MONO}" ` +
+        `font-size="${Math.max(7.4, Math.min(9.2, (wW - 8) / (ttl.length * 0.60))).toFixed(1)}" ` +
+        `font-weight="700" fill="${f.dashed ? SOFT : INK}">${esc(ttl)}</text>`;
+      /* subs and notes WRAP, they do not clip: a plate that reads "no FEEDS
+         edge in the mo…" has stopped telling the reader anything (§2d i6) */
+      if (f.sub)
+        K.wrap(f.sub, Math.max(10, Math.floor(wW / 4.15)), 2).forEach((ln, k) => {
+          g += `<text x="${cx.toFixed(1)}" y="${wTop + 26 + k * 8.5}" text-anchor="middle" font-family="${MONO}" ` +
+            `font-size="7" font-weight="600" fill="${SOFT}">${esc(ln)}</text>`;
+        });
+      if (f.kw != null)
+        g += `<text x="${cx.toFixed(1)}" y="${wTop + 46}" text-anchor="middle" font-family="${MONO}" font-size="9" ` +
+          `font-weight="700" fill="#828994">${T.nom} ${f0(f.kw)} ${esc(f.unit || "kW")}</text>`;
+      if (f.extra)
+        K.wrap(f.extra, Math.max(12, Math.floor(wW / 3.7)), 2).forEach((ln, k) => {
+          g += `<text x="${cx.toFixed(1)}" y="${wTop + (f.kw != null ? 55 : 46) + k * 7.5}" text-anchor="middle" ` +
+            `font-family="${MONO}" font-size="6.4" font-weight="600" fill="${f.dashed ? AMBER : GREY}">${esc(ln)}</text>`;
+        });
+      if (f.cablePct) g += cableChip(px + 7, wTop + OUT_H + 4, f.cablePct);
+      g += `</g>`;
+      return g;
+    };
+
+    bars.forEach(b => {
+      const p = at[b.code], fs = b.feeders || [];
+      const pitch = Math.min(p.w / Math.max(fs.length, 1), 190);
+      const fx0 = p.x0 + (p.w - pitch * fs.length) / 2;
+      fs.forEach((f, i) => {
+        const cx = fx0 + pitch * (i + 0.5), wW = Math.min(pitch - 14, 168);
+        s += drawWay(cx, OUT_Y, wW, f, false);
+        (f.down || []).forEach((d, j, arr) => {
+          const dx = cx + (j - (arr.length - 1) / 2) * (wW + 8);
+          s += drawWay(dx, OUT2_Y, wW, d, true);
+        });
+      });
+    });
+
+    /* ── GENERATION TREND ────────────────────────────────────────────────
+       The one chart this sheet earns. On a plant that hands the load from one
+       machine to the next, the SHAPE is the information and no instant can
+       carry it: the handover at 06:00 is invisible in every number above and
+       obvious here. A gap lifts the pen AND shades its own band, because an
+       hour with no data must not look like an hour at zero (VIZ R-2). */
+    if (tr) {
+      s += band(TRD_Y - 26, T.bandTrend, tr.sub || "");
+      const PX0 = PADX + 58, PX1 = W - PADX - 8, PW = PX1 - PX0;
+      const n = Math.max.apply(null, tr.series.map(x => (x.kw || []).length).concat([(tr.total || []).length, 2]));
+      const vals = [].concat.apply([], tr.series.map(x => x.kw || []).concat([tr.total || []]))
+        .filter(v => v != null && isFinite(v));
+      const peak = vals.length ? Math.max.apply(null, vals) : 0;
+      const NICE = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000];
+      const stp = NICE.filter(v => v >= (peak || 1) / 4)[0] || NICE[NICE.length - 1];
+      const yMax = Math.max(stp, Math.ceil(peak / stp) * stp);
+      const X = i => PX0 + (n < 2 ? 0 : (i / (n - 1)) * PW);
+      const Y = v => PY1 - Math.min(Math.max(v, 0), yMax) / yMax * PH;
+      const segs = arr => {
+        const out = []; let sg = [];
+        (arr || []).forEach((v, i) => {
+          if (v == null || !isFinite(v)) { if (sg.length) out.push(sg); sg = []; }
+          else sg.push([i, v]);
+        });
+        if (sg.length) out.push(sg);
+        return out;
+      };
+
+      s += `<rect x="${PX0}" y="${PY0}" width="${PW.toFixed(1)}" height="${PH}" fill="#FCFDFD" stroke="${LINE}" stroke-width="0.8"/>`;
+      for (let k = 0; k <= 4; k++) {
+        const v = yMax * k / 4, y = Y(v);
+        s += `<line x1="${PX0}" y1="${y.toFixed(1)}" x2="${PX1}" y2="${y.toFixed(1)}" stroke="${k ? "#EDF0F2" : LINE}" stroke-width="0.8"/>` +
+          `<text x="${PX0 - 7}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-family="${MONO}" font-size="7.4" ` +
+          `font-weight="600" fill="${SOFT}">${f0(v)}</text>`;
+      }
+      s += `<text x="${PADX}" y="${PY0 - 6}" font-family="${MONO}" font-size="7.4" font-weight="700" fill="${SOFT}">${esc(tr.unit || "kW")}</text>`;
+      (tr.ticks || []).forEach(t => {
+        const x = X(t.i);
+        s += `<line x1="${x.toFixed(1)}" y1="${PY0}" x2="${x.toFixed(1)}" y2="${PY1}" stroke="#EDF0F2" stroke-width="0.8"/>` +
+          `<text x="${x.toFixed(1)}" y="${PY1 + 14}" text-anchor="middle" font-family="${MONO}" font-size="7.4" ` +
+          `font-weight="600" fill="${SOFT}">${esc(t.label)}</text>`;
+      });
+
+      /* the gaps go down first, behind everything: a shaded band that says
+         "no data here", so absence has a shape instead of a flat line */
+      const total = tr.total || [];
+      let g0 = -1;
+      for (let i = 0; i <= n; i++) {
+        const isGap = i < n && (total.length ? total[i] == null
+          : tr.series.every(x => (x.kw || [])[i] == null));
+        if (isGap && g0 < 0) g0 = i;
+        if (!isGap && g0 >= 0) {
+          const xa = X(Math.max(0, g0 - 0.5)), xb = X(Math.min(n - 1, i - 0.5));
+          s += `<rect x="${xa.toFixed(1)}" y="${PY0}" width="${Math.max(1.5, xb - xa).toFixed(1)}" height="${PH}" ` +
+            `fill="#EDEFF1"><title>${esc(T.noData)}</title></rect>`;
+          g0 = -1;
+        }
+      }
+
+      segs(total).forEach(sg => {
+        if (sg.length < 2) return;
+        s += `<path d="${sg.map((q, k) => `${k ? "L" : "M"}${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join("")} ` +
+          `L${X(sg[sg.length - 1][0]).toFixed(1)},${PY1} L${X(sg[0][0]).toFixed(1)},${PY1} Z" fill="#E7F0FA"/>`;
+      });
+      tr.series.forEach(ser => {
+        segs(ser.kw).forEach(sg => {
+          if (sg.length < 2) return;
+          s += `<path d="${sg.map((q, k) => `${k ? "L" : "M"}${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join("")}" ` +
+            `fill="none" stroke="${ser.color || SOFT}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" ` +
+            `data-slot="trend" data-tag="${esc(ser.tag)}"><title>${esc(ser.label || ser.tag)}</title></path>`;
+        });
+      });
+      segs(total).forEach(sg => {
+        if (sg.length < 2) return;
+        s += `<path d="${sg.map((q, k) => `${k ? "L" : "M"}${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join("")}" ` +
+          `fill="none" stroke="${SLD_BUSCOL}" stroke-width="1.1" stroke-dasharray="4 2.5"/>`;
+      });
+      /* the peak, marked where it happened — a number with a time on it */
+      let pi = -1, pv = -1;
+      total.forEach((v, i) => { if (v != null && v > pv) { pv = v; pi = i; } });
+      if (pi >= 0) {
+        const lx = Math.min(Math.max(X(pi), PX0 + 34), PX1 - 34);
+        s += `<circle cx="${X(pi).toFixed(1)}" cy="${Y(pv).toFixed(1)}" r="2.8" fill="none" stroke="${INK}" stroke-width="1.2"/>` +
+          `<text x="${lx.toFixed(1)}" y="${(Y(pv) - 8).toFixed(1)}" text-anchor="middle" font-family="${MONO}" ` +
+          `font-size="7.4" font-weight="700" fill="${INK}">${esc(T.peak)} ${f0(pv)} kW</text>`;
+      }
+      /* chart legend: a swatch, the tag, and where that line ends now */
+      let lgx = PX0;
+      tr.series.forEach(ser => {
+        const last = (ser.kw || []).slice().reverse().filter(v => v != null)[0];
+        const txt = `${ser.label || ser.tag} ${last == null ? T.noData : f0(last) + " kW"}`;
+        s += `<line x1="${lgx.toFixed(1)}" y1="${PY1 + 30}" x2="${(lgx + 14).toFixed(1)}" y2="${PY1 + 30}" ` +
+          `stroke="${ser.color || SOFT}" stroke-width="2.4" stroke-linecap="round"/>` +
+          `<text x="${(lgx + 19).toFixed(1)}" y="${PY1 + 33}" font-family="${MONO}" font-size="7.6" font-weight="600" fill="${SOFT}">${esc(txt)}</text>`;
+        lgx += 27 + txt.length * 4.9;
+      });
+      s += `<line x1="${lgx.toFixed(1)}" y1="${PY1 + 30}" x2="${(lgx + 14).toFixed(1)}" y2="${PY1 + 30}" ` +
+        `stroke="${SLD_BUSCOL}" stroke-width="1.4" stroke-dasharray="4 2.5"/>` +
+        `<text x="${(lgx + 19).toFixed(1)}" y="${PY1 + 33}" font-family="${MONO}" font-size="7.6" font-weight="600" fill="${SOFT}">${esc(T.plantTotal)}</text>`;
+      if (tr.note)
+        s += `<text x="${W - PADX}" y="${PY1 + 33}" text-anchor="end" font-family="${MONO}" font-size="7.4" ` +
+          `font-weight="600" fill="${AMBER}">${esc(tr.note)}</text>`;
+    }
+
+    /* ── MACHINE TOTALS ──────────────────────────────────────────────────
+       Mario, 2026-08-12: «horas de marcha por generador el mes pasado y desde
+       principio de año». THE HONEST ANSWER IS THAT THE SPLIT DOES NOT EXIST
+       YET, and the band is built so that saying so is the graphic rather than
+       a footnote:
+
+       · what DOES exist is the PAC's own hour meter and energy register, read
+         off the machine. That is a total since the meter's zero, and the bar
+         prints it as such — never relabelled "this year".
+       · what this system has WATCHED is a much shorter slice: the counters
+         only started shipping on 2026-08-11. That slice is drawn INSIDE the
+         bar in solid ink. On a 254 h register a 5.7 h slice is 2 % of the bar,
+         and that tiny sliver IS the answer to "can you split it by month".
+       · the two coverage rulers under the rows put a number on it: how many
+         hours the month and the year have run, and how many of them the
+         counter series covers. A monthly figure needs two readings a month
+         apart; the oldest one held is from 2026-08-11.
+       · the four sets with no meter get a dashed empty row. Zero hours would
+         be a lie; they are unwatched, not idle.
+
+       Beside it, the LOAD DURATION CURVE — plant P sorted high to low. It is
+       the classic power-station chart (VIZ §3, powermanager reports) and it
+       answers the question the trend cannot: not WHEN the plant was loaded but
+       HOW MUCH OF THE TIME, and against what installed rating. */
+    if (tot || ldc) {
+      const LW = ldc ? 1120 : W - 2 * PADX;
+      s += band(TOT_Y - 26, T.bandTotals,
+        tot ? `${T.counterSince} ${esc(tot.since || "?")} → ${esc(tot.until || "?")}` : "");
+
+      if (tot) {
+        const x0 = PADX, BAR_H = 300, BAR_E = 250;
+        const cH = x0 + 108, cHt = cH + BAR_H + 8, cE = cHt + 74, cEt = cE + BAR_E + 8;
+        const maxH = Math.max(1, ...tot.rows.map(r => r.hours || 0));
+        const maxE = Math.max(1, ...tot.rows.map(r => r.mwh || 0));
+        s += `<text x="${cH}" y="${TOT_Y + 8}" font-family="${MONO}" font-size="7.4" font-weight="700" ` +
+          `fill="${SOFT}" letter-spacing="0.6">${esc(T.colHours)}</text>` +
+          `<text x="${cE}" y="${TOT_Y + 8}" font-family="${MONO}" font-size="7.4" font-weight="700" ` +
+          `fill="${SOFT}" letter-spacing="0.6">${esc(T.colEnergy)}</text>`;
+
+        /* one bar pair per machine, in TAG ORDER so the row lines up with the
+           bay above it — sorting by hours would break that cross-reference */
+        tot.rows.forEach((r, i) => {
+          const y = TOT_Y + 26 + i * TOT_ROW;
+          s += `<g data-tag="${esc(r.tag)}" data-kind="MACHINE_TOTAL" data-state="${r.noMeter ? "NO_MEASURE" : "DESIGN"}"${click(r.tag)}>`;
+          s += `<text x="${x0}" y="${y + 8}" font-family="${MONO}" font-size="9" font-weight="700" ` +
+            `fill="${r.noMeter ? SOFT : INK}">${esc(r.tag)}</text>`;
+          if (r.meter)
+            s += `<text x="${x0 + 56}" y="${y + 8}" font-family="${MONO}" font-size="7" font-weight="600" ` +
+              `fill="${r.noMeter ? "#B0B6BC" : GREY}">${esc(r.meter)}</text>`;
+          if (r.noMeter) {
+            /* an unwatched machine is not a machine at zero: the row is a
+               visible hole across both columns, and it says which (G-4) */
+            s += `<rect x="${cH}" y="${y + 1}" width="${(cEt - cH - 40).toFixed(1)}" height="11" rx="2" fill="none" ` +
+              `stroke="${LINE}" stroke-width="0.9" stroke-dasharray="3 2.5"/>` +
+              `<text x="${cH + 8}" y="${y + 9.5}" font-family="${MONO}" font-size="7" font-weight="600" ` +
+              `fill="${SOFT}">${esc(T.noMeterRow)}</text>`;
+          } else {
+            const bar = (bx, bw, v, vmax, obs, col, txtX, txt) => {
+              const w = Math.max(0, (v || 0) / vmax * bw);
+              let g2 = `<rect x="${bx}" y="${y + 1}" width="${bw}" height="11" rx="2" fill="#F2F4F6"/>` +
+                `<rect x="${bx}" y="${y + 1}" width="${w.toFixed(1)}" height="11" rx="2" fill="${col}" fill-opacity="0.30"/>`;
+              /* the watched slice, in solid ink at the left of the bar */
+              if (obs > 0) {
+                const ow = Math.max(1.2, obs / vmax * bw);
+                g2 += `<rect x="${bx}" y="${y + 1}" width="${ow.toFixed(1)}" height="11" rx="2" fill="${col}">` +
+                  `<title>${esc(T.seen)}: ${esc(txt.seen)}</title></rect>`;
+              }
+              return g2 + `<text x="${txtX}" y="${y + 9.5}" text-anchor="end" font-family="${MONO}" font-size="8.6" ` +
+                `font-weight="700" fill="${INK}">${esc(txt.total)}</text>`;
+            };
+            const col = r.color || SLD_BUSCOL;
+            s += bar(cH, BAR_H, r.hours, maxH, r.obsHours || 0, col, cHt + 58,
+              { total: `${fd(r.hours, 1)} h`, seen: `${fd(r.obsHours || 0, 1)} h` });
+            s += bar(cE, BAR_E, r.mwh, maxE, r.obsMwh || 0, col, cEt + 58,
+              { total: `${fd(r.mwh, 1)} MWh`, seen: `${fd(r.obsMwh || 0, 2)} MWh` });
+            if (r.obsHours > 0)
+              s += `<text x="${cEt + 68}" y="${y + 9.5}" font-family="${MONO}" font-size="6.8" font-weight="600" ` +
+                `fill="${col}">${esc(T.seen)} ${fd(r.obsHours, 1)} h · ${fd(r.obsMwh || 0, 1)} MWh</text>`;
+          }
+          s += `</g>`;
+        });
+
+        /* the fleet line: a sum of what is measured, with its coverage — the
+           four unmetered machines are named in it, not folded into a zero */
+        const fy = TOT_Y + 30 + tot.rows.length * TOT_ROW;
+        s += `<line x1="${x0}" y1="${fy - 6}" x2="${(x0 + LW).toFixed(1)}" y2="${fy - 6}" stroke="${LINE}" stroke-width="0.8"/>`;
+        if (tot.fleet)
+          s += `<text x="${x0}" y="${fy + 9}" font-family="${MONO}" font-size="9" font-weight="700" fill="${INK}">${esc(T.fleetRow)}` +
+            `<tspan font-size="8.6" dx="10">${fd(tot.fleet.hours, 1)} h</tspan>` +
+            `<tspan font-size="8.6" dx="10">${fd(tot.fleet.mwh, 1)} MWh</tspan>` +
+            `<tspan font-size="7.4" font-weight="600" fill="${SOFT}" dx="10">${tot.fleet.nMetered} ${T.of} ${tot.fleet.nSets} ${T.sets}</tspan></text>`;
+
+        /* ── the coverage rulers: the month and the year, to scale ────────── */
+        (tot.coverage || []).forEach((c, i) => {
+          const y = fy + 24 + i * 21, rx = x0 + 108, rw = 300;
+          const frac = c.elapsedH > 0 ? Math.min(1, (c.coveredH || 0) / c.elapsedH) : 0;
+          s += `<text x="${x0}" y="${y + 8}" font-family="${MONO}" font-size="7.4" font-weight="700" ` +
+            `fill="${SOFT}" letter-spacing="0.6">${esc(c.k)}</text>`;
+          s += `<rect x="${rx}" y="${y + 1}" width="${rw}" height="10" rx="2" fill="#F2F4F6" stroke="${LINE}" stroke-width="0.7"/>`;
+          /* NOTHING is drawn for a period the counter never touched. A minimum
+             sliver would put ink where there is genuinely no reading, which is
+             the one thing a coverage ruler exists to avoid. */
+          if (c.coveredH > 0)
+            s += `<rect x="${rx}" y="${y + 1}" width="${Math.max(1.2, frac * rw).toFixed(1)}" height="10" rx="2" fill="${AMBER}"/>`;
+          const pc = c.coveredH > 0 ? (frac < 0.01 ? "<1" : Math.round(frac * 100)) : "0";
+          s += `<text x="${rx + rw + 10}" y="${y + 9}" font-family="${MONO}" font-size="7.6" font-weight="600" ` +
+            `fill="${c.coveredH > 0 ? SOFT : AMBER}">` +
+            `${esc(c.label)} — ${fd(c.elapsedH, 0)} h ${T.elapsed} · ${T.covered} ${fd(c.coveredH, 1)} h (${pc} %)</text>`;
+        });
+        if (tot.note)
+          K.wrap(tot.note, 168, 2).forEach((ln, i) => {
+            s += `<text x="${x0}" y="${fy + 30 + (tot.coverage || []).length * 21 + i * 11}" font-family="${MONO}" ` +
+              `font-size="7.6" font-weight="600" fill="${AMBER}">${esc(ln)}</text>`;
+          });
+      }
+
+      /* ── the load duration curve ──────────────────────────────────────── */
+      if (ldc) {
+        const LX0 = PADX + (tot ? 1180 : 60), LX1 = W - PADX - 6, LPW = LX1 - LX0;
+        const LY0 = TOT_Y + 22, LPH = 118, LY1 = LY0 + LPH;
+        const v = ldc.kw.filter(x => x != null && isFinite(x)).slice().sort((a, b) => b - a);
+        const top = Math.max(1, v[0]);
+        const NICE2 = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000];
+        const st2 = NICE2.filter(x => x >= top / 3)[0] || NICE2[NICE2.length - 1];
+        const yM = Math.max(st2, Math.ceil(top / st2) * st2);
+        const LX = i => LX0 + (v.length < 2 ? 0 : (i / (v.length - 1)) * LPW);
+        const LY = q => LY1 - Math.min(Math.max(q, 0), yM) / yM * LPH;
+        s += `<text x="${LX0}" y="${TOT_Y + 8}" font-family="${MONO}" font-size="7.4" font-weight="700" ` +
+          `fill="${SOFT}" letter-spacing="0.6">${esc(T.bandLdc)}<tspan font-weight="600" dx="8">${esc(ldc.sub || T.ldcSub)}</tspan></text>`;
+        s += `<rect x="${LX0}" y="${LY0}" width="${LPW.toFixed(1)}" height="${LPH}" fill="#FCFDFD" stroke="${LINE}" stroke-width="0.8"/>`;
+        for (let k = 0; k <= 3; k++) {
+          const q = yM * k / 3, y = LY(q);
+          s += `<line x1="${LX0}" y1="${y.toFixed(1)}" x2="${LX1}" y2="${y.toFixed(1)}" stroke="${k ? "#EDF0F2" : LINE}" stroke-width="0.8"/>` +
+            `<text x="${LX0 - 6}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-family="${MONO}" font-size="7" ` +
+            `font-weight="600" fill="${SOFT}">${f0(q)}</text>`;
+        }
+        s += `<path d="${v.map((q, i) => `${i ? "L" : "M"}${LX(i).toFixed(1)},${LY(q).toFixed(1)}`).join("")} ` +
+          `L${LX1.toFixed(1)},${LY1} L${LX0.toFixed(1)},${LY1} Z" fill="#E7F0FA"/>` +
+          `<path d="${v.map((q, i) => `${i ? "L" : "M"}${LX(i).toFixed(1)},${LY(q).toFixed(1)}`).join("")}" ` +
+          `fill="none" stroke="${SLD_BUSCOL}" stroke-width="1.8" stroke-linejoin="round"/>`;
+        /* the median, marked: half the window sat above this line */
+        const med = v[Math.floor(v.length / 2)];
+        s += `<line x1="${LX0}" y1="${LY(med).toFixed(1)}" x2="${LX1}" y2="${LY(med).toFixed(1)}" ` +
+          `stroke="${INK}" stroke-width="0.9" stroke-dasharray="4 3"/>` +
+          `<text x="${LX1 - 4}" y="${(LY(med) - 5).toFixed(1)}" text-anchor="end" font-family="${MONO}" ` +
+          `font-size="7.2" font-weight="700" fill="${INK}">${T.median} ${f0(med)} kW</text>`;
+        [0, 50, 100].forEach(pc => {
+          const x = LX0 + LPW * pc / 100;
+          s += `<text x="${x.toFixed(1)}" y="${LY1 + 12}" text-anchor="${pc === 0 ? "start" : pc === 100 ? "end" : "middle"}" ` +
+            `font-family="${MONO}" font-size="7" font-weight="600" fill="${SOFT}">${pc} %</text>`;
+        });
+        s += `<text x="${LX0}" y="${LY1 + 26}" font-family="${MONO}" font-size="7.4" font-weight="600" fill="${SOFT}">` +
+          `${esc(T.ofWindow)} · kW</text>`;
+        if (ldc.instKw)
+          s += `<text x="${LX1}" y="${LY1 + 26}" text-anchor="end" font-family="${MONO}" font-size="7.4" ` +
+            `font-weight="700" fill="${AMBER}">${T.median} ${Math.round(med / ldc.instKw * 1000) / 10} % ${T.instCap} ` +
+            `(${f0(ldc.instKw)} kW)</text>`;
+        if (ldc.note)
+          K.wrap(ldc.note, Math.floor(LPW / 4.1), 3).forEach((ln, i) => {
+            s += `<text x="${LX0}" y="${LY1 + 40 + i * 11}" font-family="${MONO}" font-size="7.4" ` +
+              `font-weight="600" fill="${SOFT}">${esc(ln)}</text>`;
+          });
+      }
+    }
+
+    /* ── legend: symbols from the registry (G-7) + the status key ────────── */
+    s += `<line x1="${PADX}" y1="${LEG_Y}" x2="${W - PADX}" y2="${LEG_Y}" stroke="${LINE}" stroke-width="0.8"/>`;
+    s += `<text x="${PADX}" y="${LEG_Y + 15}" font-family="${MONO}" font-size="8.5" font-weight="700" fill="${INK}">${esc(T.legend)}</text>`;
+    s += K.legend(SLD_SHEET_KINDS, { x: PADX + 54, y: LEG_Y + 3, cols: 12, cellW: 133, cellH: 24, scale: 0.5, nameMax: 22 });
+    const keys = [
+      [T.kRun, `<circle cx="6" cy="-3" r="5.5" fill="none" stroke="${GREEN}" stroke-width="2.2"/>`],
+      [T.kStop, `<circle cx="6" cy="-3" r="5.5" fill="none" stroke="${K.STATE.STOPPED}" stroke-width="1.1"/>`],
+      [T.kNo, `<circle cx="6" cy="-3" r="5.5" fill="none" stroke="${K.STATE.NO_MEASURE}" stroke-width="1.1" stroke-dasharray="2.4 2.4"/>`],
+      [T.kGauge, `<path d="M1,1 A6.5,6.5 0 1 1 11,1" fill="none" stroke="${GREEN}" stroke-width="2.2"/>`],
+      [T.kAnalyzer, `<circle cx="6" cy="-3" r="5" fill="#fff" stroke="${SLD_BUSCOL}" stroke-width="1.2"/><text x="6" y="-0.4" text-anchor="middle" font-family="${MONO}" font-size="6.5" font-weight="700" fill="${SLD_BUSCOL}">A</text>`],
+      [T.kFlow, `<path d="M1.6,-8 L10.4,-8 L6,-1 Z" fill="${SLD_BUSCOL}"/>`],
+      [T.kTie, `<line x1="0" y1="-3" x2="12" y2="-3" stroke="${SLD_BUSCOL}" stroke-width="1.8" stroke-dasharray="5 3"/>`],
+      [T.kConflict, `<circle cx="6" cy="-3" r="3.6" fill="${CRIMSON}"/>`],
+      [T.kDq, `<circle cx="2" cy="-3" r="2.6" fill="${K.DQ.VERIFIED}"/><circle cx="10" cy="-3" r="2.6" fill="${K.DQ.NEEDS_REVIEW}"/>`],
+      [T.kCable, `<path d="M4,-10 L4,0 M1.2,-3 L4,0.6 L6.8,-3" fill="none" stroke="${CABLE}" stroke-width="1.3"/>`],
+      [T.kEld11Only, `<rect x="0" y="-8.5" width="12" height="10" rx="2" fill="none" stroke="${LINE}" stroke-width="1" stroke-dasharray="3 2"/>`],
+      [T.kGap, `<rect x="0" y="-8.5" width="12" height="10" fill="#EDEFF1"/>`]
+    ];
+    keys.forEach((k, i) => {
+      const kx = PADX + (i % 3) * 578, ky = LEG_Y + 44 + Math.floor(i / 3) * 13;
+      s += `<g transform="translate(${kx},${ky})">${k[1]}</g>` +
+        `<text x="${kx + 18}" y="${ky}" font-family="${MONO}" font-size="7.6" font-weight="600" fill="${SOFT}">${esc(k[0])}</text>`;
+    });
+    (o.notes || []).forEach((nt, i) => {
+      s += `<text x="${PADX}" y="${LEG_Y + 110 + i * 12}" font-family="${MONO}" font-size="7.6" font-weight="600" fill="${AMBER}">${esc(nt)}</text>`;
+    });
+
+    K.locale = K_LOC; K.grouping = K_GRP;
     return s + `</svg>`;
   }
 
@@ -4240,6 +5901,8 @@
   const API = { load, fromViewer, plantMap, areaBlock, unitSummary, processView, hmbCards, svcClass, hmbChip, indexData,
                 loadSld, sldFromViewer, indexSld, sldBoards, sld,
                 gaElectrical, GA_ELEC_KINDS,
+                elecFunctional, ELEC_FUNC_KINDS, elecOverview,
+                elecSld, SLD_SHEET_KINDS,
                 sldSummary, sldSummaryCards, sldSummarySchematic, sldBoardStats,
                 get sldSymbolStyle() { return sldSymbolStyle; },
                 set sldSymbolStyle(v) { sldSymbolStyle = (v === "BOX" ? "BOX" : "IEC"); },
@@ -4253,7 +5916,7 @@
                    and the same board cuts into the same rows on any machine. */
                 get sldWrapWidth() { return sldWrapWidth; },
                 set sldWrapWidth(v) { sldWrapWidth = (+v > 0 ? +v : 0); },
-                version: "1.40.0" };
+                version: "1.47.0" };
   const root = (typeof window !== "undefined") ? window : globalThis;
   root.TamFlow = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
