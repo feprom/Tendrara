@@ -119,6 +119,18 @@
       <div><button class="link" id="backFromClaim">Use a different account</button></div>
     </div>
 
+    <!-- an admin set this PIN, so it has to be replaced before anything else -->
+    <div class="card hidden" id="cardForce" style="margin-top:14px;">
+      <p class="lead" style="margin-top:0;">Your instructor set this PIN, so they know it.
+        Choose one only you know before you carry on.</p>
+      <label for="forcePin">New PIN — at least 6 characters</label>
+      <input type="password" id="forcePin" autocomplete="new-password" />
+      <label for="forcePin2" style="margin-top:12px;">Repeat it</label>
+      <input type="password" id="forcePin2" autocomplete="new-password" />
+      <button class="primary" id="forceBtn">Save it and continue</button>
+      <div class="err" id="forceErr"></div>
+    </div>
+
     <p class="note">Nothing is ever sent by email — the address is only how we recognise you.
       If you forget your PIN, your instructor sets a new one.</p>
   </div>
@@ -283,10 +295,49 @@ $('claimBtn').onclick = async () => {
 ['dob', 'newPin', 'newPin2'].forEach(id =>
   $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('claimBtn').click(); }));
 
+// ── forced change of an admin-set PIN ──────────────────────────────────────
+// The password change goes through Auth with the session the trainee already
+// has, so the new PIN never passes through an admin-facing path and nobody but
+// them ever sees it. The flag is only cleared AFTER Auth confirms the change --
+// clearing first would leave someone marked as done with the old PIN still live.
+$('forceBtn').onclick = async () => {
+  const p1 = $('forcePin').value, p2 = $('forcePin2').value;
+  setErr('forceErr', '');
+  if (p1.length < 6) return setErr('forceErr', 'The PIN must be at least 6 characters.');
+  if (p1 !== p2) return setErr('forceErr', 'The two PINs do not match.');
+
+  $('forceBtn').disabled = true;
+  const { error } = await supa.auth.updateUser({ password: p1 });
+  if (error) {
+    $('forceBtn').disabled = false;
+    return setErr('forceErr', 'Could not save it: ' + error.message);
+  }
+  const { error: flagErr } = await supa.rpc('clear_pin_change_flag');
+  $('forceBtn').disabled = false;
+  if (flagErr) return setErr('forceErr', 'Your PIN changed, but the record did not update. Reload and sign in again.');
+
+  hide('cardForce');
+  $('forcePin').value = ''; $('forcePin2').value = '';
+  await enterCatalogue();
+};
+['forcePin', 'forcePin2'].forEach(id =>
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('forceBtn').click(); }));
+
 $('signOut').onclick = async () => { stopPlayer(); await supa.auth.signOut(); location.reload(); };
 
 // ── step 3: the catalogue ──────────────────────────────────────────────────
+// A PIN an admin typed is a PIN an admin knows. Migration 281 raises
+// must_change_pin whenever one is set that way; this is the gate that makes
+// that flag mean something. A trainee who chose their own PIN is never here.
 async function enterCatalogue() {
+  const { data: mustChange } = await supa.rpc('pin_change_required');
+  if (mustChange) {
+    hide('cardPin'); hide('cardClaim');
+    show('stepLogin'); show('cardForce');
+    $('forcePin').focus();
+    return;
+  }
+
   const { data: who, error: whoErr } = await supa.rpc('current_trainee');
   if (whoErr || !who) {
     await supa.auth.signOut();

@@ -133,6 +133,18 @@
       <div class="err" id="otpErr"></div>
     </div>
 
+    <!-- an admin set this PIN, so it has to be replaced before anything else -->
+    <div class="card hidden" id="forceCard" style="margin-top:14px;">
+      <p class="lead" style="margin-top:0;">This PIN was set by an administrator, so it is
+        known to them. Choose one only you know before the dashboard opens.</p>
+      <label for="forcePin">New PIN — at least 6 characters</label>
+      <input type="password" id="forcePin" autocomplete="new-password">
+      <label for="forcePin2" style="margin-top:12px;">Repeat it</label>
+      <input type="password" id="forcePin2" autocomplete="new-password">
+      <button class="primary" id="forceBtn">Save it and continue</button>
+      <div class="err" id="forceErr"></div>
+    </div>
+
     <!-- The shared key stays as the way back in when nobody can receive email --
          a locked-out admin with no second door is how systems die. -->
     <details style="margin-top:22px;max-width:560px;">
@@ -402,9 +414,43 @@
       el.textContent = 'That account is not an active trainer.'; el.style.display = 'block'; return;
     }
     ME = me; KEY = '';
+
+    // A PIN an administrator typed is a PIN an administrator knows. Migration
+    // 281 raises must_change_pin whenever one is set that way; this is what
+    // makes the flag mean something.
+    const { data: mustChange } = await supa.rpc('pin_change_required');
+    if (mustChange) { $('forceCard').classList.remove('hidden'); $('forcePin').focus(); return; }
+
     try { await enterDashboard(); }
     catch (e) { el.textContent = 'Error: ' + e.message; el.style.display = 'block'; }
   };
+
+  $('forceBtn').onclick = async () => {
+    const el = $('forceErr'); el.style.display = 'none';
+    const p1 = $('forcePin').value, p2 = $('forcePin2').value;
+    if (p1.length < 6) { el.textContent = 'The PIN must be at least 6 characters.'; el.style.display = 'block'; return; }
+    if (p1 !== p2) { el.textContent = 'The two PINs do not match.'; el.style.display = 'block'; return; }
+    $('forceBtn').disabled = true;
+    const { error } = await supa.auth.updateUser({ password: p1 });
+    if (error) {
+      $('forceBtn').disabled = false;
+      el.textContent = 'Could not save it: ' + error.message; el.style.display = 'block'; return;
+    }
+    // Cleared only AFTER Auth confirms: clearing first would mark someone done
+    // while their admin-known PIN was still the live one.
+    const { error: flagErr } = await supa.rpc('clear_pin_change_flag');
+    $('forceBtn').disabled = false;
+    if (flagErr) {
+      el.textContent = 'Your PIN changed, but the record did not update. Reload and sign in again.';
+      el.style.display = 'block'; return;
+    }
+    $('forceCard').classList.add('hidden');
+    $('forcePin').value = ''; $('forcePin2').value = '';
+    try { await enterDashboard(); }
+    catch (e) { el.textContent = 'Error: ' + e.message; el.style.display = 'block'; }
+  };
+  ['forcePin', 'forcePin2'].forEach(id =>
+    $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('forceBtn').click(); }));
   ['staffCode', 'staffPin'].forEach(id =>
     $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('pinLoginBtn').click(); }));
 
@@ -546,7 +592,14 @@
     const { data: { session } } = await supa.auth.getSession();
     if (session) {
       const { data: me } = await supa.rpc('current_staff');
-      if (me) { ME = me; KEY = ''; try { await enterDashboard(); return; } catch (e) { /* fall through */ } }
+      if (me) {
+        ME = me; KEY = '';
+        // Same gate as the login path: coming back with a live session must not
+        // be a way round the forced change.
+        const { data: mustChange } = await supa.rpc('pin_change_required');
+        if (mustChange) { $('forceCard').classList.remove('hidden'); return; }
+        try { await enterDashboard(); return; } catch (e) { /* fall through to the key */ }
+      }
     }
     if (KEY) {
       try { await enterDashboard(); }
