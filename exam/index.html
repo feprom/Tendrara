@@ -95,6 +95,10 @@
       <input type="email" id="email" placeholder="name@company.com" autocomplete="email">
       <button class="primary" id="startBtn">Start exam →</button>
       <div class="err" id="gateErr"></div>
+      <p class="note hidden" id="signinHint">
+        <a href="/sessions/" style="color:var(--crimson);font-weight:600;">Sign in here</a>
+        with your student code and PIN, then return to this link. No email is involved —
+        if you have no PIN, ask your instructor.</p>
     </div>
     <p class="note">Not registered yet? <a href="/register/" style="color:var(--crimson);">Register here</a> first, then return to this link.</p>
   </div>
@@ -167,7 +171,11 @@
     'EXAM_NOT_FOUND': 'This exam is not available. Check the link with your instructor.',
     'NO_QUESTIONS': 'The exam has no questions configured yet. Contact your instructor.',
     'ALREADY_SUBMITTED': 'This attempt was already submitted.',
-    'EMAIL_MISMATCH': 'The email does not match this attempt.'
+    'EMAIL_MISMATCH': 'That attempt belongs to a different trainee.',
+    // Since migration 275 an email address on its own is no longer proof of who
+    // you are — for anyone who has signed in at least once. See SQL/275.
+    'SIGN_IN_REQUIRED': 'You have an account now, so your email on its own is no longer enough to start an exam.',
+    'NOT_A_TRAINEE': 'You are signed in with an account that is not linked to a registered trainee. Contact your instructor.'
   };
   const friendly = e => { const m = (e && e.message) || ''; for (const k in ERRMAP) if (m.includes(k)) return ERRMAP[k]; return 'Something went wrong: ' + m; };
 
@@ -178,7 +186,15 @@
     $('startBtn').disabled = true;
     const { data, error } = await supa.rpc('start_exam', { p_email: email, p_module_code: MOD, p_level: LVL });
     $('startBtn').disabled = false;
-    if (error) { showErr(el, friendly(error)); return; }
+    if (error) {
+      showErr(el, friendly(error));
+      // Only these two are fixed by signing in; show the way out rather than
+      // leaving the candidate staring at a refusal.
+      const m = error.message || '';
+      $('signinHint').classList.toggle('hidden',
+        !(m.includes('SIGN_IN_REQUIRED') || m.includes('NOT_A_TRAINEE')));
+      return;
+    }
     attempt = data;
     answers = {};
     renderExam();
@@ -264,6 +280,27 @@
   window.addEventListener('beforeunload', e => { if (inExam) { e.preventDefault(); e.returnValue = ''; } });
 
   function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  // ── If they are already signed in, say so and lock the field ──────────────
+  // The session is shared with /sessions/ (same origin, same storage), so a
+  // trainee who signed in to watch a recording arrives here already
+  // authenticated. Since migration 275 the server IGNORES the typed address
+  // whenever there is a session: leaving the box editable would let someone
+  // type a colleague's address and then be puzzled to see their own name on
+  // the exam. Show the truth instead of inviting the mistake.
+  (async () => {
+    const { data: { session } } = await supa.auth.getSession();
+    if (!session) return;
+    const { data: who } = await supa.rpc('current_trainee');
+    if (!who) return;
+    const box = $('email');
+    box.value = who.email;
+    box.readOnly = true;
+    box.style.background = 'var(--bg-soft)';
+    box.style.color = 'var(--ink-soft)';
+    document.querySelector('label[for=email]').textContent =
+      'Signed in as ' + who.full_name + (who.reference_code ? ' (' + who.reference_code + ')' : '');
+  })();
 </script>
 </body>
 </html>

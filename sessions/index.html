@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tendrara Training — Session recordings</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg:#FFFFFF; --bg-soft:#F7F8FA;
+    --ok:#1F8A4C; --bad:#B3261E; --blue:#0B5CAD;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;}
+  body{font-family:var(--sans);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;
+    background:linear-gradient(180deg,#fff 0%,#fff 60%,#F2F4F7 100%);}
+  .sheet{max-width:880px;margin:0 auto;background:var(--bg);min-height:100vh;
+    border-left:1px solid var(--line);border-right:1px solid var(--line);}
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 34px;border-bottom:1px solid var(--line);}
+  .brandbar .vendor img{height:34px;display:block;}
+  .clients{display:flex;align-items:center;gap:13px;}
+  .client-logo{height:23px;} .client-logo.itf{height:26px;}
+  .clients .divider{width:1px;height:21px;background:var(--line-strong);}
+  .accent{height:3px;background:var(--crimson);}
+  .wrap{padding:34px 34px 60px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--crimson);font-weight:700;margin-bottom:8px;}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.01em;}
+  p.lead{color:var(--ink-soft);font-size:14.5px;line-height:1.6;margin:0 0 16px;max-width:70ch;}
+  .card{border:1px solid var(--line-strong);border-radius:8px;background:var(--bg-soft);padding:22px 24px;max-width:560px;}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;}
+  input[type=email],input[type=text]{width:100%;font-size:15px;padding:11px 13px;border:1px solid var(--line-strong);border-radius:5px;font-family:var(--sans);}
+  input[type=text].code{font-family:var(--mono);font-size:22px;letter-spacing:.5em;text-align:center;}
+  input:focus{outline:2px solid var(--crimson);border-color:var(--crimson);}
+  button.primary{background:var(--crimson);color:#fff;border:none;font-size:15px;font-weight:600;
+    padding:12px 22px;border-radius:5px;cursor:pointer;margin-top:14px;}
+  button.primary:hover{background:var(--crimson-dark);}
+  button.primary:disabled{opacity:.5;cursor:not-allowed;}
+  button.link{background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:6px 0;text-decoration:underline;}
+  .err{color:var(--bad);font-size:13.5px;margin-top:10px;line-height:1.5;display:none;}
+  .ok{color:var(--ok);font-size:13.5px;margin-top:10px;line-height:1.5;display:none;}
+  .hidden{display:none !important;}
+  .note{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+
+  /* who-bar */
+  .whobar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:2px solid var(--crimson);
+    display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 34px;}
+  .whobar .who{font-size:13px;color:var(--ink-soft);} .whobar .who b{color:var(--ink);}
+  .whobar .who .ref{font-family:var(--mono);font-size:11.5px;color:var(--crimson);margin-left:8px;}
+
+  /* catalogue */
+  .rec{border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin:12px 0;background:#fff;
+    display:grid;grid-template-columns:1fr auto;gap:6px 18px;align-items:center;}
+  .rec .code{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--crimson);font-weight:700;}
+  .rec .t{font-size:15px;font-weight:600;line-height:1.4;}
+  .rec .sub{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+  .rec button{white-space:nowrap;}
+  .bar{grid-column:1 / -1;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:4px;}
+  .bar i{display:block;height:100%;background:var(--ok);}
+  .rec .pct{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);}
+
+  /* player */
+  .playerwrap{background:#0B0D10;border-radius:8px;overflow:hidden;margin:6px 0 14px;}
+  video{width:100%;display:block;background:#000;max-height:70vh;}
+  .plmeta{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;}
+  .plmeta .st{font-family:var(--mono);font-size:11.5px;}
+  @media(max-width:640px){.wrap{padding:22px 18px 50px;}.brandbar{padding:12px 18px;}.whobar{padding:10px 18px;}
+    .rec{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="brandbar">
+    <div class="vendor"><img src="/images/logoTA.png" alt="Technical America"></div>
+    <div class="clients">
+      <img class="client-logo" src="/images/logoME.png" alt="Manaenergy">
+      <span class="divider"></span>
+      <img class="client-logo itf" src="/images/logoITF.png" alt="ITF">
+    </div>
+  </header>
+  <div class="accent"></div>
+
+  <!-- ── SIGN IN · student code + PIN ───────────────────────────────────── -->
+  <div class="wrap" id="stepLogin">
+    <div class="kicker">Tendrara Micro LNG · Session recordings</div>
+    <h1>Sign in to watch</h1>
+    <p class="lead">Use the <b>student code</b> on your registration confirmation — it looks
+      like <b>TND-00042</b> — and the <b>PIN</b> your instructor gave you.</p>
+    <div class="card">
+      <label for="ident">Your registered email — or your student code</label>
+      <input type="text" id="ident" placeholder="name@company.com" autocomplete="username"
+             spellcheck="false" />
+      <button class="primary" id="identNext">Continue</button>
+      <div class="err" id="identErr"></div>
+    </div>
+
+    <!-- returning: just the PIN -->
+    <div class="card hidden" id="cardPin" style="margin-top:14px;">
+      <label for="pin">PIN for <b id="pinWho"></b></label>
+      <input type="password" id="pin" autocomplete="current-password" />
+      <button class="primary" id="signIn">Sign in</button>
+      <div class="err" id="loginErr"></div>
+      <div><button class="link" id="backFromPin">Use a different account</button></div>
+    </div>
+
+    <!-- first time: prove who you are, then choose a PIN -->
+    <div class="card hidden" id="cardClaim" style="margin-top:14px;">
+      <p class="lead" style="margin-top:0;">First time here. Confirm your <b>date of birth</b>
+        so nobody else can claim your account, then choose the PIN you will use from now on.</p>
+      <label for="dob">Date of birth</label>
+      <input type="date" id="dob" style="width:100%;font-size:15px;padding:11px 13px;
+             border:1px solid var(--line-strong);border-radius:5px;font-family:var(--sans);" />
+      <label for="newPin" style="margin-top:12px;">Choose a PIN — at least 6 characters</label>
+      <input type="password" id="newPin" autocomplete="new-password" />
+      <label for="newPin2" style="margin-top:12px;">Repeat it</label>
+      <input type="password" id="newPin2" autocomplete="new-password" />
+      <button class="primary" id="claimBtn">Set my PIN and enter</button>
+      <div class="err" id="claimErr"></div>
+      <div><button class="link" id="backFromClaim">Use a different account</button></div>
+    </div>
+
+    <p class="note">Nothing is ever sent by email — the address is only how we recognise you.
+      If you forget your PIN, your instructor sets a new one.</p>
+  </div>
+
+  <!-- ── STEP 3 · the catalogue ─────────────────────────────────────────── -->
+  <div class="hidden" id="stepList">
+    <div class="whobar">
+      <div class="who">Signed in as <b id="whoName">—</b><span class="ref" id="whoRef"></span></div>
+      <button class="link" id="signOut">Sign out</button>
+    </div>
+    <div class="wrap">
+      <div class="kicker">Tendrara Micro LNG · Session recordings</div>
+      <h1 id="listTitle">Session recordings</h1>
+      <p class="lead">The recording of each classroom session. Your progress is saved as you
+        watch, so you can stop and come back to the same point.</p>
+
+      <div id="player" class="hidden">
+        <div class="playerwrap">
+          <video id="video" controls controlsList="nodownload noplaybackrate"
+                 disablepictureinpicture playsinline preload="metadata"></video>
+        </div>
+        <div class="plmeta">
+          <div><b id="plTitle"></b></div>
+          <div class="st" id="plState">—</div>
+        </div>
+      </div>
+
+      <div id="recs"></div>
+      <div class="err" id="listErr"></div>
+      <p class="note" id="emptyNote"></p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<script>
+// ===========================================================================
+// Tendrara Training System — session recordings
+// ===========================================================================
+// Three states, one page: ask for the email, ask for the code, then the
+// catalogue. The video URL is NEVER in this file: it is minted per play by the
+// sign-recording Edge Function, lives fifteen minutes, and points at a private
+// Cloudflare R2 bucket.
+//
+// WHAT IS MEASURED AND HOW. The player reports the 30-second BUCKETS it has
+// covered, not its position. Dragging the scrubber to the end therefore does
+// not move anyone's progress: only buckets whose seconds actually elapsed
+// under a playing video are ever sent. See migration 274.
+// ===========================================================================
+const supa = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+const BUCKET_S   = 30;     // must match public.record_progress in migration 274
+const FLUSH_MS   = 20000;  // how often covered buckets are posted
+
+const $ = (id) => document.getElementById(id);
+const show = (id) => $(id).classList.remove('hidden');
+const hide = (id) => $(id).classList.add('hidden');
+const setErr = (id, msg) => { const e = $(id); e.textContent = msg || ''; e.style.display = msg ? 'block' : 'none'; };
+
+const hhmm = (s) => {
+  if (s == null) return '—';
+  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  return h ? `${h} h ${String(m).padStart(2,'0')} min` : `${m} min`;
+};
+
+// ── sign in: code + PIN ────────────────────────────────────────────────────
+// Supabase Auth needs an email as the username, so the page BUILDS the
+// synthetic one from what was typed -- the same rule as public.auth_email in
+// migration 278. It is deterministic on purpose: no lookup call, so this form
+// cannot be used to find out which codes exist. Nothing is ever mailed there.
+const authEmail = (code) => code.trim().toLowerCase() + '@tendrara.neo-ware.com';
+
+// The identifier the person typed, and the login code the server resolved it to.
+// They differ whenever someone signs in with their email: the Auth username is
+// always built from the CODE (public.auth_email), never from the address.
+let IDENT = '', LOGIN_CODE = '';
+
+const backToIdent = () => {
+  hide('cardPin'); hide('cardClaim');
+  setErr('identErr', ''); setErr('loginErr', ''); setErr('claimErr', '');
+  $('ident').focus();
+};
+$('backFromPin').onclick = backToIdent;
+$('backFromClaim').onclick = backToIdent;
+
+// ── step 1: who are you ────────────────────────────────────────────────────
+$('identNext').onclick = async () => {
+  IDENT = $('ident').value.trim();
+  setErr('identErr', '');
+  if (IDENT.length < 3) return setErr('identErr', 'Enter your email or your student code.');
+  $('identNext').disabled = true;
+  const { data, error } = await supa.rpc('login_status', { p_identifier: IDENT });
+  $('identNext').disabled = false;
+  if (error) return setErr('identErr', 'Could not reach the server. Try again.');
+
+  hide('cardPin'); hide('cardClaim');
+  LOGIN_CODE = data.login_code || IDENT;
+
+  if (data.state === 'has_pin') {
+    $('pinWho').textContent = LOGIN_CODE;
+    show('cardPin'); $('pin').focus();
+  } else if (data.state === 'claim') {
+    show('cardClaim'); $('dob').focus();
+  } else if (data.state === 'locked') {
+    setErr('identErr', 'Too many failed attempts on this account. Try again in a few minutes.');
+  } else if (data.state === 'no_pin_ask_admin') {
+    setErr('identErr', 'Your account has no PIN yet. Ask an administrator to set one for you.');
+  } else {
+    setErr('identErr', 'We do not recognise that. Use the email you registered with, or your student code.');
+  }
+};
+$('ident').addEventListener('keydown', e => { if (e.key === 'Enter') $('identNext').click(); });
+
+// ── step 2a: returning — sign in ───────────────────────────────────────────
+$('signIn').onclick = async () => {
+  const pin = $('pin').value;
+  setErr('loginErr', '');
+  if (!pin) return setErr('loginErr', 'Enter your PIN.');
+  $('signIn').disabled = true;
+  const { error } = await supa.auth.signInWithPassword({
+    email: authEmail(LOGIN_CODE), password: pin,
+  });
+  $('signIn').disabled = false;
+  if (error) return setErr('loginErr', 'That PIN is not right. Ask your instructor for a new one if you have forgotten it.');
+  await enterCatalogue();
+};
+$('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
+
+// ── step 2b: first time — prove it, choose a PIN, and go straight in ───────
+$('claimBtn').onclick = async () => {
+  const dob = $('dob').value, p1 = $('newPin').value, p2 = $('newPin2').value;
+  setErr('claimErr', '');
+  if (!dob) return setErr('claimErr', 'Enter your date of birth.');
+  if (p1.length < 6) return setErr('claimErr', 'The PIN must be at least 6 characters.');
+  if (p1 !== p2) return setErr('claimErr', 'The two PINs do not match.');
+
+  $('claimBtn').disabled = true;
+  const res = await fetch(window.SUPABASE_URL + '/functions/v1/first-time-pin', {
+    method: 'POST',
+    headers: { 'apikey': window.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier: IDENT, date_of_birth: dob, pin: p1 }),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || !j.ok) {
+    $('claimBtn').disabled = false;
+    return setErr('claimErr', j.error === 'LOCKED'
+      ? 'Too many attempts. Try again in fifteen minutes.'
+      : 'That does not match our records. Check the date of birth you registered with.');
+  }
+
+  // Account created — sign straight in with the PIN they just chose, so they
+  // never have to type it twice.
+  LOGIN_CODE = j.login_code || LOGIN_CODE;
+  const { error } = await supa.auth.signInWithPassword({
+    email: authEmail(LOGIN_CODE), password: p1,
+  });
+  $('claimBtn').disabled = false;
+  if (error) return setErr('claimErr', 'Your PIN was set. Please sign in with it now.');
+  await enterCatalogue();
+};
+['dob', 'newPin', 'newPin2'].forEach(id =>
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('claimBtn').click(); }));
+
+$('signOut').onclick = async () => { stopPlayer(); await supa.auth.signOut(); location.reload(); };
+
+// ── step 3: the catalogue ──────────────────────────────────────────────────
+async function enterCatalogue() {
+  const { data: who, error: whoErr } = await supa.rpc('current_trainee');
+  if (whoErr || !who) {
+    await supa.auth.signOut();
+    show('stepLogin');
+    return setErr('loginErr', 'That account is not linked to a registered student. Contact your instructor.');
+  }
+  $('whoName').textContent = who.full_name;
+  $('whoRef').textContent  = who.reference_code || '';
+  hide('stepLogin'); show('stepList');
+  await loadRecordings();
+}
+
+async function loadRecordings() {
+  setErr('listErr', '');
+  const { data, error } = await supa.rpc('list_recordings');
+  if (error) return setErr('listErr', 'Could not load the recordings: ' + error.message);
+
+  const host = $('recs');
+  host.innerHTML = '';
+  if (!data || !data.length) {
+    $('emptyNote').textContent = 'No recordings are published yet. They appear here as each session is uploaded.';
+    return;
+  }
+  $('emptyNote').textContent = '';
+
+  for (const r of data) {
+    const pct = r.duration_s ? Math.min(100, Math.round(r.watched_s * 100 / r.duration_s)) : 0;
+    const el = document.createElement('div');
+    el.className = 'rec';
+    el.innerHTML =
+      `<div>
+         <div class="code">Module ${esc(r.module_code)} &middot; ${r.recorded_on ? esc(r.recorded_on) : 'date not recorded'}</div>
+         <div class="t">${esc(r.title)}</div>
+         <div class="sub">${esc(r.module_title)}</div>
+         <div class="sub">${hhmm(r.duration_s)}${r.plays ? ` &middot; watched ${r.plays} time${r.plays > 1 ? 's' : ''}` : ''}</div>
+       </div>
+       <div><button class="primary" data-id="${r.recording_id}" style="margin-top:0;">${r.plays ? 'Watch again' : 'Watch'}</button></div>
+       ${r.duration_s ? `<div class="bar"><i style="width:${pct}%"></i></div><div class="pct">${pct}% seen</div>` : ''}`;
+    el.querySelector('button').onclick = () => play(r);
+    host.appendChild(el);
+  }
+}
+
+const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// ── the player ─────────────────────────────────────────────────────────────
+let viewId = null, pending = new Set(), flushTimer = null, lastTick = null;
+
+function stopPlayer() {
+  if (flushTimer) { clearInterval(flushTimer); flushTimer = null; }
+  const v = $('video');
+  v.pause(); v.removeAttribute('src'); v.load();
+  viewId = null; pending.clear(); lastTick = null;
+}
+
+async function play(rec) {
+  setErr('listErr', '');
+  stopPlayer();
+  $('plState').textContent = 'requesting access…';
+  show('player');
+  $('plTitle').textContent = rec.title;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  const { data, error } = await supa.functions.invoke('sign-recording', {
+    body: { recording_id: rec.recording_id },
+  });
+  if (error || !data || !data.url) {
+    hide('player');
+    return setErr('listErr', 'Could not open that recording. ' +
+      (data && data.error ? data.error : (error ? error.message : '')));
+  }
+
+  viewId = data.view_id;
+  const v = $('video');
+  v.src = data.url;
+  // Resume where they left off, a few seconds back so the last thing they
+  // heard is the first thing they hear again.
+  if (rec.max_position_s > 30 && rec.duration_s && rec.max_position_s < rec.duration_s - 15) {
+    v.currentTime = Math.max(0, rec.max_position_s - 5);
+  }
+  v.play().catch(() => { /* autoplay blocked: the controls are right there */ });
+  $('plState').textContent = 'streaming · link valid for 15 min';
+
+  flushTimer = setInterval(flush, FLUSH_MS);
+}
+
+// Only count seconds that actually ELAPSED while playing. A seek moves
+// currentTime without any time passing, and the gap is discarded here.
+$('video').addEventListener('timeupdate', () => {
+  const v = $('video');
+  if (v.paused || v.seeking) { lastTick = null; return; }
+  const t = v.currentTime;
+  if (lastTick !== null && t > lastTick && t - lastTick < 2) {
+    for (let s = Math.floor(lastTick); s <= Math.floor(t); s++) pending.add(Math.floor(s / BUCKET_S));
+  }
+  lastTick = t;
+});
+$('video').addEventListener('pause',  () => { lastTick = null; flush(); });
+$('video').addEventListener('seeking',() => { lastTick = null; });
+$('video').addEventListener('ended',  () => { lastTick = null; flush(); });
+
+async function flush() {
+  if (!viewId) return;
+  const buckets = [...pending];
+  const pos = Math.floor($('video').currentTime || 0);
+  if (!buckets.length && !pos) return;
+  pending.clear();
+  const { error } = await supa.rpc('record_progress', {
+    p_view_id: viewId, p_buckets: buckets, p_position_s: pos,
+  });
+  // Put them back if the write failed, so a dropped connection does not lose
+  // the minutes the trainee actually sat through.
+  if (error) buckets.forEach(b => pending.add(b));
+}
+
+// Last chance to save on the way out. sendBeacon is not available for an
+// authenticated RPC, so this is best-effort and the 20 s timer is the real
+// guarantee -- at worst a trainee loses the last twenty seconds.
+window.addEventListener('pagehide', () => { if (viewId) flush(); });
+
+// ── boot: an existing session skips both steps ─────────────────────────────
+(async () => {
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) await enterCatalogue();
+})();
+</script>
+</body>
+</html>

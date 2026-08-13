@@ -24,7 +24,7 @@
   p.lead{color:var(--ink-soft);font-size:14px;line-height:1.6;margin:0 0 14px;max-width:75ch;}
   .card{border:1px solid var(--line-strong);border-radius:8px;background:var(--bg-soft);padding:22px 24px;max-width:480px;}
   label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;}
-  input[type=password],input[type=search]{width:100%;font-size:15px;padding:11px 13px;border:1px solid var(--line-strong);border-radius:5px;font-family:var(--sans);}
+  input[type=password],input[type=search],input[type=text],input[type=email],select{width:100%;font-size:15px;padding:11px 13px;border:1px solid var(--line-strong);border-radius:5px;font-family:var(--sans);}
   input:focus{outline:2px solid var(--crimson);border-color:var(--crimson);}
   button.primary{background:var(--crimson);color:#fff;border:none;font-size:15px;font-weight:600;padding:11px 20px;border-radius:5px;cursor:pointer;margin-top:14px;}
   button.primary:hover{background:var(--crimson-dark);}
@@ -74,6 +74,7 @@
   .copybtn:hover{background:var(--crimson);color:#fff;}
   .toolrow{display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
   .toolrow input[type=search]{max-width:320px;}
+  .toolrow input[type=text],.toolrow input[type=email],.toolrow select{width:auto;}
   .refresh{background:none;border:1px solid var(--line-strong);border-radius:5px;padding:8px 14px;font-size:13px;cursor:pointer;color:var(--ink-soft);}
   .refresh:hover{border-color:var(--crimson);color:var(--crimson);}
   .scrollbox{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:6px;}
@@ -120,13 +121,29 @@
   <div class="wrap" id="gate">
     <div class="kicker">Restricted access</div>
     <h1>Administration</h1>
-    <p class="lead">Enter the administration key to open the dashboard.</p>
+    <p class="lead">Sign in as a registered trainer with your code and PIN. Your name is then
+      attached to what you do here, and access can be withdrawn from one person without
+      changing anything for anybody else.</p>
     <div class="card">
-      <label for="key">Admin key</label>
-      <input type="password" id="key" autocomplete="current-password">
-      <button class="primary" id="loginBtn">Open dashboard →</button>
-      <div class="err" id="gateErr"></div>
+      <label for="staffCode">Trainer code</label>
+      <input type="text" id="staffCode" autocomplete="username" spellcheck="false" placeholder="mario.mendizabal">
+      <label for="staffPin" style="margin-top:12px;">PIN</label>
+      <input type="password" id="staffPin" autocomplete="current-password">
+      <button class="primary" id="pinLoginBtn">Sign in →</button>
+      <div class="err" id="otpErr"></div>
     </div>
+
+    <!-- The shared key stays as the way back in when nobody can receive email --
+         a locked-out admin with no second door is how systems die. -->
+    <details style="margin-top:22px;max-width:560px;">
+      <summary style="cursor:pointer;font-size:13px;color:var(--ink-soft);">Use the shared admin key instead</summary>
+      <div class="card" style="margin-top:10px;">
+        <label for="key">Admin key</label>
+        <input type="password" id="key" autocomplete="current-password">
+        <button class="primary" id="loginBtn">Open dashboard →</button>
+        <div class="err" id="gateErr"></div>
+      </div>
+    </details>
   </div>
 
   <!-- DASHBOARD -->
@@ -154,6 +171,9 @@
       <button class="tab" data-t="results">Evaluation results</button>
       <button class="tab" data-t="bank">Question bank</button>
       <button class="tab" data-t="links">Exam links</button>
+      <button class="tab" data-t="watch">Recordings</button>
+      <button class="tab" data-t="logins">Student access</button>
+      <button class="tab" data-t="staff">Trainers</button>
     </div>
 
     <!-- STUDENTS -->
@@ -205,6 +225,75 @@
       </div>
       <div class="err" id="bankErr"></div>
       <div id="bankList"><p class="muted">Loading…</p></div>
+    </section>
+
+    <!-- STUDENT LOGINS -->
+    <section id="tab-logins" class="hidden">
+      <h2>Student access</h2>
+      <p class="lead">Students sign in at <b>/sessions</b> with their <b>student code</b> and a
+        <b>PIN you give them</b>. No email is ever sent — if a PIN is lost you set a new one here.
+        The PIN cannot be read back, only replaced.</p>
+      <div class="toolrow">
+        <input type="search" id="qLogins" placeholder="Search student or code…">
+        <span class="muted" id="loginsCount"></span>
+      </div>
+      <div class="err" id="loginsErr"></div>
+      <div class="scrollbox"><table class="data" id="tblLogins">
+        <thead><tr><th>Code</th><th>Name</th><th>Contact email</th><th>Can sign in</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <!-- TRAINERS -->
+    <section id="tab-staff" class="hidden">
+      <h2>Trainers</h2>
+      <p class="lead">Anyone here can sign in to this dashboard with a code sent to their email —
+        no shared key to pass around. <b>Admin</b> can also edit the question bank and manage this
+        list; <b>instructor</b> is read-only. Set someone inactive to withdraw access immediately.</p>
+      <div class="toolrow">
+        <input type="text" id="stName" placeholder="Full name" style="min-width:180px;">
+        <input type="email" id="stEmail" placeholder="email@company.com" style="min-width:200px;">
+        <select id="stRole">
+          <option value="instructor">instructor — read only</option>
+          <option value="admin">admin — full access</option>
+        </select>
+        <button class="copybtn" id="stAdd">+ Register trainer</button>
+      </div>
+      <div class="err" id="staffErr"></div>
+      <div class="scrollbox"><table class="data" id="tblStaff">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Signed in before</th><th>State</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="muted" style="margin-top:10px;">A trainer only needs to exist here — the account is
+        created the first time they sign in, and is bound to this row by their email address.</p>
+    </section>
+
+    <!-- RECORDINGS -->
+    <section id="tab-watch" class="hidden">
+      <h2>Session recordings — who watched what</h2>
+      <p class="lead">Watch time is counted in 30-second blocks that actually played, deduplicated,
+        so dragging the scrubber to the end does not move anyone's percentage. Uploading a
+        recording is a database row plus a file in the private R2 bucket — see
+        <b>SQL/274_session_recordings.sql</b>.</p>
+      <div class="err" id="watchErr"></div>
+      <h3 style="font-size:15px;margin:18px 0 6px;">Per recording</h3>
+      <div class="scrollbox"><table class="data" id="tblRecs">
+        <thead><tr><th>Module</th><th>Title</th><th>Recorded</th><th>Length</th>
+          <th>Viewers</th><th>Plays</th><th>Watch hours</th><th>State</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <h3 style="font-size:15px;margin:22px 0 6px;">Per student — the viewing log</h3>
+      <div class="toolrow">
+        <input type="search" id="qWatch" placeholder="Search student, company or module…">
+        <button class="copybtn" id="csvBtn">Download CSV</button>
+        <span class="muted">Seconds are counted in 30 s blocks that actually played, deduplicated</span>
+      </div>
+      <div class="scrollbox"><table class="data" id="tblWatch">
+        <thead><tr><th>Ref</th><th>Name</th><th>Company</th><th>Module</th><th>Plays</th>
+          <th>Watched</th><th>% seen</th><th>Furthest</th><th>Devices</th><th>IPs</th>
+          <th>First</th><th>Last</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
     </section>
 
     <!-- LINKS -->
@@ -273,18 +362,291 @@
   };
   $('key').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
 
+  // ── Signing in as a trainer ────────────────────────────────────────────────
+  // Same one-time-code login the trainees use, so a person has ONE identity on
+  // this site and the role decides what they see. KEY stays '' on this path:
+  // private.require_admin accepts a signed-in active staff member instead of
+  // the shared string, so every admin_* RPC below works unchanged.
+  let ME = null;
+
+  async function enterDashboard() {
+    D = await load(KEY);
+    $('gate').classList.add('hidden');
+    $('dash').classList.remove('hidden');
+    if (ME) {
+      const stamp = $('stamp');
+      stamp.innerHTML = (stamp.innerHTML ? stamp.innerHTML + ' · ' : '') +
+        'Signed in as <b>' + esc(ME.full_name) + '</b> (' + esc(ME.role) + ') ' +
+        '<button class="minibtn" id="signOutBtn" style="margin-left:8px;">Sign out</button>';
+      const so = $('signOutBtn');
+      if (so) so.onclick = async () => { await supa.auth.signOut(); location.reload(); };
+    }
+    render();
+  }
+
+  // The synthetic username, built the same way public.auth_email builds it
+  // (migration 278). No mail is ever sent to it.
+  const authEmail = code => code.trim().toLowerCase() + '@tendrara.neo-ware.com';
+
+  $('pinLoginBtn').onclick = async () => {
+    const el = $('otpErr'); el.style.display = 'none';
+    const code = $('staffCode').value.trim(), pin = $('staffPin').value;
+    if (!code || !pin) { el.textContent = 'Enter your code and PIN.'; el.style.display = 'block'; return; }
+    $('pinLoginBtn').disabled = true;
+    const { error } = await supa.auth.signInWithPassword({ email: authEmail(code), password: pin });
+    $('pinLoginBtn').disabled = false;
+    if (error) { el.textContent = 'That code and PIN do not match.'; el.style.display = 'block'; return; }
+    const { data: me } = await supa.rpc('current_staff');
+    if (!me) {
+      await supa.auth.signOut();
+      el.textContent = 'That account is not an active trainer.'; el.style.display = 'block'; return;
+    }
+    ME = me; KEY = '';
+    try { await enterDashboard(); }
+    catch (e) { el.textContent = 'Error: ' + e.message; el.style.display = 'block'; }
+  };
+  ['staffCode', 'staffPin'].forEach(id =>
+    $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('pinLoginBtn').click(); }));
+
+  // ── Handing out a PIN ──────────────────────────────────────────────────────
+  // The PIN goes straight to the Auth API through the set-pin Edge Function and
+  // is never stored or echoed anywhere. Lost means reset, not recovered.
+  async function setPin(kind, id, who) {
+    const pin = prompt('New PIN for ' + who + '\n\nAt least 6 characters. Write it down — it cannot be read back.');
+    if (pin === null) return;
+    if (pin.trim().length < 6) { alert('The PIN must be at least 6 characters.'); return; }
+    const { data: { session } } = await supa.auth.getSession();
+    const res = await fetch(window.SUPABASE_URL + '/functions/v1/set-pin', {
+      method: 'POST',
+      headers: {
+        'apikey': window.SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + (session ? session.access_token : window.SUPABASE_ANON_KEY),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ admin_key: KEY, kind, id, pin: pin.trim() }),
+    });
+    const j = await res.json();
+    if (!res.ok || !j.ok) {
+      alert('Could not set the PIN: ' + (j.error || res.status) + (j.detail ? '\n' + j.detail : ''));
+      return;
+    }
+    alert((j.created ? 'Account created. ' : 'PIN changed. ') + who + ' signs in with code ' + j.login_code + '.');
+    STAFF = null; LOGINS = null;
+    if (kind === 'staff') loadStaff(true); else loadLogins(true);
+  }
+
+  // ── Student logins tab ─────────────────────────────────────────────────────
+  let LOGINS = null;
+
+  async function loadLogins(force) {
+    $('loginsErr').style.display = 'none';
+    if (LOGINS && !force) return renderLogins();
+    try {
+      const { data, error } = await supa.rpc('admin_list_logins', { p_key: KEY });
+      if (error) throw error;
+      LOGINS = data; renderLogins();
+    } catch (e) {
+      $('loginsErr').textContent = 'Could not load the logins: ' + (e.message || e);
+      $('loginsErr').style.display = 'block';
+    }
+  }
+
+  function renderLogins() {
+    const q = ($('qLogins').value || '').toLowerCase();
+    const rows = ((LOGINS && LOGINS.trainees) || []).filter(t =>
+      !q || (t.full_name || '').toLowerCase().includes(q) || (t.login_code || '').toLowerCase().includes(q));
+    $('tblLogins').querySelector('tbody').innerHTML = rows.length ? rows.map(t =>
+      '<tr><td style="font-family:var(--mono);">' + esc(t.login_code) + '</td>' +
+      '<td>' + esc(t.full_name) + '</td><td>' + esc(t.email) + '</td>' +
+      '<td>' + (t.has_account ? 'yes' : '<b style="color:var(--bad);">no PIN yet</b>') + '</td>' +
+      '<td><button class="minibtn" data-tid="' + t.id + '">' +
+      (t.has_account ? 'Reset PIN' : 'Give a PIN') + '</button></td></tr>').join('')
+      : '<tr><td colspan="5" class="muted">No students match.</td></tr>';
+    $('tblLogins').querySelectorAll('button[data-tid]').forEach(b => b.onclick = () => {
+      const t = LOGINS.trainees.find(x => x.id === b.dataset.tid);
+      setPin('trainee', t.id, t.full_name);
+    });
+    const n = ((LOGINS && LOGINS.trainees) || []).filter(t => t.has_account).length;
+    $('loginsCount').textContent = n + ' of ' + ((LOGINS && LOGINS.trainees) || []).length + ' students can sign in';
+  }
+  $('qLogins').addEventListener('input', renderLogins);
+
+  // ── Trainers tab ───────────────────────────────────────────────────────────
+  let STAFF = null;
+
+  async function loadStaff(force) {
+    $('staffErr').style.display = 'none';
+    if (STAFF && !force) return renderStaff();
+    try {
+      const { data, error } = await supa.rpc('admin_list_staff', { p_key: KEY });
+      if (error) throw error;
+      STAFF = data; renderStaff();
+    } catch (e) {
+      $('staffErr').textContent = 'Could not load the trainers: ' + (e.message || e);
+      $('staffErr').style.display = 'block';
+    }
+  }
+
+  function renderStaff() {
+    const rows = STAFF || [];
+    $('tblStaff').querySelector('tbody').innerHTML = rows.length ? rows.map(s =>
+      '<tr><td>' + esc(s.full_name) + '</td><td>' + esc(s.email) + '</td>' +
+      '<td>' + esc(s.role) + '</td>' +
+      '<td>' + (s.has_account ? 'yes' : 'not yet') + '</td>' +
+      '<td>' + (s.active ? 'active' : '<b style="color:var(--bad);">withdrawn</b>') + '</td>' +
+      '<td><button class="minibtn" data-pin="' + s.staff_id + '">' +
+      (s.has_account ? 'Reset PIN' : 'Give a PIN') + '</button> ' +
+      '<button class="minibtn" data-id="' + s.staff_id + '" data-act="' + (s.active ? '0' : '1') + '">' +
+      (s.active ? 'Withdraw' : 'Restore') + '</button></td></tr>').join('')
+      : '<tr><td colspan="6" class="muted">No trainers registered yet.</td></tr>';
+
+    $('tblStaff').querySelectorAll('button[data-pin]').forEach(b => b.onclick = () => {
+      const s = STAFF.find(x => x.staff_id === b.dataset.pin);
+      setPin('staff', s.staff_id, s.full_name);
+    });
+    $('tblStaff').querySelectorAll('button[data-id]').forEach(b => b.onclick = async () => {
+      const s = STAFF.find(x => x.staff_id === b.dataset.id);
+      await saveStaff({ id: s.staff_id, full_name: s.full_name, email: s.email,
+                        role: s.role, active: b.dataset.act === '1' });
+    });
+  }
+
+  async function saveStaff(s) {
+    $('staffErr').style.display = 'none';
+    try {
+      const { error } = await supa.rpc('admin_save_staff', {
+        p_key: KEY, p_id: s.id ?? null, p_full_name: s.full_name,
+        p_email: s.email, p_role: s.role, p_active: s.active,
+      });
+      if (error) throw error;
+      await loadStaff(true);
+    } catch (e) {
+      const m = e.message || String(e);
+      $('staffErr').textContent =
+        m.includes('LAST_ADMIN') ? 'That is the only active admin left — promote someone else first, or you lock everybody out.'
+        : m.includes('ADMIN_ROLE_REQUIRED') ? 'Only an admin can change this list.'
+        : m.includes('INVALID_EMAIL') ? 'That email address is not valid.'
+        : m.includes('INVALID_NAME') ? 'Give the full name.'
+        : 'Error: ' + m;
+      $('staffErr').style.display = 'block';
+    }
+  }
+
+  $('stAdd').onclick = async () => {
+    await saveStaff({ id: null, full_name: $('stName').value.trim(),
+                      email: $('stEmail').value.trim(), role: $('stRole').value, active: true });
+    $('stName').value = ''; $('stEmail').value = '';
+  };
+
   $('refreshBtn').onclick = async () => { try { D = await load(KEY); render(); } catch (e) { alert('Refresh failed: ' + e.message); } };
 
-  // auto-login if key in session
-  if (KEY) { load(KEY).then(d => { D = d; $('gate').classList.add('hidden'); $('dash').classList.remove('hidden'); render(); }).catch(() => sessionStorage.removeItem('tnd_admin_key')); }
+  // Come back in without asking again: a live trainer session first, then the
+  // key cached in this tab. Both land in the same dashboard.
+  (async () => {
+    const { data: { session } } = await supa.auth.getSession();
+    if (session) {
+      const { data: me } = await supa.rpc('current_staff');
+      if (me) { ME = me; KEY = ''; try { await enterDashboard(); return; } catch (e) { /* fall through */ } }
+    }
+    if (KEY) {
+      try { await enterDashboard(); }
+      catch (e) { sessionStorage.removeItem('tnd_admin_key'); KEY = ''; }
+    }
+  })();
 
   // tabs
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
-    ['students','companies','modules','results','bank','links'].forEach(n => $('tab-' + n).classList.toggle('hidden', n !== t.dataset.t));
+    ['students','companies','modules','results','bank','links','watch','staff','logins'].forEach(n => $('tab-' + n).classList.toggle('hidden', n !== t.dataset.t));
+    if (t.dataset.t === 'watch') loadWatch();
+    if (t.dataset.t === 'staff') loadStaff();
+    if (t.dataset.t === 'logins') loadLogins();
   });
 
   const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
+
+  // ---- Recordings tab -------------------------------------------------------
+  // Loaded on first open rather than with the dashboard: it is its own RPC and
+  // most visits to /admin never look at it.
+  let WATCH = null;
+  const dur = s => {
+    if (s == null) return '—';
+    const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+    return h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min';
+  };
+
+  let USAGE = null;
+
+  async function loadWatch(force) {
+    if (WATCH && !force) return renderWatch();
+    $('watchErr').style.display = 'none';
+    try {
+      const [stats, usage] = await Promise.all([
+        supa.rpc('admin_recording_stats', { p_key: KEY }),
+        supa.rpc('admin_usage_report',    { p_key: KEY }),
+      ]);
+      if (stats.error) throw stats.error;
+      if (usage.error) throw usage.error;
+      WATCH = stats.data; USAGE = usage.data;
+      renderWatch();
+    } catch (e) {
+      $('watchErr').textContent = 'Could not load the viewing statistics: ' + (e.message || e);
+      $('watchErr').style.display = 'block';
+    }
+  }
+
+  function renderWatch() {
+    const recs = (WATCH && WATCH.recordings) || [];
+    const rb = $('tblRecs').querySelector('tbody');
+    rb.innerHTML = recs.length ? recs.map(r =>
+      '<tr><td>' + esc(r.module_code) + '</td><td>' + esc(r.title) + '</td>' +
+      '<td>' + fdate(r.recorded_on) + '</td><td>' + dur(r.duration_s) + '</td>' +
+      '<td>' + r.viewers + '</td><td>' + r.plays + '</td><td>' + r.watch_hours + '</td>' +
+      '<td>' + (r.published ? 'published' : 'not published') + '</td></tr>').join('')
+      : '<tr><td colspan="8" class="muted">No recordings registered yet.</td></tr>';
+    renderWatchRows();
+  }
+
+  function usageRows() {
+    const q = ($('qWatch').value || '').toLowerCase();
+    return (USAGE || []).filter(r => !q ||
+      (r.full_name || '').toLowerCase().includes(q) ||
+      (r.company || '').toLowerCase().includes(q) ||
+      (r.reference_code || '').toLowerCase().includes(q) ||
+      (r.module_code || '').toLowerCase().includes(q));
+  }
+
+  function renderWatchRows() {
+    const rows = usageRows();
+    $('tblWatch').querySelector('tbody').innerHTML = rows.length ? rows.map(r =>
+      '<tr><td>' + esc(r.reference_code) + '</td><td>' + esc(r.full_name) + '</td>' +
+      '<td>' + esc(r.company) + '</td><td>' + esc(r.module_code) + '</td>' +
+      '<td>' + r.plays + '</td><td>' + dur(r.watched_s) + '</td>' +
+      '<td>' + (r.percent_seen == null ? '—' : r.percent_seen + ' %') + '</td>' +
+      '<td>' + dur(r.furthest_s) + '</td><td>' + esc(r.devices) + '</td>' +
+      '<td>' + r.distinct_ips + '</td>' +
+      '<td>' + fdate(r.first_seen) + '</td><td>' + fdate(r.last_seen) + '</td></tr>').join('')
+      : '<tr><td colspan="12" class="muted">Nobody has opened a recording yet.</td></tr>';
+  }
+  $('qWatch').addEventListener('input', renderWatchRows);
+
+  // CSV of exactly what is on screen, filter included -- the thing an invoice
+  // or a dispute gets attached to.
+  $('csvBtn').onclick = () => {
+    const rows = usageRows();
+    if (!rows.length) return alert('Nothing to export yet.');
+    const cols = ['reference_code','full_name','email','company','module_code','title',
+                  'duration_s','plays','watched_s','percent_seen','furthest_s',
+                  'distinct_ips','devices','first_seen','last_seen'];
+    const cell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => cell(r[c])).join(','))).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'tendrara-viewing-log.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   const fdate = s => s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
   // ---- the deck list ----
