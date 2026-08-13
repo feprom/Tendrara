@@ -165,6 +165,9 @@
         <div class="kicker">Dashboard</div>
         <h1>Training administration</h1>
         <p class="lead" id="stamp"></p>
+        <!-- Its own element on purpose: render() overwrites #stamp on every
+             refresh, which silently ate the first version of this banner. -->
+        <p class="lead" id="whoami" style="margin-top:-6px;"></p>
       </div>
       <button class="refresh" id="refreshBtn">↻ Refresh data</button>
     </div>
@@ -385,13 +388,28 @@
     D = await load(KEY);
     $('gate').classList.add('hidden');
     $('dash').classList.remove('hidden');
+    // ALWAYS say how you got in, and always offer the way out. The key path
+    // used to do neither: the key sat in sessionStorage, the dashboard opened
+    // by itself on every reload, and there was no button to get back to the
+    // login screen -- so you could not tell whether you were signed in as
+    // yourself or riding a cached shared secret, nor do anything about it.
+    const who = $('whoami');
     if (ME) {
-      const stamp = $('stamp');
-      stamp.innerHTML = (stamp.innerHTML ? stamp.innerHTML + ' · ' : '') +
-        'Signed in as <b>' + esc(ME.full_name) + '</b> (' + esc(ME.role) + ') ' +
+      who.innerHTML = 'Signed in as <b>' + esc(ME.full_name) + '</b> (' + esc(ME.role) + ') ' +
         '<button class="minibtn" id="signOutBtn" style="margin-left:8px;">Sign out</button>';
-      const so = $('signOutBtn');
-      if (so) so.onclick = async () => { await supa.auth.signOut(); location.reload(); };
+    } else {
+      who.innerHTML =
+        '<b style="color:var(--bad);">Signed in with the shared admin key</b> — anyone who ' +
+        'has that key has this. Set your own PIN in <b>Trainers</b>. ' +
+        '<button class="minibtn" id="signOutBtn" style="margin-left:8px;">Forget the key</button>';
+    }
+    const so = $('signOutBtn');
+    if (so) {
+      so.onclick = async () => {
+        sessionStorage.removeItem('tnd_admin_key');
+        await supa.auth.signOut();
+        location.reload();
+      };
     }
     render();
   }
