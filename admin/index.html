@@ -475,19 +475,32 @@
   // ── Handing out a PIN ──────────────────────────────────────────────────────
   // The PIN goes straight to the Auth API through the set-pin Edge Function and
   // is never stored or echoed anywhere. Lost means reset, not recovered.
+  // Result of a PIN operation, shown on the tab you are already looking at
+  // instead of in a dialog you have to dismiss.
+  function pinMsg(kind, text, ok) {
+    const el = $(kind === 'staff' ? 'staffErr' : 'loginsErr');
+    el.textContent = text;
+    el.style.color = ok ? 'var(--ok)' : 'var(--bad)';
+    el.style.display = 'block';
+  }
+
   async function setPin(kind, id, who) {
     const pin = prompt('New PIN for ' + who + '\n\nAt least 6 characters. Write it down — it cannot be read back.');
     if (pin === null) return;
-    if (pin.trim().length < 6) { alert('The PIN must be at least 6 characters.'); return; }
+    if (pin.trim().length < 6) { pinMsg(kind, 'The PIN must be at least 6 characters.', false); return; }
 
-    // Forcing a change is right when you hand a PIN to somebody else, because
-    // you know it. It is wrong when you are setting your own — you would be
-    // made to change the PIN you just chose. The server cannot always tell
-    // which case this is (on the shared-key path there is no session), so ask.
-    const force = confirm(
-      'Make ' + who + ' change this PIN the first time they sign in?\n\n' +
-      'OK      — yes. Use this when the PIN is for somebody else, since you now know it.\n' +
-      'Cancel  — no. Use this when you are setting YOUR OWN PIN.');
+    // Whether the PIN must be changed on first use is DERIVED, not asked. The
+    // rule the question was really getting at is "does somebody else now know
+    // this PIN?":
+    //   a student's PIN   -> always yes. You typed it, so you know it, and this
+    //                        is the case that covers 66 people.
+    //   another trainer   -> yes, same reason.
+    //   your own          -> no. You chose it; being forced to replace the PIN
+    //                        you just picked is pointless.
+    // On the shared-key path there is no session and therefore no "you", so a
+    // staff PIN set that way is treated as your own — that path exists to
+    // bootstrap the first admin, which is exactly this case.
+    const force = (kind === 'trainee') ? true : (ME ? id !== ME.staff_id : false);
 
     const { data: { session } } = await supa.auth.getSession();
     const res = await fetch(window.SUPABASE_URL + '/functions/v1/set-pin', {
@@ -501,10 +514,10 @@
     });
     const j = await res.json();
     if (!res.ok || !j.ok) {
-      alert('Could not set the PIN: ' + (j.error || res.status) + (j.detail ? '\n' + j.detail : ''));
+      pinMsg(kind, 'Could not set the PIN: ' + (j.error || res.status) + (j.detail ? ' - ' + j.detail : ''), false);
       return;
     }
-    alert((j.created ? 'Account created. ' : 'PIN changed. ') + who + ' signs in with code ' + j.login_code + '. ' + (j.must_change_pin ? 'They will be asked to change it the first time they sign in.' : 'This PIN will not have to be changed.'));
+    pinMsg(kind, (j.created ? 'Account created. ' : 'PIN changed. ') + who + ' signs in with code ' + j.login_code + '. ' + (j.must_change_pin ? 'They will have to change it the first time they sign in.' : 'This PIN stays until they change it.'), true);
     STAFF = null; LOGINS = null;
     if (kind === 'staff') loadStaff(true); else loadLogins(true);
   }
