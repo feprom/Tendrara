@@ -461,6 +461,16 @@
     const pin = prompt('New PIN for ' + who + '\n\nAt least 6 characters. Write it down — it cannot be read back.');
     if (pin === null) return;
     if (pin.trim().length < 6) { alert('The PIN must be at least 6 characters.'); return; }
+
+    // Forcing a change is right when you hand a PIN to somebody else, because
+    // you know it. It is wrong when you are setting your own — you would be
+    // made to change the PIN you just chose. The server cannot always tell
+    // which case this is (on the shared-key path there is no session), so ask.
+    const force = confirm(
+      'Make ' + who + ' change this PIN the first time they sign in?\n\n' +
+      'OK      — yes. Use this when the PIN is for somebody else, since you now know it.\n' +
+      'Cancel  — no. Use this when you are setting YOUR OWN PIN.');
+
     const { data: { session } } = await supa.auth.getSession();
     const res = await fetch(window.SUPABASE_URL + '/functions/v1/set-pin', {
       method: 'POST',
@@ -469,14 +479,14 @@
         'Authorization': 'Bearer ' + (session ? session.access_token : window.SUPABASE_ANON_KEY),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ admin_key: KEY, kind, id, pin: pin.trim() }),
+      body: JSON.stringify({ admin_key: KEY, kind, id, pin: pin.trim(), force_change: force }),
     });
     const j = await res.json();
     if (!res.ok || !j.ok) {
       alert('Could not set the PIN: ' + (j.error || res.status) + (j.detail ? '\n' + j.detail : ''));
       return;
     }
-    alert((j.created ? 'Account created. ' : 'PIN changed. ') + who + ' signs in with code ' + j.login_code + '.');
+    alert((j.created ? 'Account created. ' : 'PIN changed. ') + who + ' signs in with code ' + j.login_code + '. ' + (j.must_change_pin ? 'They will be asked to change it the first time they sign in.' : 'This PIN will not have to be changed.'));
     STAFF = null; LOGINS = null;
     if (kind === 'staff') loadStaff(true); else loadLogins(true);
   }
