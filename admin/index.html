@@ -177,6 +177,7 @@
     <!-- MODULES -->
     <section id="tab-modules" class="hidden">
       <h2>Available modules</h2>
+      <p class="lead" id="deckCount" style="margin-top:-6px;"></p>
       <div class="scrollbox"><table class="data" id="tblModules">
         <thead><tr><th data-k="sequence">#<span class="dir"></span></th><th data-k="code">Code<span class="dir"></span></th><th data-k="category">Category<span class="dir"></span></th><th data-k="title">Title<span class="dir"></span></th><th class="right" data-k="hours">Hours<span class="dir"></span></th><th data-k="forecast">Forecast<span class="dir"></span></th><th>Deck</th></tr></thead>
         <tbody></tbody>
@@ -286,8 +287,26 @@
   const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
   const fdate = s => s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
+  // ---- the deck list ----
+  // ONE map, read by the Modules tab (the "Deck" column) and by the Links tab
+  // (the list that gets sent to students). Until 2026-08-13 it held only 001 and
+  // 002, so the six Operation decks that ARE published showed as "—" in the
+  // table and were missing from the links page: the site had them and the
+  // dashboard said it did not. Every entry below is a folder that exists in
+  // publish/ with its index.html in it - if a deck is not here, it is not
+  // published, and that is the whole meaning of this map.
+  //   codes are modules.code, folders are the published paths.
+  const DECKS = {
+    '001': '/module-1/',        // Introduction to LNG
+    '002': '/module-2/',        // Plant safety, emergency & ITF HSE
+    '101': '/module-101/',      // Unit 200 inlet + Unit 530
+    '102': '/module-102/',      // Units 330 & 310 sweetening & dehydration
+    '103': '/module-103/',      // Unit 340 refrigeration
+    '104': '/module-104/',      // Unit 350 liquefaction, part I
+    '105': '/module-105/',      // Unit 350 liquefaction, part II
+    '106': '/module-106/'       // Unit 360 flash & BOG + Unit 370 vaporizer
+  };
   // ---- column sorting (all tables) ----
-  const DECKS = { '001': '/module-1/', '002': '/module-2/' };
   const sortState = { students: { k: 'ref', d: 1 }, modules: { k: 'sequence', d: 1 }, results: { k: 'ref', d: 1 } };
   function cmp(a, b) {
     const an = a == null || a === '', bn = b == null || b === '';
@@ -355,6 +374,15 @@
   function renderModules() {
     const rows = sortRows(D.modules || [], 'modules', (m, k) => m[k]);
     paintArrows('tblModules', 'modules');
+    // Progress, counted off the same map the Deck column uses - never typed in.
+    const total = (D.modules || []).length;
+    const withDeck = (D.modules || []).filter(m => DECKS[m.code]).length;
+    const next = (D.modules || []).filter(m => !DECKS[m.code])
+                                  .sort((a, b) => a.sequence - b.sequence)[0];
+    $('deckCount').innerHTML = '<b>' + withDeck + ' of ' + total +
+      '</b> modules have a deck published' +
+      (next ? ' &#183; next one up is <b>' + esc(next.code) + '</b>, ' +
+              esc(next.title) + ' (forecast ' + fdate(next.forecast) + ')' : '');
     $('tblModules').tBodies[0].innerHTML = rows.map(m => {
       const deck = DECKS[m.code] ? '<a class="decklink" href="' + DECKS[m.code] + '" target="_blank">Open deck ↗</a>' : '<span class="muted">—</span>';
       return '<tr><td class="mono">' + m.sequence + '</td><td class="mono"><b>' + esc(m.code) + '</b></td><td>' + esc(m.category) +
