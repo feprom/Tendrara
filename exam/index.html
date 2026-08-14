@@ -98,7 +98,7 @@
       <p class="note hidden" id="signinHint">
         <a href="/sessions/" style="color:var(--crimson);font-weight:600;">Sign in here</a>
         with your registered email and your PIN, then return to this link.
-        If you have no PIN yet, the sign-in page sets one up for you.</p>
+        The first time, your PIN is <b>1234</b> and you choose your own on the way in.</p>
     </div>
     <p class="note">Not registered yet? <a href="/register/" style="color:var(--crimson);">Register here</a> first, then return to this link.</p>
   </div>
@@ -290,7 +290,13 @@
   // the exam. Show the truth instead of inviting the mistake.
   (async () => {
     const { data: { session } } = await supa.auth.getSession();
-    if (!session) return;
+    if (!session) {
+      // Since migration 279 every registered trainee HAS an account, so the
+      // typed address is no longer a way in for anybody. Say that up front
+      // rather than after a refusal.
+      $('signinHint').classList.remove('hidden');
+      return;
+    }
     const { data: who } = await supa.rpc('current_trainee');
     if (!who) return;
     const box = $('email');

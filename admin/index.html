@@ -246,17 +246,18 @@
     <section id="tab-logins" class="hidden">
       <h2>Student access</h2>
       <p class="lead">Students sign in at <b>/sessions</b> with the <b>email they registered
-        with</b> and a PIN. The first time, they set that PIN themselves against their date of
-        birth — you only need to set one here if they are locked out. Never hand out the student
-        code: it is your reference, not a credential, and the sign-in form does not accept it.
-        No email is ever sent, and a PIN cannot be read back, only replaced.</p>
+        with</b>. Everybody starts on PIN <b>1234</b> and has to replace it before they reach
+        anything — until they do, the row below says so. If one is locked out, put them back to
+        1234: there is no PIN to invent and none to read out. Never hand out the student code —
+        it is your reference, not a credential, and the sign-in form does not accept it. No email
+        is ever sent, and a PIN cannot be read back, only replaced.</p>
       <div class="toolrow">
         <input type="search" id="qLogins" placeholder="Search student or code…">
         <span class="muted" id="loginsCount"></span>
       </div>
       <div class="err" id="loginsErr"></div>
       <div class="scrollbox"><table class="data" id="tblLogins">
-        <thead><tr><th>Code</th><th>Name</th><th>Contact email</th><th>Can sign in</th><th></th></tr></thead>
+        <thead><tr><th>Code</th><th>Name</th><th>Sign-in email</th><th>PIN</th><th></th></tr></thead>
         <tbody></tbody>
       </table></div>
     </section>
@@ -488,6 +489,20 @@
     el.style.display = 'block';
   }
 
+  // A student never gets a PIN you invented: they are put back to the same
+  // 1234 everybody starts with, and the forced change makes it theirs again on
+  // the way in. Nothing to write down, nothing to read out over the phone.
+  async function resetPin(t) {
+    const { data, error } = await supa.rpc('admin_reset_pin_default', { p_key: KEY, p_id: t.id });
+    if (error || !data || !data.ok) {
+      pinMsg('trainee', 'Could not reset the PIN: ' + ((error && error.message) || 'unknown'), false);
+      return;
+    }
+    pinMsg('trainee', t.full_name + ' is back to PIN 1234. They sign in with ' + t.email +
+      ' and choose a new PIN on the way in.', true);
+    LOGINS = null; loadLogins(true);
+  }
+
   async function setPin(kind, id, who, signInWith) {
     const pin = prompt('New PIN for ' + who + '\n\nAt least 6 characters. Write it down — it cannot be read back.');
     if (pin === null) return;
@@ -551,19 +566,25 @@
     const q = ($('qLogins').value || '').toLowerCase();
     const rows = ((LOGINS && LOGINS.trainees) || []).filter(t =>
       !q || (t.full_name || '').toLowerCase().includes(q) || (t.login_code || '').toLowerCase().includes(q));
+    // Three states, not two: an account that still holds the default PIN has
+    // not been used yet, and that is the number worth watching before a
+    // session -- "can sign in" is true for everybody from the moment they
+    // register (migration 279).
+    const state = (t) => !t.has_account ? '<b style="color:var(--bad);">no account</b>'
+      : t.must_change_pin ? '<span style="color:var(--ink-soft);">still on 1234</span>'
+      : 'own PIN';
     $('tblLogins').querySelector('tbody').innerHTML = rows.length ? rows.map(t =>
       '<tr><td style="font-family:var(--mono);">' + esc(t.login_code) + '</td>' +
       '<td>' + esc(t.full_name) + '</td><td>' + esc(t.email) + '</td>' +
-      '<td>' + (t.has_account ? 'yes' : '<b style="color:var(--bad);">no PIN yet</b>') + '</td>' +
-      '<td><button class="minibtn" data-tid="' + t.id + '">' +
-      (t.has_account ? 'Reset PIN' : 'Give a PIN') + '</button></td></tr>').join('')
+      '<td>' + state(t) + '</td>' +
+      '<td><button class="minibtn" data-tid="' + t.id + '">Back to 1234</button></td></tr>').join('')
       : '<tr><td colspan="5" class="muted">No students match.</td></tr>';
     $('tblLogins').querySelectorAll('button[data-tid]').forEach(b => b.onclick = () => {
       const t = LOGINS.trainees.find(x => x.id === b.dataset.tid);
-      setPin('trainee', t.id, t.full_name, t.email);
+      resetPin(t);
     });
-    const n = ((LOGINS && LOGINS.trainees) || []).filter(t => t.has_account).length;
-    $('loginsCount').textContent = n + ' of ' + ((LOGINS && LOGINS.trainees) || []).length + ' students can sign in';
+    const n = ((LOGINS && LOGINS.trainees) || []).filter(t => t.has_account && !t.must_change_pin).length;
+    $('loginsCount').textContent = n + ' of ' + ((LOGINS && LOGINS.trainees) || []).length + ' students have chosen their own PIN';
   }
   $('qLogins').addEventListener('input', renderLogins);
 

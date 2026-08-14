@@ -85,7 +85,8 @@
     <div class="kicker">Tendrara Micro LNG · Session recordings</div>
     <h1>Sign in to watch</h1>
     <p class="lead">Use the <b>email address you registered with</b> — the same one you use for
-      the exams — and your <b>PIN</b>.</p>
+      the exams — and your <b>PIN</b>. The first time, your PIN is <b>1234</b> and you will be
+      asked to choose your own before you go any further.</p>
     <div class="card">
       <label for="ident">Your registered email</label>
       <input type="email" id="ident" placeholder="name@company.com" autocomplete="email"
@@ -103,7 +104,9 @@
       <div><button class="link" id="backFromPin">Use a different account</button></div>
     </div>
 
-    <!-- first time: prove who you are, then choose a PIN -->
+    <!-- FALLBACK since migration 279. Every trainee is provisioned with PIN 1234
+         at registration, so login_status returns 'has_pin' and this card is not
+         reached. It stays as the way back in if an account is ever missing. -->
     <div class="card hidden" id="cardClaim" style="margin-top:14px;">
       <p class="lead" style="margin-top:0;">First time here. Confirm your <b>date of birth</b>
         so nobody else can claim your account, then choose the PIN you will use from now on.</p>
@@ -119,10 +122,10 @@
       <div><button class="link" id="backFromClaim">Use a different account</button></div>
     </div>
 
-    <!-- an admin set this PIN, so it has to be replaced before anything else -->
+    <!-- somebody else knows this PIN, so it has to be replaced before anything else -->
     <div class="card hidden" id="cardForce" style="margin-top:14px;">
-      <p class="lead" style="margin-top:0;">Your instructor set this PIN, so they know it.
-        Choose one only you know before you carry on.</p>
+      <p class="lead" style="margin-top:0;">This PIN is not yours yet — <b>1234</b> is the one
+        everybody starts with. Choose one only you know before you carry on.</p>
       <label for="forcePin">New PIN — at least 6 characters</label>
       <input type="password" id="forcePin" autocomplete="new-password" />
       <label for="forcePin2" style="margin-top:12px;">Repeat it</label>
@@ -132,7 +135,8 @@
     </div>
 
     <p class="note">Nothing is ever sent by email — the address is only how we recognise you.
-      If you forget your PIN, your instructor sets a new one.</p>
+      If you forget your PIN, your instructor puts it back to <b>1234</b> and you choose a new
+      one on the way in.</p>
   </div>
 
   <!-- ── STEP 3 · the catalogue ─────────────────────────────────────────── -->
@@ -266,7 +270,7 @@ $('signIn').onclick = async () => {
     email: authEmail(LOGIN_CODE), password: pin,
   });
   $('signIn').disabled = false;
-  if (error) return setErr('loginErr', 'That PIN is not right. Ask your instructor for a new one if you have forgotten it.');
+  if (error) return setErr('loginErr', 'That PIN is not right. If this is your first time, it is 1234 — otherwise ask your instructor to put it back to 1234.');
   await enterCatalogue();
 };
 $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
