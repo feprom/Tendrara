@@ -181,6 +181,7 @@
 
     <div class="tabs">
       <button class="tab on" data-t="students">Students</button>
+      <button class="tab" data-t="kpis">KPIs</button>
       <button class="tab" data-t="companies">Companies</button>
       <button class="tab" data-t="modules">Modules</button>
       <button class="tab" data-t="results">Evaluation results</button>
@@ -203,10 +204,56 @@
       </table></div>
     </section>
 
+    <!-- CONTENT KPIs -->
+    <section id="tab-kpis" class="hidden">
+      <h2>How the content is landing</h2>
+      <p class="lead" style="margin-top:-6px;">Every number here counts a PERSON, not an attempt:
+        the pass rate is the share of students whose <b>best</b> attempt passed, and the average is
+        the average of those best scores — sitting an exam twice does not dilute the class.
+        Watch time is the 30-second blocks that actually played.</p>
+      <div class="err" id="kpiErr"></div>
+
+      <div class="kpis" id="kpiTiles"></div>
+
+      <h3 style="font-size:15px;margin:22px 0 6px;">Per module</h3>
+      <div class="scrollbox"><table class="data" id="tblKpiModules">
+        <thead><tr><th>#</th><th>Code</th><th>Title</th><th>Given</th><th class="right">Bank</th>
+          <th class="right">Sat</th><th class="right">Passed</th><th class="right">Avg best</th>
+          <th class="right">Recording</th><th class="right">Viewers</th><th class="right">Avg seen</th>
+          <th class="right">Watch h</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+
+      <h3 style="font-size:15px;margin:26px 0 6px;">The questions they get wrong</h3>
+      <p class="lead" style="margin-top:-4px;">Answered at least five times, worst first. A question
+        the room fails is either a bad question or a topic that did not land — open the bank and
+        decide which. The reference tells you which slide said it.</p>
+      <div class="toolrow">
+        <input type="search" id="qKpiQ" placeholder="Search question, module or area…">
+        <span class="muted" id="kpiQCount"></span>
+      </div>
+      <div class="scrollbox"><table class="data" id="tblKpiQuestions">
+        <thead><tr><th>Module</th><th>Area</th><th>Question</th><th>Reference</th>
+          <th class="right">Answered</th><th class="right">Right</th><th class="right">% right</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
     <!-- COMPANIES -->
     <section id="tab-companies" class="hidden">
       <h2>Registrations per company</h2>
       <div id="companyBars"></div>
+
+      <h3 style="font-size:15px;margin:26px 0 6px;">What each company is actually doing</h3>
+      <p class="lead" style="margin-top:-4px;">Who registered is one thing; who signed in, sat the
+        exams and watched the recordings is another. This is the table for the contractor meeting.</p>
+      <div class="err" id="coErr"></div>
+      <div class="scrollbox"><table class="data" id="tblCompanies">
+        <thead><tr><th>Company</th><th class="right">Registered</th><th class="right">Own PIN</th>
+          <th class="right">Sat an exam</th><th class="right">Exams passed</th><th class="right">Avg best</th>
+          <th class="right">Watched a recording</th><th class="right">Watch h</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
     </section>
 
     <!-- MODULES -->
@@ -655,7 +702,17 @@
     $('stName').value = ''; $('stEmail').value = '';
   };
 
-  $('refreshBtn').onclick = async () => { try { D = await load(KEY); render(); } catch (e) { alert('Refresh failed: ' + e.message); } };
+  // Everything loaded lazily is dropped too, or Refresh would quietly leave the
+  // KPI tab showing figures from before the last exam.
+  $('refreshBtn').onclick = async () => {
+    try {
+      KPI = null; WATCH = null; USAGE = null; LOGINS = null; STAFF = null;
+      D = await load(KEY); render();
+      if (!$('tab-kpis').classList.contains('hidden') ||
+          !$('tab-companies').classList.contains('hidden')) loadKpis(true);
+      if (!$('tab-watch').classList.contains('hidden')) loadWatch(true);
+    } catch (e) { alert('Refresh failed: ' + e.message); }
+  };
 
   // Come back in without asking again: a live trainer session first, then the
   // key cached in this tab. Both land in the same dashboard.
@@ -681,13 +738,115 @@
   // tabs
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
-    ['students','companies','modules','results','bank','links','watch','staff','logins'].forEach(n => $('tab-' + n).classList.toggle('hidden', n !== t.dataset.t));
+    ['students','kpis','companies','modules','results','bank','links','watch','staff','logins'].forEach(n => $('tab-' + n).classList.toggle('hidden', n !== t.dataset.t));
     if (t.dataset.t === 'watch') loadWatch();
     if (t.dataset.t === 'staff') loadStaff();
     if (t.dataset.t === 'logins') loadLogins();
+    if (t.dataset.t === 'kpis' || t.dataset.t === 'companies') loadKpis();
   });
 
   const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
+
+  // ---- Content KPIs ---------------------------------------------------------
+  // One RPC (admin_content_kpis, migration 281) feeds both this tab and the
+  // company table, so opening either pays for both and the second is instant.
+  // Everything is derived at read time in SQL: there is nothing cached to go
+  // stale, and Refresh drops it so the next open recomputes.
+  let KPI = null;
+
+  const pct = v => v == null ? '—' : Math.round(v) + ' %';
+  const num = v => v == null ? '—' : v;
+  // A meter, not a chart: one bar, one hue, the number always beside it in
+  // text so the colour is never the only thing carrying the value.
+  const meter = (v, max) => v == null ? '—' :
+    '<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;">' +
+    '<div style="flex:0 0 54px;height:6px;border-radius:3px;background:var(--bg-soft);' +
+    'border:1px solid var(--line);overflow:hidden;"><i style="display:block;height:100%;' +
+    'background:var(--crimson);width:' + Math.round(Math.min(100, v * 100 / (max || 100))) + '%"></i></div>' +
+    '<span style="font-family:var(--mono);">' + Math.round(v) + '</span></div>';
+
+  async function loadKpis(force) {
+    if (KPI && !force) return renderKpis();
+    $('kpiErr').style.display = 'none'; $('coErr').style.display = 'none';
+    const { data, error } = await supa.rpc('admin_content_kpis', { p_key: KEY });
+    if (error) {
+      ['kpiErr', 'coErr'].forEach(id => {
+        $(id).textContent = 'Could not load the KPIs: ' + error.message;
+        $(id).style.display = 'block';
+      });
+      return;
+    }
+    KPI = data;
+    renderKpis();
+  }
+
+  function renderKpis() {
+    if (!KPI) return;
+    const T = KPI.totals || {};
+
+    // The tiles answer, in order: how much did we deliver, how much of it is on
+    // the shelf, is anybody taking it off the shelf, and did they pass.
+    $('kpiTiles').innerHTML = [
+      [T.modules_given + ' / ' + T.modules_planned, 'modules delivered'],
+      [T.class_hours + ' h',    'classroom hours delivered'],
+      [T.library_hours + ' h',  'recordings published'],
+      [T.watch_hours + ' h',    'watched by students'],
+      [T.takers + ' / ' + T.trainees, 'students who sat an exam'],
+      [T.pass_rate + ' %',      'pass rate — best attempt'],
+      [T.avg_best + ' %',       'average best score'],
+      [T.bank,                  'questions in the bank'],
+    ].map(([n, l]) => '<div class="kpi"><div class="n">' + esc(n) + '</div><div class="l">' +
+      esc(l) + '</div></div>').join('');
+
+    const mods = KPI.by_module || [];
+    const maxWatch = Math.max(1, ...mods.map(m => m.watch_hours || 0));
+    $('tblKpiModules').querySelector('tbody').innerHTML = mods.map(m =>
+      '<tr><td>' + m.sequence + '</td><td style="font-family:var(--mono);">' + esc(m.code) + '</td>' +
+      '<td>' + esc(m.title) + '</td>' +
+      '<td>' + (m.given_on ? esc(m.given_on) : '<span class="muted">not given yet</span>') + '</td>' +
+      '<td class="right">' + num(m.bank) + '</td>' +
+      '<td class="right">' + num(m.takers) + '</td>' +
+      '<td class="right">' + (m.pass_rate == null ? '—' :
+        '<span class="score-badge ' + (m.pass_rate >= 90 ? 'pass' : 'fail') + '">' + m.pass_rate + ' %</span>') + '</td>' +
+      '<td class="right" style="font-family:var(--mono);">' + (m.avg_best == null ? '—' : m.avg_best + ' %') + '</td>' +
+      '<td class="right" style="font-family:var(--mono);">' + (m.rec_hours == null ? '—' : m.rec_hours + ' h') + '</td>' +
+      '<td class="right">' + num(m.viewers) + '</td>' +
+      '<td class="right">' + pct(m.avg_percent) + '</td>' +
+      '<td class="right">' + (m.watch_hours == null ? '—' : meter(m.watch_hours, maxWatch)) + '</td></tr>').join('');
+
+    renderKpiQuestions();
+
+    const co = KPI.by_company || [];
+    $('tblCompanies').querySelector('tbody').innerHTML = co.length ? co.map(c =>
+      '<tr><td><b>' + esc(c.company) + '</b></td>' +
+      '<td class="right">' + c.registered + '</td>' +
+      '<td class="right">' + c.own_pin + '</td>' +
+      '<td class="right">' + c.takers + '</td>' +
+      '<td class="right">' + c.exams_passed + ' of ' + c.exams_taken + '</td>' +
+      '<td class="right" style="font-family:var(--mono);">' + (c.avg_best == null ? '—' : c.avg_best + ' %') + '</td>' +
+      '<td class="right">' + c.watchers + '</td>' +
+      '<td class="right" style="font-family:var(--mono);">' + c.watch_hours + '</td></tr>').join('')
+      : '<tr><td colspan="8" class="muted">No companies with registrations yet.</td></tr>';
+  }
+
+  function renderKpiQuestions() {
+    const q = ($('qKpiQ').value || '').toLowerCase();
+    const rows = (KPI.questions || []).filter(x => !q ||
+      (x.question || '').toLowerCase().includes(q) ||
+      (x.module_code || '').toLowerCase().includes(q) ||
+      (x.area || '').toLowerCase().includes(q));
+    $('tblKpiQuestions').querySelector('tbody').innerHTML = rows.length ? rows.map(x =>
+      '<tr><td style="font-family:var(--mono);">' + esc(x.module_code) + '</td>' +
+      '<td>' + esc(x.area || '—') + '</td><td>' + esc(x.question) + '</td>' +
+      '<td class="muted">' + esc(x.reference || '—') + '</td>' +
+      '<td class="right">' + x.answered + '</td><td class="right">' + x.correct + '</td>' +
+      '<td class="right"><span class="score-badge ' +
+      (x.percent_correct >= 70 ? 'pass' : 'fail') + '">' + x.percent_correct + ' %</span></td></tr>').join('')
+      : '<tr><td colspan="7" class="muted">Nothing answered five times yet.</td></tr>';
+    const weak = (KPI.questions || []).filter(x => x.percent_correct < 50).length;
+    $('kpiQCount').textContent = rows.length + ' questions · ' + weak + ' answered right by fewer than half';
+  }
+  $('qKpiQ').addEventListener('input', () => { if (KPI) renderKpiQuestions(); });
 
   // ---- Recordings tab -------------------------------------------------------
   // Loaded on first open rather than with the dashboard: it is its own RPC and
