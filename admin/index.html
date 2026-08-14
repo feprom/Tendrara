@@ -245,9 +245,11 @@
     <!-- STUDENT LOGINS -->
     <section id="tab-logins" class="hidden">
       <h2>Student access</h2>
-      <p class="lead">Students sign in at <b>/sessions</b> with their <b>student code</b> and a
-        <b>PIN you give them</b>. No email is ever sent — if a PIN is lost you set a new one here.
-        The PIN cannot be read back, only replaced.</p>
+      <p class="lead">Students sign in at <b>/sessions</b> with the <b>email they registered
+        with</b> and a PIN. The first time, they set that PIN themselves against their date of
+        birth — you only need to set one here if they are locked out. Never hand out the student
+        code: it is your reference, not a credential, and the sign-in form does not accept it.
+        No email is ever sent, and a PIN cannot be read back, only replaced.</p>
       <div class="toolrow">
         <input type="search" id="qLogins" placeholder="Search student or code…">
         <span class="muted" id="loginsCount"></span>
@@ -378,8 +380,10 @@
   $('key').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
 
   // ── Signing in as a trainer ────────────────────────────────────────────────
-  // Same one-time-code login the trainees use, so a person has ONE identity on
-  // this site and the role decides what they see. KEY stays '' on this path:
+  // Same Auth identity the trainees have -- one person, one account on this
+  // site, and the role decides what they see. Trainers sign in with a code
+  // because they have no registration email here; trainees only ever type
+  // their registered address. KEY stays '' on this path:
   // private.require_admin accepts a signed-in active staff member instead of
   // the shared string, so every admin_* RPC below works unchanged.
   let ME = null;
@@ -484,7 +488,7 @@
     el.style.display = 'block';
   }
 
-  async function setPin(kind, id, who) {
+  async function setPin(kind, id, who, signInWith) {
     const pin = prompt('New PIN for ' + who + '\n\nAt least 6 characters. Write it down — it cannot be read back.');
     if (pin === null) return;
     if (pin.trim().length < 6) { pinMsg(kind, 'The PIN must be at least 6 characters.', false); return; }
@@ -517,7 +521,12 @@
       pinMsg(kind, 'Could not set the PIN: ' + (j.error || res.status) + (j.detail ? ' - ' + j.detail : ''), false);
       return;
     }
-    pinMsg(kind, (j.created ? 'Account created. ' : 'PIN changed. ') + who + ' signs in with code ' + j.login_code + '. ' + (j.must_change_pin ? 'They will have to change it the first time they sign in.' : 'This PIN stays until they change it.'), true);
+    // What you tell them to type. A trainee is told their EMAIL and nothing
+    // else -- the code is our reference and the sign-in form refuses it.
+    const credential = (kind === 'trainee')
+      ? 'with their registered email' + (signInWith ? ' (' + signInWith + ')' : '')
+      : 'with code ' + j.login_code;
+    pinMsg(kind, (j.created ? 'Account created. ' : 'PIN changed. ') + who + ' signs in ' + credential + '. ' + (j.must_change_pin ? 'They will have to change it the first time they sign in.' : 'This PIN stays until they change it.'), true);
     STAFF = null; LOGINS = null;
     if (kind === 'staff') loadStaff(true); else loadLogins(true);
   }
@@ -551,7 +560,7 @@
       : '<tr><td colspan="5" class="muted">No students match.</td></tr>';
     $('tblLogins').querySelectorAll('button[data-tid]').forEach(b => b.onclick = () => {
       const t = LOGINS.trainees.find(x => x.id === b.dataset.tid);
-      setPin('trainee', t.id, t.full_name);
+      setPin('trainee', t.id, t.full_name, t.email);
     });
     const n = ((LOGINS && LOGINS.trainees) || []).filter(t => t.has_account).length;
     $('loginsCount').textContent = n + ' of ' + ((LOGINS && LOGINS.trainees) || []).length + ' students can sign in';

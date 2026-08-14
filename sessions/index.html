@@ -80,15 +80,15 @@
   </header>
   <div class="accent"></div>
 
-  <!-- ── SIGN IN · student code + PIN ───────────────────────────────────── -->
+  <!-- ── SIGN IN · registered email + PIN ────────────────────────────────── -->
   <div class="wrap" id="stepLogin">
     <div class="kicker">Tendrara Micro LNG · Session recordings</div>
     <h1>Sign in to watch</h1>
-    <p class="lead">Use the <b>student code</b> on your registration confirmation — it looks
-      like <b>TND-00042</b> — and the <b>PIN</b> your instructor gave you.</p>
+    <p class="lead">Use the <b>email address you registered with</b> — the same one you use for
+      the exams — and your <b>PIN</b>.</p>
     <div class="card">
-      <label for="ident">Your registered email — or your student code</label>
-      <input type="text" id="ident" placeholder="name@company.com" autocomplete="username"
+      <label for="ident">Your registered email</label>
+      <input type="email" id="ident" placeholder="name@company.com" autocomplete="email"
              spellcheck="false" />
       <button class="primary" id="identNext">Continue</button>
       <div class="err" id="identErr"></div>
@@ -197,16 +197,21 @@ const hhmm = (s) => {
   return h ? `${h} h ${String(m).padStart(2,'0')} min` : `${m} min`;
 };
 
-// ── sign in: code + PIN ────────────────────────────────────────────────────
+// ── sign in: registered email + PIN ────────────────────────────────────────
+// A TRAINEE ONLY EVER TYPES THEIR EMAIL. The student code (TND-000nn) is an
+// internal reference: it is what the instructor quotes and what the Auth
+// username is built from, but it is never asked for and never shown as
+// something to type. login_status still accepts it -- staff sign in with a
+// code -- so this rule lives in the form, which is where the trainees are.
+//
 // Supabase Auth needs an email as the username, so the page BUILDS the
-// synthetic one from what was typed -- the same rule as public.auth_email in
-// migration 278. It is deterministic on purpose: no lookup call, so this form
-// cannot be used to find out which codes exist. Nothing is ever mailed there.
+// synthetic one from the code the SERVER resolved -- the same rule as
+// public.auth_email in migration 278. Nothing is ever mailed there.
 const authEmail = (code) => code.trim().toLowerCase() + '@tendrara.neo-ware.com';
 
-// The identifier the person typed, and the login code the server resolved it to.
-// They differ whenever someone signs in with their email: the Auth username is
-// always built from the CODE (public.auth_email), never from the address.
+// The address the person typed, and the login code the server resolved it to.
+// The code never reaches the screen: the Auth username is always built from it
+// (public.auth_email), never from the address.
 let IDENT = '', LOGIN_CODE = '';
 
 const backToIdent = () => {
@@ -221,17 +226,20 @@ $('backFromClaim').onclick = backToIdent;
 $('identNext').onclick = async () => {
   IDENT = $('ident').value.trim();
   setErr('identErr', '');
-  if (IDENT.length < 3) return setErr('identErr', 'Enter your email or your student code.');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(IDENT))
+    return setErr('identErr', 'Enter the email address you registered with.');
   $('identNext').disabled = true;
   const { data, error } = await supa.rpc('login_status', { p_identifier: IDENT });
   $('identNext').disabled = false;
   if (error) return setErr('identErr', 'Could not reach the server. Try again.');
 
   hide('cardPin'); hide('cardClaim');
-  LOGIN_CODE = data.login_code || IDENT;
+  LOGIN_CODE = data.login_code || '';
 
   if (data.state === 'has_pin') {
-    $('pinWho').textContent = LOGIN_CODE;
+    // The address they typed, NOT the resolved code -- confirming the account
+    // back to them must not teach them a second way to sign in.
+    $('pinWho').textContent = IDENT;
     show('cardPin'); $('pin').focus();
   } else if (data.state === 'claim') {
     show('cardClaim'); $('dob').focus();
@@ -240,7 +248,7 @@ $('identNext').onclick = async () => {
   } else if (data.state === 'no_pin_ask_admin') {
     setErr('identErr', 'Your account has no PIN yet. Ask an administrator to set one for you.');
   } else {
-    setErr('identErr', 'We do not recognise that. Use the email you registered with, or your student code.');
+    setErr('identErr', 'That address is not registered. Use the email you registered with, or ask your instructor.');
   }
 };
 $('ident').addEventListener('keydown', e => { if (e.key === 'Enter') $('identNext').click(); });
@@ -250,6 +258,9 @@ $('signIn').onclick = async () => {
   const pin = $('pin').value;
   setErr('loginErr', '');
   if (!pin) return setErr('loginErr', 'Enter your PIN.');
+  // Without a code resolved by the server there is no Auth username to sign in
+  // with. Send them back to the address rather than building a broken one.
+  if (!LOGIN_CODE) return setErr('loginErr', 'Start again with your registered email.');
   $('signIn').disabled = true;
   const { error } = await supa.auth.signInWithPassword({
     email: authEmail(LOGIN_CODE), password: pin,
