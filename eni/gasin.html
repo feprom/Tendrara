@@ -152,7 +152,15 @@
 
   .loading{padding:60px;text-align:center;color:var(--ink-soft);font-size:14px;}
   .err{background:#FDECEA;border:1px solid #F2B8B5;color:var(--fail);border-radius:5px;padding:12px 15px;font-size:12.5px;margin:16px 0;display:none;}
-  .note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  /* basis of report: one row per datum, never a paragraph (TAM drawing rule 6) */
+  .basis{width:100%;border-collapse:collapse;margin-top:6px;font-size:11px;color:var(--ink-soft);}
+  .basis th{width:132px;text-align:left;vertical-align:top;padding:3px 10px 3px 0;
+            font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+            color:var(--muted);font-weight:600;white-space:nowrap;}
+  .basis td{vertical-align:top;padding:3px 0;border-top:1px solid var(--line);}
+  .basis th{border-top:1px solid var(--line);}
+  .basis tr:first-child th,.basis tr:first-child td{border-top:0;}
+  .basis .mono{font-family:var(--mono);color:var(--ink);}
 
   /* ── print / PDF ── */
   @page{size:A4;margin:10mm 9mm 12mm;}
@@ -273,7 +281,8 @@
       </table>
     </div>
 
-    <p class="note" id="noteBox"></p>
+    <h2>Basis of report</h2>
+    <table class="basis"><tbody id="noteBox"></tbody></table>
   </div>
 </div>
 
@@ -292,14 +301,19 @@ const SB_URL = window.SUPABASE_URL, SB_KEY = window.SUPABASE_ANON_KEY;
    is skid S-413 inside area 410. Both skids own their whole area's IO here
    (area 370 hangs entirely off panel 0S371.1; area 413 = the 12 hot-oil PCS
    channels), so unit-level filtering is exact for this scope.
-   ESD is deliberately OUT: Phase 0 / Gas In tracks PCS loop tests only.        */
+   ESD is deliberately OUT: Phase 0 / Gas In tracks PCS loop tests only.
+
+   2026-08-14: 480 and 550 added. NOT on the original Phase 0 list
+   (200/310/330/371/413/530) — declared as such in Basis of report.             */
 const SCOPE = [
   {code:"200", unit:"200"},
   {code:"310", unit:"310"},
   {code:"330", unit:"330"},
   {code:"371", unit:"370", skid:"S-371"},
   {code:"413", unit:"410", skid:"S-413"},
+  {code:"480", unit:"480"},
   {code:"530", unit:"530"},
+  {code:"550", unit:"550"},
 ];
 const SYSTEM = "PCS";
 const UNIT2CODE = new Map(SCOPE.map(s=>[s.unit, s.code]));
@@ -566,8 +580,8 @@ function render(){
   }
   cumChart(document.getElementById("cumCard"), cumPts, total.t||1, base);
   document.getElementById("chartCap").innerHTML =
-    `Continuous from <b>1 ${parseDay(START).toLocaleDateString("en-GB",{month:"long",year:"numeric"})}</b> to the report date — every calendar day is a point, including days with no loop tests.` +
-    (base? ` The curve opens at <b>${base}</b> channel${base===1?"":"s"} already executed before that date.` : ``);
+    `<b>${XML(START)}</b> → <b>${XML(D)}</b> · one point per calendar day` +
+    (base? ` · opens at <b>${base}</b> channel${base===1?"":"s"} executed before ${XML(START)}` : ``);
 
   /* table-view twin of the chart: most recent day first */
   document.querySelector("#cumTable tbody").innerHTML = [...cumPts].reverse().map(p=>`<tr>
@@ -650,21 +664,20 @@ function render(){
       <td class="num mono">${a.pct.toFixed(0)}%</td>
     </tr>`).join("");
 
+  const basis = [
+    ["Scope",       `Phase 0 — Gas In · areas <span class="mono">${SCOPE.map(s=>XML(s.code)).join(" ")}</span> · <span class="mono">PCS</span> only`],
+    ["371 · 413",   `skids <span class="mono">S-371</span> · <span class="mono">S-413</span> = <span class="mono">plant_io_list.unit</span> <span class="mono">370</span> · <span class="mono">410</span>`],
+    ["480 · 550",   `added 2026-08-14 · not on the original Phase 0 scope list`],
+    ["ESD",         `excluded — numerator, denominator, charts and tables`],
+    ["Source",      `<span class="mono">plant_verifications</span> · <span class="mono">object_table = plant_io_list</span> · signed off in ENI`],
+    ["Denominator", `in-scope channels · <span class="mono">${spares}</span> spares excluded (no tag, or SPARE)`],
+    ["Executed",    `tag with ≥ 1 OK as of the report date · loop test includes the PCS screen check`],
+    ["Categories",  `Valves = <span class="mono">*EV ZSH ZSL *VY *VZ ZT XV SV LV</span> · Analog = <span class="mono">AI AO</span> · Digital = <span class="mono">DI DO</span>`],
+    ["Chart",       `1 Aug 2026 → report date · one point per calendar day`],
+    ["Data",        `live from Supabase · recomputed on load and on date change`],
+  ];
   document.getElementById("noteBox").innerHTML =
-    `Scope: <b>Phase 0 — Gas In</b>. Areas ${SCOPE.map(s=>`<span class="mono">${XML(s.code)}</span>`).join(", ")},
-     <b>PCS only</b> — ESD channels are excluded from this report end to end (numerator, denominator, charts and tables).
-     Areas <span class="mono">371</span> and <span class="mono">413</span> are the skids S-371 and S-413, which carry all the
-     IO of <span class="mono">plant_io_list.unit</span> 370 and 410 respectively.
-     Source: <span class="mono">plant_verifications</span> with <span class="mono">object_table=plant_io_list</span> — IO loop tests
-     signed off by users in ENI only (the loop test includes the PCS screen check, so it is the full view of the channel).
-     Denominator: in-scope <span class="mono">plant_io_list</span> channels excluding <b>${spares} spares</b>
-     (no tag, or marked SPARE). A channel counts as executed once its tag has at least one OK as of the report date.
-     Categories: <b>Valves</b> = solenoids (*EV), limit switches (ZSH/ZSL), positioners (*VY/*VZ), ZT/XV/SV/LV;
-     <b>Analog</b>/<b>Digital</b> = remaining AI-AO / DI-DO.
-     The progress chart always runs from <b>1 August</b> to the report date, one point per calendar day; the category
-     colours are a colour-blind-safe trio validated against a white surface, and every plotted value is also in the
-     day-by-day table under the chart.
-     Everything is recomputed live from Supabase on page load or date change.`;
+    basis.map(([k,v])=>`<tr><th>${XML(k)}</th><td>${v}</td></tr>`).join("");
 
   document.getElementById("stamp").innerHTML =
     `<b>●</b> live · updated ${new Date().toLocaleTimeString("en-GB")}`;
