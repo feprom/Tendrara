@@ -3055,6 +3055,12 @@
 </style>
 <style>
 /* ===== vendor-block components (Instrument Air & N2 package) ===== */
+/* the ancestor paints covers with Unit 330's render and .cov108 flattened it
+   to a plain gradient; this module's cover is the Unit 500 compressor station.
+   Same three-class specificity as the .cov108 rule, declared later, so it wins. */
+.slide.cover3d.cov108{background:linear-gradient(180deg,rgba(11,13,15,.86),
+  rgba(11,13,15,.60) 45%,rgba(11,13,15,.86)),
+  url('/images/3D_500_bw.png') center/cover no-repeat;}
 .vlogo{position:absolute;top:14px;right:28px;height:32px;z-index:4;}
 .fig.big img{max-height:430px;}
 .stack .fig img{max-height:200px;}
