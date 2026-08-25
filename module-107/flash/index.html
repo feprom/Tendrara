@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>ESM-Series Compressor — interactive simulator</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}
+#player{width:100%;height:100%}
+#player ruffle-player{width:100%;height:100%;display:block}</style></head>
+<body><div id="player"></div>
+<script src="ruffle/ruffle.js"></script>
+<script>
+window.addEventListener("DOMContentLoaded", function(){
+  var ruffle = window.RufflePlayer.newest();
+  var player = ruffle.createPlayer();
+  document.getElementById("player").appendChild(player);
+  player.ruffle().load({url: "ESM-Series.swf", autoplay: "on",
+    unmuteOverlay: "visible", letterbox: "on", scale: "showAll"});
+});
+</script></body></html>
