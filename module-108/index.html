@@ -2423,9 +2423,9 @@
      is the inherited Module 104 cover and is not redeclared. Two things are
      declared here, and both are forced by the background.
 
-     1 · .cov220 defines its own background because it is new: images/220_ga_bw.png,
-         the grey render of Figure 4.1 (Unit 220 General Arrangement and Risk
-         Location), root-absolute per house rule 6.
+     1 · .cov220 defines its own background because it is new: images/220_ga_dark.png,
+         the inverted render of Figure 4.1 (Unit 220 General Arrangement and
+         Risk Location), root-absolute per house rule 6.
 
      2 · IT IS A FULL A4 PAGE, NOT A FIGURE - 2977x2105, carrying the running
          header, the figure caption and the page number. Measured off the render
@@ -2436,13 +2436,13 @@
          with header and page number out of frame. Percentages, so the crop holds
          if the deck is rendered narrower.
 
-     The gradient is the heavier one the 106 cover established (.88/.78/.90),
-     because this background is a white line drawing and not a dark 3D render;
-     at the original .80/.55/.82 the h1 does not read. Nothing outside
-     .cov220 / .cov107 is touched. */
+     The gradient went back to the standard .80/.55/.82 on 2026-08-26: with the
+     image inverted (white lines on black) the heavier .88/.78/.90 that the
+     white drawing needed is no longer necessary, and at .88 the drawing did
+     not read at all. Nothing outside .cov220 / .cov107 is touched. */
   .slide.cover3d.cov220{
-    background:linear-gradient(180deg,rgba(11,13,15,.88),rgba(11,13,15,.78) 45%,
-      rgba(11,13,15,.90)),url('/images/220_ga_bw.png');
+    background:linear-gradient(180deg,rgba(11,13,15,.80),rgba(11,13,15,.55) 45%,
+      rgba(11,13,15,.82)),url('/images/220_ga_dark.png');
     background-size:auto,cover;
     background-position:center,center 38%;
     background-repeat:no-repeat,no-repeat;}
