@@ -215,7 +215,7 @@
    "method": "native raster extract (xref 6, page 2)",
    "sha256_16": "836b26f59a16c8e2",
    "pdf_page": 2,
-   "caption": "Vanzetti ATEX hanging tag PR0000303-3 (submerged motor of P-221A): CE 1370, Ex db IIB T2 Gb, 100 A, 480 V, IP56, 05/2025, s/n 39440",
+   "caption": "Vanzetti ATEX hanging tag PR0000303-3 of P-221A (feed-through connector marking, IOM p.11): CE 1370, Ex eb IIB T2 Gb, 100 A, 480 V, IP56, 05/2025, s/n 39440",
    "area": "220",
    "note": "Motor tag reads 480 V / 100 A (machine rating) while the skid plate gives 400 V / 57,8 A in service."
   },
@@ -263,7 +263,7 @@
    "method": "native raster extract (xref 11, page 3)",
    "sha256_16": "14c4b9f1ae6065c7",
    "pdf_page": 3,
-   "caption": "Vanzetti ATEX tag of the P-221B motor: Ex db IIB T2 Gb, 100 A, 480 V, IP56, 05/2025, s/n 39441",
+   "caption": "Vanzetti ATEX tag of P-221B (feed-through connector marking): Ex eb IIB T2 Gb, 100 A, 480 V, IP56, 05/2025, s/n 39441",
    "area": "220"
   },
   {
