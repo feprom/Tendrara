@@ -2544,12 +2544,36 @@
 .slide.io220{padding:22px 34px 12px;}
 .slide.io220 .kicker{margin-bottom:5px;}
 .slide.io220 h2{font-size:22px;margin-bottom:8px;}
-.slide.io220 .hcard .hh{font-size:8.8px;padding:4px 9px;}
-.slide.io220 .hcard .hb{padding:5px 9px;}
-.slide.io220 .hval{font-size:10.4px;padding:2.4px 0;line-height:1.32;align-items:baseline;}
-.slide.io220 .hval .k{flex:0 0 auto;font-weight:600;color:var(--ink);}
-.slide.io220 .hval .v{font-family:var(--sans);font-weight:400;color:var(--ink-soft);}
-.slide.io220 .note{margin-top:9px;padding-top:6px;font-size:10.5px;line-height:1.45;}
+.slide.io220 .hcard .hh{font-size:8.8px;padding:4.5px 10px;}
+.slide.io220 .hcard .hb{padding:5px 11px 6px;}
+
+/* THE CARDS CARRY PROSE, NOT LEDGER VALUES (2026-08-27, Mario: "el texto esta
+   desordenado en todo el ancho, profesionalizar la distribucion").
+
+   The house .hval is a two-column LEDGER ROW - display:flex with
+   justify-content:space-between, key left and value hard right. With the short
+   values Module 104 puts in these cards ("SDV-3560 . 6in NG-000310 . F16") that
+   reads as a clean pair of columns. The card text here was rewritten into
+   SENTENCES the day before, and a sentence in that row is pushed into a ragged
+   right-hand block that starts at a different x in every row and wraps against
+   the key. Three columns of that side by side is the mess.
+
+   So inside .io220 the row becomes a STACKED DEFINITION ENTRY: the label on its
+   own line as a small crimson mono eyebrow, the sentence underneath at the FULL
+   width of the card. One left edge down the whole card, one rhythm, and the
+   prose gets the room it needs instead of fighting the label for it. A hairline
+   separates entries; the last one does not carry it. Nothing global is touched -
+   the ledger rows on every other face of the deck keep behaving as they do. */
+.slide.io220 .hval{display:block;padding:4px 0 5px;
+  border-bottom:1px dashed var(--line);}
+.slide.io220 .hval:last-child{border-bottom:0;padding-bottom:1px;}
+.slide.io220 .hval .k{display:block;flex:none;white-space:normal;
+  font-family:var(--mono);font-size:8.1px;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--crimson);margin-bottom:2.5px;}
+.slide.io220 .hval .v{display:block;text-align:left;
+  font-family:var(--sans);font-weight:400;font-size:10.4px;line-height:1.38;
+  color:var(--ink);}
+.slide.io220 .hval .v b{font-weight:700;color:var(--ink);}
 
   /* ===== m107:s08 ===== */
 
