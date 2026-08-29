@@ -69,7 +69,7 @@
   </div>
   <div class="accent"></div>
   <div class="body">
-    <div class="kicker">ACCOUNT ACTIVATION</div>
+    <div class="kicker" id="kicker">ACCOUNT ACTIVATION</div>
 
     <!-- checking the token -->
     <div id="viewLoading">
@@ -80,10 +80,15 @@
 
     <!-- valid link: activation form -->
     <div id="viewForm" hidden>
-      <h1>Set up your account</h1>
-      <p class="lead">You were invited to the E&amp;I Navigator. Choose a PIN and confirm who you are &mdash; this link works once.</p>
+      <!-- Two situations share this form. If the person already has an account this
+           is not an activation, it is a PIN reset, and saying "Set up your account"
+           to someone who has been signing verifications for weeks reads as if their
+           work were about to be thrown away. The wording is swapped in setMode(),
+           driven by peek's account_exists — never by anything typed on this page. -->
+      <h1 id="fTitle">Set up your account</h1>
+      <p class="lead" id="fLead">You were invited to the E&amp;I Navigator. Choose a PIN and confirm who you are &mdash; this link works once.</p>
       <div class="invited">
-        <div class="rowk"><span class="k">Invited as</span><span class="chip info" id="fGroup">&mdash;</span></div>
+        <div class="rowk"><span class="k" id="fWhoK">Invited as</span><span class="chip info" id="fGroup">&mdash;</span></div>
         <div class="who" id="fEmail">&mdash;</div>
       </div>
       <label>Full name</label><input id="fName" placeholder="Name Surname">
@@ -92,9 +97,9 @@
       <label>Job title</label><input id="fRole" placeholder="Instrument Technician">
       <label>Mobile</label><input id="fPhone" placeholder="+212 6 12 34 56 78">
       <label>Alternative email</label><input id="fAltEmail" type="email" placeholder="optional">
-      <label>PIN (4&ndash;8 digits)</label><input id="fPin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="&bull;&bull;&bull;&bull;">
+      <label id="fPinLabel">PIN (4&ndash;8 digits)</label><input id="fPin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="&bull;&bull;&bull;&bull;">
       <div class="hint" id="fPinHint" hidden>PIN must be 4-8 digits.</div>
-      <label>Confirm PIN</label><input id="fPin2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="&bull;&bull;&bull;&bull;">
+      <label id="fPin2Label">Confirm PIN</label><input id="fPin2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="&bull;&bull;&bull;&bull;">
       <div class="hint" id="fPin2Hint" hidden>PINs do not match.</div>
       <button class="go" id="btnGo">Activate and enter &rarr;</button>
       <div class="msg" id="formMsg"></div>
@@ -117,7 +122,7 @@
       </div>
       <div>
         <h1 id="sTitle">Welcome</h1>
-        <p class="lead" style="margin-bottom:0">Your account is ready and your PIN is set. Next time, sign in with your email and that PIN.</p>
+        <p class="lead" style="margin-bottom:0" id="sLead">Your account is ready and your PIN is set. Next time, sign in with your email and that PIN.</p>
       </div>
       <div class="msg ok" style="width:100%">Opening the E&amp;I Navigator&hellip;</div>
     </div>
@@ -155,13 +160,37 @@ const DEAD = {
               lead:"The link may have been cut short when it was copied. Links end in a long code with no spaces.",
               msg:"Ask your administrator for a new invitation link.", ico:"invalid", foot:"INVALID" },
   REDEEMED: { title:"This invitation was already used",
-              lead:"The account for this link exists and is active. Sign in with your email and the PIN you chose.",
+              lead:"The account for this link exists and is active. Sign in with your email and the PIN you chose. If you cannot remember it, ask your administrator for a new link.",
               msg:"If it was not you who used it, tell your administrator now.", ico:"used", foot:"USED" },
   REVOKED:  { title:"This invitation was cancelled",
               lead:"An administrator cancelled this link, or replaced it with a newer one.",
               msg:"Ask your administrator for a new invitation link.", ico:"revoked", foot:"REVOKED" }
 };
 
+// MODE — false: alta nueva. true: la persona YA tiene cuenta y esto restablece
+// su PIN. Lo decide el servidor (peek → account_exists, comprobado contra
+// eni_users en ese instante); esta página no lo adivina ni lo acepta de nadie.
+// Cambiar el texto es todo lo que hace: la autorización sigue siendo el token,
+// y el canje lo resuelve eni_redeem_invite mirando el email de la invitación.
+let RESET = false;
+function txt(id, t){ const el=document.getElementById(id); if(el) el.textContent=t; }
+function setMode(isReset){
+  RESET = !!isReset;
+  if(RESET){
+    txt("kicker", "PIN RESET");
+    txt("fTitle", "Reset your PIN");
+    txt("fLead",  "You already have an account on the E&I Navigator — this link lets you choose a new PIN. "
+               + "Everything you have signed stays as it is, and your old PIN stops working. This link works once.");
+    txt("fWhoK",  "Your account");
+    txt("fPinLabel",  "New PIN (4–8 digits)");
+    txt("fPin2Label", "Confirm new PIN");
+    txt("fNameHint", "From your account. Correct it if it is wrong.");
+    document.getElementById("fNameHint").dataset.default = "From your account. Correct it if it is wrong.";
+    txt("sLead", "Your PIN has been reset. Next time, sign in with your email and that new PIN.");
+    txt("footR", "PIN RESET");
+  }
+  btn(false);
+}
 function v(id){ return document.getElementById(id).value.trim(); }
 function show(which){
   ["viewLoading","viewForm","viewDead","viewSuccess"].forEach(id=>{
@@ -169,7 +198,12 @@ function show(which){
   });
 }
 function say(t,cls){ const el=document.getElementById("formMsg"); el.textContent=t; el.className="msg "+(cls||""); }
-function btn(disabled){ document.getElementById("btnGo").disabled = disabled; document.getElementById("btnGo").textContent = disabled ? "Activating…" : "Activate and enter →"; }
+function btn(disabled){
+  const b=document.getElementById("btnGo");
+  b.disabled = disabled;
+  b.textContent = disabled ? (RESET ? "Setting your PIN…" : "Activating…")
+                           : (RESET ? "Set new PIN and enter →" : "Activate and enter →");
+}
 
 // Solo los tres estados TERMINALES del token (sin vuelta atras) sacan la
 // pantalla completa de "pide un link nuevo". Un 429 del freno o un fallo de
@@ -194,7 +228,13 @@ async function start(){
     document.getElementById("fEmail").textContent = inv.email;
     document.getElementById("fGroup").textContent  = (inv.group_name || "—").toUpperCase();
     document.getElementById("fName").value = inv.full_name || "";
+    // Pre-filled from the account when there is one, so a PIN reset is not also
+    // a form to fill in again — and so an empty box does not quietly look like
+    // data that was lost. Blank fields are left alone by the redeem, never wiped.
+    document.getElementById("fCompany").value = inv.company || "";
+    document.getElementById("fRole").value    = inv.job_title || "";
     document.getElementById("footR").textContent = "INVITATION";
+    setMode(inv.account_exists);
     show("viewForm");
   }catch(e){
     const msg = String(e.message||e);
@@ -244,8 +284,9 @@ async function activate(){
       token:r.token, token_exp: Date.now() + (r.expires_in*1000)
     }));
     localStorage.setItem("eni_user", r.user.name); // clave legada que usan verificaciones y CRs
-    document.getElementById("sTitle").textContent = "Welcome, " + String(r.user.name||"").split(" ")[0];
-    document.getElementById("footR").textContent = "ACTIVATED";
+    document.getElementById("sTitle").textContent =
+      (RESET ? "Welcome back, " : "Welcome, ") + String(r.user.name||"").split(" ")[0];
+    document.getElementById("footR").textContent = RESET ? "PIN RESET" : "ACTIVATED";
     show("viewSuccess");
     setTimeout(()=>{ location.href = "index.html"; }, 900);
   }catch(e){

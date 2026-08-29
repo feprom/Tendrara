@@ -3917,8 +3917,18 @@ function renderUnattributed(c){
    Admin-only invitation panel. The alta is invitation-only: the browser never
    writes to eni_users, and the invite link's token is shown ONCE because the
    database keeps only its hash — if it isn't copied at issue time there is no
-   way to show it again. Re-issuing an invite revokes the previous one and is
-   also the PIN-recovery path now that open self-registration is closed.
+   way to show it again. Re-issuing an invite revokes the previous one.
+
+   Since 2026-08-29 (task 18) an invitation is ALSO the PIN-recovery path, and
+   now that is true rather than merely promised: eni-invite no longer refuses an
+   email that already has an account, and redeeming over an existing account
+   updates its pin_hash instead of inserting a row. The account keeps its id —
+   and with it the attribution of plant_verifications and plant_change_requests,
+   which hang off that id by their *_by_id columns. Deleting the person and
+   re-inviting them would throw that attribution away, which is why it is not
+   the answer. A re-issue does NOT change the group: see eni-invite (issue) and
+   migration 329 for why a PIN recovery must never move anyone between groups
+   as a side effect.
 
    Hiding the EI95 tree entry (buildTree, above) and gating this view on
    SESSION.group are NOT the real defense — they are just so a non-admin
@@ -3974,8 +3984,12 @@ async function renderPeople(c){
   <div class="kicker">TX EI95 <span class="sub">· ACCESS · INVITATION ONLY</span></div>
   <h1>People &amp; access</h1>
   <p class="lead">Accounts are created by invitation. Issue a link, send it to the person,
-  and they set their own PIN. A link works once; re-issuing one cancels the previous link
-  and is also how a forgotten PIN is recovered.</p>
+  and they set their own PIN. A link works once, and issuing a new one for the same person
+  cancels the previous link.
+  <b>A forgotten PIN is recovered the same way:</b> issue a link to someone who already has
+  an account and, when they open it, they choose a new PIN. Their account, its group and
+  everything they have signed stay exactly as they are, and the old PIN stops working —
+  use <span class="mono">Reset PIN</span> in the accounts table below.</p>
   <div class="facts">
     <div class="fact"><div class="n">${users.length}</div><div class="l">ACTIVE ACCOUNTS</div></div>
     <div class="fact"><div class="n">${pending.length}</div><div class="l">INVITATIONS PENDING</div></div>
@@ -3992,21 +4006,43 @@ async function renderPeople(c){
     <button class="btn mini" onclick="issueInvite()">Issue link →</button>
   </div>
   <h2>Invitations</h2>
-  ${invites.length?`<table class="data"><thead><tr><th>EMAIL</th><th>NAME</th><th>GROUP</th><th>ISSUED</th><th>STATUS</th><th></th></tr></thead>
+  ${invites.length?`<table class="data"><thead><tr><th>EMAIL</th><th>NAME</th><th>GROUP</th><th>FOR</th><th>ISSUED</th><th>STATUS</th><th></th></tr></thead>
   <tbody>${invites.map(i=>`<tr>
     <td class="mono">${esc(i.email)}</td><td>${esc(i.full_name||"—")}</td>
-    <td class="mono">${esc(i.group_code)}</td><td class="mono dim">${esc((i.created_at||"").slice(0,10))}</td>
+    <td class="mono">${esc(i.group_code)}</td>
+    <!-- NEW ACCOUNT vs PIN RESET (eni-invite list → kind, from eni_invites.reset_for_user_id).
+         The two rows are otherwise identical, and an audit that cannot tell them
+         apart cannot answer "who reset whose PIN". -->
+    <td><span class="chip ${i.kind==="reset"?"info":"dim"}">${i.kind==="reset"?"PIN RESET":"NEW ACCOUNT"}</span></td>
+    <td class="mono dim">${esc((i.created_at||"").slice(0,10))}</td>
     <td><span class="chip ${i.status==="redeemed"?"ok":i.status==="revoked"?"dim":"warn"}">${esc(i.status.toUpperCase())}</span></td>
+    <!-- Re-issue is offered on EVERY row, redeemed ones included. Before task 18 a
+         redeemed invite was a dead end (issuing again answered 409), so the button
+         was hidden; now re-issuing over a live account is exactly how a forgotten
+         PIN is recovered, and the person who lost their PIN is precisely the one
+         whose invitation says REDEEMED. -->
     <td>${i.status==="pending"?`<button class="btn mini fail" onclick="armCancel(this,${i.id})">Cancel</button>`:""}
-        ${i.status!=="redeemed"?`<button class="btn mini" onclick="reissue('${esc(i.email)}','${esc(i.full_name||"")}','${esc(i.group_code)}')">Re-issue</button>`:""}</td>
+        <button class="btn mini" onclick="reissue('${esc(i.email)}','${esc(i.full_name||"")}','${esc(i.group_code)}')">Re-issue</button></td>
   </tr>`).join("")}</tbody></table>`
   :`<div class="empty">No invitations yet. Everyone with an account got theirs before invitations existed.
     Issue a link above to add someone.</div>`}
   <h2>Accounts</h2>
-  <table class="data"><thead><tr><th>NAME</th><th>EMAIL</th><th>COMPANY</th><th>GROUP</th><th>LAST SIGN-IN</th></tr></thead>
+  <p class="lead" style="margin-top:-4px"><b>Reset PIN</b> issues a fresh invitation link for that person.
+  When they open it they choose a new PIN, and that is the whole of it: the account, its id, its group and
+  everything it has signed are untouched, and the old PIN stops working. Send the link the way you send an
+  invitation — it is shown once and it works once. Re-inviting another administrator resets their PIN too;
+  that is by design, and it is the same authority that could create a new administrator account.</p>
+  <!-- The re-issue button lives HERE as well as in the invitations table, and this is
+       the one that matters: an administrator whose colleague has just phoned saying
+       they cannot get in looks for that colleague among the ACCOUNTS, not among
+       invitations issued weeks ago. -->
+  <table class="data"><thead><tr><th>NAME</th><th>EMAIL</th><th>COMPANY</th><th>GROUP</th><th>LAST SIGN-IN</th><th></th></tr></thead>
   <tbody>${users.map(u=>`<tr><td>${esc(u.full_name)}</td><td class="mono">${esc(u.email)}</td>
     <td>${esc(u.company||"—")}</td><td class="mono">${esc(u.group_code)}</td>
-    <td class="mono dim">${esc((u.last_login||"").slice(0,10)||"never")}</td></tr>`).join("")}</tbody></table>`;
+    <td class="mono dim">${esc((u.last_login||"").slice(0,10)||"never")}</td>
+    <td>${u.active===false?`<span class="chip dim" title="Reactivate the account before issuing a link">DEACTIVATED</span>`
+      :`<button class="btn mini" onclick="reissue('${esc(u.email)}','${esc(u.full_name||"")}','${esc(u.group_code)}')">Reset PIN</button>`}</td>
+  </tr>`).join("")}</tbody></table>`;
 }
 
 async function issueInvite(){
@@ -4016,21 +4052,38 @@ async function issueInvite(){
     const r = await inviteCall({ action:"issue", email,
       full_name:document.getElementById("pName").value.trim(),
       group_code:document.getElementById("pGroup").value });
-    showLinkOnce(email, r.url);
-    status("✓ Invite issued for "+email,"ok");
+    // r.existing_account tells the two cases apart. Typing into "Invite someone"
+    // an email that already has an account no longer fails — it issues a PIN
+    // reset — so the box has to say so, or the admin thinks they created someone.
+    // renderPeople rebuilds #content (and with it #inviteBox), so the link box
+    // is painted AFTER the refresh, never before — otherwise it is wiped.
+    await renderPeople($("#content"));
+    showLinkOnce(email, r.url, r.existing_account, r.group_code);
+    status((r.existing_account?"✓ PIN reset link issued for ":"✓ Invite issued for ")+email,"ok");
   }catch(e){ status("✗ "+String(e.message||e),"err"); }
 }
 
 // The link is shown exactly once and never comes back: the database keeps only
 // its hash. If it is lost, the fix is to re-issue — which also revokes this one.
-function showLinkOnce(email, url){
+// `isReset` is what the server actually did (r.existing_account), not what the
+// admin thought they were doing: the two produce the same link but not the same
+// consequence, and the sentence next to the link has to be the true one.
+function showLinkOnce(email, url, isReset, groupCode){
   const box=document.getElementById("inviteBox");
   if(!box) return;
   box.innerHTML = `
   <div style="border:2px solid var(--crimson);border-radius:4px;padding:14px 16px;margin:14px 0;background:#FFF8F9">
     <div class="kicker" style="margin-bottom:6px">COPY THIS LINK NOW — IT IS SHOWN ONCE</div>
     <div style="font-size:13px;line-height:1.5">Send it to <b>${esc(email)}</b>. It works once and cannot be
-    shown again. If it is lost, re-issue — that cancels this one.</div>
+    shown again. If it is lost, re-issue — that cancels this one.
+    ${isReset?`<br><span class="chip info" style="margin-top:6px;display:inline-block">PIN RESET</span>
+      <b>${esc(email)} already has an account.</b> Opening this link lets them set a <b>new PIN</b>;
+      their old PIN stops working the moment they do. The account, its id, its history and its group
+      (<span class="mono">${esc(groupCode||"—")}</span>) are not changed — a group change is a separate,
+      deliberate act on the account.`
+     :`<br><span class="chip dim" style="margin-top:6px;display:inline-block">NEW ACCOUNT</span>
+      No account exists for this address yet. Opening this link creates it
+      ${groupCode?`in <span class="mono">${esc(groupCode)}</span>`:""}.`}</div>
     <div class="toolrow" style="margin-top:9px">
       <input readonly id="invUrl" value="${esc(url)}" style="flex:1;font-family:var(--mono);font-size:11.5px;padding:7px 9px;border:1px solid var(--line-strong);border-radius:3px;background:#fff;color:var(--ink)" onclick="this.select()">
       <button class="btn primary" onclick="navigator.clipboard.writeText(document.getElementById('invUrl').value);this.textContent='Copied ✓'">Copy link</button>
@@ -4069,11 +4122,17 @@ async function revokeInvite(id, btn){
   try{ await inviteCall({action:"revoke", invite_id:id}); status("✓ Invitation cancelled","ok"); renderPeople($("#content")); }
   catch(e){ status("✗ "+String(e.message||e),"err"); if(btn) btn.disabled=false; }
 }
+// One function behind both buttons — "Re-issue" in the invitations table and
+// "Reset PIN" in the accounts table — because server-side they are the same
+// call. Which of the two actually happened is decided by eni-invite against
+// eni_users, and comes back as r.existing_account; `group` is only a hint, and
+// for an account that already exists the server ignores it and keeps the
+// account's own group (see the Edge Function and migration 329).
 async function reissue(email, name, group){
   try{
     const r = await inviteCall({action:"issue", email, full_name:name, group_code:group});
-    await renderPeople($("#content")); showLinkOnce(email, r.url);
-    status("✓ Re-issued invite for "+email,"ok");
+    await renderPeople($("#content")); showLinkOnce(email, r.url, r.existing_account, r.group_code);
+    status((r.existing_account?"✓ PIN reset link issued for ":"✓ Re-issued invite for ")+email,"ok");
   }catch(e){ status("✗ "+String(e.message||e),"err"); }
 }
 window.issueInvite=issueInvite; window.revokeInvite=revokeInvite; window.reissue=reissue; window.armCancel=armCancel;
