@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TAM · Electrical symbol library v0.1.0 — approval sheet</title>
+<style>
+  body { font: 400 13px "Segoe UI", Arial; color:#15171A; background:#fff; margin:0; padding:28px 34px 60px; }
+  h1 { font-size:17px; margin:0 0 2px; letter-spacing:.02em; }
+  h2 { font-size:11px; letter-spacing:.10em; text-transform:uppercase; color:#4A4F57;
+       margin:30px 0 10px; padding-bottom:5px; border-bottom:1px solid #C9CED4; }
+  .meta { font:400 11px Consolas,monospace; color:#4A4F57; margin-bottom:4px; }
+  .grid { display:flex; flex-wrap:wrap; gap:6px; }
+  .cell { width:126px; height:104px; border:1px solid #E6E9EC; border-radius:4px;
+          display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .cell svg { display:block; }
+  .cap { font:400 9px Consolas,monospace; color:#4A4F57; margin-top:2px; text-align:center; line-height:1.25; }
+  .note { font:400 11px Consolas,monospace; color:#4A4F57; background:#F7F8F9;
+          border-left:3px solid #0B5CAD; padding:9px 12px; margin:12px 0; }
+  .warn { border-left-color:#C8102E; }
+</style>
+</head>
+<body>
+
+<h1>TECHNICAL AMERICA · ENGINEERING — Electrical symbol library</h1>
+<div class="meta">tam-sym.js v0.1.0 + tam-sym-elec.js v0.1.0 · IEC-style single-line · PROPOSAL, not yet wired into the viewer</div>
+
+<div class="note">Every symbol below is drawn by a JavaScript function from geometric primitives — there is no
+image, no font and no external asset. The whole pack is one file, zero dependencies, and renders identically
+in the viewer, in a training module, in an offline snapshot and in the print/PDF path.</div>
+
+<h2>1 · Structure</h2>
+<div class="grid" id="g-struct"></div>
+
+<h2>2 · Switching &amp; protection — closed state</h2>
+<div class="grid" id="g-sw-closed"></div>
+
+<h2>3 · The same devices, open — the shape carries the state</h2>
+<div class="grid" id="g-sw-open"></div>
+
+<h2>4 · Motor operator — <code>{motorized:true}</code> on any switching device</h2>
+<div class="note">This is how a <b>motorised load-break switch</b> is drawn: it is not a separate symbol, it is
+SWITCH_DISCONNECTOR plus the IEC mechanical-link dashes to an M box. Same for a motorised breaker or
+fuse-switch. One flag, no symbol proliferation.</div>
+<div class="grid" id="g-motor"></div>
+
+<h2>5 · Measurement — this is the layer that carries load flow</h2>
+<div class="grid" id="g-meas"></div>
+
+<h2>6 · Conversion</h2>
+<div class="grid" id="g-conv"></div>
+
+<h2>7 · Sources &amp; loads</h2>
+<div class="grid" id="g-load"></div>
+
+<h2>8 · State and data quality are two different layers</h2>
+<div class="note">The <b>shape colour</b> is the operational state. The <b>dot</b> is the project's
+<code>data_status</code> — how much the row is trusted. A breaker can be perfectly closed and still be
+CONFLICT data. Phase 11 already draws the dot; this keeps that convention and adds the state layer above it.</div>
+<div class="grid" id="g-state"></div>
+
+<h2>9 · Live worked example — generated the way the real diagram will be</h2>
+<div class="note">Nothing below is hand-drawn. Each node is one <code>TamSym.draw()</code> call and each
+conductor one <code>TamSym.flow()</code> call, exactly as a renderer walking <code>v_sld_nodes</code> /
+<code>v_sld_edges</code> would emit them. The meter prints what it measures, on the line it measures.</div>
+<div id="example"></div>
+
+<h2>10 · What a new <code>symbol_kind</code> looks like</h2>
+<div class="note warn">A value that reaches the renderer with no entry in <code>ELEC_MAP</code> draws a dashed
+question mark. It is never silently dropped — a gap you cannot see is the failure mode the whole project
+refuses.</div>
+<div class="grid" id="g-unknown"></div>
+
+<script src="tam-sym.js"></script>
+<script src="tam-sym-elec.js"></script>
+<script>
+(function () {
+  const T = window.TamSym;
+
+  function cell(host, kind, opts, caption) {
+    const o = Object.assign({ x: 63, y: 46, scale: 1 }, opts || {});
+    const svg = '<svg width="126" height="88" xmlns="http://www.w3.org/2000/svg">' + T.draw(kind, o) + '</svg>';
+    const d = document.createElement('div');
+    d.className = 'cell';
+    d.innerHTML = svg + '<div class="cap">' + (caption || ((T.spec(kind) || {}).name || kind)) + '</div>';
+    document.getElementById(host).appendChild(d);
+  }
+
+  ['BUSBAR','BUSBAR_INVERTER','SWITCHBOARD','MCC_PANEL','SPARE','EARTH']
+    .forEach(k => cell('g-struct', k, { scale: k.indexOf('BUSBAR') === 0 ? 0.8 : 1 }));
+
+  const SW = ['CIRCUIT_BREAKER','CIRCUIT_BREAKER_BOX','ACB_DRAWOUT','DISCONNECTOR',
+              'SWITCH_DISCONNECTOR','CONTACTOR','FUSE','FUSE_SWITCH','BUS_COUPLER'];
+  SW.forEach(k => cell('g-sw-closed', k, { state: 'CLOSED' }));
+  SW.forEach(k => cell('g-sw-open',  k, { state: 'OPEN', open: true }));
+
+  ['SWITCH_DISCONNECTOR','CIRCUIT_BREAKER','FUSE_SWITCH','DISCONNECTOR']
+    .forEach(k => cell('g-motor', k, { motorized: true, state: 'CLOSED' },
+                       (T.spec(k).name) + '\n+ motor operator'));
+
+  cell('g-meas', 'CT',  { sub: '2000/5' }, 'Current transformer\nratio on the tap');
+  cell('g-meas', 'VT',  {}, 'Voltage transformer');
+  cell('g-meas', 'METER', { quantity: 'Wh' }, 'Energy meter');
+  cell('g-meas', 'METER', { quantity: 'A'  }, 'Ammeter');
+  cell('g-meas', 'METER', { quantity: 'W'  }, 'Wattmeter');
+  cell('g-meas', 'METER', { quantity: 'var'}, 'Reactive meter');
+  cell('g-meas', 'NETWORK_ANALYZER', {}, 'Network analyser\nPAC3220');
+
+  ['TRANSFORMER','TRANSFORMER_3W','INVERTER','RECTIFIER','VFD','SOFT_STARTER','UPS','BATTERY']
+    .forEach(k => cell('g-conv', k));
+
+  ['GENERATOR','MOTOR','PUMP','COMPRESSOR','FAN','HEATER','ELECTRICAL_LOAD','LIGHTING','CAPACITOR']
+    .forEach(k => cell('g-load', k));
+
+  cell('g-state','CIRCUIT_BREAKER',{state:'CLOSED'},'CLOSED');
+  cell('g-state','CIRCUIT_BREAKER',{state:'OPEN',open:true},'OPEN');
+  cell('g-state','CIRCUIT_BREAKER',{state:'TRIPPED'},'TRIPPED');
+  cell('g-state','CIRCUIT_BREAKER',{state:'DEENERGIZED'},'DE-ENERGIZED');
+  cell('g-state','CIRCUIT_BREAKER',{state:'CLOSED',dq:'VERIFIED'},'data VERIFIED');
+  cell('g-state','CIRCUIT_BREAKER',{state:'CLOSED',dq:'NEEDS_REVIEW'},'data NEEDS_REVIEW');
+  cell('g-state','CIRCUIT_BREAKER',{state:'CLOSED',dq:'CONFLICT'},'data CONFLICT');
+  cell('g-state','CIRCUIT_BREAKER_BOX',{state:'CLOSED'},'square: CLOSED\n= filled');
+  cell('g-state','CIRCUIT_BREAKER_BOX',{state:'OPEN',open:true},'square: OPEN\n= hollow');
+  cell('g-state','CIRCUIT_BREAKER_BOX',{state:'TRIPPED'},'square: TRIPPED');
+  cell('g-state','GENERATOR',{label:'GE-001',sub:'gas engine',dq:'VERIFIED',
+                              values:[{k:'P',v:1822,u:'kW'}]},'source: label ABOVE');
+  cell('g-state','MOTOR',{label:'C-351H-4-M',dq:'VERIFIED',
+                          values:[{k:'P',v:560,u:'kW'}]},'load: label BELOW');
+
+  cell('g-unknown','THYRISTOR_XYZ',{label:'480-ZZ-001'},'unmapped symbol_kind');
+
+  /* ── worked example: GE-001 → PC1 busbar A → .MC1 → motor of C-351H-4 ── */
+  (function () {
+    const W = 940, H = 560, col = '#0B5CAD';
+    const BUS_Y = 250;                       // the busbar
+    const SRC_Y = 72, CT_Y = 140, INC_Y = 200;
+    const POS_Y = 330, LOAD_Y = 460;         // feeder position row, load row
+    let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">';
+
+    /* ── source side: generator → CT → withdrawable incomer → busbar ──
+       The generator is labelled ABOVE and its ratings stack above it — the
+       mirror of the motor at the bottom of the .MC1 feeder. */
+    s += T.draw('GENERATOR', { x: 150, y: SRC_Y, label: 'GE-001', sub: 'gas engine',
+                               dq: 'VERIFIED', state: 'ENERGIZED', live: true,
+                               values: [{ k: 'P', v: 1822, u: 'kW nameplate' },
+                                        { k: 'cosφ', v: 0.85, u: '' }] });
+    s += T.flow(150, SRC_Y + 12, 150, CT_Y - 13, { color: col, arrow: false });
+    /* the CT ratio sits at the end of the secondary tap. NOTE: no CT rows
+       exist in the database — this figure is illustrative, see the plan §3. */
+    s += T.draw('CT', { x: 150, y: CT_Y, sub: '2000/5 A ?' });
+    s += T.flow(150, CT_Y + 13, 150, INC_Y - 13, { color: col, arrow: false });
+    /* the incomer is labelled above too — it belongs to the source branch, and
+       it leaves the conductor below it free for the flow chip */
+    s += T.draw('ACB_DRAWOUT', { x: 150, y: INC_Y, state: 'CLOSED', dq: 'VERIFIED',
+                                 label: '.G1', labelPos: 'above',
+                                 values: [{ k: 'In', v: 2500, u: 'A' }] });
+    s += T.flow(150, INC_Y + 13, 150, BUS_Y, { color: col, chip: '1807 kW · 1780 A', chipSide: 'right' });
+
+    /* ── the busbar ── */
+    s += '<line x1="60" y1="' + BUS_Y + '" x2="' + (W - 60) + '" y2="' + BUS_Y +
+         '" stroke="' + col + '" stroke-width="4" stroke-linecap="round"/>';
+    s += '<text x="' + (W - 60) + '" y="' + (BUS_Y - 12) + '" text-anchor="end" ' +
+         'font-family="Consolas,monospace" font-size="9" font-weight="700" fill="' + col +
+         '">MAIN BUSBAR &quot;A&quot; · 690 V · 480-JG-691 PC1</text>';
+
+    /* ── the section analyser: hangs off the busbar, measures the whole bar ── */
+    s += T.flow(320, BUS_Y, 320, POS_Y - 11, { color: col, arrow: false });
+    s += T.draw('NETWORK_ANALYZER', { x: 320, y: POS_Y, label: 'PAC3220', live: true,
+                                      state: 'ENERGIZED',
+                                      values: [{ k: 'P', v: 5421, u: 'kW' }, { k: 'U', v: 688, u: 'V' },
+                                               { k: 'I', v: 4540, u: 'A' }, { k: 'cosφ', v: 0.85, u: '' }] });
+
+    /* ── an outgoing motor feeder, drawn in full ── */
+    s += T.flow(520, BUS_Y, 520, POS_Y - 13, { color: col, arrow: false });
+    s += T.draw('CIRCUIT_BREAKER', { x: 520, y: POS_Y, state: 'CLOSED', dq: 'VERIFIED',
+                                     label: '.MC1', sub: '3VA24 · In 630 A' });
+    s += T.flow(520, POS_Y + 13, 520, LOAD_Y - 12, { color: col, chip: '560 kW · 570 A', chipSide: 'right' });
+    s += T.draw('MOTOR', { x: 520, y: LOAD_Y, label: 'C-351H-4-M', sub: 'MR compressor motor · E038',
+                           dq: 'VERIFIED', state: 'ENERGIZED', live: true,
+                           values: [{ k: 'P', v: 560, u: 'kW' }] });
+
+    /* ── a MOTORISED load-break switch feeding a transformer ── */
+    s += T.flow(740, BUS_Y, 740, POS_Y - 13, { color: col, arrow: false });
+    s += T.draw('SWITCH_DISCONNECTOR', { x: 740, y: POS_Y, state: 'CLOSED', motorized: true,
+                                         label: '.212', sub: 'motor-operated' });
+    s += T.flow(740, POS_Y + 13, 740, LOAD_Y - 15, { color: col, chip: '1673.5 A', chipSide: 'right' });
+    s += T.draw('TRANSFORMER', { x: 740, y: LOAD_Y, label: '480-TR-001', sub: '690/400 V',
+                                 dq: 'CONFLICT',
+                                 values: [{ k: 'P', v: 1600, u: 'kW' },
+                                          { k: 'kVA', v: 2000, u: 'computed', alarm: true }] });
+
+    /* ── a spare position, honestly drawn ── */
+    s += T.flow(880, BUS_Y, 880, POS_Y - 10, { color: '#C9CED4', arrow: false });
+    s += T.draw('SPARE', { x: 880, y: POS_Y, label: '.S9', sub: 'reserved', dim: true });
+
+    s += '</svg>';
+    document.getElementById('example').innerHTML = s;
+  })();
+})();
+</script>
+</body>
+</html>

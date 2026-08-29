@@ -1,0 +1,381 @@
+<!doctype html>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     GA ELECTRICAL — the 480 generation block, operational view
+     ══════════════════════════════════════════════════════════════════════════
+     Sibling of online.html (the plan forbids growing the index.html monolith).
+     Shares and does NOT duplicate: the session (localStorage eni_session),
+     supabase-config.js, the symbol kernel tam-sym.js + ELECTRICAL pack, and
+     the one renderer tam-flow.js (G-1) — the geometry lives in
+     TamFlow.gaElectrical() (≥1.41.0); this page only composes.
+
+     Background: the AREA mini-GA images/ga/area-480.png (2208×1924 crop of the
+     300-dpi render of plot plan CWO02-ING-PR01 Rev.19B, page px 4451,3306).
+     On top, the operational model of ELD11-ING-PR01 rev.2 + the vendor SLD
+     (docs/electric/SLD01.png) + ELD03, everything anchored on surveyed
+     positions from plant_asset_positions:
+
+       busbar ladder  D–C–B–A in the cabins that really hold them
+                      (S-437: D,C · S-436: B,A), vendor names LVMD55/54/44/38
+       tie-breakers   T1 A-B (MCG1) · T2 B-C (MCG2) · T3 C-D (MCG3), all N.O.
+       9 gensets      each with its incomer breaker riding the feeder elbow,
+                      vendor module +Gn under the tag ("?" = CR-00357 AMBIGUOUS)
+       400 V branch   busbar D → F210/F211 → 400 V panel in S-438; the
+                      ET-001/2 transformers drawn at their surveyed spot with
+                      their F212/F213 feeders still NEEDS_REVIEW
+       S-435          technical room (power generation control + UPS)
+
+     KNOWN CONFLICT, shown not hidden: ELD11 rev.2 assigns GE↔busbar
+     differently from ELD03 + the vendor SSL (which agree with each other).
+     The drawing follows ELD03/SSL; the panel states the conflict (CR-00357).
+     Breaker STATE is DESIGN everywhere: the ET-200 stations of 691/692 carry
+     open/closed in hardware but nothing historises it yet (G-3). scada_current
+     does not exist today: live slots say NO COMMS, never zero.
+     ────────────────────────────────────────────────────────────────────── -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GA ELECTRICAL — TENDRARA 480</title>
+<style>
+  :root { --ink:#15171A; --soft:#4A4F57; --line:#D6DAE0; --paper:#fff; --crimson:#C8102E; --bg:#F2F3F5; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 "Segoe UI",Arial,sans-serif; }
+  header { display:flex; align-items:center; gap:14px; padding:10px 16px; background:var(--paper); border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0; letter-spacing:.4px; }
+  header .doc { font-family:Consolas,monospace; font-size:11px; color:var(--soft); }
+  .chip { font-family:Consolas,monospace; font-size:11px; border:1px solid var(--line); border-radius:10px; padding:2px 8px; background:#fff; }
+  .chip.warn { border-color:#B26A00; color:#B26A00; }
+  .chip.fail { border-color:var(--crimson); color:var(--crimson); }
+  #user { margin-left:auto; cursor:pointer; }
+  main { display:grid; grid-template-columns: 1fr 340px; gap:12px; padding:12px 16px; }
+  #stage { position:relative; overflow:hidden; background:#fff; border:1px solid var(--line); border-radius:6px; height:calc(100vh - 170px); min-height:420px; cursor:grab; }
+  #world { position:absolute; transform-origin:0 0; }
+  #world img { display:block; width:2208px; height:auto; user-select:none; -webkit-user-drag:none; }
+  #overlay { position:absolute; inset:0; }
+  #overlay svg { position:absolute; inset:0; width:100%; height:100%; }
+  aside .plate { background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:12px; }
+  aside h2 { font-size:12px; margin:0 0 8px; letter-spacing:.6px; color:var(--soft); }
+  table { border-collapse:collapse; width:100%; font-family:Consolas,monospace; font-size:11px; }
+  td, th { border-top:1px solid var(--line); padding:3px 4px; text-align:left; }
+  th { border-top:0; color:var(--soft); font-weight:600; }
+  td.num { text-align:right; }
+  .foot { font-size:11px; color:var(--soft); }
+  .conflict { font-size:11px; color:#7A4A00; background:#FFF6E5; border:1px solid #B26A00; border-radius:4px; padding:6px 8px; }
+  .banner { padding:6px 16px; font-family:Consolas,monospace; font-size:11px; background:#FFF6E5; border-bottom:1px solid #B26A00; color:#7A4A00; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GA ELECTRICAL — 480 GENERATION BLOCK</h1>
+  <span class="doc">CWO02 Rev.19B · ELD03 · ELD11 rev.2 · vendor SLD</span>
+  <span class="chip" id="chip-pos">positions …</span>
+  <span class="chip" id="chip-live">live …</span>
+  <span class="chip" id="user">…</span>
+</header>
+<div class="banner" id="banner"></div>
+<main>
+  <div id="stage"><div id="world"><img id="ga" alt="Area 480 GA" src="../images/ga/area-480.png"><div id="overlay"></div></div></div>
+  <aside>
+    <div class="plate"><h2>BUSBARS · DESIGN</h2><div id="pcs"></div></div>
+    <div class="plate"><h2>LIVE DATA</h2><div id="live"></div></div>
+    <div class="plate"><h2>SOURCE CONFLICT</h2><div class="conflict">
+      ELD11 rev.2 assigns the GE-00n↔busbar pairing differently from ELD03 and
+      the vendor SSL, which agree with each other. This drawing follows
+      <b>ELD03 + SSL</b>. Same territory as CR-00357 (vendor module ↔ GE tag,
+      nameplates pending); a "?" after +Gn marks an AMBIGUOUS attribution.
+    </div></div>
+    <div class="plate"><h2>LEGEND</h2><div id="legend"></div>
+      <div class="foot" style="margin-top:6px">DQ dot: green VERIFIED · amber NEEDS_REVIEW · crimson CONFLICT.<br>
+      All breakers drawn <b>DESIGN</b>: no live or design open/closed state exists in the database
+      (the ET-200 stations of 480-JG-691/692 carry it in hardware; nothing historises it yet).
+      Ties T1/T2/T3 dashed = normally open (ELD11).</div></div>
+    <div class="plate"><h2>3D REFERENCE</h2>
+      <!-- perspective render (Navisworks, docs/electric/3D.png): NOT a
+           positional canvas — the surveyed anchors live on the orthogonal GA.
+           Shown desaturated as a shape reference for the operator. -->
+      <img src="../images/ga/480-3d.png" alt="480 block 3D reference"
+           style="width:100%;border:1px solid var(--line);border-radius:4px;filter:grayscale(1) contrast(1.08)">
+      <div class="foot" style="margin-top:4px">480 block, 3D model view (reference only — markers stay on the orthogonal GA).</div>
+    </div>
+    <div class="plate"><h2>COVERAGE</h2><div class="foot" id="cover"></div></div>
+  </aside>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- relative on purpose: works served from the site root AND from file:// for
+     the render gate; the absolute /supabase-config.js of plant.html does not -->
+<script src="../supabase-config.js"></script>
+<script src="tam-sym.js?v=0.2.5"></script>
+<script src="tam-sym-elec.js?v=0.3.4"></script>
+<script src="tam-flow.js?v=1.47.0"></script>
+<script>
+"use strict";
+/* session: same gate as the siblings; file:// (the offline render gate) is the
+   one documented exception — there is no localStorage session to find there */
+const SESSION = (()=>{ try{ return JSON.parse(localStorage.getItem("eni_session")||"null"); }catch(e){ return null; } })();
+if (!SESSION && location.protocol !== "file:") location.replace("account.html");
+const userEl = document.getElementById("user");
+userEl.textContent = SESSION ? SESSION.name : "OFFLINE";
+userEl.onclick = ()=>{ localStorage.removeItem("eni_session"); location.href="account.html"; };
+
+const sb = (window.supabase && window.SUPABASE_URL)
+  ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null;
+
+/* ── frames ───────────────────────────────────────────────────────────────
+   Stored positions are fractions of the tendrara_areas.png frame. The
+   background here is the AREA CROP of the page-oriented 300-dpi render, so:
+   tendrara fraction → page px (inverse of the measured NCC fit, s=0.48,
+   t=(-147,-1780), page 14042×9934) → minus the crop origin → crop fraction.
+   Crop parameters are printed by `tools/scan_ga.py --stage crop`.          */
+const T = { s:0.48, tx:-147, ty:-1780, PW:14042, TEN_W:4494, TEN_H:3179 };
+const CROP = { x0:4451, y0:3306, w:2208, h:1924 };
+function toCrop(fx, fy){
+  const pageX = T.PW - (fy*T.TEN_H - T.ty)/T.s;
+  const pageY = (fx*T.TEN_W - T.tx)/T.s;
+  return { x:(pageX - CROP.x0)/CROP.w, y:(pageY - CROP.y0)/CROP.h };
+}
+
+/* ── DESIGN SNAPSHOT (2026-08-11) ─────────────────────────────────────────
+   Used ONLY when the database is unreachable, and said so in the banner.
+   A copy of database rows (plant_asset_positions · v_power_generation_
+   topology · v_scada_electrical counts), not an invention.               */
+const SNAPSHOT = {
+  stamp: "2026-08-11",
+  positions: {
+    "480-GE-001":[0.50187,0.77544],"480-GE-002":[0.48724,0.64453],"480-GE-003":[0.47784,0.77544],
+    "480-GE-004":[0.44387,0.64453],"480-GE-005":[0.44793,0.77544],"480-GE-006":[0.42069,0.64453],
+    "480-GE-007":[0.40574,0.78193],"480-GE-008":[0.46801,0.65616],"480-GE-009":[0.42764,0.76230],
+    "480-S-436":[0.46716,0.70991],"480-S-437":[0.42187,0.70991],
+    "480-S-438":[0.38064,0.71746],"480-S-435":[0.38064,0.70387],"480-ET-001/2":[0.38331,0.73286] },
+  topo: [
+    {g:"GE-001",f:"480-JG-691-FG1", bus:"A",kw:1822,fuel:"gas",   v:"+G4", vc:"AMBIGUOUS", meter:"MG1"},
+    {g:"GE-002",f:"480-JG-691-FG2", bus:"A",kw:1822,fuel:"gas",   v:"+G6", vc:"AMBIGUOUS", meter:"MG2"},
+    {g:"GE-003",f:"480-JG-691-FG3", bus:"A",kw:1822,fuel:"gas",   v:"+G7", vc:"AMBIGUOUS", meter:"MG3"},
+    {g:"GE-004",f:"480-JG-691-FG4", bus:"B",kw:1822,fuel:"gas",   v:"+G5", vc:"CONFIRMED", meter:"MG4"},
+    {g:"GE-008",f:"480-JG-691-FG1D",bus:"B",kw:1280,fuel:"diesel",v:"+G1D",vc:"CONFIRMED", meter:"MG1D"},
+    {g:"GE-005",f:"480-JG-692-FG5", bus:"C",kw:1822,fuel:"gas",   v:"+G2", vc:"CONFIRMED", meter:"MG5"},
+    {g:"GE-009",f:"480-JG-692-FG2D",bus:"C",kw:1280,fuel:"diesel",v:"+G2D",vc:"CONFIRMED", meter:"MG2D"},
+    {g:"GE-006",f:"480-JG-692-FG6", bus:"D",kw:1822,fuel:"gas",   v:"+G1", vc:"AMBIGUOUS", meter:"MG6"},
+    {g:"GE-007",f:"480-JG-692-FG7", bus:"D",kw:1822,fuel:"gas",   v:"+G3", vc:"AMBIGUOUS", meter:"MG7"} ],
+  busbars: {
+    A:{ lvmd:"LVMD38", pc:"480-JG-691", cabin:"480-S-436", genKw:5466, loadKw:5600, nOut:11 },
+    B:{ lvmd:"LVMD44", pc:"480-JG-691", cabin:"480-S-436", genKw:3102, loadKw:1120, nOut:3  },
+    C:{ lvmd:"LVMD54", pc:"480-JG-692", cabin:"480-S-437", genKw:3102, loadKw:1680, nOut:3  },
+    D:{ lvmd:"LVMD55", pc:"480-JG-692", cabin:"480-S-437", genKw:3644, loadKw:7190, nOut:12 } },
+  ties: [ {a:"B",b:"A",label:"MCG1 (T1)",open:true},
+          {a:"C",b:"B",label:"MCG2 (T2)",open:true},
+          {a:"D",b:"C",label:"MCG3 (T3)",open:true} ]
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const MISSING_RE = /does not exist|schema cache|could not find the (table|function|relation)|undefined table/i;
+async function readRel(rel, build){
+  if (!sb) return { rel, state:"nosb", rows:[] };
+  try {
+    const q = build ? build(sb.from(rel)) : sb.from(rel).select("*").range(0,999);
+    const { data, error } = await q;
+    if (error){
+      const missing = error.code==="42P01" || error.code==="PGRST205" || MISSING_RE.test(error.message||"");
+      return { rel, state: missing ? "missing" : "error", rows:[], error };
+    }
+    return { rel, state:"ok", rows:data||[] };
+  } catch(e){ return { rel, state:"error", rows:[], error:e }; }
+}
+
+/* one place for the tag bridge: the plant writes 480-GE-001, v_sld says GE-001 */
+const withArea = t => /^GE-\d/.test(t) ? "480-"+t : t;
+
+function posOf(rows, tag){
+  const r = rows.find(p => p.object_tag === tag);
+  if (!r) return null;
+  if (r.meta && r.meta.coord_unit === "fraction") return toCrop(+r.x, +r.y);
+  return { undeclared:true };
+}
+
+async function loadModel(){
+  const skipped = [];
+  let source = "db", posRows = [], topo = [], elec = [];
+
+  if (sb){
+    const [P, Tt, E] = await Promise.all([
+      readRel("plant_asset_positions", q=>q.select("*").eq("scope","plant").eq("object_kind","equipment").like("object_tag","480-%").range(0,999)),
+      readRel("v_power_generation_topology", q=>q.select("*").range(0,99)),
+      readRel("v_scada_electrical", q=>q.select("*").or("tag.like.480-JG-691%,tag.like.480-JG-692%").range(0,199)),
+    ]);
+    if (P.state==="ok" && Tt.state==="ok" && Tt.rows.length){ posRows=P.rows; topo=Tt.rows; elec=E.rows; }
+    else source = "snapshot";
+  } else source = "snapshot";
+
+  if (source === "snapshot"){
+    $("banner").style.display = "block";
+    $("banner").textContent = "OFFLINE — drawing the DESIGN SNAPSHOT of "+SNAPSHOT.stamp+
+      " (database unreachable). Nothing on this screen is live.";
+    posRows = Object.entries(SNAPSHOT.positions).map(([t,xy]) =>
+      ({ object_tag:t, x:xy[0], y:xy[1], meta:{coord_unit:"fraction"} }));
+    topo = SNAPSHOT.topo.map(r => ({ genset_tag:r.g, feeder_tag:r.f, busbar_code:r.bus,
+      design_power_kw:r.kw, genset_service:(r.fuel==="gas"?"Gas engine":"Diesel backup"),
+      vendor_alternator_tag:r.v, match_confidence:r.vc, _meter:r.meter,
+      lvmd_tag:SNAPSHOT.busbars[r.bus].lvmd, power_center:SNAPSHOT.busbars[r.bus].pc,
+      busbar_generation_kw:SNAPSHOT.busbars[r.bus].genKw, busbar_load_kw:SNAPSHOT.busbars[r.bus].loadKw }));
+  }
+
+  const meterOf = f => { const m = String(f||"").match(/F(G\d+D?)$/); return m ? "M"+m[1] : null; };
+
+  /* gensets */
+  const gensets = [];
+  topo.forEach(t => {
+    const p = posOf(posRows, withArea(t.genset_tag));
+    if (!p)           { skipped.push(t.genset_tag+" (no position row)"); return; }
+    if (p.undeclared) { skipped.push(t.genset_tag+" (coord covenant undeclared)"); return; }
+    gensets.push({ tag:t.genset_tag, x:p.x, y:p.y, kw:+t.design_power_kw || null,
+      fuel: /diesel/i.test(t.genset_service||"") ? "diesel · 690 V" : "gas · 690 V",
+      feeder:t.feeder_tag, busbar:t.busbar_code,
+      vendor:t.vendor_alternator_tag, vendorDq:(t.match_confidence==="CONFIRMED"?"VERIFIED":"NEEDS_REVIEW"),
+      dq:"VERIFIED", meter: t._meter || meterOf(t.feeder_tag) });
+  });
+
+  /* the busbar ladder, derived from the surveyed cabin positions:
+     S-437 holds D (upper) + C (lower), S-436 holds B (upper) + A (lower) —
+     the D-C-B-A vertical order makes each ELD11 tie join ADJACENT sections */
+  const c436 = posOf(posRows, "480-S-436"), c437 = posOf(posRows, "480-S-437");
+  const busbars = [], ties = [], feeds = [], panels = [];
+  if (!c436 || c436.undeclared || !c437 || c437.undeclared){
+    skipped.push("busbar ladder (cabin S-436/S-437 position missing)");
+  } else {
+    const colX = (c436.x + c437.x) / 2;
+    const SPAN = 140/CROP.h, GAP = 10/CROP.h;   /* px of the crop canvas */
+    const seg = (cy, upper) => upper ? { y0: cy-GAP-SPAN, y1: cy-GAP } : { y0: cy+GAP, y1: cy+GAP+SPAN };
+    const busMeta = code => {
+      const t = topo.find(r => r.busbar_code === code) || {};
+      const snap = SNAPSHOT.busbars[code];
+      const nOut = elec.length
+        ? elec.filter(e => e.scada_role==="BREAKER_STATE" && String(e.busbar_tag||"").endsWith("-BB"+code)).length
+        : snap.nOut;
+      return { lvmd:t.lvmd_tag || snap.lvmd, pc:t.power_center || snap.pc,
+        genKw:+t.busbar_generation_kw || snap.genKw, loadKw:+t.busbar_load_kw || snap.loadKw, nOut };
+    };
+    [["D",c437,true],["C",c437,false],["B",c436,true],["A",c436,false]].forEach(([code,c,up])=>{
+      const m = busMeta(code), sg = seg(c.y, up);
+      busbars.push({ code, x:colX, y0:sg.y0, y1:sg.y1, lvmd:m.lvmd, pc:m.pc,
+        genKw:m.genKw, loadKw:m.loadKw, nOut:m.nOut, dq:"NEEDS_REVIEW" });
+    });
+    ties.push(...SNAPSHOT.ties);
+  }
+
+  /* panels: 400 V panel + control room + the ET transformers, each at its
+     surveyed spot. ET feeders F212/F213 are still NEEDS_REVIEW in the DB. */
+  const p438 = posOf(posRows, "480-S-438"), p435 = posOf(posRows, "480-S-435"),
+        pET  = posOf(posRows, "480-ET-001/2");
+  if (p438 && !p438.undeclared){
+    panels.push({ tag:"480-JG-693/694", x:p438.x, y:p438.y, label:"400 V PANEL",
+      sub:"480-JG-693 · 480-JG-694 · cabin 480-S-438", kind:"SWITCHBOARD", dq:"NEEDS_REVIEW" });
+    if (busbars.length) feeds.push({ bus:"D", panel:"480-JG-693/694", label:"F210/F211" });
+  } else skipped.push("400 V panel (S-438 position missing)");
+  if (p435 && !p435.undeclared)
+    panels.push({ tag:"480-S-435", x:p435.x, y:p435.y, label:"CONTROL + UPS",
+      sub:"technical room · 690 V panels A/B (ELD11)", kind:"SWITCHBOARD", dq:"NEEDS_REVIEW" });
+  if (pET && !pET.undeclared)
+    panels.push({ tag:"480-ET-001/2", x:pET.x, y:pET.y, label:"ET-001/2",
+      sub:"690/400 V · F212/F213 under review", kind:"TRANSFORMER", dq:"NEEDS_REVIEW" });
+
+  return { gensets, busbars, ties, feeds, panels, skipped, source, elec,
+           W:CROP.w, H:CROP.h, zoom:2.2 };
+}
+
+/* ── live layer: scada_current does not exist today; when it appears, rows
+   bind by meter tag (MG1…MG7, MG1D, MG2D — the PAC3200 of each FMG metering
+   feeder). Until then every slot is NO COMMS, never zero. ──────────────── */
+async function loadLive(model){
+  const r = await readRel("scada_current", q=>q.select("*").range(0,999));
+  const el = $("live"); const chip = $("chip-live");
+  if (r.state === "ok" && r.rows.length){
+    const by = new Map(); r.rows.forEach(x => by.set(String(x.tag||x.addr||"").split("/")[0], x));
+    let bound = 0;
+    model.gensets.forEach(g => { const row = g.meter && by.get(g.meter);
+      if (row && row.val_num != null){ g.live = { v:+row.val_num, u:row.eng_unit||"kW" }; bound++; } });
+    chip.textContent = "live: "+bound+"/"+model.gensets.length+" meters"; chip.className = "chip";
+    el.innerHTML = '<div class="foot">scada_current bound by meter tag (MGn → FMGn PAC3200).</div>';
+    return true;
+  }
+  chip.textContent = "live: NO COMMS"; chip.className = "chip fail";
+  el.innerHTML = '<div class="foot">' + (
+    r.state === "missing" ? "Relation <b>scada_current</b> is not created in the database. " :
+    r.state === "nosb"    ? "No database connection from this origin. " :
+    r.state === "error"   ? "Read error: "+esc(r.error && r.error.message)+". " :
+                            "scada_current exists but holds no rows. ") +
+    "Power badges therefore show the <b>design rating</b> (plain, no live marker). " +
+    "The five PAC3200 of 480-JG-691 (MG1–MG4, MG1D) are historised in tia_hist (MotherDuck), " +
+    "which has no browser endpoint; the bridge to scada_current is the ONLINE module's Etapa 2. " +
+    "A zero never appears here.</div>";
+  return false;
+}
+
+function paint(model){
+  /* kernel text scales with the overlay zoom; the legend goes back to 1 */
+  TamSym.textScale = model.zoom || 1;
+  $("overlay").innerHTML = TamFlow.gaElectrical(model);
+  TamSym.textScale = 1;
+  $("chip-pos").textContent = "positions: "+(model.gensets.length+model.busbars.length/2+model.panels.length)+
+    (model.source==="snapshot" ? " (snapshot)" : " (db)");
+  if (model.source==="snapshot") $("chip-pos").className = "chip warn";
+
+  $("legend").innerHTML = '<svg viewBox="0 0 360 100" style="width:100%;height:auto">' +
+    TamSym.legend(TamFlow.GA_ELEC_KINDS, { cols:3, scale:0.62, x:4, y:4 }) + "</svg>";
+
+  const byBus = {};
+  model.gensets.forEach(g => (byBus[g.busbar] = byBus[g.busbar] || []).push(g));
+  $("pcs").innerHTML = model.busbars.map(b =>
+    "<table><tr><th colspan=2>BUSBAR "+esc(b.code)+" · "+esc(b.lvmd||"")+" · "+esc(b.pc||"")+"</th></tr>"+
+    "<tr><td>gensets</td><td class=num>"+ (byBus[b.code]||[]).map(g=>esc(g.tag.replace("GE-0","G"))).join(" ") +"</td></tr>"+
+    "<tr><td>generation / load (design)</td><td class=num>"+
+      (b.genKw!=null? b.genKw.toLocaleString("en"):"—")+" / "+(b.loadKw!=null? b.loadKw.toLocaleString("en"):"—")+" kW</td></tr>"+
+    "<tr><td>outgoing breakers</td><td class=num>"+(b.nOut!=null?b.nOut:"—")+"</td></tr></table>"
+  ).join("");
+
+  $("cover").innerHTML =
+    model.gensets.length+" of 9 generators · "+model.busbars.length+" of 4 busbars · "+
+    model.panels.length+" of 3 panels placed"+
+    (model.skipped.length ? "<br>NOT drawn ("+model.skipped.length+"): "+esc(model.skipped.join(", ")) : "")+
+    "<br>Ladder anchored on surveyed cabins S-436/S-437; ties per ELD11 (T1/T2/T3 = MCG1/2/3, all N.O.)."+
+    "<br>Cabin↔board source: plant_switchboards.location_floc_id (SQL/148).";
+}
+
+/* ── camera: pan + wheel zoom, initial fit of the whole area crop ───────── */
+const CAM = { k:1, x:0, y:0 };
+function applyCam(){ $("world").style.transform = "translate("+CAM.x+"px,"+CAM.y+"px) scale("+CAM.k+")"; }
+function fitAll(){
+  const st = $("stage").getBoundingClientRect();
+  CAM.k = Math.min(st.width/CROP.w, st.height/CROP.h);
+  CAM.x = (st.width  - CROP.w*CAM.k)/2;
+  CAM.y = (st.height - CROP.h*CAM.k)/2;
+  applyCam();
+}
+(function bindCam(){
+  const stage = $("stage");
+  let drag = null;
+  stage.addEventListener("pointerdown", e=>{ drag={x:e.clientX,y:e.clientY,cx:CAM.x,cy:CAM.y}; stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener("pointermove", e=>{ if(!drag) return; CAM.x=drag.cx+e.clientX-drag.x; CAM.y=drag.cy+e.clientY-drag.y; applyCam(); });
+  stage.addEventListener("pointerup",   ()=>{ drag=null; });
+  stage.addEventListener("wheel", e=>{
+    e.preventDefault();
+    const st = stage.getBoundingClientRect(), mx=e.clientX-st.left, my=e.clientY-st.top;
+    const k2 = Math.min(8, Math.max(0.2, CAM.k * (e.deltaY<0?1.15:1/1.15)));
+    CAM.x = mx-(mx-CAM.x)*k2/CAM.k; CAM.y = my-(my-CAM.y)*k2/CAM.k; CAM.k = k2; applyCam();
+  }, { passive:false });
+})();
+
+(async function boot(){
+  const model = await loadModel();
+  await loadLive(model);
+  paint(model);
+  const img = $("ga");
+  if (img.complete) fitAll(); else img.onload = fitAll;
+  /* the poll is also the clock that would age a live value to STALE */
+  setInterval(async ()=>{ if(document.hidden) return;
+    const changed = await loadLive(model); if (changed) paint(model); }, 15000);
+})();
+</script>
+</body>
+</html>

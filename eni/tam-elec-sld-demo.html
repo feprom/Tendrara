@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     tam-elec-sld-demo.html — APPROVAL SHEET for TamFlow.elecSld()
+     ElectricPlantView · the single line, on the ELD11 architecture
+     ─────────────────────────────────────────────────────────────────────
+     OFFLINE ON PURPOSE (G-8): opens from file:// with the network off. The
+     data below is a SNAPSHOT of the Supabase views and of the historian,
+     frozen 2026-08-12 02:05 plant time (01:05 UTC), printed with its
+     provenance. The live page is PlantViewer /overview.
+
+     THE BRIEF (Mario, 2026-08-12): «para el overview eléctrico, la
+     distribución, single line diagram, como vimos en Siemens SICAM PAS;
+     usar como base de distribución la arquitectura documentada en
+     ELD11-ING-PR01 - ELECTRICAL SYSTEM ARCHITECTURE rev.2; mejorar la parte
+     visual de la generación de energía con un SLD moderno grande claro con
+     información útil y curvas históricas.»
+
+     What is being approved:
+       §1  the single line itself — ELD11 frame, ELD03 content, live values
+       §2  the ELD11 ↔ ELD03 busbar attribution conflict, machine by machine
+       §3  what ELD11 adds that no other document in the model has
+       §4  the trend, and what a gap looks like
+       §5  the accumulated band — and why «last month» does not exist yet
+     ═══════════════════════════════════════════════════════════════════ -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>elecSld() — approval sheet · ElectricPlantView</title>
+<style>
+  body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; background: #F4F5F7; color: #15171A; }
+  header { background: #15171A; color: #fff; padding: 14px 22px; }
+  header h1 { margin: 0; font-size: 17px; font-weight: 700; }
+  header p { margin: 4px 0 0; font-size: 12px; color: #B8BDC4; }
+  section { margin: 18px 22px; background: #fff; border: 1px solid #D8DBDF; border-radius: 6px; padding: 14px 18px; }
+  h2 { font-size: 13.5px; margin: 0 0 8px; }
+  h2 .n { color: #C8102E; margin-right: 6px; }
+  p.note { font-size: 11.5px; color: #4A4F57; margin: 6px 0; max-width: 1180px; }
+  .sheet { overflow-x: auto; border: 1px solid #E3E5E8; border-radius: 4px; background: #fff; }
+  .sheet svg { display: block; }
+  table.t { border-collapse: collapse; font-family: Consolas, monospace; font-size: 11px; }
+  table.t th, table.t td { border: 1px solid #D8DBDF; padding: 3px 10px; text-align: left; }
+  table.t th { background: #F0F1F3; }
+  td.ok { color: #1F8A4C; font-weight: 700; }
+  td.bad { color: #C8102E; font-weight: 700; }
+  footer { margin: 18px 22px 30px; font-size: 11px; color: #4A4F57; font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TamFlow.elecSld() — approval sheet · ElectricPlantView</h1>
+  <p>kernel tam-sym.js 0.2.5 + pack tam-sym-elec.js 0.3.4 + renderer tam-flow.js 1.47.0 · SNAPSHOT 2026-08-12 02:05 plant time · offline on purpose (G-8)</p>
+</header>
+
+<section>
+  <h2><span class="n">§1</span>The single line — ELD11 frame, ELD03 content, live values</h2>
+  <p class="note">
+    Two enclosures, four busbars, three ties, nine bays and the whole low-voltage tail: that is
+    <b>ELD11-ING-PR01 rev.2</b>. Every incomer, feeder, cable tag, network analyser and rating inside
+    it is a row of <code>v_sld_nodes</code> / <code>v_sld_edges</code>, digitised from
+    <b>ELD03-ING-PR01…PR04</b>. A busbar is drawn as long as what it carries, so bar D — which feeds
+    the two 690 V panels, both transformers, both inverter-fed drives and the ammonia compressors —
+    is seven columns wide and bar C is two, before a single number has been read.
+    Live P, U, f and PF sit <b>beside the analyser that measures them</b>, which is SICAM's rule and
+    the reason the FMG glyph is on the drop instead of in a caption. Every breaker is
+    <b>DESIGN</b>: the database holds no live open/closed, and none is invented. Under the trend, the
+    <b>machine totals</b> band carries the hour meter and the energy register per set, the load duration
+    curve, and the coverage rulers that answer §5.
+  </p>
+  <div class="sheet" id="sheet"></div>
+</section>
+
+<section>
+  <h2><span class="n">§2</span>The conflict the sheet made visible — six of nine bays</h2>
+  <p class="note">
+    ELD11 rev.2 and ELD03 + the INNIO wiring diagram agree on the shape of the plant and disagree on
+    who lives where. Both give <b>3 · 2 · 2 · 2</b> machines per bar; both put the same diesel on B and
+    the same diesel on C. And yet <b>six of the nine gas boxes name a different machine</b>. The sheet
+    draws the ELD03 + WD attribution — five independent sources inside the WD carry it (CR-00307), and
+    the live metering, the protection settings and the whole plant model already use it — and puts a
+    red dot on each bay ELD11 places elsewhere. It does not decide; it refuses to hide.
+    <b>Raised as CR-00392 to ITALFLUID.</b>
+  </p>
+  <div id="conflict"></div>
+</section>
+
+<section>
+  <h2><span class="n">§3</span>What ELD11 adds that nothing else in the model has</h2>
+  <p class="note">
+    The single-line database stops at 690 V. Everything below it exists only in ELD11, which is why
+    the 400 V panel is drawn as a <b>dashed plate</b> and says so: documented, not modelled.
+  </p>
+  <div id="eld11"></div>
+</section>
+
+<section>
+  <h2><span class="n">§4</span>The trend, and what a gap looks like</h2>
+  <p class="note">
+    The one chart the mimic earns. On a plant that hands the load from one machine to the next, the
+    <b>shape</b> is the information: MG2 carried the plant until 06:05, MG1 picked it up at 06:20 and
+    has held ~700–800 kW since — and no instantaneous number above can say that. The collector lost
+    the plant for half an hour around 19:00; that half hour is <b>shaded, not flat</b>, because an hour
+    with no data must never look like an hour at zero.
+  </p>
+  <div id="gapdemo"></div>
+</section>
+
+<section>
+  <h2><span class="n">§5</span>Running hours per generator — and why «last month» does not exist yet</h2>
+  <p class="note">
+    The ask was <b>running hours per generator last month and from the start of the year</b>. A figure for a
+    period is the difference between <b>two counter readings that far apart</b>, and the oldest reading this
+    system holds is from <b>2026-08-11 21:16</b>. So July is not «zero hours» — it is <b>unread</b>, and
+    writing a number there would be exactly the plausible-and-false kind this project refuses.
+    What is real is drawn instead, all of it: the PAC's own <b>hour meter and energy register</b>, machine by
+    machine — a total since the meter's zero, which <b>no document publishes</b> — with the slice this
+    collector has actually watched in solid ink inside the same bar. On a 254 h register that slice is 2 % of
+    the bar, and <b>that sliver is the answer</b>. Under the rows, three rulers put the number on it: last
+    month <b>744 h, none of them read</b>; August so far 267 h with 5.7 read; the year 5,355 h with the same
+    5.7. Every ruler fills itself as the collector keeps running — the shape is already right, only the data
+    is young.
+  </p>
+  <p class="note">
+    Four sets get a <b>dashed empty row</b>: MG5, MG6, MG7 and MG2D do not exist on any network reachable from
+    OS-001, so GE-005, GE-006, GE-007 and GE-009 have no hour meter at all. Zero hours would be a lie — they
+    are unwatched, not idle. Beside the rows, the <b>load duration curve</b> answers the question the trend
+    cannot: not <i>when</i> the plant was loaded but <i>how much of the time</i> — median <b>731 kW, 4.8 % of
+    the 15,314 kW installed</b>, which is what a plant in commissioning on one engine looks like.
+  </p>
+  <div id="totdemo"></div>
+</section>
+
+<footer id="foot"></footer>
+
+<script src="tam-sym.js?v=0.2.5"></script>
+<script src="tam-sym-elec.js?v=0.3.4"></script>
+<script src="tam-flow.js?v=1.47.0"></script>
+<script>
+"use strict";
+const K = window.TamSym, F = window.TamFlow;
+
+/* ── SNAPSHOT ─────────────────────────────────────────────────────────────
+   frame       ELD11-ING-PR01 rev.2 (docs/electric/), read 2026-08-12
+   topology    v_power_generation_topology · v_sld_nodes · v_sld_edges
+               (ELD03-ING-PR01…PR04) · plant_bus_couplings · v_genset_metering
+   live        tia_hist.samples, MotherDuck, read 2026-08-12 01:05 UTC
+   trend       same source, 96 buckets of 15 min, LOCF capped at 20 min —
+               a hole longer than that is NULL, never a carried-forward value */
+
+/* P in kW per 15-min bucket, 2026-08-11 02:05 → 2026-08-12 01:50 plant time.
+   null = no sample inside the LOCF cap. Copied verbatim from the query. */
+const KW = {
+  MG1: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,229.1,744.6,730.2,694.8,731,680.3,707.9,704,714.7,701.9,740.7,758.5,752.2,661,753.7,729.6,704,724.8,678.9,717.6,762.3,694.5,724.1,699,721.2,751.8,731.1,757.5,758.2,850.1,710.7,706.7,705.5,677.5,775.5,770.6,719,725.3,688.7,717.5,334,724,704.2,777.5,722,713,688.3,656.8,696.9,629.6,735.4,null,null,738.5,771.9,743.4,724.2,734.1,746.4,739.9,743.8,774.8,742,738.1,745.8,789.6,715.8,730.8,749.9,739.5,735.2,749.1,744.2,746.1,719.9,744.9],
+  MG2: [709.2,755,732,796,800.9,747.7,784.5,773.2,749.1,751,691.1,693.3,779.3,754.3,700.5,784.9,762,709.4,754.7,702.2,498.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,null,null,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  MG3: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,null,null,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  MG4: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,null,null,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  MG1D:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,null,null,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+};
+const N = KW.MG1.length;
+/* the plant total is a SUM OF MEASURED SETS, and it is null wherever every
+   measured set is null: a total that quietly drops a machine is a lie */
+const TOTAL = Array.from({ length: N }, (_, i) => {
+  const vals = Object.keys(KW).map(k => KW[k][i]).filter(v => v != null);
+  return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) * 10) / 10 : null;
+});
+/* x ticks every 3 h, formatted from a fixed plant-time epoch so the label is
+   the same on any machine in any timezone (G-8: nothing depends on the host) */
+const T0 = Date.UTC(2026, 7, 11, 2, 5), STEP_MS = 15 * 60000;
+const hhmm = ms => { const d = new Date(ms); return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0"); };
+const TICKS = [];
+for (let i = 0; i < N; i += 12) TICKS.push({ i, label: hhmm(T0 + i * STEP_MS) });
+
+const CL = { MG1: "#3987e5", MG2: "#d95926", MG3: "#199e70", MG4: "#c98500", MG1D: "#d55181" };
+const gs = (tag, kw, fuel, feeder, an, meter, eld11, live) => ({
+  tag, kw, fuel, feeder, analyzer: an, meter,
+  color: CL[meter] || null, dq: "NEEDS_REVIEW", eld11Bar: eld11,
+  comms: live ? "OK" : null, noMeter: !live, live: live || undefined
+});
+
+const SNAP = {
+  title: "Tendrara 480 generation block · single line and main distribution",
+  stamp: "snapshot 2026-08-12 02:05 plant time · historian 01:05 UTC · 5 of 9 sets metered",
+  basis: [
+    "FRAME · ELD11-ING-PR01 rev.2 — electrical system architecture",
+    "CONTENT · ELD03-ING-PR01…PR04 — switchboard single lines",
+    "TIES · plant_bus_couplings + ELD10-ING-FR01 (F7)",
+    "LIVE · tia_hist / SENTRON PAC on 480-JG-691"
+  ],
+  summary: [
+    { k: "GENERATION NOW", v: "800", u: "kW", sub: "measured, 5 of 9 metered", tone: "ink" },
+    { k: "SETS RUNNING", v: "1", u: "of 9", sub: "P ≥ 50 kW on a live meter", tone: "good" },
+    { k: "FREQUENCY", v: "50.21", u: "Hz", sub: "MG1 · busbar A", tone: "ink" },
+    { k: "SPINNING RESERVE", v: "1,022", u: "kW", sub: "online rated − measured load", tone: "ink" },
+    { k: "UNMETERED CAPACITY", v: "6,746", u: "kW", sub: "bars C and D have no meter at all", tone: "warn" },
+    { k: "MAIN LOAD CONNECTED", v: "10,635", u: "kW", sub: "design, 85 machines", tone: "soft" }
+  ],
+  boards: [
+    { tag: "480-S-436", alt: "480-JG-691", label: "Power Centre 1", bars: ["A", "B"] },
+    { tag: "480-S-437", alt: "480-JG-692", label: "Power Centre 2", bars: ["C", "D"] }
+  ],
+  busbars: [
+    { code: "A", lvmd: "LVMD38", v: 690, genKw: 5466, loadKw: 5600, nOut: 11,
+      measKw: 800, nMeas: 3, nGen: 3,
+      gensets: [
+        gs("GE-001", 1822, "gas", "480-JG-691-FG1", "480-JG-691-FMG1", "MG1", "D", { p: 800, pf: 0.86, f: 50.21, v: 690, age: "2 min" }),
+        gs("GE-002", 1822, "gas", "480-JG-691-FG2", "480-JG-691-FMG2", "MG2", "B", { p: 0, pf: 1.00, f: 50.07, v: 690, age: "3 min" }),
+        gs("GE-003", 1822, "gas", "480-JG-691-FG3", "480-JG-691-FMG3", "MG3", "D", { p: 0, pf: 0.00, f: 50.22, v: 690, age: "3 min" })
+      ],
+      feeders: [
+        { tag: "480-JG-691-FMC1", n: 9, kind: "COMPRESSOR", label: "MR + NH₃ compressors",
+          sub: "8 × MC-351H/L · 1 × MC-341", kw: 5040, extra: "FMC1–FMC9 · 560 kW each",
+          dq: "VERIFIED", title: "480-JG-691-FMC1…FMC9 → MC-351H-3/4/5/6 · MC-351L-3/4/5/6 · MC-341-4 (E028–E063)" },
+        { tag: "480-JG-691-FA", kind: "INVERTER", label: "480-INV-001", sub: "inverter busbar A/B",
+          kw: 710, dq: "NEEDS_REVIEW", extra: "feeder rated 560 kW" },
+        { tag: "480-JG-691-FS1", kind: "SPARE", label: "spare position", sub: "reserved", kw: 200,
+          dq: "CONFLICT", extra: "CR-00211 · rev.1 shows a 200 kW soft starter" }
+      ] },
+    { code: "B", lvmd: "LVMD44", v: 690, genKw: 3102, loadKw: 1120, nOut: 3,
+      measKw: 0, nMeas: 2, nGen: 2,
+      gensets: [
+        gs("GE-004", 1822, "gas", "480-JG-691-FG4", "480-JG-691-FMG4", "MG4", "A", { p: 0, pf: 0.00, f: 50.22, v: 690, age: "3 min" }),
+        gs("GE-008", 1280, "diesel", "480-JG-691-FG1D", "480-JG-691-FMG1D", "MG1D", "B", { p: 0, pf: 1.00, f: 50.23, v: 689, age: "3 min" })
+      ],
+      feeders: [
+        { tag: "480-JG-691-FMC10", n: 2, kind: "COMPRESSOR", label: "MR compressors",
+          sub: "MC-351H-2 · MC-351L-2", kw: 1120, dq: "VERIFIED",
+          title: "480-JG-691-FMC10 → MC-351H-2 (E043) · FMC11 → MC-351L-2 (E042)" },
+        { tag: "480-JG-691-FB2", kind: null, label: "?", sub: "no destination edge",
+          dashed: true, dq: "NEEDS_REVIEW", extra: "no drawable destination (G-4)" }
+      ] },
+    { code: "C", lvmd: "LVMD54", v: 690, genKw: 3102, loadKw: 1680, nOut: 3,
+      gensets: [
+        gs("GE-005", 1822, "gas", "480-JG-692-FG5", "480-JG-692-FMG5", "MG5", "C", null),
+        gs("GE-009", 1280, "diesel", "480-JG-692-FG2D", "480-JG-692-FMG2D", "MG2D", "C", null)
+      ],
+      feeders: [
+        { tag: "480-JG-692-FMC12", n: 3, kind: "COMPRESSOR", label: "MR + NH₃ compressors",
+          sub: "MC-351H-1 · MC-351L-1 · MC-341-3", kw: 1680, dq: "VERIFIED",
+          title: "480-JG-692-FMC12 → MC-351H-1 (E038) · FMC13 → MC-351L-1 (E037) · FMC14 → MC-341-3 (E025)" }
+      ] },
+    { code: "D", lvmd: "LVMD55", v: 690, genKw: 3644, loadKw: 7190, nOut: 12,
+      gensets: [
+        gs("GE-006", 1822, "gas", "480-JG-692-FG6", "480-JG-692-FMG6", "MG6", "A", null),
+        gs("GE-007", 1822, "gas", "480-JG-692-FG7", "480-JG-692-FMG7", "MG7", "A", null)
+      ],
+      feeders: [
+        { tag: "480-JG-692-FMC15", n: 2, kind: "COMPRESSOR", label: "NH₃ compressors",
+          sub: "MC-341-1 · MC-341-2", kw: 1120, dq: "VERIFIED",
+          title: "480-JG-692-FMC15 → MC-341-2 (E022) · FMC16 → MC-341-1 (E019)" },
+        { tag: "480-JG-692-FII2", kind: "INVERTER", label: "480-INV-002", sub: "inverter busbar C/D",
+          kw: 710, dq: "NEEDS_REVIEW", extra: "feeder rated 560 kW" },
+        { tag: "480-JG-692-FII4", n: 2, kind: "PUMP", label: "MP-332 A/B", sub: "lean amine pumps · VFD",
+          kw: 320, cable: "E001·E002", dq: "VERIFIED", title: "480-JG-692-FII4 → MP-332A · FII3 → MP-332B" },
+        { tag: "480-JG-692-FS3", kind: "COMPRESSOR", label: "PK-362-C1B", sub: "BOG recycle compressor",
+          kw: 160, cable: "E082-E086", dq: "VERIFIED" },
+        { tag: "480-JG-692-F210", n: 2, kind: "SWITCHBOARD", label: "480-S-435",
+          sub: "690 V panels A + B", kw: 1200, cable: "E155·E081", dq: "VERIFIED",
+          extra: "JG-693 42 ways · JG-694 16 ways", cablePct: "38 % cables",
+          title: "ELD11 480-S-435, technical room for power generation control and UPS. F210 → 480-JG-693-F300 (E155) · F211 → 480-JG-694-F400 (E081), 600 kW each. Which DB board is ELD11's panel A and which is B is NOT declared by either document." },
+        { tag: "480-JG-692-F214", n: 2, kind: "MCC_PANEL", label: "690-JG-695 / 696",
+          sub: "PK-361 A/B flash compressor drives", kw: 630, cable: "E174·E184", dq: "NEEDS_REVIEW",
+          extra: "not shown on ELD11 rev.2", title: "480-JG-692-F214 → 690-JG-695 (E174) · F215 → 690-JG-696 (E184), 315 kW each — CR-00209" },
+        { tag: "480-JG-692-F212", n: 2, kind: "TRANSFORMER", label: "480-ET-001 / 002",
+          sub: "690 V 3P / 400 V 3P+N", kw: 3200, unit: "kVA", cable: "E151·E152", dq: "NEEDS_REVIEW",
+          extra: "DB: 480-TR-001/002 · kVA-vs-kW open", cablePct: "18 % cables",
+          title: "ELD11 480-ET-001/002 = v_sld_nodes 480-TR-001/002. 480-JG-692-F212 → TR-001 (E151) · F213 → TR-002 (E152), 1600 kVA each.",
+          down: [
+            { tag: "480-S-438", kind: "SWITCHBOARD", label: "480-S-438", sub: "400 V panel",
+              dashed: true, extra: "ELD11 only — model stops at 690 V", cablePct: "12 % cables",
+              title: "ELD11-ING-PR01 rev.2: 400 V panel 480-S-438, fed by 480-ET-001/002. No node of this board exists in v_sld_nodes." }
+          ] }
+      ] }
+  ],
+  ties: [
+    { a: "A", b: "B", label: "T1 · MCG1", open: true, f7: "CLOSED", dq: "CONFLICT" },
+    { a: "B", b: "C", label: "T2 · MCG2", open: true, f7: "OPEN", cable: "E150" },
+    { a: "C", b: "D", label: "T3 · MCG3", open: true, f7: "CLOSED", dq: "CONFLICT" }
+  ],
+  trend: {
+    sub: "P per metered set · 24 h to 2026-08-12 01:50 plant time · 15 min buckets, LOCF capped at 20 min",
+    unit: "kW",
+    series: Object.keys(KW).map(k => ({ tag: k, label: k, color: CL[k], kw: KW[k] })),
+    total: TOTAL, ticks: TICKS,
+    note: "bars C and D carry no meter: 6,746 kW of installed capacity is absent from this chart"
+  },
+  /* ── el acumulado por máquina ───────────────────────────────────────────
+     Registro del PAC leído 2026-08-12 03:00 hora de planta (02:00 UTC), vía
+     v_cnt_totalizer_daily / samples. `hours` y `mwh` son el REGISTRO del
+     medidor —un total desde su cero, que ningún documento publica— y `obs` es
+     lo que este sistema ha visto avanzar desde que empezó a embarcar
+     contadores, el 2026-08-11 21:16 hora de planta. */
+  totals: {
+    since: "2026-08-11 21:16", until: "2026-08-12 03:00",
+    rows: [
+      { tag: "GE-001", meter: "MG1",  color: CL.MG1,  hours: 254.8, mwh: 171.9, obsHours: 5.73, obsMwh: 4.22 },
+      { tag: "GE-002", meter: "MG2",  color: CL.MG2,  hours: 235.1, mwh: 168.9, obsHours: 0, obsMwh: 0 },
+      { tag: "GE-003", meter: "MG3",  color: CL.MG3,  hours: 206.8, mwh: 143.3, obsHours: 0, obsMwh: 0 },
+      { tag: "GE-004", meter: "MG4",  color: CL.MG4,  hours: 74.2,  mwh: 57.2,  obsHours: 0, obsMwh: 0 },
+      { tag: "GE-005", meter: "MG5",  noMeter: true },
+      { tag: "GE-006", meter: "MG6",  noMeter: true },
+      { tag: "GE-007", meter: "MG7",  noMeter: true },
+      { tag: "GE-008", meter: "MG1D", color: CL.MG1D, hours: 12.9,  mwh: 8.0,   obsHours: 0, obsMwh: 0 },
+      { tag: "GE-009", meter: "MG2D", noMeter: true }
+    ],
+    fleet: { hours: 783.8, mwh: 549.3, nMetered: 5, nSets: 9 },
+    coverage: [
+      { k: "LAST MONTH",    label: "July 2026",   elapsedH: 744,  coveredH: 0 },
+      { k: "MONTH TO DATE", label: "August 2026", elapsedH: 267,  coveredH: 5.73 },
+      { k: "YEAR TO DATE",  label: "2026",        elapsedH: 5355, coveredH: 5.73 }
+    ],
+    note: "Running hours by month and year to date cannot be computed yet: a period figure needs two counter " +
+      "readings that far apart, and the oldest one this system holds is 2026-08-11 21:16. The bars are the " +
+      "meter's own register — a total since its zero, which no document publishes — with the watched slice in solid ink."
+  },
+  /* la curva de duración de carga sale de la MISMA serie que la tendencia,
+     ordenada: nada nuevo que verificar, otra pregunta contestada */
+  ldc: {
+    kw: TOTAL.filter(v => v != null),
+    instKw: 15314,
+    sub: "24 h window · 94 of 96 buckets with data",
+    note: "Sorted, not chronological: read it as «the plant was at or above this many kW for this share of the " +
+      "window». Buckets with no data are dropped, never counted as zero."
+  },
+  notes: [
+    "ELD11 rev.2 and the INNIO wiring diagram disagree on the busbar of six of the nine sets — the red dots. ELD03 + WD is drawn (CR-00392, ITALFLUID).",
+    "ELD11 % of power cable laydown, as drawn: busbar A 19 % + 13 % · busbar B 8 % · busbar C 4 % · 400 V panel 12 % · 690 V panels 38 % · technical room 18 %. The seven figures add up to 112 %, not 100 % — as drawn on rev.2.",
+    "Breakers DESIGN throughout: the database holds no live open/closed for any position, so no breaker on this sheet claims one (G-3).",
+    "MCC panels JG-334 / JG-335 / JG-353 (60 cooler fans) are not modelled in v_sld_nodes and therefore cannot be hung off any busbar here."
+  ]
+};
+
+document.getElementById("sheet").innerHTML = F.elecSld(SNAP);
+
+/* §2 — the conflict, machine by machine, from the same two sources */
+(function conflict() {
+  const ELD11 = { "GE-001": "D", "GE-002": "B", "GE-003": "D", "GE-004": "A", "GE-005": "C",
+                  "GE-006": "A", "GE-007": "A", "GE-008": "B", "GE-009": "C" };
+  let rows = "", bad = 0;
+  SNAP.busbars.forEach(b => b.gensets.forEach(g => {
+    const e = ELD11[g.tag], ok = e === b.code;
+    if (!ok) bad++;
+    rows += `<tr><td>${g.tag}</td><td>${g.fuel}</td><td>${g.kw.toLocaleString("en-US")} kW</td>` +
+      `<td>${b.code} · ${b.lvmd}</td><td>${e}</td>` +
+      `<td class="${ok ? "ok" : "bad"}">${ok ? "agree" : "DISAGREE"}</td>` +
+      `<td>${g.meter}${g.noMeter ? " (not located)" : ""}</td></tr>`;
+  }));
+  document.getElementById("conflict").innerHTML =
+    `<table class="t"><tr><th>set</th><th>fuel</th><th>rated</th><th>ELD03 + WD (drawn)</th>` +
+    `<th>ELD11 rev.2</th><th>check</th><th>meter</th></tr>${rows}</table>` +
+    `<p class="note"><b style="color:#C8102E">${bad} of 9 sets disagree.</b> Both documents give the same ` +
+    `count per bar (3 · 2 · 2 · 2) and the same fuel mix per bar, and both put GE-008 on B and GE-009 on C. ` +
+    `Only the identity of the gas engines moves — which is exactly the kind of defect that survives a ` +
+    `drawing review and then puts a protection setting, or a synchronising reference, on the wrong machine. ` +
+    `The busbar identity itself (A = SSL 1, B = 3, C = 4, D = 2) has five independent sources inside the ` +
+    `wiring diagram and is separately open with INNIO as CR-00307.</p>`;
+})();
+
+/* §3 — the ELD11-only tier, listed against the model */
+(function eld11() {
+  const R = [
+    ["480-S-436", "480-JG-691", "in the model", "busbars A + B, tie T1 inside the panel"],
+    ["480-S-437", "480-JG-692", "in the model", "busbars C + D, tie T3 inside the panel"],
+    ["T2 inter-panel cable", "cable E150", "in the model", "the only tie between the two Power Centres — ELD11 draws it as an interconnection, plant_bus_couplings says the same"],
+    ["480-S-435 · 690 V panel A", "480-JG-693", "in the model", "600 kW general switch, 42 feeders — which ELD11 panel letter it is, is not declared"],
+    ["480-S-435 · 690 V panel B", "480-JG-694", "in the model", "600 kW general switch, 16 feeders"],
+    ["480-ET-001 / 002", "480-TR-001 / 002", "in the model, different tag", "ELD11 gives the ratio the DB does not carry: 690 V 3P / 400 V 3P+N"],
+    ["480-S-438 · 400 V panel", "—", "NOT in the model", "no 400 V node exists in v_sld_nodes: the digitised single lines stop at 690 V"],
+    ["% of power cable laydown", "—", "NOT in the model", "seven figures on rev.2, summing to 112 %"],
+    ["690-JG-695 / 696", "690-JG-695 / 696", "in the model, NOT on ELD11", "PK-361 A/B drives, 315 kW each — rev.2 does not show them"]
+  ];
+  document.getElementById("eld11").innerHTML =
+    `<table class="t"><tr><th>ELD11 rev.2</th><th>single-line database</th><th>status</th><th>note</th></tr>` +
+    R.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td>` +
+      `<td class="${/^NOT/.test(r[2]) ? "bad" : "ok"}">${r[2]}</td><td>${r[3]}</td></tr>`).join("") +
+    `</table>`;
+})();
+
+/* §4 — the same renderer, trend band only, so the gap can be inspected alone */
+document.getElementById("gapdemo").innerHTML = F.elecSld({
+  title: "Generation trend — the same band, on its own",
+  stamp: "same data, no single line",
+  busbars: [], boards: [], ties: [], summary: [],
+  trend: SNAP.trend,
+  notes: ["A null bucket lifts the pen and shades its band. The two nulls at 19:00 are a real collector outage, not a stopped plant."]
+});
+
+/* §5 — the same renderer, accumulated band only, so it can be read on its own */
+document.getElementById("totdemo").innerHTML = F.elecSld({
+  title: "Machine totals — the same band, on its own",
+  stamp: "counter register only, no single line and no trend",
+  busbars: [], boards: [], ties: [], summary: [],
+  totals: SNAP.totals, ldc: SNAP.ldc,
+  notes: ["A machine with no meter gets a dashed row, never a zero: it is unwatched, not idle."]
+});
+
+document.getElementById("foot").textContent =
+  `elecSld() · tam-flow ${F.version} · tam-sym ${K.version || ""} · ` +
+  `${SNAP.busbars.reduce((a, b) => a + b.gensets.length, 0)} gensets · ${SNAP.busbars.length} busbars · ` +
+  `${SNAP.ties.length} ties · ${SNAP.busbars.reduce((a, b) => a + b.feeders.length, 0)} outgoing ways drawn ` +
+  `(${SNAP.busbars.reduce((a, b) => a + b.nOut, 0)} physical positions) · ${N} trend buckets · ` +
+  `SNAPSHOT 2026-08-12 02:05 plant time — live page: PlantViewer /overview`;
+</script>
+</body>
+</html>

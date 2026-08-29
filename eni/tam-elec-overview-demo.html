@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     tam-elec-overview-demo.html — APPROVAL SHEET for TamFlow.elecOverview()
+     ElectricPlantView · the whole plant on ONE page
+     ─────────────────────────────────────────────────────────────────────
+     OFFLINE ON PURPOSE (G-8): opens from file:// with the network off.
+     The data below is a SNAPSHOT of the Supabase views and of the historian,
+     frozen 2026-08-12 01:49 plant time, printed with its provenance. The live
+     page is PlantViewer /overview.
+
+     THE BRIEF (Mario, 2026-08-12): "generate plant electrical diagram
+     overview, where in one page we have to see all the generators and status
+     of main loads (compressor), NOT each generator data and historical, and
+     general data summary of overview."
+
+     So this sheet is the tier ABOVE /unifilar. It drops per-machine detail —
+     PF, f, run hours, energy, the 24 h micro-trend all live one screen down —
+     and adds the half of the plant no mimic here has ever shown: the loads.
+     What is being approved:
+       1. §1 the sheet itself: summary · generation · distribution · loads
+       2. §2 the load census — every group counted against BOTH sources
+       3. §3 the four status marks, and why "we have the signal and cannot
+          read it" is drawn differently from "there is no signal"
+     Benchmarks: SICAM SCC System Overview (the tier above Station Overview)
+     and SENTRON powermanager system dashboard.
+     ═══════════════════════════════════════════════════════════════════ -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>elecOverview() — approval sheet · ElectricPlantView</title>
+<style>
+  body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; background: #F4F5F7; color: #15171A; }
+  header { background: #15171A; color: #fff; padding: 14px 22px; }
+  header h1 { margin: 0; font-size: 17px; font-weight: 700; }
+  header p { margin: 4px 0 0; font-size: 12px; color: #B8BDC4; }
+  section { margin: 18px 22px; background: #fff; border: 1px solid #D8DBDF; border-radius: 6px; padding: 14px 18px; }
+  h2 { font-size: 13.5px; margin: 0 0 8px; }
+  h2 .n { color: #C8102E; margin-right: 6px; }
+  p.note { font-size: 11.5px; color: #4A4F57; margin: 6px 0; max-width: 1120px; }
+  .sheet { overflow-x: auto; border: 1px solid #E3E5E8; border-radius: 4px; background: #fff; }
+  .sheet svg { display: block; }
+  table.census { border-collapse: collapse; font-family: Consolas, monospace; font-size: 11px; }
+  table.census th, table.census td { border: 1px solid #D8DBDF; padding: 3px 10px; text-align: left; }
+  table.census th { background: #F0F1F3; }
+  td.ok { color: #1F8A4C; font-weight: 700; }
+  td.bad { color: #C8102E; font-weight: 700; }
+  footer { margin: 18px 22px 30px; font-size: 11px; color: #4A4F57; font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TamFlow.elecOverview() — approval sheet · ElectricPlantView</h1>
+  <p>kernel tam-sym.js 0.2.5 + pack tam-sym-elec.js 0.3.4 + renderer tam-flow.js 1.45.0 · SNAPSHOT 2026-08-12 01:49 plant time · offline on purpose (G-8)</p>
+</header>
+
+<section>
+  <h2><span class="n">§1</span>The overview — one page, four bands</h2>
+  <p class="note">
+    <b>Summary</b> answers «is the plant all right» in six numbers. <b>Generation</b> is nine tiles
+    and nothing else: state ring, tag, P, rated — no PF, no frequency, no energy, no trend, because
+    those are one screen down. <b>Distribution</b> is the A·B·C·D ladder in miniature with the
+    couplers. <b>Main loads</b> is the half the mimic never had: one row per service group, its
+    connected power, which busbars feed it, <b>one pill per unit</b> — you can count them — and how
+    many are running. Right now that reads: <b>one genset carries the plant, the whole lean-amine
+    cooler bank is turning, and none of the sixteen 560 kW compressors is</b>, which is exactly what
+    a plant in commissioning at 01:49 should look like.
+  </p>
+  <div class="sheet" id="sheet"></div>
+</section>
+
+<section>
+  <h2><span class="n">§2</span>Load census — every group against BOTH sources</h2>
+  <p class="note">
+    The join between the load list (Supabase) and the historian is by <b>family and count</b>, not by
+    guessing a tag: the DB calls a fan <code>MF-334-7</code> and the historian calls it
+    <code>E-334G</code>, and nobody has published which number is which letter. What CAN be checked
+    is that both sides carry the same number of machines in the same family — and they do, in every
+    row. A mismatch here would mean the sheet is counting something the plant does not have (or
+    missing something it does), so it is printed, not assumed.
+  </p>
+  <div id="census"></div>
+</section>
+
+<section>
+  <h2><span class="n">§3</span>The four status marks</h2>
+  <p class="note">
+    <b>RUN</b> and <b>STOP</b> come from the machine itself: <code>QRUN</code>, or its own
+    <code>RunTime_Hour_Total</code> advancing inside the window — evidence, not inference.
+    <b>RAW</b> is the interesting one: the unit publishes a packed status word
+    (<code>QdwState</code>/<code>QwState</code>) and <b>nobody has the bit key</b>. Values like
+    <code>0x22101</code> and <code>0x11002100</code> clearly encode state, and decoding them by
+    guesswork is precisely the failure this project refuses (G-3) — so they get their own amber
+    mark, and that mark is a <b>change request to the integrator</b>, not a cable to pull.
+    <b>NOSIG</b> means nothing is historised for that unit at all. Drawing RAW and NOSIG the same
+    would hide the difference between a question and a hole.
+  </p>
+  <div id="marks"></div>
+</section>
+
+<footer id="foot"></footer>
+
+<script src="tam-sym.js?v=0.2.5"></script>
+<script src="tam-sym-elec.js?v=0.3.4"></script>
+<script src="tam-flow.js?v=1.47.0"></script>
+<script>
+"use strict";
+const K = window.TamSym, F = window.TamFlow;
+
+/* ── SNAPSHOT ─────────────────────────────────────────────────────────────
+   generation:  v_power_generation_topology + fleet.ts colours; live P from
+                tia_hist.samples read 2026-08-12 00:49 UTC (01:49 plant)
+   busbars:     v_power_generation_topology + v_sld_nodes children
+   loads:       v_electrical_loads grouped by service family; feeder→busbar
+                from v_sld_nodes (FMC1–9 → A, FMC10–11 → B, FMC12–14 → C)
+   unit state:  tia_hist WinCC tags — QRUN, RunTime_Hour_Total delta over 6 h,
+                QdwState/QwState presence. Classification is done by the
+                CALLER (this snapshot / the page), never by the renderer. */
+const RUN = "RUN", STOP = "STOP", RAW = "RAW", NOSIG = "NOSIG";
+const units = (prefix, list) => list.map((st, i) => ({ tag: prefix + (i + 1), state: st }));
+
+const SNAP = {
+  title: "Plant electrical overview · Tendrara 480 generation block",
+  stamp: "snapshot 2026-08-12 01:49 plant time · historian 00:49 UTC",
+  summary: [
+    { k: "GENERATION NOW", v: "747", u: "kW", sub: "measured, 5 of 9 metered", tone: "ink" },
+    { k: "SETS RUNNING",   v: "1", u: "of 9", sub: "P ≥ 50 kW on a live meter", tone: "good" },
+    { k: "FREQUENCY",      v: "50.11", u: "Hz", sub: "busbar A, MG1", tone: "ink" },
+    { k: "SPINNING RESERVE", v: "1,076", u: "kW", sub: "online rated − measured load", tone: "ink" },
+    { k: "MAIN LOAD CONNECTED", v: "10,635", u: "kW", sub: "design, 85 machines", tone: "soft" },
+    { k: "MOTORS RUNNING", v: "28", u: "of 85", sub: "cooler banks only", tone: "warn" }
+  ],
+  centers: [
+    { code: "480-JG-691", label: "PC1 · 480-JG-691 · busbars A/B", gensets: [
+      { tag: "GE-001", kw: 1822, fuel: "gas", meter: "MG1", color: "#3987e5", comms: "OK", live: { p: 747 }, dq: "VERIFIED" },
+      { tag: "GE-002", kw: 1822, fuel: "gas", meter: "MG2", color: "#d95926", comms: "OK", live: { p: 0 }, dq: "VERIFIED" },
+      { tag: "GE-003", kw: 1822, fuel: "gas", meter: "MG3", color: "#199e70", comms: "OK", live: { p: 0 }, dq: "VERIFIED" },
+      { tag: "GE-004", kw: 1822, fuel: "gas", meter: "MG4", color: "#c98500", comms: "OK", live: { p: 0 }, dq: "VERIFIED" },
+      { tag: "GE-008", kw: 1280, fuel: "diesel", meter: "MG1D", color: "#d55181", comms: "OK", live: { p: 0 }, dq: "VERIFIED" }
+    ] },
+    { code: "480-JG-692", label: "PC2 · 480-JG-692 · busbars C/D", gensets: [
+      { tag: "GE-005", kw: 1822, fuel: "gas", meter: "MG5", noMeter: true, dq: "VERIFIED" },
+      { tag: "GE-006", kw: 1822, fuel: "gas", meter: "MG6", noMeter: true, dq: "VERIFIED" },
+      { tag: "GE-007", kw: 1822, fuel: "gas", meter: "MG7", noMeter: true, dq: "VERIFIED" },
+      { tag: "GE-009", kw: 1280, fuel: "diesel", meter: "MG2D", noMeter: true, dq: "VERIFIED" }
+    ] }
+  ],
+  busbars: [
+    { code: "A", lvmd: "LVMD38", genKw: 5466, loadKw: 5600, nOut: 11, nMain: 9 },
+    { code: "B", lvmd: "LVMD44", genKw: 3102, loadKw: 1120, nOut: 3,  nMain: 2 },
+    { code: "C", lvmd: "LVMD54", genKw: 3102, loadKw: 1680, nOut: 3,  nMain: 3 },
+    { code: "D", lvmd: "LVMD55", genKw: 3644, loadKw: 7190, nOut: 12, nMain: 2 }
+  ],
+  ties: [
+    { a: "A", b: "B", label: "T1 · MCG1", open: true, f7: "CLOSED", dq: "CONFLICT" },
+    { a: "B", b: "C", label: "T2 · MCG2", open: true, f7: "OPEN" },
+    { a: "C", b: "D", label: "T3 · MCG3", open: true, f7: "CLOSED", dq: "CONFLICT" }
+  ],
+  loads: [
+    { group: "MC-351H", service: "MR compressor · high stage · VFD", n: 6, kwUnit: 560, kwTotal: 3360,
+      bars: [{ code: "A", n: 5 }, { code: "B", n: 1 }],
+      units: units("MC-351H-", [RAW, RAW, RAW, RAW, RAW, RAW]), nRun: 0, nSignal: 6,
+      note: "status word, no key", dq: "VERIFIED" },
+    { group: "MC-351L", service: "MR compressor · low stage · VFD", n: 6, kwUnit: 560, kwTotal: 3360,
+      bars: [{ code: "A", n: 5 }, { code: "B", n: 1 }],
+      units: units("MC-351L-", [RAW, RAW, RAW, RAW, RAW, RAW]), nRun: 0, nSignal: 6,
+      note: "status word, no key", dq: "VERIFIED" },
+    { group: "MC-341", service: "Ammonia compressor · VFD", n: 4, kwUnit: 560, kwTotal: 2240,
+      bars: [{ code: "A", n: 1 }, { code: "C", n: 1 }, { code: "?", n: 2 }],
+      units: units("MC-341-", [STOP, NOSIG, NOSIG, STOP]), nRun: 0, nSignal: 2,
+      note: "2 sets without a feeder in the SLD", dq: "VERIFIED" },
+    { group: "PK-361", service: "Flash compressor A/B · 690 V", n: 2, kwUnit: 315, kwTotal: 630,
+      bars: [{ code: "D", n: 2 }],
+      units: [{ tag: "PK-361-MC1A", state: RAW }, { tag: "PK-361-MC1B", state: RAW }], nRun: 0, nSignal: 2,
+      note: "historian calls them 361-MC1A/B", dq: "NEEDS_REVIEW" },
+    { group: "PK-362", service: "BOG recycle compressor A/B", n: 2, kwUnit: 160, kwTotal: 320,
+      bars: [{ code: "C", n: 1 }, { code: "?", n: 1 }],
+      units: [{ tag: "PK-362-MC1A", state: RAW }, { tag: "PK-362-MC1B", state: RAW }], nRun: 0, nSignal: 2,
+      dq: "VERIFIED" },
+    { group: "MP-332", service: "Lean amine pumps · VFD", n: 2, kwUnit: 160, kwTotal: 320,
+      bars: [{ code: "C", n: 2 }],
+      units: [{ tag: "MP-332A", state: NOSIG }, { tag: "MP-332B", state: NOSIG }], nRun: 0, nSignal: 0,
+      note: "not historised", dq: "VERIFIED" },
+    { group: "MPK-501", service: "Compressed air package", n: 3, kwUnit: 55, kwTotal: 165,
+      bars: [{ code: "?", n: 3 }],
+      units: units("MPK-501-", [NOSIG, NOSIG, NOSIG]), nRun: 0, nSignal: 0,
+      note: "no feeder, not historised", dq: "VERIFIED" },
+    { group: "MF-353", service: "MR precooler fans (E-353)", n: 30, kwUnit: 4, kwTotal: 120,
+      bars: [{ code: "MCC", n: 30 }],
+      units: units("MF-353-", [RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,RAW,
+                               NOSIG,STOP,STOP,NOSIG,NOSIG,STOP,STOP,NOSIG,NOSIG,STOP]), nRun: 0, nSignal: 26,
+      note: "JG-353-1/2/3, not in the SLD", dq: "NEEDS_REVIEW" },
+    { group: "MF-334", service: "Lean amine cooler fans (E-334)", n: 20, kwUnit: 4, kwTotal: 80,
+      bars: [{ code: "MCC", n: 20 }],
+      units: units("MF-334-", [RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN,RUN]),
+      nRun: 20, nSignal: 20, note: "JG-334, not in the SLD", dq: "NEEDS_REVIEW" },
+    { group: "MF-335", service: "Amine reflux condenser fans (E-335)", n: 10, kwUnit: 4, kwTotal: 40,
+      bars: [{ code: "MCC", n: 10 }],
+      units: units("MF-335-", [RUN,RAW,RUN,NOSIG,RUN,RUN,RUN,RUN,RUN,RUN]), nRun: 8, nSignal: 9,
+      note: "JG-335, not in the SLD", dq: "NEEDS_REVIEW" }
+  ],
+  notes: [
+    "MCC panels JG-334 / JG-335 / JG-353 are not modelled in v_sld_nodes: their busbar is unknown, printed as MCC.",
+    "Fan tag bridge unresolved: the load list numbers them (MF-334-7), the historian letters them (E-334G) — the join is by family and count, never by guessed identity.",
+    "16 compressors publish a packed status word nobody can decode yet — CR to the integrator, tracked as RAW above."
+  ]
+};
+
+document.getElementById("sheet").innerHTML = F.elecOverview(SNAP);
+
+/* §2 — the census the sheet's honesty rests on */
+(function census() {
+  /* historian family counts, read 2026-08-12 00:49 UTC */
+  const HIST = { "MC-351H": 6, "MC-351L": 6, "MC-341": 4, "PK-361": 2, "PK-362": 2,
+                 "MP-332": 0, "MPK-501": 0, "MF-353": 30, "MF-334": 20, "MF-335": 10 };
+  let rows = "", bad = 0, nUnits = 0, nSig = 0, kw = 0;
+  SNAP.loads.forEach(l => {
+    const h = HIST[l.group], ok = h === l.n || h === l.nSignal;
+    if (!ok) bad++;
+    nUnits += l.n; nSig += l.nSignal; kw += l.kwTotal;
+    const st = {};
+    l.units.forEach(u => { st[u.state] = (st[u.state] || 0) + 1; });
+    rows += `<tr><td>${l.group}</td><td>${l.service}</td><td>${l.n}</td><td>${h}</td>` +
+      `<td class="${ok ? "ok" : "bad"}">${ok ? "match" : "MISMATCH"}</td>` +
+      `<td>${["RUN","STOP","RAW","NOSIG"].filter(k => st[k]).map(k => `${st[k]} ${k}`).join(" · ")}</td>` +
+      `<td>${l.kwTotal.toLocaleString("en-US")}</td></tr>`;
+  });
+  document.getElementById("census").innerHTML =
+    `<table class="census"><tr><th>group</th><th>service</th><th>units (load list)</th>` +
+    `<th>tags (historian)</th><th>count check</th><th>state census</th><th>kW</th></tr>${rows}` +
+    `<tr><td colspan="2"><b>total</b></td><td><b>${nUnits}</b></td><td colspan="2">${nSig} with a signal ` +
+    `(${Math.round(nSig / nUnits * 100)} %)</td><td></td><td><b>${kw.toLocaleString("en-US")}</b></td></tr></table>` +
+    `<p class="note">${bad ? `<b style="color:#C8102E">${bad} group(s) do not agree between sources</b>` :
+      "every group agrees between the load list and the historian"} · MP-332 and MPK-501 are counted as ` +
+    `0 tags: they are genuinely absent from the historian, which is why their pills are dashed.</p>`;
+})();
+
+/* §3 — the four marks, drawn by the same code that draws them on the sheet */
+document.getElementById("marks").innerHTML = F.elecOverview({
+  title: "The four status marks", stamp: "one row, four states",
+  summary: [], centers: [], busbars: [], ties: [],
+  loads: [{ group: "EXAMPLE", service: "one unit per state", n: 4, kwUnit: null, kwTotal: null, bars: [],
+    units: [{ tag: "runs", state: RUN }, { tag: "stopped", state: STOP },
+            { tag: "status word, no key", state: RAW }, { tag: "nothing historised", state: NOSIG }],
+    nRun: 1, nSignal: 3 }],
+  notes: ["RAW is a change request; NOSIG is a cable. Drawing them the same would hide the difference."]
+});
+
+document.getElementById("foot").textContent =
+  `elecOverview() · tam-flow ${F.version} · tam-sym ${K.version || ""} · ` +
+  `${SNAP.centers.reduce((a, c) => a + c.gensets.length, 0)} gensets · ${SNAP.busbars.length} busbars · ` +
+  `${SNAP.loads.length} load groups · ${SNAP.loads.reduce((a, l) => a + l.n, 0)} machines · ` +
+  `SNAPSHOT 2026-08-12 01:49 plant time — live page: PlantViewer /overview`;
+</script>
+</body>
+</html>

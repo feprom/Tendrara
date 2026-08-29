@@ -1,0 +1,43 @@
+<!doctype html><meta charset=utf-8>
+<title>tam-disc.js — discipline squares (demo)</title>
+<body style="margin:0;padding:16px;background:#F1F3F5;font-family:system-ui">
+<!-- Demo with the real figures of 2026-07-29. It is a DEMO: the numbers are frozen here,
+     the pages that ship read them from the registry.
+     No colours are passed: the four discipline hues live in TamDisc.MARIO and are
+     resolved from the title, so red / yellow / green / blue cannot drift per page. -->
+<div style="font:700 9px Consolas,monospace;color:#C8102E;letter-spacing:.1em">TX EI00 · PROCESS VIEW · AREAS &amp; UTILITIES</div>
+<h1 style="font-size:20px;margin:3px 0 10px">Tendrara Micro-LNG — Process View</h1>
+<div id="home"></div>
+<div style="height:18px"></div>
+<div style="font:700 9px Consolas,monospace;color:#C8102E;letter-spacing:.1em">TX EI10 · AREA / UNIT DETAIL</div>
+<h1 style="font-size:20px;margin:3px 0 10px">Area 330 — Amine Sweetening</h1>
+<div id="area"></div>
+<script src="tam-disc.js?v=0.2.0"></script>
+<script>
+const nav=t=>`alert('${t}')`;
+document.getElementById('home').innerHTML = TamDisc.band([
+ {title:"MECHANICAL",total:362,items:[
+   {label:"MANUAL VALVES",value:228,nav:nav('mv')},{label:"VESSELS",value:54},{label:"PUMPS",value:52},
+   {label:"EXCHANGERS",value:35},{label:"COMPRESSORS",value:24}]},
+ {title:"ELECTRICAL",total:488,items:[
+   {label:"LOADS",value:365},{label:"MOTORS",value:308},{label:"GENERATORS",value:9},{label:"SWITCHGEAR",value:7}]},
+ {title:"INSTRUMENTATION",total:1868,items:[
+   {label:"ACT. VALVES",value:520},{label:"PRESSURE",value:313},{label:"TEMPERATURE",value:183},
+   {label:"POSITION",value:153},{label:"LEVEL",value:121},{label:"FLOW",value:89},{label:"ANALYSIS",value:14}]},
+ {title:"CONTROL",total:1567,items:[
+   {label:"IO CHANNELS",value:1354},{label:"ALARMS",value:398},{label:"IO STATIONS",value:42}]}
+],{size:210});
+
+document.getElementById('area').innerHTML = TamDisc.band([
+ {title:"MECHANICAL",total:63,items:[
+   {label:"MANUAL VALVES",value:104},{label:"FANS",value:30},{label:"PUMPS",value:10},{label:"VESSELS",value:10},
+   {label:"FILTERS",value:6},{label:"EXCHANGERS",value:5},{label:"HEATERS",value:2}]},
+ {title:"ELECTRICAL",total:37,items:[
+   {label:"MOTORS",value:37},{label:"LOADS",value:26}]},
+ {title:"INSTRUMENTATION",total:173,items:[
+   {label:"ACT. VALVES",value:42},{label:"PRESSURE",value:30},{label:"LEVEL",value:24},{label:"TEMPERATURE",value:22},
+   {label:"POSITION",value:10},{label:"FIRE & GAS",value:9},{label:"STATIONS",value:7},{label:"FLOW",value:6},{label:"ANALYSIS",value:2}]},
+ {title:"CONTROL",total:154,items:[
+   {label:"IO CHANNELS",value:132},{label:"ALARMS",value:20},{label:"LOOPS",value:12},{label:"C&E",value:8}]}
+],{size:210});
+</script></body>

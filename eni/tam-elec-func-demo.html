@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     tam-elec-func-demo.html — APPROVAL SHEET for TamFlow.elecFunctional()
+     ElectricPlantView · the functional generation block sheet
+     ─────────────────────────────────────────────────────────────────────
+     OFFLINE ON PURPOSE (G-8): opens from file:// with the network off.
+     No Supabase, no CDN — the data below is a SNAPSHOT of the database
+     views and of the historian, frozen with its timestamp and printed with
+     its provenance. The live page is PlantViewer /unifilar; THIS sheet
+     exists so the drawing can be approved and pixel-gated without a server.
+
+     v1.44.0 — P5, the icon and label pass (ELEC_FUNCTIONAL_GA_PLAN §2d).
+     What is being approved here:
+       1. §1 the five states of the block, side by side: running · stopped ·
+          no measure · stale · gap. If they are not told apart in three
+          seconds WITHOUT READING TEXT, P5 has failed and nothing else on
+          this page matters.
+       2. §2 the whole sheet against a real 24 h photo of the plant
+       3. §3 the census: every kind against the pack (G-4)
+       4. §4 the number format rule, pinned by a check table (§2d l3)
+       5. §5 the same drawing in Spanish — the language knob, which nothing
+          calls: G-9 holds here too and the whole view draws in English
+     Benchmarks: SICAM SCC "Station Overview" (bays over horizontal busbars,
+     values beside the equipment) · SENTRON powermanager (state as
+     background colour, white = no information, 3-band KPI gauge) · DEIF /
+     ComAp genset cards (the load gauge around the machine).
+     ═══════════════════════════════════════════════════════════════════ -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>elecFunctional() — approval sheet · ElectricPlantView</title>
+<style>
+  body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; background: #F4F5F7; color: #15171A; }
+  header { background: #15171A; color: #fff; padding: 14px 22px; }
+  header h1 { margin: 0; font-size: 17px; font-weight: 700; }
+  header p { margin: 4px 0 0; font-size: 12px; color: #B8BDC4; }
+  section { margin: 18px 22px; background: #fff; border: 1px solid #D8DBDF; border-radius: 6px; padding: 14px 18px; }
+  h2 { font-size: 13.5px; margin: 0 0 8px; }
+  h2 .n { color: #C8102E; margin-right: 6px; }
+  p.note { font-size: 11.5px; color: #4A4F57; margin: 6px 0; max-width: 1080px; }
+  .sheet { overflow-x: auto; border: 1px solid #E3E5E8; border-radius: 4px; background: #fff; }
+  .sheet svg { display: block; }
+  table.census { border-collapse: collapse; font-family: Consolas, monospace; font-size: 11px; }
+  table.census th, table.census td { border: 1px solid #D8DBDF; padding: 3px 10px; text-align: left; }
+  table.census th { background: #F0F1F3; }
+  td.ok { color: #1F8A4C; font-weight: 700; }
+  td.bad { color: #C8102E; font-weight: 700; }
+  footer { margin: 18px 22px 30px; font-size: 11px; color: #4A4F57; font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TamFlow.elecFunctional() — approval sheet · ElectricPlantView</h1>
+  <p>kernel tam-sym.js 0.2.5 + pack tam-sym-elec.js 0.3.4 + renderer tam-flow.js 1.44.0 · SNAPSHOT 2026-08-11 23:50 plant time · offline on purpose (G-8)</p>
+</header>
+
+<section>
+  <h2><span class="n">§1</span>The five states of the block — the three-second test</h2>
+  <p class="note">
+    Same composition, five data rows. <b>Running</b>: state ring solid in the machine's series
+    colour, load gauge filled to its share of the nameplate, P at 10.5&nbsp;px bold.
+    <b>Stopped</b>: thin grey ring, gauge track present and empty — a measured zero.
+    <b>No measure</b>: dashed grey ring and <em>no gauge at all</em>, because an empty gauge would
+    read as 0&nbsp;%. <b>Stale</b>: past 12 minutes the whole figure turns grey and the age turns
+    amber. <b>Gap</b>: the figure disappears and the block says since when. The last two rows and
+    the <code>cont.</code> energy label are <b>synthetic, to show the marks</b> — no measurement is
+    stale or in gap in the plant right now; everything in §2 is real.
+  </p>
+  <div class="sheet" id="anatomy"></div>
+</section>
+
+<section>
+  <h2><span class="n">§2</span>The functional sheet — 480 generation block, no plot plan</h2>
+  <p class="note">
+    Busbar ladder A·B·C·D laid flat inside its Power Center brackets; 9 genset blocks in bar order;
+    ties T1/T2/T3 print BOTH claims (ELD11 says N.O.; the F7 operating concept says
+    CLOSED/OPEN/CLOSED — CR-00348, CONFLICT dot, the sheet does not referee); outgoing branches
+    under bar D (PC3 .210/E155, PC4 .211/E081, the 400&nbsp;V transformers, PK-361) and the
+    710&nbsp;kW inverter busbars under A/B (NEEDS_REVIEW: feed direction unverified).
+    Real photo of 2026-08-11 23:50 plant time: <b>MG1 alone carries the plant</b> at 752&nbsp;kW
+    (41&nbsp;% of nameplate) after starting mid-afternoon; <b>MG2 ran the first 7.2&nbsp;h of the
+    day and is now stopped</b>, which is what the two micro-trends say and the reason they are in
+    the block at all. MG3, MG4 and MG1D are measured at 0&nbsp;kW — stopped, not unmeasured.
+    MG5–7 and MG2D have no located meter and print «no measure», never zero.
+  </p>
+  <div class="sheet" id="sheet"></div>
+</section>
+
+<section>
+  <h2><span class="n">§3</span>Census — every kind this sheet uses, against the pack</h2>
+  <p class="note">A kind missing from the pack must show here and as a dashed «?» on the sheet — a
+  silent gap is the failure mode we refuse (G-4).</p>
+  <div id="census"></div>
+</section>
+
+<section>
+  <h2><span class="n">§4</span>Number format — one rule, pinned (§2d l3)</h2>
+  <p class="note">
+    v1.43 printed <code>1,822</code> next to a page that printed <code>1.822</code>: two
+    formatters for one number. The renderer now sets the kernel's locale for the length of its own
+    draw and restores it afterwards, so no other sheet is re-punctuated. The sheet and the page
+    both speak <code>en-US</code> with grouping <code>always</code> — the separator appears from
+    four digits, because an engineering sheet cannot change punctuation as it crosses 10,000 kW.
+    This table is the test: it compares the kernel against <code>Intl</code> configured the way
+    <code>fmt.ts</code> is, and any row that disagrees turns red.
+  </p>
+  <div id="format"></div>
+</section>
+
+<section>
+  <h2><span class="n">§5</span>The same drawing in Spanish — the language knob, unused</h2>
+  <p class="note">
+    db-graphics G-9 asks for English in every UI, and it holds here with no exception: the sheet,
+    the legend and PlantViewer all draw in English. The two-entry label table stays because it is
+    what keeps strings out of the drawing code — <code>lang:"es"</code> renders the identical
+    sheet with es-MA numbers, and §2d's own examples are written that way. Nothing calls it today,
+    and no string lives outside <code>EF_L</code>.
+  </p>
+  <div class="sheet" id="spanish"></div>
+</section>
+
+<footer id="foot"></footer>
+
+<script src="tam-sym.js?v=0.2.5"></script>
+<script src="tam-sym-elec.js?v=0.3.4"></script>
+<script src="tam-flow.js?v=1.47.0"></script>
+<script>
+"use strict";
+const K = window.TamSym, F = window.TamFlow;
+
+/* ── SNAPSHOT — frozen copy of the DB views and of the historian ──────────
+   busbars:  v_power_generation_topology + ga-elec.html snapshot 2026-08-11
+   gensets:  v_genset_metering (migration 270) + fleet.ts (I&M0 serials, colours)
+   ties:     plant_bus_couplings (SQL/262, F7) vs ELD11 rev.2 — CR-00348
+   live:     tia_hist.samples, last good value per device, read 2026-08-11 22:50 UTC
+   day:      LOCF integral of P_TOTAL over the plant day (23:00 UTC 08-10 →),
+             cap 20 min, run hours over the 50 kW floor — the same rules as
+             queries.ts. Labelled `int.` because that is what it is: the PAC
+             totalisers only start at 20:16 of 2026-08-11 and do not cover the
+             day yet (ELEC_FUNCTIONAL §1d C-1).
+   spark:    P_TOTAL, 30-min buckets, last good value in the bucket, 24 h to
+             2026-08-11 22:50 UTC — 49 points. Nulls would lift the pen; there
+             are none in this window.
+   starts:   MG1 = 1 (it started this afternoon); MG2 = 0 (it was already
+             running when the plant day began, and stopped inside it). */
+const SPARK = {
+  MG1:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,726,773,703,722,731,720,708,729,723,779,678,698,716,783,752,688,773,753,705,716,772,700,722,715,665,792,747,722,766,724,716,708,722,752],
+  MG2:  [709,700,696,692,670,678,745,834,744,741,771,793,746,756,698,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  MG3:  new Array(49).fill(0),
+  MG4:  new Array(49).fill(0),
+  MG1D: new Array(49).fill(0)
+};
+const COL = { MG1: "#3987e5", MG2: "#d95926", MG3: "#199e70", MG4: "#c98500", MG1D: "#d55181" };
+
+const SNAPSHOT = {
+  busbars: [
+    { code: "A", pc: "480-JG-691 · PC1 · 480-S-436", lvmd: "LVMD38", genKw: 5466, loadKw: 5600, nOut: 11,
+      genMeasKw: 752, nMeas: 3 },
+    { code: "B", pc: "480-JG-691 · PC1 · 480-S-436", lvmd: "LVMD44", genKw: 3102, loadKw: 1120, nOut: 3,
+      genMeasKw: 0, nMeas: 2 },
+    { code: "C", pc: "480-JG-692 · PC2 · 480-S-437", lvmd: "LVMD54", genKw: 3102, loadKw: 1680, nOut: 3 },
+    { code: "D", pc: "480-JG-692 · PC2 · 480-S-437", lvmd: "LVMD55", genKw: 3644, loadKw: 7190, nOut: 12 }
+  ],
+  gensets: [
+    { tag: "GE-001", busbar: "A", kw: 1823, fuel: "gas",    feeder: "480-JG-691-FG1",  vendor: "+G4",  vendorDq: "AMBIGUOUS", meter: "MG1",
+      color: COL.MG1, comms: "OK", live: { p: 752, pf: 0.84, f: 50.06, q: 454, age: "5 min" },
+      day: { h: 16.3, kwh: 11755, starts: 1 }, spark: SPARK.MG1 },
+    { tag: "GE-002", busbar: "A", kw: 1823, fuel: "gas",    feeder: "480-JG-691-FG2",  vendor: "+G6",  vendorDq: "AMBIGUOUS", meter: "MG2",
+      color: COL.MG2, comms: "OK", live: { p: 0, pf: 1, f: 50.06, q: 0, age: "5 min" },
+      day: { h: 7.2, kwh: 5281, starts: 0 }, spark: SPARK.MG2 },
+    { tag: "GE-003", busbar: "A", kw: 1823, fuel: "gas",    feeder: "480-JG-691-FG3",  vendor: "+G7",  vendorDq: "AMBIGUOUS", meter: "MG3",
+      color: COL.MG3, comms: "OK", live: { p: 0, pf: null, f: 50.06, age: "5 min" },
+      day: { h: 0, kwh: 0, starts: 0 }, spark: SPARK.MG3 },
+    { tag: "GE-004", busbar: "B", kw: 1823, fuel: "gas",    feeder: "480-JG-691-FG4",  vendor: "+G5",  vendorDq: "CONFIRMED", meter: "MG4",
+      color: COL.MG4, comms: "OK", live: { p: 0, pf: null, f: 50.04, age: "5 min" },
+      day: { h: 0, kwh: 0, starts: 0 }, spark: SPARK.MG4 },
+    { tag: "GE-008", busbar: "B", kw: 1280, fuel: "diesel", feeder: "480-JG-691-FG1D", vendor: "+G1D", vendorDq: "CONFIRMED", meter: "MG1D",
+      color: COL.MG1D, comms: "OK", live: { p: 0, pf: 1, f: 50.06, age: "5 min" },
+      day: { h: 0, kwh: 0, starts: 0 }, spark: SPARK.MG1D },
+    { tag: "GE-005", busbar: "C", kw: 1823, fuel: "gas",    feeder: "480-JG-692-FG5",  vendor: "+G2",  vendorDq: "CONFIRMED", meter: "MG5",  noMeter: true },
+    { tag: "GE-009", busbar: "C", kw: 1280, fuel: "diesel", feeder: "480-JG-692-FG2D", vendor: "+G2D", vendorDq: "CONFIRMED", meter: "MG2D", noMeter: true },
+    { tag: "GE-006", busbar: "D", kw: 1823, fuel: "gas",    feeder: "480-JG-692-FG6",  vendor: "+G1",  vendorDq: "AMBIGUOUS", meter: "MG6",  noMeter: true },
+    { tag: "GE-007", busbar: "D", kw: 1823, fuel: "gas",    feeder: "480-JG-692-FG7",  vendor: "+G3",  vendorDq: "AMBIGUOUS", meter: "MG7",  noMeter: true }
+  ],
+  ties: [
+    { a: "A", b: "B", label: "T1 · MCG1", open: true, f7: "CLOSED", dq: "CONFLICT" },
+    { a: "B", b: "C", label: "T2 · MCG2", open: true, f7: "OPEN" },
+    { a: "C", b: "D", label: "T3 · MCG3", open: true, f7: "CLOSED", dq: "CONFLICT" }
+  ],
+  branches: [
+    { fromBus: "A", tag: "480-JG-691-BBIA", label: "BB-INV A", sub: "inverter busbar 710 kW", kind: "INVERTER", kw: 710, dq: "NEEDS_REVIEW" },
+    { fromBus: "B", tag: "480-JG-691-BBIB", label: "BB-INV B", sub: "inverter busbar 710 kW", kind: "INVERTER", kw: 710, dq: "NEEDS_REVIEW" },
+    { fromBus: "D", tag: "480-JG-693", label: "480-JG-693", sub: "PC3 · MCC · 42 feeders", kind: "MCC_PANEL",   posCode: ".210", cable: "E155" },
+    { fromBus: "D", tag: "480-JG-694", label: "480-JG-694", sub: "PC4 · MCC · 16 feeders", kind: "MCC_PANEL",   posCode: ".211", cable: "E081" },
+    { fromBus: "D", tag: "480-TR-001", label: "480-TR-001", sub: "400 V system (not supplied)", kind: "TRANSFORMER", posCode: ".212" },
+    { fromBus: "D", tag: "480-TR-002", label: "480-TR-002", sub: "400 V system (not supplied)", kind: "TRANSFORMER", posCode: ".213" },
+    { fromBus: "D", tag: "690-JG-695", label: "690-JG-695", sub: "PK-361-MC1A", kind: "SWITCHBOARD", posCode: ".214" },
+    { fromBus: "D", tag: "690-JG-696", label: "690-JG-696", sub: "PK-361-MC1B", kind: "SWITCHBOARD", posCode: ".215" }
+  ]
+};
+
+/* §1 — the five states side by side. Rows 4 and 5 are SYNTHETIC (there is no
+   stale or gapped measurement in the plant right now) and are here for the
+   same reason a legend is: so the mark can be recognised when it does appear. */
+const ANATOMY = {
+  busbars: [{ code: "A", lvmd: "LVMD38", genMeasKw: 1442, nMeas: 3 }],
+  gensets: [
+    Object.assign({}, SNAPSHOT.gensets[0]),
+    Object.assign({}, SNAPSHOT.gensets[1]),
+    Object.assign({}, SNAPSHOT.gensets[5], { busbar: "A" }),
+    { tag: "GE-00S", busbar: "A", kw: 1823, fuel: "gas", feeder: "480-JG-69x-FGS", meter: "MGx",
+      color: COL.MG3, comms: "STALE", live: { p: 690, pf: 0.9, f: 50.01, age: "37 min" },
+      day: { h: 21.5, kwh: 14310, starts: 0, src: "cont" }, spark: SPARK.MG1 },
+    { tag: "GE-00G", busbar: "A", kw: 1280, fuel: "diesel", feeder: "480-JG-69x-FGG", meter: "MGy",
+      color: COL.MG1D, comms: "GAP", live: { p: 0, since: "21:12", age: "1 h" },
+      day: { h: 4.1, kwh: 2980, starts: 2, src: "cont" } }
+  ],
+  ties: [], branches: []
+};
+document.getElementById("anatomy").innerHTML = F.elecFunctional(ANATOMY);
+
+/* §2 — the full sheet from the snapshot */
+document.getElementById("sheet").innerHTML = F.elecFunctional(SNAPSHOT);
+
+/* §3 — census: every kind the sheet uses, plus the exported set, vs the pack */
+(function census() {
+  const used = new Set(F.ELEC_FUNC_KINDS);
+  SNAPSHOT.branches.forEach(b => used.add(b.kind || "SWITCHBOARD"));
+  let rows = "", missing = 0;
+  Array.from(used).sort().forEach(k => {
+    const ok = K.has(k);
+    if (!ok) missing++;
+    rows += `<tr><td>${k}</td><td class="${ok ? "ok" : "bad"}">${ok ? "in pack" : "MISSING — draws dashed ?"}</td></tr>`;
+  });
+  document.getElementById("census").innerHTML =
+    `<table class="census"><tr><th>kind</th><th>registry</th></tr>${rows}</table>`;
+})();
+
+/* §4 — the format rule, checked. The kernel is asked with the sheet's own
+   settings and compared against Intl configured the way fmt.ts is: if the two
+   ever drift apart, this table says so before a reviewer has to spot it. */
+(function formatCheck() {
+  const prevL = K.locale, prevG = K.grouping;
+  K.locale = "en-US"; K.grouping = "always";
+  const page = (v, d) => v.toLocaleString("en-US",
+    { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: "always" });
+  const CASES = [
+    ["genset nameplate",  1823, 0, "1,823"],
+    ["energy of the day", 15006, 0, "15,006"],
+    ["frequency",         50.02, 2, "50.02"],
+    ["power factor",      0.92, 2, "0.92"],
+    ["run hours",         24, 1, "24.0"],
+    ["fleet lifetime",    546.5, 1, "546.5"]
+  ];
+  let rows = "", bad = 0;
+  CASES.forEach(([what, v, d, want]) => {
+    const got = page(v, d);
+    const kern = K.fmt(v);                       /* what the badge would print */
+    const ok = got === want;
+    if (!ok) bad++;
+    rows += `<tr><td>${what}</td><td>${v}</td><td>${want}</td><td class="${ok ? "ok" : "bad"}">${got}</td><td>${kern}</td></tr>`;
+  });
+  K.locale = prevL; K.grouping = prevG;
+  document.getElementById("format").innerHTML =
+    `<table class="census"><tr><th>quantity</th><th>value</th><th>en-US rule</th><th>page (Intl)</th><th>kernel fmt()</th></tr>${rows}</table>` +
+    `<p class="note">${bad ? `<b style="color:#C8102E">${bad} row(s) off the rule</b>` : "both paths agree on all 6 rows"} · ` +
+    `the kernel rounds below 100 to two decimals and above it to an integer, which is why <code>24</code> prints as <code>24</code> and not <code>24.0</code>: the first decimal is asked for by the caller (f1) when the quantity deserves it.</p>`;
+})();
+
+/* §5 — same data, lang:"es": the knob exists and nothing calls it (G-9) */
+document.getElementById("spanish").innerHTML =
+  F.elecFunctional(Object.assign({}, ANATOMY, { lang: "es" }));
+
+document.getElementById("foot").textContent =
+  `elecFunctional() P5 · tam-flow ${F.version} · tam-sym ${K.version || ""} · ` +
+  `${SNAPSHOT.gensets.length} gensets · ${SNAPSHOT.busbars.length} busbars · ` +
+  `${SNAPSHOT.ties.length} ties · ${SNAPSHOT.branches.length} branches · ` +
+  `SNAPSHOT 2026-08-11 23:50 plant time (historian read 22:50 UTC) — ` +
+  `live page: PlantViewer /unifilar`;
+</script>
+</body>
+</html>

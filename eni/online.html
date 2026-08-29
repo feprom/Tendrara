@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<title>ONLINE — Tendrara Micro-LNG · planta en vivo</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  eni/online.html — VISOR ONLINE (ETAPA 7 de ONLINE_MODULE_PLAN.md)
+  ───────────────────────────────────────────────────────────────────────────
+  QUE ES
+    La cara usable del modulo ONLINE: mosaico de KPI por area, mimico vivo,
+    tendencias, alarmas vivas con reconocimiento, energia y estado del gateway.
+
+  POR QUE ES UN FICHERO NUEVO Y NO UNA PESTAÑA DE index.html
+    El plan (§3 y §9.6) prohibe expresamente ampliar el monolito de 6.064
+    lineas. Este fichero comparte con el: la SESION (localStorage eni_session),
+    supabase-config.js, el kernel de simbolos tam-sym.js y sus packs, y el
+    renderizador tam-flow.js. No duplica ninguno de ellos.
+
+  LA REGLA QUE MANDA SOBRE TODO LO DEMAS (plan §0.4)
+    "La calidad del dato es honesta: un tag sin comunicacion se ve como sin
+     comunicacion, no como cero."
+    Aqui eso es codigo, no una intencion:
+      · NO existe en este fichero ningun `|| 0`, ningun `Number(x)||0` ni
+        ningun valor por defecto numerico sobre un dato de planta.
+      · Un binding sin fila en scada_current, o con la fila pero sin valor,
+        se pinta con la tipografia SIN COMUNICACION (tres puntos suspendidos
+        sobre trama diagonal) y su etiqueta de texto. Jamas un digito.
+      · Un valor cuyo latido caduco se marca STALE con su edad en segundos.
+      · La calidad desconocida (columna quality nula o con un codigo que no
+        conocemos) NUNCA asciende a GOOD: degrada a INCIERTO.
+    Los colores de estado y de calidad salen de TamSym.STATE y TamSym.DQ —
+    el kernel ya los tiene pensados para esto (plan §1.2). No se inventa aqui
+    un segundo sistema de estado.
+
+  ESTADO DE LA BASE HOY (verificado 2026-08-10 contra ymmmsovcjitlryuqwcrr)
+    NO existe ninguna tabla scada_* ni ninguna vista v_online_*. La unica
+    relacion "scada" que existe es v_scada_electrical, que solo lleva valores
+    de DISEÑO. Por eso todo acceso a telemetria pasa por readRel(), que
+    distingue "la relacion no existe todavia" de "existe y esta vacia" de
+    "hubo un error", y cada pantalla pinta ese estado vacio REAL en vez de
+    romperse. Ese es hoy el unico caso que se puede dar, y es el que hay que
+    ver bien.
+
+  CONTRATO DE LECTURA (para el agente de la ETAPA 1)
+    Las columnas que este visor lee de cada vista estan declaradas en el
+    bloque CONTRATO mas abajo. Son la lectura literal del plan §4; mientras
+    las vistas no existan ese contrato es PROVISIONAL — esta anotado como
+    punto abierto en el handoff, no dado por cerrado.
+
+  ALCANCE: SOLO LECTURA. El plan §5.S4 lo fija: este modulo no escribe a
+  planta. La unica escritura contemplada es el reconocimiento de alarma, y va
+  por RPC (scada_ack_event), no por UPDATE directo a la tabla.
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<style>
+  /* ── tokens ────────────────────────────────────────────────────────────────
+     Tema CLARO por defecto: continuidad exacta con el E&I Navigator (mismo
+     carmesi, misma tinta, misma familia mono). Tema OSCURO como consola de
+     sala de control. Los dos se declaran completos; el conmutador estampa
+     data-theme en <html> y gana en ambos sentidos.
+
+     Los DIAGRAMAS (tam-flow / tam-sym) emiten SVG con colores claros fijos —
+     tinta #15171A sobre relleno blanco. En vez de forzar al kernel a saber de
+     temas, el diagrama vive siempre sobre una PLACA de papel iluminada
+     (--paper). En sala oscura eso es lo correcto de todas formas: el sinoptico
+     es la lamina encendida, el resto de la consola se apaga.                */
+  :root{
+    color-scheme: light;
+    --crimson:#C8102E; --crimson-dark:#9E0C24;
+    --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4;
+    --bg:#FFFFFF; --bg-soft:#F7F8FA; --plane:#ECEEF1;
+    --ok:#1F8A4C; --amber:#B26A00; --fail:#B3261E; --blue:#0B5CAD;
+    --nodata:#8A9099; --hatch:rgba(138,144,153,.34);
+    --chip-ok-bg:#EAF6EF; --chip-warn-bg:#FFF7EC; --chip-fail-bg:#FBECEB;
+    --chip-info-bg:#EAF3FB; --chip-dim-bg:#F7F8FA;
+    --paper:#FFFFFF; --paper-ring:rgba(21,23,26,.12);
+    --grid:#E7E9EC; --axis:#C9CED4; --muted:#7C838C;
+    --shadow:0 1px 2px rgba(21,23,26,.05), 0 8px 24px rgba(21,23,26,.05);
+    /* paleta de series de tendencia — validada con scripts/validate_palette.js
+       (dataviz): banda de luminosidad PASS, croma PASS, separacion CVD peor
+       par adyacente ΔE 9.2, vision normal ΔE 19.6, superficie #FFFFFF.
+       Tres slots quedan por debajo de 3:1 de contraste sobre blanco, asi que
+       aplica la REGLA DE ALIVIO: la grafica lleva SIEMPRE etiqueta directa al
+       final de cada linea y vista de tabla. No es opcional.                 */
+    --s1:#0B5CAD; --s2:#EB6834; --s3:#1BAF7A;
+    --s4:#4A3AA7; --s5:#E87BA4; --s6:#EDA100;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  /* oscuro por preferencia del sistema (salvo que el usuario haya elegido claro) */
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --crimson:#F2586F; --crimson-dark:#C8102E;
+      --ink:#E7EAEE; --ink-soft:#9AA3AD;
+      --line:#242A31; --line-strong:#39424C;
+      --bg:#181C21; --bg-soft:#14171B; --plane:#0D1013;
+      --ok:#2FBE6B; --amber:#E0A030; --fail:#E5564B; --blue:#4E9BE8;
+      --nodata:#7A838D; --hatch:rgba(154,163,173,.30);
+      --chip-ok-bg:#122A1D; --chip-warn-bg:#2C2214; --chip-fail-bg:#2E1717;
+      --chip-info-bg:#132434; --chip-dim-bg:#1B2027;
+      --paper:#FFFFFF; --paper-ring:rgba(255,255,255,.16);
+      --grid:#242A31; --axis:#39424C; --muted:#8B939C;
+      --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 30px rgba(0,0,0,.45);
+      /* mismos ocho tonos, escalonados para superficie oscura #14171B —
+         validado aparte: contraste >= 3:1 en los seis, CVD ΔE 9.4          */
+      --s1:#3987E5; --s2:#D95926; --s3:#199E70;
+      --s4:#9085E9; --s5:#D55181; --s6:#C98500;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --crimson:#F2586F; --crimson-dark:#C8102E;
+    --ink:#E7EAEE; --ink-soft:#9AA3AD;
+    --line:#242A31; --line-strong:#39424C;
+    --bg:#181C21; --bg-soft:#14171B; --plane:#0D1013;
+    --ok:#2FBE6B; --amber:#E0A030; --fail:#E5564B; --blue:#4E9BE8;
+    --nodata:#7A838D; --hatch:rgba(154,163,173,.30);
+    --chip-ok-bg:#122A1D; --chip-warn-bg:#2C2214; --chip-fail-bg:#2E1717;
+    --chip-info-bg:#132434; --chip-dim-bg:#1B2027;
+    --paper:#FFFFFF; --paper-ring:rgba(255,255,255,.16);
+    --grid:#242A31; --axis:#39424C; --muted:#8B939C;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 30px rgba(0,0,0,.45);
+    --s1:#3987E5; --s2:#D95926; --s3:#199E70;
+    --s4:#9085E9; --s5:#D55181; --s6:#C98500;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:var(--sans);color:var(--ink);background:var(--plane);
+    -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+  /* ── brandbar ─────────────────────────────────────────────────────────── */
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:9px 22px;border-bottom:1px solid var(--line);background:var(--bg);flex:none;}
+  .brandbar .vendor img{height:36px;display:block;}
+  .apptitle{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);}
+  .apptitle b{color:var(--crimson);}
+  .accent{height:3px;background:var(--crimson);flex:none;}
+  .buildstamp{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;color:var(--ink-soft);font-weight:400;}
+
+  /* ── barra de mando ───────────────────────────────────────────────────── */
+  .cmdbar{display:flex;align-items:center;gap:10px;padding:6px 16px;background:var(--bg-soft);
+    border-bottom:1px solid var(--line);flex:none;flex-wrap:wrap;}
+  .tabs{display:flex;gap:2px;}
+  .tab{font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+    padding:6px 11px;border:1px solid transparent;border-radius:3px;cursor:pointer;color:var(--ink-soft);
+    background:none;user-select:none;}
+  .tab:hover{background:var(--bg);color:var(--ink);}
+  .tab.sel{background:var(--bg);color:var(--crimson);border-color:var(--line-strong);font-weight:700;}
+  .spacer{flex:1;}
+  .ctl{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--ink-soft);}
+  .ctl select,.ctl input{font-family:var(--mono);font-size:11px;padding:4px 7px;border:1px solid var(--line-strong);
+    border-radius:3px;background:var(--bg);color:var(--ink);}
+  .ctl input[type=number]{width:62px;}
+  .userchip,.tglchip{font-family:var(--mono);font-size:11px;color:var(--ink-soft);cursor:pointer;
+    border:1px solid var(--line-strong);background:var(--bg);border-radius:20px;padding:4px 12px;}
+  .userchip b{color:var(--crimson);}
+
+  /* enlace en vivo — el punto late mientras hay enlace y se para cuando cae.
+     Es la unica animacion de la pagina: significa algo. */
+  .link{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.06em;border:1px solid var(--line-strong);border-radius:20px;padding:4px 11px;background:var(--bg);}
+  .link .pulse{width:8px;height:8px;border-radius:50%;background:var(--nodata);flex:none;}
+  .link.live .pulse{background:var(--ok);animation:beat 1.6s ease-in-out infinite;}
+  .link.live{color:var(--ok);border-color:var(--ok);}
+  .link.poll .pulse{background:var(--blue);}
+  .link.poll{color:var(--blue);border-color:var(--blue);}
+  .link.down .pulse{background:var(--fail);}
+  .link.down{color:var(--fail);border-color:var(--fail);}
+  @keyframes beat{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.72);}}
+  @media (prefers-reduced-motion:reduce){ .link.live .pulse{animation:none;} }
+
+  /* ── layout ───────────────────────────────────────────────────────────── */
+  .main{display:flex;flex:1;min-height:0;}
+  .rail{width:224px;flex:none;background:var(--bg);border-right:1px solid var(--line);overflow:auto;padding:8px 0 30px;}
+  .rail .rhead{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-soft);padding:9px 14px 5px;}
+  .rnode{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 14px;font-size:12px;cursor:pointer;
+    border-left:3px solid transparent;}
+  .rnode:hover{background:var(--bg-soft);}
+  .rnode.sel{background:var(--chip-fail-bg);border-left-color:var(--crimson);}
+  .rnode .code{font-family:var(--mono);font-weight:700;font-size:11.5px;color:var(--crimson);min-width:30px;}
+  .rnode .lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-soft);font-size:11px;}
+  .rnode .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--nodata);}
+  .content{flex:1;overflow:auto;padding:20px 26px 60px;}
+
+  .kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--crimson);font-weight:700;margin-bottom:6px;}
+  .kicker .sub{color:var(--ink-soft);font-weight:400;letter-spacing:.1em;}
+  h1{font-size:24px;margin:0 0 5px;letter-spacing:-.01em;line-height:1.14;}
+  h2{font-size:16px;margin:22px 0 9px;letter-spacing:-.01em;}
+  p.lead{color:var(--ink-soft);font-size:13px;line-height:1.55;max-width:80ch;margin:0 0 12px;}
+  .mono{font-family:var(--mono);}
+  code{font-family:var(--mono);font-size:11.5px;background:var(--bg-soft);border:1px solid var(--line);
+    border-radius:3px;padding:1px 5px;}
+
+  /* ── chips de estado — SIEMPRE glifo + palabra ──────────────────────────
+     Los colores de estado del proyecto (verde/ambar/carmesi) estan por debajo
+     del suelo de separacion que exige la skill dataviz para color categorico.
+     Son colores de ESTADO, no de serie, y la mitigacion documentada es el par
+     ICONO + ETIQUETA. Por eso ningun chip de esta pagina se emite sin las dos
+     cosas: quien no distinga el tono lee la palabra.                        */
+  .chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9.5px;font-weight:700;
+    letter-spacing:.06em;padding:2px 8px;border-radius:10px;border:1px solid;white-space:nowrap;vertical-align:middle;}
+  .chip.ok{color:var(--ok);border-color:var(--ok);background:var(--chip-ok-bg);}
+  .chip.warn{color:var(--amber);border-color:var(--amber);background:var(--chip-warn-bg);}
+  .chip.fail{color:var(--fail);border-color:var(--fail);background:var(--chip-fail-bg);}
+  .chip.info{color:var(--blue);border-color:var(--blue);background:var(--chip-info-bg);}
+  .chip.dim{color:var(--ink-soft);border-color:var(--line-strong);background:var(--chip-dim-bg);}
+  .chip.nodata{color:var(--nodata);border-color:var(--nodata);border-style:dashed;background:transparent;}
+
+  /* ── el valor ──────────────────────────────────────────────────────────
+     .val        numero real, cifras tabulares
+     .val.stale  el numero sigue siendo el ultimo leido, pero ya no vale como
+                 lectura actual: baja de peso y se le pone tachado suave
+     .val.nc     NO ES UN NUMERO. Tres puntos suspendidos, tracking abierto,
+                 sobre trama diagonal. Imposible de leer como un cero.      */
+  .val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink);letter-spacing:-.01em;}
+  .val u{font-weight:400;text-decoration:none;color:var(--ink-soft);font-size:.72em;margin-left:.35em;letter-spacing:.04em;}
+  .val.stale{color:var(--amber);text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:rgba(178,106,0,.45);}
+  .val.nc{color:var(--nodata);letter-spacing:.34em;font-weight:400;}
+  .nc-plate{background-image:repeating-linear-gradient(135deg,transparent 0 5px,var(--hatch) 5px 6px);}
+
+  /* ── mosaico de KPI ───────────────────────────────────────────────────── */
+  .wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:11px;margin-top:12px;}
+  .tile{border:1px solid var(--line-strong);border-radius:7px;background:var(--bg);padding:11px 13px 10px;
+    box-shadow:var(--shadow);cursor:pointer;transition:border-color .12s,transform .06s;position:relative;overflow:hidden;}
+  .tile:hover{border-color:var(--crimson);}
+  .tile:active{transform:translateY(1px);}
+  .tile .thead{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;}
+  .tile .tcode{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--crimson);letter-spacing:.02em;}
+  .tile .tname{font-size:10.5px;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+  .tile .tval{font-size:27px;line-height:1.05;margin:2px 0 6px;}
+  .tile .tval .val{font-size:27px;}
+  .tile .tval .val.nc{font-size:22px;}
+  .tile .tfoot{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .tile .spark{height:26px;margin:5px 0 4px;display:block;width:100%;}
+  /* franja de estado a la izquierda del mosaico: redundancia de posicion,
+     no solo de color */
+  .tile:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--nodata);}
+  .tile.st-ok:before{background:var(--ok);}
+  .tile.st-warn:before{background:var(--amber);}
+  .tile.st-alarm:before{background:var(--fail);}
+  .tile.st-nodata:before{background:repeating-linear-gradient(180deg,var(--nodata) 0 4px,transparent 4px 8px);}
+
+  /* ── placa de dibujo: el sinoptico vive siempre iluminado ─────────────── */
+  .plate{margin-top:10px;border:1px solid var(--paper-ring);border-radius:7px;background:var(--paper);
+    padding:10px;overflow-x:auto;box-shadow:var(--shadow);}
+  .plate svg{max-width:100%;height:auto;display:block;}
+  .plate-cap{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-soft);margin:8px 0 0;}
+
+  /* ── tablas ───────────────────────────────────────────────────────────── */
+  table.data{width:100%;border-collapse:collapse;margin-top:9px;background:var(--bg);
+    border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  table.data th{background:var(--bg-soft);font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  table.data td{padding:6px 9px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:middle;}
+  table.data tr:last-child td{border-bottom:none;}
+  table.data tbody tr:hover{background:var(--bg-soft);}
+  table.data td.r,table.data th.r{text-align:right;font-variant-numeric:tabular-nums;}
+  table.data td.mono{font-family:var(--mono);font-size:11.5px;}
+  .tagcell{font-family:var(--mono);font-weight:700;font-size:11.5px;color:var(--ink);}
+
+  /* ── paneles de estado vacio / error ──────────────────────────────────── */
+  .panel{border:1px dashed var(--line-strong);border-radius:7px;padding:18px 20px;margin-top:12px;background:var(--bg);}
+  .panel.nodata{border-color:var(--nodata);}
+  .panel.err{border-style:solid;border-color:var(--fail);background:var(--chip-fail-bg);}
+  .panel h3{margin:0 0 6px;font-size:13px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);}
+  .panel p{margin:5px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.55;max-width:78ch;}
+  .panel ul{margin:8px 0 0 18px;padding:0;font-size:12px;color:var(--ink-soft);line-height:1.6;}
+
+  .note{margin-top:14px;font-size:11px;color:var(--ink-soft);border-top:1px dashed var(--line-strong);
+    padding-top:8px;line-height:1.55;max-width:90ch;}
+  .banner{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--ink-soft);background:var(--bg-soft);border:1px solid var(--line);
+    border-left:3px solid var(--blue);border-radius:4px;padding:6px 11px;margin:0 0 12px;}
+
+  .btn{font-family:var(--mono);font-size:11px;padding:4px 10px;border:1px solid var(--line-strong);
+    border-radius:3px;background:var(--bg);color:var(--ink);cursor:pointer;}
+  .btn:hover{border-color:var(--crimson);color:var(--crimson);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn.mini{font-size:10px;padding:3px 8px;}
+
+  /* ── grafica de tendencia ─────────────────────────────────────────────── */
+  .chart{position:relative;border:1px solid var(--line-strong);border-radius:7px;background:var(--bg);
+    padding:12px 14px 8px;margin-top:10px;box-shadow:var(--shadow);}
+  .chart svg{display:block;width:100%;height:auto;overflow:visible;}
+  .chart .gl{stroke:var(--grid);stroke-width:1;}
+  .chart .ax{stroke:var(--axis);stroke-width:1;}
+  .chart text{font-family:var(--mono);font-size:9.5px;fill:var(--muted);}
+  .chart text.dl{font-size:10px;font-weight:700;}
+  .chart .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin:2px 0 8px;}
+  .legend .li{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);}
+  .legend .sw{width:14px;height:3px;border-radius:2px;flex:none;}
+  .tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .08s;background:var(--bg);
+    border:1px solid var(--line-strong);border-radius:5px;padding:7px 9px;font-family:var(--mono);font-size:10.5px;
+    box-shadow:var(--shadow);z-index:5;white-space:nowrap;color:var(--ink);}
+  .tip .tr{display:flex;align-items:center;gap:7px;margin-top:3px;}
+  .tip .sw{width:9px;height:9px;border-radius:2px;flex:none;}
+  .tip b{font-variant-numeric:tabular-nums;}
+
+  /* ── banda viva de simbolos (kernel) ──────────────────────────────────── */
+  .band{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:9px;margin-top:10px;}
+  .mcard{border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);padding:8px 10px;}
+  .mcard .mh{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+  .mcard .dq{width:7px;height:7px;border-radius:50%;flex:none;}
+  .mcard .mt{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mcard .mv{font-size:18px;line-height:1.15;margin:2px 0 4px;}
+  .mcard .mv .val{font-size:18px;}
+  .mcard .mv .val.nc{font-size:15px;}
+  .mcard .ms{font-family:var(--mono);font-size:9px;color:var(--ink-soft);letter-spacing:.05em;}
+
+  /* ── barra de estado ──────────────────────────────────────────────────── */
+  .statusbar{flex:none;display:flex;align-items:center;gap:14px;padding:5px 16px;background:var(--bg);
+    border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);}
+  .statusbar .msg{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .statusbar .msg.ok{color:var(--ok);}
+  .statusbar .msg.err{color:var(--fail);}
+  .loading{padding:54px;text-align:center;color:var(--ink-soft);font-family:var(--mono);font-size:12px;}
+</style>
+</head>
+<body>
+
+<header class="brandbar">
+  <div class="vendor"><img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'"></div>
+  <div class="apptitle"><b>ONLINE</b> · TENDRARA MICRO-LNG · PLANTA EN VIVO</div>
+  <div class="apptitle" style="text-align:right">HERRAMIENTA INTERNA · SOLO LECTURA<br>
+    <span style="color:var(--crimson)">TECHNICAL AMERICA</span><br>
+    <span class="buildstamp" id="buildstamp"></span></div>
+</header>
+<div class="accent"></div>
+
+<div class="cmdbar">
+  <nav class="tabs" id="tabs"></nav>
+  <span class="spacer"></span>
+  <label class="ctl" title="Un valor cuyo ultimo latido sea mas viejo que este umbral se marca STALE.
+Provisional: cuando exista scada_sources este umbral debe salir de poll_ms por fuente (punto abierto PA-3).">
+    STALE &gt; <input type="number" id="staleSec" min="5" max="3600" step="5" value="30"> s
+  </label>
+  <span class="link" id="linkchip" title="Estado del enlace en vivo"><span class="pulse"></span><span id="linktext">INICIANDO</span></span>
+  <button class="tglchip" id="themebtn" title="Claro / oscuro">◐ TEMA</button>
+  <button class="userchip" id="userchip" title="Pulsa para cerrar sesion">USUARIO <b>—</b></button>
+</div>
+
+<div class="main">
+  <aside class="rail" id="rail"></aside>
+  <main class="content" id="content"><div class="loading">Cargando…</div></main>
+</div>
+
+<footer class="statusbar">
+  <span class="msg" id="statusmsg">Iniciando…</span>
+  <span id="statuscnt"></span>
+  <span class="sys">TAM · ONLINE</span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<!-- Sistema de simbolos: kernel primero, luego un pack por disciplina, luego el
+     renderizador. EL ORDEN IMPORTA — los packs se registran en el kernel y
+     tam-flow.js busca a TamSym en el momento de dibujar. Un fichero que no
+     cargue degrada el dibujo, no rompe la pagina. Las versiones ?v= son las
+     mismas que sirve index.html: si alli suben, aqui tambien. -->
+<script src="tam-sym.js?v=0.2.5"></script>
+<script src="tam-sym-elec.js?v=0.3.4"></script>
+<script src="tam-sym-proc.js?v=0.5.0"></script>
+<script src="tam-disc.js?v=0.4.1"></script>
+<script src="tam-flow.js?v=1.47.0"></script>
+<script>
+"use strict";
+/* ════════════════════════════════════════════════════════════════════════════
+   VISOR ONLINE — Tendrara Micro-LNG · ETAPA 7
+   ════════════════════════════════════════════════════════════════════════════ */
+const BUILD = "2026-08-10 · online v0.1.0 (esqueleto E7)";
+
+/* ── CONTRATO DE LECTURA ─────────────────────────────────────────────────────
+   Lo que este visor espera de cada vista del plan §4. Ninguna existe hoy: el
+   visor lo detecta y lo dice. Este bloque es el encargo literal para la
+   ETAPA 1 — si una columna cambia de nombre, se cambia aqui y en un solo
+   sitio mas (el lector de esa pantalla).
+
+   v_online_overview        area_code, area_name?, tags_total, tags_good,
+                            tags_stale, tags_nodata, pct_good, alarms_active,
+                            kpi_headline_key?, kpi_headline_value?,
+                            kpi_headline_unit?, status (OK|WARN|ALARM|NODATA)
+   v_online_area_live       binding_id, area_code, tag, description?, signal_role,
+                            eng_unit, ts, val_num, val_bool, quality,
+                            limit_ll?, limit_l?, limit_h?, limit_hh?,
+                            asset_class?, measuring_point_id?
+   v_online_alarms_live     id, ts, kind, severity, area_code?, tag?, limit_kind,
+                            value, eng_unit?, message?, ack_by_name?, ack_at?, note?
+   v_online_energy          meter_tag, area_code?, busbar_tag?, ts, quality,
+                            p_kw?, q_kvar?, s_kva?, pf?, i_a?, u_ln_v?, u_ll_v?,
+                            e_kwh?, design_power_kw?, design_energy_kwh?
+   v_online_gateway_status  source_id, host, protocol, port?, area_code?,
+                            enabled?, last_poll_ok, last_poll_at, latency_ms,
+                            consecutive_fail, last_error?
+   scada_rollups_1m / _1h   binding_id, bucket, n, min, max, avg, last
+   scada_current            binding_id, ts, val_num, val_bool, quality  (Realtime)
+   scada_events             id, ts, kind, severity, …                    (Realtime)
+   RPC scada_ack_event(p_event_id bigint, p_user_id bigint, p_note text)
+
+   PROVISIONAL mientras las vistas no existan. Va como punto abierto PA-1.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* ── sesion: la MISMA del visor eni, no se inventa otra autenticacion ─────── */
+const SESSION = (()=>{ try{ return JSON.parse(localStorage.getItem("eni_session")||"null"); }catch(e){ return null; } })();
+if(!SESSION){ location.replace("account.html"); }
+function getUser(){ return SESSION ? SESSION.name : "DESCONOCIDO"; }
+function getUserId(){ return SESSION && SESSION.id ? SESSION.id : null; }
+
+const sb = (window.supabase && window.SUPABASE_URL)
+  ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+      realtime:{ params:{ eventsPerSecond: 20 } }
+    })
+  : null;
+
+/* ── helpers ─────────────────────────────────────────────────────────────── */
+const $ = s => document.querySelector(s);
+const esc = v => v==null ? "" : String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const nz = (v,d="—") => (v==null||v==="") ? d : esc(v);
+function status(msg, cls){ const el=$("#statusmsg"); if(el){ el.textContent=msg; el.className="msg "+(cls||""); } }
+
+/* fmtNum NUNCA sustituye un nulo por un numero. Devuelve null y quien llama
+   decide como se pinta el hueco — que aqui siempre es SIN COMUNICACION. */
+function fmtNum(v, dec){
+  if(v==null || v==="") return null;
+  const n = typeof v==="number" ? v : Number(v);
+  if(!isFinite(n)) return null;
+  const d = dec!=null ? dec : (Math.abs(n)>=1000 ? 0 : Math.abs(n)>=100 ? 1 : 2);
+  return n.toLocaleString("es-ES",{minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function parseTs(v){ if(!v) return null; const t=Date.parse(v); return isFinite(t)? t : null; }
+function ageSec(ts){ const t=parseTs(ts); return t==null? null : Math.max(0, Math.round((Date.now()-t)/1000)); }
+function fmtAge(s){
+  if(s==null) return "—";
+  if(s<60) return s+" s";
+  if(s<3600) return Math.floor(s/60)+" min";
+  if(s<86400) return Math.floor(s/3600)+" h";
+  return Math.floor(s/86400)+" d";
+}
+function fmtClock(v){ const t=parseTs(v); return t==null? "—" : new Date(t).toLocaleString("es-ES",{hour12:false}); }
+
+/* ── tokens del kernel ────────────────────────────────────────────────────
+   Se leen de TamSym. Si el kernel no cargase (fichero movido, cache), hay un
+   respaldo con los MISMOS valores para que la pagina no se quede sin colores
+   de estado — pero la fuente de verdad es el kernel, y se declara cual esta
+   en uso en la barra de estado.                                            */
+const K = (window.TamSym && window.TamSym.STATE && window.TamSym.DQ)
+  ? { STATE: window.TamSym.STATE, DQ: window.TamSym.DQ, from:"tam-sym.js v"+(window.TamSym.version||"?") }
+  : { STATE:{CLOSED:"#15171A",ENERGIZED:"#0B5CAD",OPEN:"#4A4F57",DEENERGIZED:"#8A9099",
+             TRIPPED:"#C8102E",FAULT:"#C8102E",ALARM:"#B26A00",UNKNOWN:"#8A9099",DESIGN:"#15171A"},
+      DQ:{VERIFIED:"#1F8A4C",NEEDS_REVIEW:"#B26A00",CONFLICT:"#C8102E",REJECTED:"#4A4F57"},
+      from:"respaldo local (tam-sym.js NO cargo)" };
+
+/* ── modelo de estado de un tag ───────────────────────────────────────────
+   Cinco estados, y solo cinco. Cada uno lleva:
+     dq     token de TamSym.DQ    → el punto de calidad
+     state  token de TamSym.STATE → el color del simbolo
+     glyph + label → la mitigacion obligatoria del color de estado
+   NODATA y BAD NO IMPRIMEN NUMERO. Esa es la regla de la casa hecha datos. */
+const TS = {
+  GOOD:      {code:"GOOD",      label:"BUENO",            glyph:"●", chip:"ok",     dq:"VERIFIED",     state:"CLOSED",  num:true },
+  UNCERTAIN: {code:"UNCERTAIN", label:"INCIERTO",         glyph:"◐", chip:"warn",   dq:"NEEDS_REVIEW", state:"ALARM",   num:true },
+  STALE:     {code:"STALE",     label:"CADUCADO",         glyph:"◷", chip:"warn",   dq:"NEEDS_REVIEW", state:"UNKNOWN", num:true },
+  BAD:       {code:"BAD",       label:"DATO MALO",        glyph:"✕", chip:"fail",   dq:"CONFLICT",     state:"FAULT",   num:false},
+  NODATA:    {code:"NODATA",    label:"SIN COMUNICACION", glyph:"⌀", chip:"nodata", dq:"REJECTED",     state:"UNKNOWN", num:false}
+};
+let STALE_MS = 30000;   // ajustable en la barra; provisional hasta scada_sources.poll_ms
+
+function tagState(r){
+  if(!r) return TS.NODATA;                                   // no hay fila: no hay comunicacion
+  const hasVal = (r.val_num!=null && r.val_num!=="") || r.val_bool===true || r.val_bool===false;
+  if(!hasVal) return TS.NODATA;                              // hay fila pero sin valor: tampoco
+  const q = String(r.quality==null?"":r.quality).toUpperCase().trim();
+  if(q==="BAD") return TS.BAD;
+  const t = parseTs(r.ts);
+  if(t==null) return TS.NODATA;                              // valor sin fecha: no se puede fechar => no vale
+  if(q==="STALE" || (Date.now()-t) > STALE_MS) return TS.STALE;
+  if(q==="GOOD") return TS.GOOD;
+  return TS.UNCERTAIN;                                       // calidad desconocida NUNCA asciende a BUENO
+}
+
+/* El unico sitio donde se convierte un valor de planta en pixeles. */
+function valueHTML(r, unit, opts){
+  opts = opts || {};
+  const s = tagState(r);
+  if(!s.num){
+    const why = s.code==="NODATA"
+      ? "Sin dato en scada_current para este binding. NO es cero: es ausencia de comunicacion."
+      : "El recolector leyo, pero la calidad es BAD: el valor no es utilizable.";
+    return `<span class="val nc nc-plate" title="${esc(why)}">···</span> `
+         + `<span class="chip ${s.chip}" title="${esc(why)}">${s.glyph} ${s.label}</span>`;
+  }
+  let txt = null;
+  if(r.val_num!=null && r.val_num!=="") txt = fmtNum(r.val_num, opts.dec);
+  else if(r.val_bool===true) txt = "ON";
+  else if(r.val_bool===false) txt = "OFF";
+  if(txt==null) return valueHTML(null, unit, opts);           // formateo imposible => hueco honesto
+  const age = ageSec(r.ts);
+  const chip = s.code==="GOOD"
+    ? (opts.hideGood ? "" : `<span class="chip ok" title="Ultimo latido hace ${esc(fmtAge(age))}">${s.glyph} ${s.label}</span>`)
+    : `<span class="chip ${s.chip}" title="Ultimo latido hace ${esc(fmtAge(age))} (umbral ${Math.round(STALE_MS/1000)} s)">${s.glyph} ${s.label} ${esc(fmtAge(age))}</span>`;
+  return `<span class="val ${s.code==="STALE"?"stale":""}">${esc(txt)}${unit?`<u>${esc(unit)}</u>`:""}</span> ${chip}`;
+}
+
+/* ── lectura tolerante ────────────────────────────────────────────────────
+   Distingue tres cosas que NO son lo mismo y que el visor no puede confundir:
+     missing → la relacion todavia no existe (estado normal hoy)
+     vacia   → existe y no devolvio filas
+     error   → cualquier otra cosa (RLS, red, sintaxis)                     */
+const MISSING_RE = /does not exist|schema cache|could not find the (table|function|relation)|undefined table/i;
+async function readRel(rel, build){
+  if(!sb) return {rows:[], missing:false, error:"supabase-js no cargo (CDN bloqueado?)", rel};
+  try{
+    let q = sb.from(rel).select("*");
+    if(build) q = build(q);
+    const {data, error} = await q;
+    if(error){
+      const code = String(error.code||"");
+      const missing = code==="42P01" || code==="PGRST205" || code==="PGRST202" || MISSING_RE.test(error.message||"");
+      return {rows:[], missing, error: missing? null : (error.message||String(error)), rel};
+    }
+    return {rows:data||[], missing:false, error:null, rel};
+  }catch(e){
+    return {rows:[], missing:false, error:e.message||String(e), rel};
+  }
+}
+/* paginado para tablas grandes (mismo patron que fetchAll de index.html) */
+async function readAll(rel, build){
+  if(!sb) return {rows:[], missing:false, error:"supabase-js no cargo", rel};
+  const out=[]; const page=1000;
+  for(let from=0;;from+=page){
+    const r = await readRel(rel, q=>{ let x = build? build(q) : q; return x.range(from, from+page-1); });
+    if(r.missing || r.error) return {rows:out, missing:r.missing, error:r.error, rel};
+    out.push(...r.rows);
+    if(r.rows.length<page) break;
+  }
+  return {rows:out, missing:false, error:null, rel};
+}
+
+/* Panel de estado vacio. Dice QUE falta, POR QUE falta y QUE etapa lo trae.
+   Nunca dice "0" ni "sin alarmas" cuando lo que pasa es que no hay sistema. */
+const STAGE_OF = {
+  "v_online_overview":"ETAPA 1 (vistas) + ETAPA 5 (KPIs)",
+  "v_online_area_live":"ETAPA 1 (vistas) + ETAPA 2 (bindings)",
+  "v_online_alarms_live":"ETAPA 1 (vistas) + ETAPA 6 (alarmado)",
+  "v_online_energy":"ETAPA 1 (vistas) + ETAPA 2B (medidores PAC)",
+  "v_online_gateway_status":"ETAPA 1 (vistas) + ETAPA 3 (recolector)",
+  "scada_current":"ETAPA 1 (modelo) + ETAPA 3 (ingesta)",
+  "scada_events":"ETAPA 1 (modelo) + ETAPA 6 (alarmado)",
+  "scada_rollups_1h":"ETAPA 1 (modelo) + ETAPA 4 (historian)",
+  "scada_rollups_1m":"ETAPA 1 (modelo) + ETAPA 4 (historian)"
+};
+function statePanel(res, what){
+  if(res.error){
+    return `<div class="panel err"><h3>✕ Error de lectura</h3>
+      <p>La relacion <code>${esc(res.rel)}</code> respondio con error. El visor no muestra
+      ningun valor sustituto: un numero inventado seria peor que este mensaje.</p>
+      <p class="mono">${esc(res.error)}</p></div>`;
+  }
+  if(res.missing){
+    return `<div class="panel nodata"><h3>⌀ Sin datos · el sistema todavia no existe</h3>
+      <p>La relacion <code>${esc(res.rel)}</code> <b>no esta creada en la base</b>. Esto no es un
+      fallo del visor ni una planta parada: es el estado esperado hasta que se ejecute
+      <b>${esc(STAGE_OF[res.rel]||"la etapa correspondiente")}</b> de <code>ONLINE_MODULE_PLAN.md</code>.</p>
+      <p>${esc(what||"")}</p>
+      <p><span class="chip nodata">⌀ SIN COMUNICACION</span> es lo que se veria por tag si el sistema
+      existiese y la planta no respondiese. Un cero no aparece nunca.</p></div>`;
+  }
+  return `<div class="panel nodata"><h3>⌀ Sin filas</h3>
+    <p>La relacion <code>${esc(res.rel)}</code> <b>existe pero no devolvio ninguna fila</b>.
+    Eso significa "nada registrado todavia", no "todo en cero".</p>
+    <p>${esc(what||"")}</p></div>`;
+}
+
+/* ── cache viva ───────────────────────────────────────────────────────────
+   CUR: mapa binding_id -> ultima fila de scada_current recibida por Realtime.
+   Se usa como CAPA SUPERIOR sobre lo leido de las vistas: si Realtime trae un
+   valor mas fresco para un binding, gana.                                   */
+const CUR = new Map();
+const DB  = { areas:[], flowData:null, powerMeters:[], assetsById:new Map(), scans:[], scanRun:null };
+
+function mergeLive(row){
+  if(!row) return row;
+  const id = row.binding_id;
+  if(id==null) return row;
+  const live = CUR.get(id);
+  if(!live) return row;
+  const a = parseTs(live.ts), b = parseTs(row.ts);
+  if(a!=null && (b==null || a>=b))
+    return Object.assign({}, row, {ts:live.ts, val_num:live.val_num, val_bool:live.val_bool, quality:live.quality});
+  return row;
+}
+
+/* ── enlace en vivo (Realtime + sondeo de respaldo) ───────────────────────
+   Realtime es el camino rapido; el sondeo es el que garantiza que la pagina
+   siga siendo cierta aunque Realtime no este habilitado sobre scada_* (que es
+   exactamente lo que pasa hoy: las tablas no existen). Los dos conviven y el
+   chip de la cabecera dice cual esta dando el dato.                        */
+const RT = { ch:null, state:"INIT", tries:0, timer:null, lastEvent:null, lastMsg:null };
+function paintLink(){
+  const el=$("#linkchip"), tx=$("#linktext"); if(!el) return;
+  el.className = "link " + (RT.state==="LIVE" ? "live" : RT.state==="POLL" ? "poll" : RT.state==="DOWN" ? "down" : "");
+  const last = RT.lastMsg ? " · Δ" + fmtAge(Math.round((Date.now()-RT.lastMsg)/1000)) : "";
+  tx.textContent = ({INIT:"INICIANDO", CONNECTING:"CONECTANDO…", LIVE:"EN VIVO", POLL:"SONDEO "+Math.round(POLL_MS/1000)+" s", DOWN:"ENLACE CAIDO"})[RT.state] + last;
+  el.title = RT.state==="LIVE"
+    ? "Realtime suscrito a scada_current y scada_events."
+    : RT.state==="POLL"
+      ? "Realtime no entrega (las tablas scada_* aun no existen). La pagina se refresca por sondeo cada "+Math.round(POLL_MS/1000)+" s."
+      : RT.state==="DOWN"
+        ? "Enlace caido. Reintento con espera creciente; el sondeo sigue activo."
+        : "Estableciendo enlace.";
+}
+function connectRealtime(){
+  if(!sb) { RT.state="DOWN"; paintLink(); return; }
+  if(RT.ch){ try{ sb.removeChannel(RT.ch); }catch(e){} RT.ch=null; }
+  RT.state = "CONNECTING"; paintLink();
+  RT.ch = sb.channel("online-"+Math.random().toString(36).slice(2))
+    .on("postgres_changes", {event:"*", schema:"public", table:"scada_current"}, p=>{
+      const row = p.new || p.old; if(!row || row.binding_id==null) return;
+      if(p.eventType==="DELETE") CUR.delete(row.binding_id); else CUR.set(row.binding_id, row);
+      RT.lastMsg = Date.now();
+      scheduleRepaint();
+    })
+    .on("postgres_changes", {event:"*", schema:"public", table:"scada_events"}, p=>{
+      RT.lastEvent = p.new || null; RT.lastMsg = Date.now();
+      scheduleRepaint();
+    })
+    .subscribe((st)=>{
+      if(st==="SUBSCRIBED"){ RT.state="LIVE"; RT.tries=0; }
+      else if(st==="CHANNEL_ERROR" || st==="TIMED_OUT" || st==="CLOSED"){ RT.state="DOWN"; scheduleReconnect(); }
+      paintLink();
+    });
+}
+/* Reintento con espera creciente, pero ACOTADO. Realtime sobre tablas que aun
+   no existen falla siempre: martillear el servidor para siempre no arregla
+   nada y deja la cabecera en rojo permanente, que es un rojo que no informa.
+   Tras 4 intentos la pagina se declara en SONDEO — que es la verdad: el dato
+   lo esta manteniendo el sondeo periodico. Un evento `online` o volver a la
+   pestaña reabre la puerta a Realtime. */
+const RT_MAX_TRIES = 4;
+function scheduleReconnect(){
+  if(RT.timer) return;
+  if(RT.tries >= RT_MAX_TRIES){ RT.state="POLL"; paintLink(); return; }
+  const wait = Math.min(30000, 1000 * Math.pow(2, Math.min(RT.tries,5)));
+  RT.tries++;
+  RT.timer = setTimeout(()=>{ RT.timer=null; connectRealtime(); }, wait);
+}
+window.addEventListener("online", ()=>{ RT.tries=0; connectRealtime(); });
+document.addEventListener("visibilitychange", ()=>{
+  if(!document.hidden && (RT.state==="DOWN" || RT.state==="POLL")){ RT.tries=0; connectRealtime(); }
+});
+
+/* Repintado agrupado: 500 tags moviendose a la vez no pueden disparar 500
+   renders. Se agrupan en un frame. */
+let repaintPending=false;
+function scheduleRepaint(){
+  if(repaintPending) return;
+  repaintPending=true;
+  requestAnimationFrame(()=>{ repaintPending=false; render(); });
+}
+
+/* Sondeo: refresca la pantalla actual. Tambien es el reloj que hace caducar
+   los valores (STALE se calcula contra Date.now(), asi que hay que repintar
+   aunque no llegue nada nuevo — precisamente cuando no llega nada nuevo). */
+const POLL_MS = 15000;
+setInterval(()=>{ if(!document.hidden) render(); }, POLL_MS);
+setInterval(()=>{ paintLink(); }, 1000);
+
+/* ── enrutado por hash (mismo patron que index.html) ──────────────────────── */
+const VIEWS = [
+  {key:"wall",    label:"KPI",       title:"Mosaico de KPI por area"},
+  {key:"area",    label:"Mimico",    title:"Mimico vivo por area"},
+  {key:"trend",   label:"Tendencias",title:"Tendencias desde el historian"},
+  {key:"alarms",  label:"Alarmas",   title:"Alarmas vivas y reconocimiento"},
+  {key:"energy",  label:"Energia",   title:"Energia real frente a diseño"},
+  {key:"gateway", label:"Gateway",   title:"Estado del recolector y de las fuentes"}
+];
+let ROUTE = {view:"wall", arg:null};
+function nav(h){ location.hash = "#/" + h; }
+function parseHash(){
+  const raw = (location.hash||"").replace(/^#\/?/,"");
+  const parts = raw.split("/").filter(Boolean).map(decodeURIComponent);
+  const v = parts[0] && VIEWS.some(x=>x.key===parts[0]) ? parts[0] : "wall";
+  return {view:v, arg: parts[1]||null};
+}
+function route(){ ROUTE = parseHash(); paintTabs(); paintRail(); render(); }
+window.addEventListener("hashchange", route);
+
+function paintTabs(){
+  $("#tabs").innerHTML = VIEWS.map(v=>
+    `<button class="tab ${ROUTE.view===v.key?"sel":""}" title="${esc(v.title)}"
+      onclick="nav('${v.key}${v.key==='area'&&ROUTE.arg?('/'+encodeURIComponent(ROUTE.arg)):''}')">${esc(v.label)}</button>`).join("");
+}
+window.nav = nav;
+
+/* ── rail de areas ────────────────────────────────────────────────────────
+   El estado de cada area sale de v_online_overview. Sin esa vista, el punto
+   se queda gris (SIN DATOS) — nunca verde optimista.                       */
+const AREA_STATUS = new Map();
+function paintRail(){
+  const rows = DB.areas.map(a=>{
+    const st = AREA_STATUS.get(String(a.area_code)) || "NODATA";
+    const col = st==="OK"?"var(--ok)":st==="WARN"?"var(--amber)":st==="ALARM"?"var(--fail)":"var(--nodata)";
+    const sel = ROUTE.view==="area" && String(ROUTE.arg)===String(a.area_code);
+    return `<div class="rnode ${sel?"sel":""}" onclick="nav('area/${encodeURIComponent(a.area_code)}')"
+      title="${esc(a.description||"")} · estado ${esc(st)}">
+      <span class="dot" style="background:${col}"></span>
+      <span class="code">${esc(a.area_code)}</span>
+      <span class="lbl">${esc(a.description||"—")}</span></div>`;
+  }).join("");
+  $("#rail").innerHTML = `<div class="rhead">Areas de planta (${DB.areas.length})</div>${rows}
+    <div class="rhead" style="margin-top:10px">Sesion</div>
+    <div class="rnode" style="cursor:default"><span class="lbl">${esc(getUser())}</span></div>
+    <div class="rnode" style="cursor:default"><span class="lbl">Tokens: ${esc(K.from)}</span></div>`;
+}
+
+/* ── cabecera de pantalla ─────────────────────────────────────────────────── */
+function head(kicker, title, lead){
+  return `<div class="kicker">${esc(kicker)} <span class="sub">· ONLINE</span></div>
+    <h1>${esc(title)}</h1>${lead?`<p class="lead">${lead}</p>`:""}`;
+}
+const READONLY_BANNER = `<div class="banner">○ Solo lectura · este modulo no escribe a planta (plan §5.S4)</div>`;
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PANTALLA 1 — MOSAICO DE KPI POR AREA
+   ════════════════════════════════════════════════════════════════════════════ */
+async function renderWall(){
+  const res = await readRel("v_online_overview");
+  let body;
+  if(res.missing || res.error || !res.rows.length){
+    AREA_STATUS.clear();
+    /* Estado vacio REAL: se sigue mostrando el mosaico con las 22 areas que SI
+       existen en plant_areas, cada una en SIN COMUNICACION. Asi el operador ve
+       la forma de la planta y ve, sin ambiguedad, que no hay telemetria. */
+    body = statePanel(res, "Mientras tanto se listan las areas reales de plant_areas con su estado de comunicacion honesto.")
+      + `<div class="wall">${DB.areas.map(a=>tileHTML({
+          area_code:a.area_code, area_name:a.description, status:"NODATA"
+        })).join("")}</div>`;
+  }else{
+    res.rows.forEach(r=>AREA_STATUS.set(String(r.area_code), String(r.status||"NODATA").toUpperCase()));
+    body = `<div class="wall">${res.rows.map(r=>tileHTML(r)).join("")}</div>`;
+  }
+  paintRail();
+  return head("Pantalla 1 / 6", "Mosaico de KPI por area",
+    "Un mosaico por area con su semaforo, su KPI de cabecera y su contador de alarmas. "
+    + "El color del canto izquierdo repite el estado con <b>posicion</b>, no solo con tono, y cada baldosa "
+    + "lleva la palabra escrita: el color nunca viaja solo.")
+    + READONLY_BANNER + body + wallNote();
+}
+function tileHTML(r){
+  const st = String(r.status||"NODATA").toUpperCase();
+  const cls = st==="OK"?"st-ok":st==="WARN"?"st-warn":st==="ALARM"?"st-alarm":"st-nodata";
+  const chip = st==="OK"?`<span class="chip ok">● NORMAL</span>`
+             : st==="WARN"?`<span class="chip warn">◐ AVISO</span>`
+             : st==="ALARM"?`<span class="chip fail">▲ ALARMA</span>`
+             : `<span class="chip nodata">⌀ SIN DATOS</span>`;
+  /* El KPI de cabecera se pinta con el mismo lector de valor que todo lo demas:
+     si no hay valor, sale SIN COMUNICACION, no un cero. */
+  const kpiRow = (r.kpi_headline_value!=null)
+    ? {val_num:r.kpi_headline_value, ts:r.kpi_ts||r.ts||null, quality:r.kpi_quality||r.quality||null}
+    : null;
+  const total = r.tags_total, good = r.tags_good;
+  const cover = (total!=null && good!=null && Number(total)>0)
+    ? `<span class="chip dim" title="Tags con calidad GOOD sobre tags ligados">▣ ${Math.round(100*Number(good)/Number(total))}% GOOD · ${esc(good)}/${esc(total)}</span>`
+    : `<span class="chip nodata" title="No hay bindings registrados para esta area (ETAPA 2)">⌀ SIN BINDINGS</span>`;
+  const alarms = (r.alarms_active!=null && Number(r.alarms_active)>0)
+    ? `<span class="chip fail">▲ ${esc(r.alarms_active)} ALARMAS</span>`
+    : (r.alarms_active!=null ? `<span class="chip ok">● 0 ALARMAS</span>` : "");
+  return `<div class="tile ${cls}" onclick="nav('area/${encodeURIComponent(r.area_code)}')"
+      title="Abrir el mimico vivo del area ${esc(r.area_code)}">
+    <div class="thead"><span class="tcode">${esc(r.area_code)}</span>
+      <span class="tname">${esc(r.area_name||areaName(r.area_code))}</span></div>
+    <div class="tval">${valueHTML(kpiRow, r.kpi_headline_unit, {hideGood:true})}</div>
+    ${r.kpi_headline_key?`<div class="mono" style="font-size:9.5px;color:var(--ink-soft);letter-spacing:.06em">${esc(r.kpi_headline_key)}</div>`:""}
+    ${sparkHTML(r.spark)}
+    <div class="tfoot">${chip}${cover}${alarms}</div></div>`;
+}
+function areaName(code){
+  const a = DB.areas.find(x=>String(x.area_code)===String(code));
+  return a && a.description ? a.description : "—";
+}
+/* Sparkline: solo si llega una serie de verdad. Sin serie NO se dibuja una
+   linea plana — una linea plana es exactamente el cero mentiroso que el plan
+   prohibe. Se dice que no hay historico y punto. */
+function sparkHTML(series){
+  if(!Array.isArray(series) || series.length<2)
+    return `<div class="mono" style="font-size:9px;color:var(--nodata);letter-spacing:.08em;margin:6px 0 4px">⌀ SIN HISTORICO</div>`;
+  const vs = series.map(p=>Number(Array.isArray(p)?p[1]:p.v)).filter(v=>isFinite(v));
+  if(vs.length<2) return `<div class="mono" style="font-size:9px;color:var(--nodata);margin:6px 0 4px">⌀ SIN HISTORICO</div>`;
+  const mn=Math.min(...vs), mx=Math.max(...vs), rng=(mx-mn)||1, W=200, H=26;
+  const d = vs.map((v,i)=>`${i?"L":"M"}${(i/(vs.length-1)*W).toFixed(1)},${(H-2-((v-mn)/rng)*(H-4)).toFixed(1)}`).join(" ");
+  /* OJO: var() NO funciona en un atributo de presentacion SVG (stroke="var(--s1)"
+     no pinta nada). Tiene que ir por style inline, que si sustituye variables —
+     y asi el tono sigue al tema sin repintar.                                  */
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${d}" fill="none" style="stroke:var(--s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+function wallNote(){
+  return `<div class="note"><b>Como leer esta pantalla.</b> El semaforo del area viene de
+  <code>v_online_overview.status</code>; la cobertura, del porcentaje de tags con calidad GOOD.
+  Un area en <span class="chip nodata">⌀ SIN DATOS</span> significa que no llega telemetria de esa area,
+  no que este parada ni que sus KPIs valgan cero.</div>`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PANTALLA 2 — MIMICO VIVO POR AREA
+   Diagrama de proceso desde la BD (tam-flow) + banda de valores vivos dibujada
+   con los tokens del kernel (TamSym.STATE / TamSym.DQ / measure).
+   ════════════════════════════════════════════════════════════════════════════ */
+async function renderArea(){
+  const code = ROUTE.arg || (DB.areas[0] && DB.areas[0].area_code);
+  if(!code) return head("Pantalla 2 / 6","Mimico vivo","") + `<div class="panel nodata"><h3>Sin areas</h3></div>`;
+
+  let diagram = `<div class="panel nodata"><h3>⌀ Sin diagrama</h3>
+    <p>El renderizador <code>tam-flow.js</code> no cargo. El mimico se dibuja desde la base
+    con <code>TamFlow.unitSummary</code>/<code>processView</code>; sin el fichero no hay diagrama.</p></div>`;
+  if(window.TamFlow && DB.flowData){
+    try{
+      const wrap = Math.max(720, ($("#content").clientWidth||1000) - 60);
+      const svg = window.TamFlow.unitSummary(DB.flowData, code, {controlBand:true, wrapWidth:wrap});
+      const pv  = window.TamFlow.processView ? window.TamFlow.processView(DB.flowData, code, {wrapWidth:wrap}) : "";
+      diagram = `<div class="plate">${svg}</div>
+        <div class="plate-cap">Tren de equipos del area ${esc(code)} · dibujado desde la base por tam-flow ${esc(window.TamFlow.version||"")}</div>`
+        + (pv ? `<div class="plate" style="margin-top:14px">${pv}</div>
+                <div class="plate-cap">Vista de proceso del area ${esc(code)}</div>` : "");
+    }catch(e){
+      diagram = `<div class="panel err"><h3>✕ El diagrama no se pudo dibujar</h3><p class="mono">${esc(e.message||e)}</p></div>`;
+    }
+  }
+
+  const res = await readRel("v_online_area_live", q=>q.eq("area_code", String(code)).order("tag"));
+  let live;
+  if(res.missing || res.error || !res.rows.length){
+    live = statePanel(res,
+      "Sin bindings no hay valores que superponer. El diagrama de arriba SI es real: sale del modelo de ingenieria ya normalizado.");
+  }else{
+    const rows = res.rows.map(mergeLive);
+    live = bandHTML(rows) + liveTableHTML(rows);
+  }
+
+  return head("Pantalla 2 / 6", "Mimico vivo · area " + code,
+    esc(areaName(code)) + " — el diagrama sale del modelo de ingenieria; los valores se superponen desde "
+    + "<code>scada_current</code>. Los tokens de estado y de calidad son los del kernel "
+    + "(<code>TamSym.STATE</code> / <code>TamSym.DQ</code>), no un sistema paralelo.")
+    + READONLY_BANNER + diagram
+    + `<h2>Valores vivos del area</h2>` + live
+    + `<div class="note"><b>Superposicion.</b> Los valores se dibujan hoy en una banda de tarjetas de medida
+       junto al diagrama, con el punto de calidad y el color de estado del kernel. Anclar cada valor
+       <i>dentro</i> del SVG requiere que <code>tam-flow</code> exponga las coordenadas de cada equipo
+       dibujado: queda como <b>punto abierto PA-2</b>, no se simula con posiciones adivinadas.</div>`;
+}
+
+/* Banda de medida. Donde el tipo de simbolo se resuelve con certeza se dibuja
+   el simbolo del kernel con su estado y su punto DQ; donde no, se emite una
+   tarjeta de medida que usa los MISMOS tokens. No se fuerza un simbolo
+   inventado sobre un tag cuyo tipo no conocemos. */
+function symKindFor(r){
+  const role = String(r.signal_role||"").toUpperCase();
+  const tag  = String(r.tag||"").toUpperCase();
+  const cls  = String(r.asset_class||"").toUpperCase();
+  if(!window.TamSym) return null;
+  const pick = k => window.TamSym.has(k) ? k : null;
+  if(role==="POWER" || role==="ENERGY") return pick("METER");
+  if(/MOTOR/.test(cls)) return pick("MOTOR");
+  if(/PUMP|BOMBA/.test(cls)) return pick("PUMP");
+  if(/COMPRESSOR/.test(cls)) return pick("COMPRESSOR");
+  if(/^(SDV|BDV|XV|UV|XEV)/.test(tag)) return pick("SHUTDOWN_VALVE");
+  if(/^(FV|PV|LV|TV|PCV|TCV|FCV|LCV)/.test(tag)) return pick("CONTROL_VALVE");
+  return null;
+}
+function bandHTML(rows){
+  const cards = rows.slice(0, 300).map(r=>{
+    const s = tagState(r);
+    const dqCol = K.DQ[s.dq] || "#8A9099";
+    const stCol = K.STATE[s.state] || "#8A9099";
+    const kind = symKindFor(r);
+    let art = "";
+    if(kind){
+      /* el simbolo se dibuja sobre la placa clara, como todo dibujo del kernel */
+      const values = s.num && r.val_num!=null ? [{k:"", v:Number(r.val_num), u:r.eng_unit||""}] : null;
+      const svg = window.TamSym.draw(kind, {x:34, y:26, scale:.85, state:s.state, dq:s.dq,
+        values: values, live: s.code==="GOOD", title:(r.tag||"")+" · "+s.label});
+      art = `<div class="plate" style="margin:0 0 6px;padding:4px"><svg viewBox="0 0 150 54" style="height:54px">${svg}</svg></div>`;
+    }
+    return `<div class="mcard" title="${esc((r.description||"")+" · "+s.label)}">
+      <div class="mh"><span class="dq" style="background:${dqCol}" title="Calidad de dato: ${esc(s.dq)}"></span>
+        <span class="mt" style="color:${kind?"inherit":"inherit"}">${esc(r.tag||("binding "+r.binding_id))}</span></div>
+      ${art}
+      <div class="mv">${valueHTML(r, r.eng_unit, {hideGood:true})}</div>
+      <div class="ms">${esc(r.signal_role||"—")} · <span style="color:${stCol}">■</span> ${esc(s.label)}</div>
+    </div>`;
+  }).join("");
+  const more = rows.length>300 ? `<div class="note">Se dibujan 300 de ${rows.length} tags en la banda; la tabla de abajo los lleva todos.</div>` : "";
+  return `<div class="band">${cards}</div>${more}`;
+}
+function liveTableHTML(rows){
+  const n = {good:0, stale:0, unc:0, bad:0, nd:0};
+  const body = rows.map(r=>{
+    const s = tagState(r);
+    if(s.code==="GOOD") n.good++; else if(s.code==="STALE") n.stale++;
+    else if(s.code==="UNCERTAIN") n.unc++; else if(s.code==="BAD") n.bad++; else n.nd++;
+    const lim = [r.limit_ll,r.limit_l,r.limit_h,r.limit_hh].some(v=>v!=null)
+      ? `<span class="mono" style="font-size:10px">${["LL","L","H","HH"].map((k,i)=>{
+          const v=[r.limit_ll,r.limit_l,r.limit_h,r.limit_hh][i];
+          return v==null? "" : k+" "+fmtNum(v);
+        }).filter(Boolean).join(" · ")}</span>`
+      : `<span class="chip nodata">⌀ SIN LIMITES</span>`;
+    return `<tr>
+      <td class="tagcell">${esc(r.tag||("#"+r.binding_id))}</td>
+      <td class="mono">${nz(r.signal_role)}</td>
+      <td class="r">${valueHTML(r, r.eng_unit, {hideGood:true})}</td>
+      <td>${lim}</td>
+      <td class="mono">${esc(fmtClock(r.ts))}</td>
+      <td class="mono">${esc(fmtAge(ageSec(r.ts)))}</td></tr>`;
+  }).join("");
+  return `<h2>Tabla de tags ligados (${rows.length})</h2>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:6px">
+      <span class="chip ok">● ${n.good} BUENO</span>
+      <span class="chip warn">◷ ${n.stale} CADUCADO</span>
+      <span class="chip warn">◐ ${n.unc} INCIERTO</span>
+      <span class="chip fail">✕ ${n.bad} DATO MALO</span>
+      <span class="chip nodata">⌀ ${n.nd} SIN COMUNICACION</span></div>
+    <table class="data"><thead><tr>
+      <th>TAG</th><th>ROL</th><th class="r">VALOR</th><th>LIMITES</th><th>ULTIMO LATIDO</th><th>EDAD</th>
+    </tr></thead><tbody>${body}</tbody></table>`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PANTALLA 3 — TENDENCIAS
+   Reglas de la skill dataviz aplicadas sin excepcion:
+     · UN SOLO EJE Y. Tags de unidades distintas NO comparten grafica: se
+       facetan en pequeños multiples, una grafica por unidad. Nunca doble eje.
+     · maximo 6 series; la 7a no genera un tono nuevo, se queda fuera.
+     · leyenda siempre + etiqueta directa al final de cada linea (regla de
+       alivio obligatoria: tres de los seis tonos no llegan a 3:1 en claro).
+     · rejilla en hairline, ejes recesivos, cifras tabulares.
+     · capa de hover: cruceta + tooltip.
+     · vista de tabla disponible.
+   ════════════════════════════════════════════════════════════════════════════ */
+const TREND = { picked:[], range:"24h", table:false };
+const CHARTS = new Map();   // id -> geometria + series, para la capa de hover
+const RANGES = { "1h":{ms:3600e3, rel:"scada_rollups_1m"}, "24h":{ms:86400e3, rel:"scada_rollups_1m"},
+                 "7d":{ms:7*86400e3, rel:"scada_rollups_1h"}, "30d":{ms:30*86400e3, rel:"scada_rollups_1h"} };
+const SERIES_COLORS = ["var(--s1)","var(--s2)","var(--s3)","var(--s4)","var(--s5)","var(--s6)"];
+
+async function renderTrend(){
+  const cat = await readRel("v_online_area_live", q=>q.order("area_code").order("tag"));
+  if(cat.missing || cat.error || !cat.rows.length){
+    return head("Pantalla 3 / 6","Tendencias",
+      "Selector de tags y grafica desde los rollups del historian.")
+      + READONLY_BANNER
+      + statePanel(cat, "Sin catalogo de bindings no hay tags que ofrecer. El selector se llena de v_online_area_live y la serie de scada_rollups_1m/1h.")
+      + trendNote();
+  }
+  const tags = cat.rows;
+  if(!TREND.picked.length) TREND.picked = tags.slice(0,3).map(t=>t.binding_id);
+
+  const spec = RANGES[TREND.range] || RANGES["24h"];
+  const since = new Date(Date.now()-spec.ms).toISOString();
+  const data = TREND.picked.length
+    ? await readAll(spec.rel, q=>q.in("binding_id", TREND.picked).gte("bucket", since).order("bucket"))
+    : {rows:[], missing:false, error:null, rel:spec.rel};   // sin seleccion no se consulta
+
+  const picker = `<div class="legend" style="gap:8px;margin-bottom:10px">
+    ${["1h","24h","7d","30d"].map(k=>`<button class="btn mini ${TREND.range===k?"":""}"
+      style="${TREND.range===k?"border-color:var(--crimson);color:var(--crimson);font-weight:700":""}"
+      onclick="trendRange('${k}')">${k}</button>`).join("")}
+    <span style="flex:1"></span>
+    <button class="btn mini" onclick="trendTable()">${TREND.table?"▦ Ver grafica":"▦ Ver tabla"}</button></div>
+    <select multiple size="7" style="width:100%;max-width:520px;font-family:var(--mono);font-size:11.5px;
+      padding:6px;border:1px solid var(--line-strong);border-radius:4px;background:var(--bg);color:var(--ink)"
+      onchange="trendPick(this)">
+      ${tags.map(t=>`<option value="${esc(t.binding_id)}" ${TREND.picked.indexOf(t.binding_id)>=0?"selected":""}>`
+        + esc((t.area_code||"—")+" · "+(t.tag||("#"+t.binding_id))+" ["+(t.eng_unit||"sin unidad")+"]")+`</option>`).join("")}
+    </select>
+    <div class="note" style="margin-top:6px;border:none;padding:0">Maximo 6 series. Los tags de unidades
+    distintas se separan en graficas propias: <b>esta pagina no dibuja doble eje</b>, nunca.</div>`;
+
+  let plot;
+  if(!TREND.picked.length){
+    plot = `<div class="panel nodata"><h3>⌀ Ningun tag elegido</h3>
+      <p>Elige al menos un tag en la lista. Sin seleccion no hay serie — y una grafica vacia
+      no se dibuja como una linea en cero.</p></div>`;
+  }else if(data.missing || data.error || !data.rows.length){
+    plot = statePanel(data, "El historian todavia no tiene cubos para estos bindings en la ventana elegida.");
+  }else{
+    const byId = new Map(tags.map(t=>[t.binding_id, t]));
+    const groups = new Map();   // unidad -> series[]
+    TREND.picked.slice(0,6).forEach((id,i)=>{
+      const meta = byId.get(id); if(!meta) return;
+      const unit = meta.eng_unit || "sin unidad";
+      const pts = data.rows.filter(r=>r.binding_id===id)
+        .map(r=>({t:parseTs(r.bucket), v: (r.avg!=null? Number(r.avg) : r.last!=null? Number(r.last) : null)}))
+        .filter(p=>p.t!=null && p.v!=null && isFinite(p.v));
+      if(!groups.has(unit)) groups.set(unit, []);
+      groups.get(unit).push({id, label: meta.tag || ("#"+id), unit, color: SERIES_COLORS[i%6], points: pts});
+    });
+    CHARTS.clear();
+    plot = [...groups.entries()].map(([unit, series], gi)=>
+      TREND.table ? tableView(unit, series) : chartHTML("ch"+gi, unit, series)).join("");
+    if(!plot) plot = `<div class="panel nodata"><h3>⌀ Sin puntos</h3><p>Ninguna de las series elegidas tiene cubos en la ventana.</p></div>`;
+  }
+
+  return head("Pantalla 3 / 6","Tendencias",
+    "Serie temporal desde <code>scada_rollups_1m</code> (ventanas cortas) y <code>scada_rollups_1h</code> (largas).")
+    + READONLY_BANNER + picker + plot + trendNote();
+}
+function trendNote(){
+  return `<div class="note"><b>Un hueco es un hueco.</b> La linea se corta donde no hay cubo; no se interpola
+  ni se rellena con el ultimo valor. Una linea continua sobre una parada del recolector seria exactamente
+  el dato plausible y falso que este proyecto no admite.</div>`;
+}
+window.trendRange = k => { TREND.range=k; render(); };
+window.trendTable = () => { TREND.table=!TREND.table; render(); };
+window.trendPick = sel => {
+  TREND.picked = [...sel.selectedOptions].slice(0,6).map(o=>{
+    const n = Number(o.value); return isFinite(n)? n : o.value;
+  });
+  render();
+};
+
+function chartHTML(id, unit, series){
+  const W=980, H=280, mL=58, mR=118, mT=14, mB=30;
+  const all = series.flatMap(s=>s.points);
+  if(!all.length) return "";
+  const t0=Math.min(...all.map(p=>p.t)), t1=Math.max(...all.map(p=>p.t));
+  let v0=Math.min(...all.map(p=>p.v)), v1=Math.max(...all.map(p=>p.v));
+  if(v0===v1){ v0-=1; v1+=1; }
+  const pad=(v1-v0)*0.08; v0-=pad; v1+=pad;
+  const X = t => mL + (t1===t0 ? 0 : (t-t0)/(t1-t0))*(W-mL-mR);
+  const Y = v => mT + (1-(v-v0)/(v1-v0))*(H-mT-mB);
+
+  const yticks=5, gy=[];
+  for(let i=0;i<=yticks;i++){
+    const v = v0 + (v1-v0)*i/yticks, y = Y(v);
+    gy.push(`<line class="gl" x1="${mL}" y1="${y.toFixed(1)}" x2="${W-mR}" y2="${y.toFixed(1)}"/>`
+      + `<text x="${mL-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${esc(fmtNum(v))}</text>`);
+  }
+  const xticks=6, gx=[];
+  for(let i=0;i<=xticks;i++){
+    const t = t0 + (t1-t0)*i/xticks, x = X(t);
+    const d = new Date(t);
+    const lab = (t1-t0) > 3*86400e3 ? d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"})
+                                    : d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",hour12:false});
+    gx.push(`<text x="${x.toFixed(1)}" y="${H-mB+16}" text-anchor="middle">${esc(lab)}</text>`);
+  }
+
+  /* Un salto de mas de 3 cubos rompe la linea: el hueco se ve como hueco. */
+  const step = series.reduce((m,s)=>{
+    for(let i=1;i<s.points.length;i++) m=Math.min(m, s.points[i].t - s.points[i-1].t);
+    return m;
+  }, Infinity);
+  const gap = isFinite(step) ? step*3 : Infinity;
+
+  const paths = series.map(s=>{
+    let d="", prev=null;
+    s.points.forEach(p=>{
+      d += (prev==null || (p.t-prev) > gap ? "M" : "L") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1) + " ";
+      prev = p.t;
+    });
+    /* style inline, no atributo de presentacion: var() solo sustituye en style */
+    return `<path class="ln" d="${d.trim()}" style="stroke:${s.color}"/>`;
+  }).join("");
+
+  /* etiqueta directa al final de cada linea — la regla de alivio */
+  const labels = series.map(s=>{
+    const last = s.points[s.points.length-1]; if(!last) return "";
+    return `<text class="dl" x="${(W-mR+8).toFixed(1)}" y="${(Y(last.v)+3.5).toFixed(1)}" style="fill:${s.color}">`
+      + esc(s.label) + `</text>`;
+  }).join("");
+
+  const legend = `<div class="legend">${series.map(s=>
+    `<span class="li"><span class="sw" style="background:${s.color}"></span>${esc(s.label)}</span>`).join("")}
+    <span class="li" style="margin-left:auto">unidad: <b>${esc(unit)}</b></span></div>`;
+
+  /* La geometria del hover vive en un mapa de JS, no en un atributo del DOM:
+     30 dias por seis series son miles de puntos y no tienen por que viajar
+     serializados dentro del HTML. */
+  CHARTS.set(id, {t0,t1,v0,v1,W,H,mL,mR,mT,mB,unit, s:series});
+
+  return `<div class="chart" id="${id}">
+    <div class="mono" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)">
+      Tendencia · ${esc(unit)} · ${esc(TREND.range)}</div>
+    ${legend}
+    <svg viewBox="0 0 ${W} ${H}" onmousemove="chartHover(event,'${id}')" onmouseleave="chartOut('${id}')">
+      ${gy.join("")}${gx.join("")}
+      <line class="ax" x1="${mL}" y1="${mT}" x2="${mL}" y2="${H-mB}"/>
+      <line class="ax" x1="${mL}" y1="${H-mB}" x2="${W-mR}" y2="${H-mB}"/>
+      <line id="${id}-cross" class="ax" x1="0" y1="${mT}" x2="0" y2="${H-mB}" stroke-dasharray="3 3" style="opacity:0"/>
+      ${paths}${labels}
+    </svg>
+    <div class="tip" id="${id}-tip"></div>
+  </div>`;
+}
+window.chartHover = function(ev, id){
+  const el = document.getElementById(id); if(!el) return;
+  const C = CHARTS.get(id); if(!C) return;
+  const svg = el.querySelector("svg"), box = svg.getBoundingClientRect();
+  const ux = (ev.clientX - box.left) / box.width * C.W;
+  if(ux < C.mL || ux > C.W-C.mR) return chartOut(id);
+  const t = C.t0 + (ux - C.mL)/(C.W - C.mL - C.mR) * (C.t1 - C.t0);
+  const cross = document.getElementById(id+"-cross");
+  if(cross){ cross.setAttribute("x1", ux); cross.setAttribute("x2", ux); cross.style.opacity=".8"; }
+  const rows = C.s.map(s=>{
+    let best=null, bd=Infinity;
+    s.points.forEach(p=>{ const d=Math.abs(p.t-t); if(d<bd){ bd=d; best=p; } });
+    return best ? {label:s.label, color:s.color, v:best.v, t:best.t, far:bd} : null;
+  }).filter(Boolean);
+  const tip = document.getElementById(id+"-tip"); if(!tip) return;
+  tip.innerHTML = `<div><b>${esc(new Date(t).toLocaleString("es-ES",{hour12:false}))}</b></div>`
+    + rows.map(r=>`<div class="tr"><span class="sw" style="background:${r.color}"></span>`
+      + `${esc(r.label)} <b>${esc(fmtNum(r.v))}</b> ${esc(C.unit)}</div>`).join("");
+  tip.style.opacity = 1;
+  const px = (ux / C.W) * box.width;
+  tip.style.left = Math.min(box.width-200, Math.max(0, px+14)) + "px";
+  tip.style.top  = "44px";
+};
+window.chartOut = function(id){
+  const tip=document.getElementById(id+"-tip"); if(tip) tip.style.opacity=0;
+  const cross=document.getElementById(id+"-cross"); if(cross) cross.style.opacity=0;
+};
+function tableView(unit, series){
+  const ts = [...new Set(series.flatMap(s=>s.points.map(p=>p.t)))].sort((a,b)=>a-b);
+  const idx = series.map(s=>new Map(s.points.map(p=>[p.t, p.v])));   // O(1) por celda
+  const body = ts.slice(-500).map(t=>`<tr><td class="mono">${esc(new Date(t).toLocaleString("es-ES",{hour12:false}))}</td>`
+    + series.map((s,i)=>{
+        const v = idx[i].get(t);
+        return `<td class="r">${v!=null ? `<span class="val">${esc(fmtNum(v))}</span>`
+          : `<span class="val nc nc-plate" title="Sin cubo en este instante">···</span>`}</td>`;
+      }).join("") + `</tr>`).join("");
+  return `<h2>Tabla · ${esc(unit)}</h2>
+    <table class="data"><thead><tr><th>INSTANTE</th>
+      ${series.map(s=>`<th class="r">${esc(s.label)}</th>`).join("")}</tr></thead>
+      <tbody>${body}</tbody></table>`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PANTALLA 4 — ALARMAS VIVAS
+   ════════════════════════════════════════════════════════════════════════════ */
+async function renderAlarms(){
+  const res = await readRel("v_online_alarms_live", q=>q.order("ts",{ascending:false}).limit(500));
+  let body;
+  if(res.missing || res.error || !res.rows.length){
+    body = statePanel(res, "El diario de alarmas se llena en la ETAPA 6 (evaluacion de limites en scada-ingest). "
+      + "Una lista vacia aqui NO significa planta sin alarmas: significa que no hay sistema de alarmado todavia.");
+  }else{
+    const sev = s => { const x=String(s||"").toUpperCase();
+      return x==="CRITICAL"||x==="HH"||x==="LL" ? "fail" : x==="HIGH"||x==="H"||x==="L" ? "warn" : "dim"; };
+    const rows = res.rows.map(r=>{
+      const active = String(r.kind||"").toUpperCase()==="ALARM_IN";
+      const acked = !!r.ack_at;
+      return `<tr>
+        <td class="mono">${esc(fmtClock(r.ts))}</td>
+        <td>${active?`<span class="chip fail">▲ ENTRA</span>`:`<span class="chip ok">▼ SALE</span>`}</td>
+        <td><span class="chip ${sev(r.severity)}">${esc(String(r.severity||"—").toUpperCase())}</span></td>
+        <td class="mono">${nz(r.area_code)}</td>
+        <td class="tagcell">${nz(r.tag)}</td>
+        <td class="mono">${nz(r.limit_kind)}</td>
+        <td class="r">${r.value!=null ? `<span class="val">${esc(fmtNum(r.value))}${r.eng_unit?`<u>${esc(r.eng_unit)}</u>`:""}</span>`
+          : `<span class="val nc nc-plate">···</span> <span class="chip nodata">⌀ SIN VALOR</span>`}</td>
+        <td>${esc(r.message||"")}</td>
+        <td>${acked
+          ? `<span class="chip ok" title="${esc(fmtClock(r.ack_at))}">✓ ${esc(r.ack_by_name||"reconocida")}</span>`
+          : `<button class="btn mini" onclick="ackEvent(${Number(r.id)})">Reconocer</button>`}</td></tr>`;
+    }).join("");
+    const nAct = res.rows.filter(r=>String(r.kind||"").toUpperCase()==="ALARM_IN" && !r.ack_at).length;
+    body = `<div style="display:flex;gap:8px;margin-top:8px">
+        <span class="chip ${nAct?"fail":"ok"}">${nAct?"▲":"●"} ${nAct} SIN RECONOCER</span>
+        <span class="chip dim">▣ ${res.rows.length} EVENTOS EN LISTA</span></div>
+      <table class="data"><thead><tr>
+        <th>INSTANTE</th><th>TIPO</th><th>SEVERIDAD</th><th>AREA</th><th>TAG</th><th>LIMITE</th>
+        <th class="r">VALOR</th><th>MENSAJE</th><th>ACK</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  return head("Pantalla 4 / 6","Alarmas vivas",
+    "Cruces de umbral registrados en <code>scada_events</code>, con reconocimiento.")
+    + READONLY_BANNER + body
+    + `<div class="note"><b>Sobre el reconocimiento.</b> La atribucion del visor no es una frontera de
+    autenticacion (HANDOFF-eni-user-attribution.md §6.3): el ack se registra <i>de buena fe</i>, con
+    usuario y hora, y no bloquea nada. Se escribe por RPC <code>scada_ack_event</code>, no por UPDATE
+    directo, para que <code>scada_events</code> pueda seguir siendo de solo lectura para el rol
+    autenticado (plan §5.S3). Esa funcion es de la ETAPA 6 y es <b>punto abierto PA-4</b>.</div>`;
+}
+window.ackEvent = async function(id){
+  if(!sb) return;
+  status("Reconociendo evento "+id+"…");
+  const {error} = await sb.rpc("scada_ack_event", {p_event_id:id, p_user_id:getUserId(), p_note:null});
+  if(error){
+    const missing = String(error.code||"")==="PGRST202" || MISSING_RE.test(error.message||"");
+    status(missing
+      ? "✕ El reconocimiento no esta disponible todavia: falta la funcion scada_ack_event (ETAPA 6 del plan)."
+      : "✕ "+error.message, "err");
+    return;
+  }
+  status("✓ Evento "+id+" reconocido por "+getUser(), "ok");
+  render();
+};
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PANTALLA 5 — ENERGIA
+   ════════════════════════════════════════════════════════════════════════════ */
+async function renderEnergy(){
+  const res = await readRel("v_online_energy", q=>q.order("meter_tag"));
+  let body;
+  if(res.missing || res.error || !res.rows.length){
+    /* Estado vacio REAL y util: el registro de medidores SI existe hoy
+       (plant_power_meters). Se listan con TODAS sus medidas en SIN
+       COMUNICACION. El operador ve que hay 11 medidores y que ninguno habla. */
+    body = statePanel(res, "Mientras tanto se lista el registro real de medidores (plant_power_meters) "
+        + "con todas sus medidas en estado de comunicacion honesto.")
+      + meterRegistryHTML();
+  }else{
+    const rows = res.rows.map(mergeLive).map(r=>{
+      const cell = (v, u, dec) => `<td class="r">${valueHTML(
+        (v!=null ? {val_num:v, ts:r.ts, quality:r.quality} : null), u, {hideGood:true, dec:dec})}</td>`;
+      const design = r.design_power_kw!=null ? `<span class="mono" style="font-size:10.5px;color:var(--ink-soft)">dis. ${esc(fmtNum(r.design_power_kw))} kW</span>` : `<span class="chip nodata">⌀ SIN DISEÑO</span>`;
+      return `<tr><td class="tagcell">${esc(r.meter_tag)}</td>
+        <td class="mono">${nz(r.busbar_tag)}</td>
+        ${cell(r.p_kw,"kW")}${cell(r.q_kvar,"kvar")}${cell(r.pf,"",3)}
+        ${cell(r.i_a,"A")}${cell(r.u_ll_v!=null?r.u_ll_v:r.u_ln_v,"V")}${cell(r.e_kwh,"kWh",0)}
+        <td>${design}</td></tr>`;
+    }).join("");
+    body = `<table class="data"><thead><tr>
+      <th>MEDIDOR</th><th>BARRA</th><th class="r">P</th><th class="r">Q</th><th class="r">FP</th>
+      <th class="r">I</th><th class="r">U</th><th class="r">ENERGIA</th><th>DISEÑO</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  return head("Pantalla 5 / 6","Energia",
+    "Medida real de los Siemens PAC frente al balance de diseño (<code>plant_energy_streams</code>). "
+    + "Es la primera fuente que da dato real sin depender de nadie (plan §2, fase A).")
+    + READONLY_BANNER + body
+    + `<div class="note"><b>Diseño y medida no se mezclan.</b> La columna de diseño se rotula como tal.
+    La vista <code>v_scada_electrical</code> que ya existe hoy lleva <i>solo</i> valores de diseño: este
+    modulo es lo que rellena la medida real, y hasta que llegue, la medida se ve vacia — no se sustituye
+    por el diseño.</div>`;
+}
+function meterRegistryHTML(){
+  if(!DB.powerMeters.length)
+    return `<div class="panel nodata"><h3>⌀ Sin registro de medidores</h3>
+      <p>No se pudo leer <code>plant_power_meters</code>.</p></div>`;
+  const rows = DB.powerMeters.map(m=>{
+    const a = DB.assetsById.get(m.asset_id);
+    const nd = `<td class="r"><span class="val nc nc-plate" title="Sin binding y sin recolector: no hay medida.">···</span></td>`;
+    return `<tr><td class="tagcell">${esc((a&&a.official_tag)||("asset "+m.asset_id))}</td>
+      <td class="mono">${nz(m.comms_protocol)} ${nz(m.comms_address,"")}</td>
+      <td class="mono" style="font-size:10.5px">${nz(m.measured_quantities)}</td>
+      ${nd}${nd}${nd}${nd}
+      <td><span class="chip nodata">⌀ SIN COMUNICACION</span></td></tr>`;
+  }).join("");
+  return `<h2>Registro de medidores (dato de ingenieria, sin telemetria)</h2>
+    <p class="lead">Estos ${DB.powerMeters.length} medidores existen en el modelo. Ninguno tiene binding
+    todavia (ETAPA 2B) ni recolector (ETAPA 3), asi que ninguna de sus magnitudes tiene valor.</p>
+    <table class="data"><thead><tr>
+      <th>MEDIDOR</th><th>COMS</th><th>MAGNITUDES</th>
+      <th class="r">P</th><th class="r">Q</th><th class="r">FP</th><th class="r">ENERGIA</th><th>ESTADO</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PANTALLA 6 — ESTADO DEL GATEWAY
+   ════════════════════════════════════════════════════════════════════════════ */
+async function renderGateway(){
+  const res = await readRel("v_online_gateway_status", q=>q.order("host"));
+  let body;
+  if(res.missing || res.error || !res.rows.length){
+    body = statePanel(res, "El latido por fuente lo escribe el recolector de la ETAPA 3 en scada_collector_health. "
+        + "Debajo se muestra la evidencia de red que SI existe hoy, rotulada como lo que es.")
+      + scanEvidenceHTML();
+  }else{
+    const rows = res.rows.map(r=>{
+      const ok = r.last_poll_ok===true;
+      const age = ageSec(r.last_poll_at);
+      const stale = age!=null && (age*1000) > STALE_MS*3;
+      const chip = r.last_poll_at==null ? `<span class="chip nodata">⌀ NUNCA SONDEADA</span>`
+        : !ok ? `<span class="chip fail">✕ FALLO</span>`
+        : stale ? `<span class="chip warn">◷ CADUCADO ${esc(fmtAge(age))}</span>`
+        : `<span class="chip ok">● SONDEANDO</span>`;
+      return `<tr><td class="tagcell">${esc(r.host)}${r.port!=null?":"+esc(r.port):""}</td>
+        <td class="mono">${nz(r.protocol)}</td>
+        <td class="mono">${nz(r.area_code)}</td>
+        <td>${chip}</td>
+        <td class="r">${r.latency_ms!=null?`<span class="val">${esc(fmtNum(r.latency_ms,0))}<u>ms</u></span>`
+          :`<span class="val nc nc-plate">···</span>`}</td>
+        <td class="mono">${esc(fmtClock(r.last_poll_at))}</td>
+        <td class="r">${r.consecutive_fail!=null?esc(r.consecutive_fail):"—"}</td>
+        <td class="mono" style="font-size:10.5px;color:var(--fail)">${esc(r.last_error||"")}</td></tr>`;
+    }).join("");
+    body = `<table class="data"><thead><tr>
+      <th>FUENTE</th><th>PROTOCOLO</th><th>AREA</th><th>ESTADO</th><th class="r">LATENCIA</th>
+      <th>ULTIMO SONDEO</th><th class="r">FALLOS</th><th>ULTIMO ERROR</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  return head("Pantalla 6 / 6","Estado del gateway",
+    "Salud de cada fuente de telemetria: si late, con que latencia y desde cuando no responde.")
+    + READONLY_BANNER + body
+    + `<div class="note"><b>Enlace del navegador.</b> ${esc(({LIVE:"Realtime suscrito.",
+      POLL:"Realtime no entrega; la pagina se refresca por sondeo.", DOWN:"Enlace caido; reintentando.",
+      CONNECTING:"Conectando.", INIT:"Iniciando."})[RT.state]||"")}
+      El chip de la cabecera dice en todo momento de donde sale el dato que estas viendo.</div>`;
+}
+function scanEvidenceHTML(){
+  /* TRAMPA VERIFICADA CONTRA LA BASE (2026-08-10) — no borrar este bloque.
+     plant_ip_scans y plant_ip_scan_runs tienen RLS con una politica de SELECT
+     concedida SOLO al rol `authenticated`. Este visor usa la clave publicable
+     (rol `anon`) con la sesion propia de eni en localStorage, que NO es una
+     sesion de Supabase Auth. Resultado: PostgREST devuelve una lista VACIA sin
+     error. Hay 194 filas vivas al otro lado.
+     Si esto se pintase como "0 equipos vivos" seria justo el valor plausible y
+     falso que este proyecto no admite. Por eso el vacio se rotula como lo que
+     es: no se puede leer, no que no haya nada.                              */
+  if(!DB.scans.length)
+    return `<div class="panel nodata"><h3>⌀ La evidencia de red no es legible desde este visor</h3>
+      <p><code>plant_ip_scans</code> devolvio <b>cero filas sin error</b>. Casi con seguridad no es que no
+      haya escaneos: es que su politica RLS concede lectura unicamente al rol <code>authenticated</code>,
+      y esta pagina lee con la clave publicable (rol <code>anon</code>) porque la sesion <code>eni</code>
+      es propia del visor, no una sesion de Supabase Auth.</p>
+      <p><b>Esto NO significa que no haya equipos vivos.</b> Significa que este visor no los puede ver.
+      Queda como <b>punto abierto PA-5</b>: decidir en la ETAPA 0 si las relaciones que el modulo ONLINE
+      necesita se abren al rol <code>anon</code> o si el visor pasa a autenticarse de verdad — y aplicar
+      la misma decision a las vistas <code>v_online_*</code>, que heredarian el mismo problema.</p></div>`;
+  const has = (r, p) => Array.isArray(r.ports_open) && r.ports_open.indexOf(p)>=0;
+  const cand = DB.scans.filter(r=>r.alive && (has(r,502) || has(r,4840) || has(r,102)));
+  const rows = cand.map(r=>`<tr>
+    <td class="tagcell">${esc(r.ip)}</td>
+    <td class="mono">${(r.ports_open||[]).join(", ")}</td>
+    <td class="mono">${nz(r.modbus_vendor)} ${nz(r.modbus_product,"")}</td>
+    <td>${nz(r.guess)}</td>
+    <td>${has(r,502)?`<span class="chip ok">● MODBUS ABIERTO</span>`
+        : has(r,4840)?`<span class="chip warn">◐ OPC UA (solo tags de sistema)</span>`
+        : `<span class="chip dim">▣ S7 102</span>`}</td>
+    <td><span class="chip nodata">⌀ SIN RECOLECTOR</span></td></tr>`).join("");
+  return `<h2>Evidencia de red — escaneo, NO latido</h2>
+    <p class="lead"><b>Cuidado con leer esto como telemetria.</b> Esta tabla es el resultado de un
+    <i>escaneo de red</i> registrado en <code>plant_ip_scans</code>
+    ${DB.scanRun?`(${esc(fmtClock(DB.scanRun.scanned_at))} desde ${esc(DB.scanRun.scanned_from||"OS01")})`:""},
+    no un latido del recolector. Dice que el puerto estaba abierto ese dia; no dice que hoy llegue un dato.</p>
+    <table class="data"><thead><tr>
+      <th>IP</th><th>PUERTOS</th><th>FABRICANTE</th><th>HIPOTESIS</th><th>VIA DE INGESTA</th><th>DATO HOY</th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    <div class="note">${cand.length} equipos vivos con puerto de ingesta abierto. Ninguno esta siendo
+    sondeado: no existe <code>scada_sources</code> ni el recolector de la ETAPA 3.</div>`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   RENDER + BOOT
+   ════════════════════════════════════════════════════════════════════════════ */
+let renderSeq = 0;
+async function render(){
+  const seq = ++renderSeq;
+  const el = $("#content");
+  if(!el.dataset.painted) el.innerHTML = `<div class="loading">Cargando…</div>`;
+  let html;
+  try{
+    html = ROUTE.view==="area"    ? await renderArea()
+         : ROUTE.view==="trend"   ? await renderTrend()
+         : ROUTE.view==="alarms"  ? await renderAlarms()
+         : ROUTE.view==="energy"  ? await renderEnergy()
+         : ROUTE.view==="gateway" ? await renderGateway()
+         : await renderWall();
+  }catch(e){
+    html = `<div class="panel err"><h3>✕ Fallo al pintar la pantalla</h3><p class="mono">${esc(e.message||e)}</p></div>`;
+    console.error(e);
+  }
+  if(seq!==renderSeq) return;                 // una peticion mas nueva ya gano
+  const keepScroll = el.scrollTop;
+  el.innerHTML = html;
+  el.dataset.painted = "1";
+  el.scrollTop = keepScroll;
+  paintTabs();
+}
+
+async function boot(){
+  if(!SESSION) return;                        // ya redirigido a account.html
+  document.getElementById("buildstamp").textContent = "BUILD " + BUILD;
+  paintUserChip(); initTheme();
+  $("#staleSec").addEventListener("change", e=>{
+    const v = Number(e.target.value);
+    STALE_MS = (isFinite(v) && v>=5 ? v : 30) * 1000;
+    render();
+  });
+
+  if(!sb){
+    $("#content").innerHTML = `<div class="panel err"><h3>✕ Sin cliente Supabase</h3>
+      <p>No cargo <code>supabase-js</code> o <code>/supabase-config.js</code>. Sin cliente no hay lectura,
+      y esta pagina no muestra datos de relleno.</p></div>`;
+    status("✕ supabase-js / supabase-config.js no disponibles","err");
+    RT.state="DOWN"; paintLink();
+    return;
+  }
+
+  status("Cargando modelo de planta…");
+  /* Datos de INGENIERIA (existen hoy). Son los que hacen que la pagina tenga
+     contenido real incluso sin una sola tabla scada_*. */
+  const [areas, meters, scans, runs] = await Promise.all([
+    readAll("plant_areas", q=>q.order("area_code")),
+    readAll("plant_power_meters"),
+    readAll("plant_ip_scans", q=>q.eq("alive", true)),
+    readRel("plant_ip_scan_runs", q=>q.order("scanned_at",{ascending:false}).limit(1))
+  ]);
+  DB.areas = areas.rows;
+  DB.powerMeters = meters.rows;
+  DB.scans = scans.rows;
+  DB.scanRun = runs.rows[0] || null;
+
+  const ids = [...new Set(DB.powerMeters.map(m=>m.asset_id).filter(v=>v!=null))];
+  if(ids.length){
+    const as = await readRel("plant_assets", q=>q.in("id", ids));
+    as.rows.forEach(a=>DB.assetsById.set(a.id, a));
+  }
+
+  /* El renderizador lee su propio conjunto desde la base. Si falla, el mimico
+     lo dice; no se apaga la pagina. */
+  if(window.TamFlow && window.TamFlow.load){
+    try{ DB.flowData = await window.TamFlow.load(sb); }
+    catch(e){ console.warn("tam-flow.load:", e.message); DB.flowData = null; }
+  }
+
+  connectRealtime();
+  /* Realtime sobre tablas inexistentes puede quedarse "suscrito" sin entregar
+     nunca nada. A los 8 s sin un solo mensaje se rotula honestamente el
+     enlace como SONDEO, que es lo que de verdad esta manteniendo la pagina. */
+  setTimeout(()=>{ if(RT.state==="LIVE" && RT.lastMsg==null){ RT.state="POLL"; paintLink(); } }, 8000);
+
+  route();
+  const packs = window.TamSym ? window.TamSym.kinds().length : 0;
+  /* El recuento de escaneos solo se anuncia si de verdad se pudo leer: con el
+     rol anon la tabla devuelve vacio sin error, y "0 equipos vivos" seria
+     mentira (ver scanEvidenceHTML). */
+  const scanTxt = DB.scans.length
+    ? `${DB.scans.length} equipos vivos en el ultimo escaneo`
+    : `escaneos de red NO legibles con el rol anon`;
+  status(`✓ Modelo cargado · ${DB.areas.length} areas · ${DB.powerMeters.length} medidores · `
+    + `${scanTxt} · ${packs} simbolos registrados`, "ok");
+  $("#statuscnt").textContent = "telemetria: sin tablas scada_*";
+}
+
+function paintUserChip(){
+  const el=$("#userchip");
+  el.innerHTML = SESSION ? `<b>${esc(SESSION.name)}</b> · ${esc(SESSION.group||"")} <span style="opacity:.6">⏻</span>` : "ENTRAR";
+  el.title = SESSION ? (SESSION.email+" — pulsa para cerrar sesion") : "Entrar";
+  el.onclick = ()=>{ localStorage.removeItem("eni_session"); location.href="account.html"; };
+}
+function initTheme(){
+  const stored = localStorage.getItem("eni_online_theme");
+  if(stored==="dark" || stored==="light") document.documentElement.setAttribute("data-theme", stored);
+  $("#themebtn").onclick = ()=>{
+    const cur = document.documentElement.getAttribute("data-theme")
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur==="dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("eni_online_theme", next);
+    /* No hace falta repintar: todos los tonos de serie se emiten como
+       style="stroke:var(--sN)", y var() se resuelve de nuevo sola al cambiar
+       el tema. Repintar aqui costaria una vuelta a la base y el scroll. */
+  };
+}
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") CHARTS.forEach((_,id)=>chartOut(id));
+});
+
+boot();
+</script>
+</body>
+</html>
