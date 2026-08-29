@@ -57,30 +57,11 @@
     <div class="kicker">ACCOUNT ACCESS</div>
     <h1>Sign in to the E&amp;I Navigator</h1>
     <p class="lead">Verifications and change requests are recorded under your name — one account per person.</p>
-    <div class="tabs">
-      <div class="tab on" id="tabIn" onclick="mode('in')">SIGN IN</div>
-      <div class="tab" id="tabUp" onclick="mode('up')">OPEN ACCOUNT</div>
-    </div>
-
     <div id="paneIn">
       <label>Email</label><input id="inEmail" type="email" autocomplete="username" placeholder="name@company.com">
       <label>PIN</label><input id="inPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="4–8 digits">
-      <div class="hint">First sign-in on a pre-created account? Enter the PIN you want to use — it will be registered.</div>
+      <div class="hint">No account yet? Ask your administrator for an invitation link — it lets you set your own PIN.</div>
       <button class="go" id="btnIn" onclick="signIn()">Sign in →</button>
-    </div>
-
-    <div id="paneUp" style="display:none">
-      <label>Full name</label><input id="upName" placeholder="Name Surname">
-      <label>Email</label><input id="upEmail" type="email" placeholder="name@company.com">
-      <div class="hint" id="domHint"></div>
-      <label>Company</label><input id="upCompany" placeholder="Technical America / ITALFLUID / …">
-      <label>Group</label><select id="upGroup"></select>
-      <div class="hint" id="groupHint"></div>
-      <label>PIN (4–8 digits)</label><input id="upPin" type="password" inputmode="numeric" placeholder="••••">
-      <label>Confirm PIN</label><input id="upPin2" type="password" inputmode="numeric" placeholder="••••">
-      <button class="go" id="btnUp" onclick="signUp()">Open account →</button>
-      <div class="hint" style="margin-top:10px">Phase 1: all groups currently have full functionality.
-      Group levels (ADMIN 90 → VIEWER 10) define the future permission structure.</div>
     </div>
 
     <div class="msg" id="msg"></div>
@@ -93,42 +74,8 @@
 <script>
 "use strict";
 const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-let GROUPS=[], DOMAINS=[];
-/* Mirrors the DB rule exactly (migration 192): a row WITHOUT "@" grants a whole
-   domain, a row WITH "@" grants that one address. Before 192 the table was
-   domain-only and this line was right; after it, an individually approved
-   address turned into "@luis...@outlook.es" here and the browser rejected the
-   very person the database had just been told to allow — the check that was
-   meant to be a courtesy became the blocker, and the DB never even saw the
-   attempt. Two rules, one place each, saying the same thing. */
-function domainOk(email){
-  if(!DOMAINS.length) return true;
-  const e=email.toLowerCase().trim();
-  return DOMAINS.some(d=>{ d=String(d).toLowerCase().trim();
-    return d.includes("@") ? e===d : e.endsWith("@"+d); });
-}
-/* What we are willing to say out loud. The domains are company-wide and public;
-   an individually approved address is one named person's private email, and
-   printing the whole list in an error box would hand it to anyone who mistypes
-   their own. Domains by name, individuals by count. */
-function domainHint(){
-  const dom=DOMAINS.filter(d=>!String(d).includes("@")).map(d=>"@"+d);
-  const indiv=DOMAINS.length-dom.length;
-  return dom.join(", ") + (indiv ? (dom.length?", or ":"") + indiv + " individually approved address" + (indiv>1?"es":"") : "");
-}
-
-function mode(m){
-  document.getElementById("tabIn").classList.toggle("on",m==="in");
-  document.getElementById("tabUp").classList.toggle("on",m==="up");
-  document.getElementById("paneIn").style.display=m==="in"?"":"none";
-  document.getElementById("paneUp").style.display=m==="up"?"":"none";
-  say("");
-}
+let GROUPS=[];
 function say(t,cls){ const el=document.getElementById("msg"); el.textContent=t; el.className="msg "+(cls||""); }
-async function sha(email,pin){
-  const buf=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email.toLowerCase()+":"+pin));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
-}
 function setSession(u,g,token,expires_in){
   localStorage.setItem("eni_session", JSON.stringify({
     id:u.id, name:u.full_name, email:u.email, company:u.company,
@@ -153,59 +100,13 @@ async function callFn(name, body){
   if(!r.ok) throw new Error(j.error || `${name} failed (${r.status})`);
   return j;
 }
+// Groups are no longer used for account creation (that moved to eni-invite);
+// this stays only to show a live count in the footer.
 async function loadGroups(){
-  const [{data,error},{data:doms}]=await Promise.all([
-    sb.from("eni_groups").select("*").order("level",{ascending:false}),
-    sb.from("eni_allowed_domains").select("domain").eq("active",true)
-  ]);
+  const {data,error}=await sb.from("eni_groups").select("*").order("level",{ascending:false});
   if(error){ say("Cannot reach the database: "+error.message,"err"); return; }
-  GROUPS=data; DOMAINS=(doms||[]).map(d=>d.domain);
-  if(DOMAINS.length){
-    const firstDom=DOMAINS.find(d=>!String(d).includes("@"));
-    if(firstDom) document.getElementById("upEmail").placeholder="name@"+firstDom;
-    document.getElementById("domHint").textContent="Accounts are restricted to: "+domainHint();
-  }
-  const sel=document.getElementById("upGroup");
-  sel.innerHTML=data.map(g=>`<option value="${g.code}" ${g.code==="FIELD"?"selected":""}>${g.name} (level ${g.level})</option>`).join("");
-  sel.onchange=()=>{ const g=GROUPS.find(x=>x.code===sel.value);
-    document.getElementById("groupHint").textContent=g?g.description:""; };
-  sel.onchange();
+  GROUPS=data;
   document.getElementById("footR").textContent=GROUPS.length+" GROUPS";
-}
-async function signUp(){
-  const name=document.getElementById("upName").value.trim();
-  const email=document.getElementById("upEmail").value.trim().toLowerCase();
-  const company=document.getElementById("upCompany").value.trim();
-  const group=document.getElementById("upGroup").value;
-  const pin=document.getElementById("upPin").value, pin2=document.getElementById("upPin2").value;
-  if(!name||!email.includes("@")) return say("Name and a valid email are required.","err");
-  if(!domainOk(email)) return say("This email cannot register. Allowed: "+domainHint(),"err");
-  if(!/^\d{4,8}$/.test(pin)) return say("PIN must be 4–8 digits.","err");
-  if(pin!==pin2) return say("PINs do not match.","err");
-  document.getElementById("btnUp").disabled=true;
-  const pin_hash=await sha(email,pin);
-  const {data,error}=await sb.from("eni_users")
-    .insert({full_name:name,email,company:company||null,group_code:group,pin_hash,last_login:new Date().toISOString()})
-    // explicit column list: anon no longer has SELECT on pin_hash, so .select() with the
-    // default "*" would fail. The browser never needs to read it back.
-    .select("id,full_name,email,company,group_code").single();
-  document.getElementById("btnUp").disabled=false;
-  if(error){
-    if((error.message||"").includes("duplicate")) return say("An account with this email already exists — use SIGN IN.","err");
-    if((error.message||"").includes("EMAIL_DOMAIN_NOT_ALLOWED")) return say("This email is not authorized. Allowed: "+domainHint(),"err");
-    return say(error.message,"err");
-  }
-  say("Account created — entering…","ok");
-  // sign in through eni-auth so the new session gets a real token (needed for documents)
-  try{
-    const r = await callFn("eni-auth", { email, pin });
-    setSession(data, GROUPS.find(g=>g.code===data.group_code), r.token, r.expires_in);
-  }catch(e){
-    // account exists but token issue failed — let them in without document access
-    // rather than stranding them; index.html will prompt to sign in again.
-    say("Account created, but the session token could not be issued ("+(e.message||e)+"). Documents will ask you to sign in again.","err");
-    setSession(data, GROUPS.find(g=>g.code===data.group_code), null, 0);
-  }
 }
 // Sign-in now happens SERVER-SIDE in the eni-auth Edge Function.
 // Previously this read eni_users.pin_hash with the publishable key and compared it
@@ -237,9 +138,8 @@ async function signIn(){
     say(m,"err");
   }
 }
-document.addEventListener("keydown",e=>{ if(e.key==="Enter"){
-  if(document.getElementById("paneIn").style.display!=="none") signIn(); else signUp(); }});
-window.mode=mode; window.signIn=signIn; window.signUp=signUp;
+document.addEventListener("keydown",e=>{ if(e.key==="Enter") signIn(); });
+window.signIn=signIn;
 loadGroups();
 </script>
 </body>

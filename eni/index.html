@@ -3997,7 +3997,7 @@ async function renderPeople(c){
     <td class="mono">${esc(i.email)}</td><td>${esc(i.full_name||"—")}</td>
     <td class="mono">${esc(i.group_code)}</td><td class="mono dim">${esc((i.created_at||"").slice(0,10))}</td>
     <td><span class="chip ${i.status==="redeemed"?"ok":i.status==="revoked"?"dim":"warn"}">${esc(i.status.toUpperCase())}</span></td>
-    <td>${i.status==="pending"?`<button class="btn mini fail" onclick="revokeInvite(${i.id})">Cancel</button>`:""}
+    <td>${i.status==="pending"?`<button class="btn mini fail" onclick="armCancel(this,${i.id})">Cancel</button>`:""}
         ${i.status!=="redeemed"?`<button class="btn mini" onclick="reissue('${esc(i.email)}','${esc(i.full_name||"")}','${esc(i.group_code)}')">Re-issue</button>`:""}</td>
   </tr>`).join("")}</tbody></table>`
   :`<div class="empty">No invitations yet. Everyone with an account got theirs before invitations existed.
@@ -4011,13 +4011,14 @@ async function renderPeople(c){
 
 async function issueInvite(){
   const email=document.getElementById("pEmail").value.trim().toLowerCase();
-  if(!email.includes("@")) return alert("Enter a valid email.");
+  if(!email.includes("@")){ status("✗ Enter a valid email.","err"); return; }
   try{
     const r = await inviteCall({ action:"issue", email,
       full_name:document.getElementById("pName").value.trim(),
       group_code:document.getElementById("pGroup").value });
     showLinkOnce(email, r.url);
-  }catch(e){ alert(String(e.message||e)); }
+    status("✓ Invite issued for "+email,"ok");
+  }catch(e){ status("✗ "+String(e.message||e),"err"); }
 }
 
 // The link is shown exactly once and never comes back: the database keeps only
@@ -4036,18 +4037,46 @@ function showLinkOnce(email, url){
     </div>
   </div>`;
 }
-async function revokeInvite(id){
-  if(!confirm("Cancel this invitation? The link will stop working.")) return;
-  try{ await inviteCall({action:"revoke", invite_id:id}); renderPeople($("#content")); }
-  catch(e){ alert(String(e.message||e)); }
+/* Cancelling an invite is irreversible from this screen, so it needs a barrier —
+   but a native confirm() blocks the whole tab (including Chrome-driven test
+   automation) and looks nothing like the rest of the house. Instead the button
+   arms itself in place: first click turns "Cancel" into "Confirm cancel?" (still
+   .btn.mini.fail, no new class), second click (while armed) actually calls the
+   API. Clicking anywhere else, or waiting 4s, disarms it back to "Cancel". */
+function armCancel(btn, id){
+  if(btn.dataset.armed==="1"){
+    clearTimeout(btn._cancelTimer);
+    document.removeEventListener("click", btn._cancelDocHandler, true);
+    revokeInvite(id, btn);
+    return;
+  }
+  btn.dataset.armed="1";
+  btn.textContent="Confirm cancel?";
+  const disarm=()=>{
+    btn.dataset.armed="0";
+    btn.textContent="Cancel";
+    clearTimeout(btn._cancelTimer);
+    document.removeEventListener("click", btn._cancelDocHandler, true);
+  };
+  btn._cancelDocHandler=(ev)=>{ if(ev.target!==btn) disarm(); };
+  // Attached on the next tick so the click that armed the button doesn't
+  // immediately bubble into this same listener and disarm it.
+  setTimeout(()=>document.addEventListener("click", btn._cancelDocHandler, true), 0);
+  btn._cancelTimer=setTimeout(disarm, 4000);
+}
+async function revokeInvite(id, btn){
+  if(btn){ btn.disabled=true; }
+  try{ await inviteCall({action:"revoke", invite_id:id}); status("✓ Invitation cancelled","ok"); renderPeople($("#content")); }
+  catch(e){ status("✗ "+String(e.message||e),"err"); if(btn) btn.disabled=false; }
 }
 async function reissue(email, name, group){
   try{
     const r = await inviteCall({action:"issue", email, full_name:name, group_code:group});
     await renderPeople($("#content")); showLinkOnce(email, r.url);
-  }catch(e){ alert(String(e.message||e)); }
+    status("✓ Re-issued invite for "+email,"ok");
+  }catch(e){ status("✗ "+String(e.message||e),"err"); }
 }
-window.issueInvite=issueInvite; window.revokeInvite=revokeInvite; window.reissue=reissue;
+window.issueInvite=issueInvite; window.revokeInvite=revokeInvite; window.reissue=reissue; window.armCancel=armCancel;
 /* ══ [EI95] NEW BLOCK ▲ ══════════════════════════════════════════════════ */
 
 /* ══ [DB-SYNC] NEW BLOCK ▼ (lazy view loader + EI44 data consistency + EI05 plant structure) ══
