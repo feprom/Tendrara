@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TAM E&amp;I Navigator — Join</title>
+<style>
+  :root{
+    --crimson:#C8102E; --crimson-dark:#9E0C24; --ink:#15171A; --ink-soft:#4A4F57;
+    --line:#E2E5E9; --line-strong:#C9CED4; --bg-soft:#F7F8FA; --ok:#1F8A4C; --fail:#B3261E; --blue:#0B5CAD; --amber:#B26A00;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif; --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;}
+  body{font-family:var(--sans);color:var(--ink);background:#ECEEF1;display:flex;align-items:flex-start;
+    justify-content:center;min-height:100vh;padding:16px;-webkit-font-smoothing:antialiased;}
+  a{color:var(--blue);} a:hover{color:var(--crimson);}
+  .card{width:100%;max-width:480px;background:#fff;border:1px solid var(--line);border-radius:6px;
+    box-shadow:0 10px 40px rgba(0,0,0,.10);overflow:hidden;margin-top:6vh;}
+  .brandbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);}
+  .brandbar img{height:40px;display:block;}
+  .brandbar .internal{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--ink-soft);text-transform:uppercase;text-align:right;line-height:1.5;}
+  .accent{height:3px;background:var(--crimson);}
+  .body{padding:24px 28px 28px;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--crimson);font-weight:700;margin-bottom:8px;}
+  h1{font-size:22px;margin:0 0 6px;letter-spacing:-.01em;}
+  p.lead{color:var(--ink-soft);font-size:13px;line-height:1.55;margin:0 0 16px;}
+  label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:12px 0 4px;}
+  input{width:100%;font-family:var(--sans);font-size:14px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:4px;background:#fff;color:var(--ink);}
+  input:focus{outline:2px solid #f4c3cc;border-color:var(--crimson);}
+  input.bad{border-color:var(--fail);outline:2px solid #FBECEB;}
+  input:disabled{background:var(--bg-soft);color:var(--ink-soft);}
+  .hint{font-size:11px;color:var(--ink-soft);margin-top:4px;line-height:1.45;}
+  .hint.bad{color:var(--fail);}
+  button.go{width:100%;margin-top:20px;background:var(--crimson);color:#fff;border:none;border-radius:4px;
+    padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--sans);}
+  button.go:hover{background:var(--crimson-dark);}
+  button.go:disabled{opacity:.5;cursor:not-allowed;}
+  .msg{margin-top:14px;font-size:12.5px;line-height:1.5;font-family:var(--mono);display:none;padding:9px 12px;border-radius:4px;}
+  .msg.err{display:block;color:var(--fail);background:#FBECEB;border:1px solid var(--fail);}
+  .msg.ok{display:block;color:var(--ok);background:#EAF6EF;border:1px solid var(--ok);}
+  .foot{padding:12px 28px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--ink-soft);
+    letter-spacing:.06em;display:flex;justify-content:space-between;}
+  /* "invited as" block: the email is NOT editable, it's what authorizes the invitation */
+  .invited{border:1px solid var(--line-strong);border-radius:4px;background:var(--bg-soft);
+    padding:11px 13px;display:flex;flex-direction:column;gap:5px;}
+  .invited .who{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);word-break:break-all;}
+  .invited .rowk{display:flex;align-items:center;gap:8px;}
+  .invited .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);}
+  .chip{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;
+    padding:2px 8px;border-radius:10px;border:1px solid;white-space:nowrap;}
+  .chip.ok{color:var(--ok);border-color:var(--ok);background:#EAF6EF;}
+  .chip.warn{color:var(--amber);border-color:var(--amber);background:#FFF7EC;}
+  .chip.fail{color:var(--fail);border-color:var(--fail);background:#FBECEB;}
+  .chip.info{color:var(--blue);border-color:var(--blue);background:#EAF3FB;}
+  .chip.dim{color:var(--ink-soft);border-color:var(--line-strong);background:var(--bg-soft);}
+  .dead{display:flex;flex-direction:column;gap:14px;align-items:flex-start;}
+  .dead .ico{width:40px;height:40px;border-radius:6px;border:1px solid var(--line-strong);
+    background:var(--bg-soft);display:flex;align-items:center;justify-content:center;}
+  .dead .ico svg{width:21px;height:21px;}
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brandbar">
+    <img src="/images/logoTA.png" alt="Technical America" onerror="this.style.display='none'">
+    <div class="internal">E&amp;I NAVIGATOR<br>INTERNAL TOOL &middot; TENDRARA</div>
+  </div>
+  <div class="accent"></div>
+  <div class="body">
+    <div class="kicker">ACCOUNT ACTIVATION</div>
+
+    <!-- checking the token -->
+    <div id="viewLoading">
+      <h1 id="lTitle">Checking your invitation&hellip;</h1>
+      <p class="lead" id="lLead">One moment while we verify this link.</p>
+      <button class="go" id="btnRetry" hidden>Try again &rarr;</button>
+    </div>
+
+    <!-- valid link: activation form -->
+    <div id="viewForm" hidden>
+      <h1>Set up your account</h1>
+      <p class="lead">You were invited to the E&amp;I Navigator. Choose a PIN and confirm who you are &mdash; this link works once.</p>
+      <div class="invited">
+        <div class="rowk"><span class="k">Invited as</span><span class="chip info" id="fGroup">&mdash;</span></div>
+        <div class="who" id="fEmail">&mdash;</div>
+      </div>
+      <label>Full name</label><input id="fName" placeholder="Name Surname">
+      <div class="hint" id="fNameHint">Pre-filled from the invitation. Correct it if it is wrong.</div>
+      <label>Company</label><input id="fCompany" placeholder="Technical America / ITALFLUID / &hellip;">
+      <label>Job title</label><input id="fRole" placeholder="Instrument Technician">
+      <label>Mobile</label><input id="fPhone" placeholder="+212 6 12 34 56 78">
+      <label>Alternative email</label><input id="fAltEmail" type="email" placeholder="optional">
+      <label>PIN (4&ndash;8 digits)</label><input id="fPin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="&bull;&bull;&bull;&bull;">
+      <div class="hint" id="fPinHint" hidden>PIN must be 4-8 digits.</div>
+      <label>Confirm PIN</label><input id="fPin2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="&bull;&bull;&bull;&bull;">
+      <div class="hint" id="fPin2Hint" hidden>PINs do not match.</div>
+      <button class="go" id="btnGo">Activate and enter &rarr;</button>
+      <div class="msg" id="formMsg"></div>
+    </div>
+
+    <!-- dead ends: used / revoked / invalid -->
+    <div id="viewDead" class="dead" hidden>
+      <div class="ico" id="dIco"></div>
+      <div>
+        <h1 id="dTitle"></h1>
+        <p class="lead" style="margin-bottom:0" id="dLead"></p>
+      </div>
+      <div class="msg err" id="dMsg" style="width:100%"></div>
+    </div>
+
+    <!-- the instant of entering -->
+    <div id="viewSuccess" class="dead" hidden>
+      <div class="ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1F8A4C" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>
+      </div>
+      <div>
+        <h1 id="sTitle">Welcome</h1>
+        <p class="lead" style="margin-bottom:0">Your account is ready and your PIN is set. Next time, sign in with your email and that PIN.</p>
+      </div>
+      <div class="msg ok" style="width:100%">Opening the E&amp;I Navigator&hellip;</div>
+    </div>
+
+  </div>
+  <div class="foot"><span>TAM-E&amp;I &middot; SUPABASE LIVE</span><span id="footR">INVITATION</span></div>
+</div>
+
+<script src="/supabase-config.js"></script>
+<script>
+"use strict";
+
+const TOKEN = location.hash.replace(/^#/, "").trim();
+const FN = window.SUPABASE_URL + "/functions/v1/eni-invite";
+
+async function call(body){
+  const r = await fetch(FN, { method:"POST",
+    headers:{ "Content-Type":"application/json", apikey: window.SUPABASE_ANON_KEY },
+    body: JSON.stringify(body) });
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(j.error || ("request failed ("+r.status+")"));
+  return j;
+}
+
+const ICO = {
+  used:    '<svg viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  revoked: '<svg viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg>',
+  invalid: '<svg viewBox="0 0 24 24" fill="none" stroke="#4A4F57" stroke-width="1.8" stroke-linecap="round"><path d="M10.5 13.5a3.5 3.5 0 0 1 0-5l2-2a3.5 3.5 0 0 1 5 5l-1 1"/><path d="M13.5 10.5a3.5 3.5 0 0 1 0 5l-2 2a3.5 3.5 0 0 1-5-5l1-1"/><path d="M4 4l16 16"/></svg>'
+};
+
+// Los tres finales muertos se dicen en cristiano y con la salida a mano: nadie
+// se queda mirando un codigo de error sin saber a quien escribir.
+const DEAD = {
+  INVALID:  { title:"This link is not valid",
+              lead:"The link may have been cut short when it was copied. Links end in a long code with no spaces.",
+              msg:"Ask your administrator for a new invitation link.", ico:"invalid", foot:"INVALID" },
+  REDEEMED: { title:"This invitation was already used",
+              lead:"The account for this link exists and is active. Sign in with your email and the PIN you chose.",
+              msg:"If it was not you who used it, tell your administrator now.", ico:"used", foot:"USED" },
+  REVOKED:  { title:"This invitation was cancelled",
+              lead:"An administrator cancelled this link, or replaced it with a newer one.",
+              msg:"Ask your administrator for a new invitation link.", ico:"revoked", foot:"REVOKED" }
+};
+
+function v(id){ return document.getElementById(id).value.trim(); }
+function show(which){
+  ["viewLoading","viewForm","viewDead","viewSuccess"].forEach(id=>{
+    document.getElementById(id).hidden = (id!==which);
+  });
+}
+function say(t,cls){ const el=document.getElementById("formMsg"); el.textContent=t; el.className="msg "+(cls||""); }
+function btn(disabled){ document.getElementById("btnGo").disabled = disabled; document.getElementById("btnGo").textContent = disabled ? "Activating…" : "Activate and enter →"; }
+
+// Solo los tres estados TERMINALES del token (sin vuelta atras) sacan la
+// pantalla completa de "pide un link nuevo". Un 429 del freno o un fallo de
+// red no son eso: la persona no ha perdido nada, solo tiene que esperar o
+// reintentar, y merece quedarse donde estaba con lo que ya habia escrito.
+function isTerminal(reason){ return Object.prototype.hasOwnProperty.call(DEAD, reason); }
+
+function dead(reason){
+  const d = DEAD[reason];
+  document.getElementById("dIco").innerHTML = ICO[d.ico];
+  document.getElementById("dTitle").textContent = d.title;
+  document.getElementById("dLead").textContent = d.lead;
+  document.getElementById("dMsg").textContent = d.msg;
+  document.getElementById("footR").textContent = d.foot;
+  show("viewDead");
+}
+
+async function start(){
+  if(!TOKEN) return dead("INVALID");
+  try{
+    const inv = await call({ action:"peek", token: TOKEN });
+    document.getElementById("fEmail").textContent = inv.email;
+    document.getElementById("fGroup").textContent  = (inv.group_name || "—").toUpperCase();
+    document.getElementById("fName").value = inv.full_name || "";
+    document.getElementById("footR").textContent = "INVITATION";
+    show("viewForm");
+  }catch(e){
+    const msg = String(e.message||e);
+    if(isTerminal(msg)) return dead(msg);
+    // recuperable: freno de intentos, red, o cualquier fallo inesperado del
+    // servidor durante la comprobacion del link. Se queda en viewLoading con
+    // un boton para reintentar, no se le manda a molestar a nadie.
+    document.getElementById("lTitle").textContent = "We could not check this link";
+    document.getElementById("lLead").textContent = msg;
+    document.getElementById("btnRetry").hidden = false;
+  }
+}
+
+function fieldOk(id, hintId, ok, badText){
+  const input = document.getElementById(id);
+  const hint = document.getElementById(hintId);
+  input.classList.toggle("bad", !ok);
+  if(hint){
+    if(!ok){ hint.textContent = badText; hint.classList.add("bad"); hint.hidden = false; }
+    else { hint.classList.remove("bad"); if(hint.dataset.default){ hint.textContent = hint.dataset.default; hint.hidden = false; } else { hint.hidden = true; } }
+  }
+  return ok;
+}
+
+async function activate(){
+  say("");
+  const name = v("fName"), pin = v("fPin"), pin2 = v("fPin2");
+  const nameOk = !!name;
+  const pinOk  = /^\d{4,8}$/.test(pin);
+  const matchOk = pinOk && pin === pin2;
+
+  fieldOk("fName", "fNameHint", nameOk, "Your full name is required.");
+  fieldOk("fPin",  "fPinHint",  pinOk,  "PIN must be 4-8 digits.");
+  fieldOk("fPin2", "fPin2Hint", pinOk ? matchOk : true, "PINs do not match.");
+
+  if(!nameOk || !pinOk || !matchOk) return;
+
+  btn(true);
+  try{
+    const r = await call({ action:"redeem", token:TOKEN, pin,
+      full_name:name, company:v("fCompany"), job_title:v("fRole"),
+      phone:v("fPhone"), email_alt:v("fAltEmail") });
+    localStorage.setItem("eni_session", JSON.stringify({
+      id:r.user.id, name:r.user.name, email:r.user.email, company:r.user.company,
+      group:r.user.group, group_name:r.user.group_name, level:r.user.level,
+      permissions:r.user.permissions, ts:Date.now(),
+      token:r.token, token_exp: Date.now() + (r.expires_in*1000)
+    }));
+    localStorage.setItem("eni_user", r.user.name); // clave legada que usan verificaciones y CRs
+    document.getElementById("sTitle").textContent = "Welcome, " + String(r.user.name||"").split(" ")[0];
+    document.getElementById("footR").textContent = "ACTIVATED";
+    show("viewSuccess");
+    setTimeout(()=>{ location.href = "index.html"; }, 900);
+  }catch(e){
+    btn(false);
+    const msg = String(e.message||e);
+    // Solo un canje que descubre el token ya quemado (carrera con otra
+    // pestana, u otra persona que lo uso mientras esta se rellenaba) es de
+    // verdad terminal. Todo lo demas -freno de intentos, red, email ya
+    // registrado, cualquier otro mensaje del servidor- se queda aqui mismo,
+    // con el formulario intacto y el boton ya vuelto a habilitar arriba.
+    if(isTerminal(msg)) return dead(msg);
+    say(msg, "err");
+  }
+}
+
+document.getElementById("fNameHint").dataset.default = "Pre-filled from the invitation. Correct it if it is wrong.";
+document.getElementById("btnGo").addEventListener("click", activate);
+document.getElementById("btnRetry").addEventListener("click", ()=>{
+  document.getElementById("btnRetry").hidden = true;
+  document.getElementById("lTitle").textContent = "Checking your invitation…";
+  document.getElementById("lLead").textContent = "One moment while we verify this link.";
+  start();
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Enter" && !document.getElementById("viewForm").hidden) activate();
+});
+
+start();
+</script>
+</body>
+</html>

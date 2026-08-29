@@ -963,7 +963,7 @@ async function boot(){
   setUserChip();
   status("Loading plant master data…");
   try{
-    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes,dsheets] = await Promise.all([
+    const [areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes,dsheets,groups] = await Promise.all([
       fetchAll("plant_areas","area_code"), fetchAll("plant_io_list"), fetchAll("plant_jb"),
       fetchAll("plant_rios","tag"), fetchAll("plant_instruments"), fetchAll("plant_valves"),
       fetchAll("plant_alarms"), fetchAll("plant_equipment"), fetchAll("plant_network"),
@@ -1000,9 +1000,13 @@ async function boot(){
       fetchOpt("v_safety_doc_register"), fetchOpt("plant_safety_devices"),
       fetchOpt("plant_safety_device_types","code"),
       // equipment nameplate / datasheet data (incl. load-list-derived motor datasheets)
-      fetchOpt("plant_equipment_datasheets")
+      fetchOpt("plant_equipment_datasheets"),
+      // [EI95] NEW — access-control groups (code/name/level), feeds the GROUP
+      // dropdown in People & access. fetchOpt: an empty list degrades that
+      // dropdown to empty rather than killing boot.
+      fetchOpt("eni_groups","level")
     ]);
-    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes,dsheets});
+    Object.assign(DB,{areas,io,jb,rios,inst,valves,alarms,equip,net,safety,crs,vers,drawings,adocs,mcc,eloads,ce,ceEffects,docs,docfiles,activity,mvalves,conns,plines,skids,atypes,svcClasses,plinks,aflows,trains,aenergy,xmedia,sdocs,sdevices,sdevtypes,dsheets,groups});
     // ── normalized asset registry (motor/asset normalization) ──────────
     // Canonical asset model layered over the legacy lists. Loaded fetchOpt so a
     // partial or absent migration degrades the motor card to the legacy view
@@ -1240,6 +1244,7 @@ function route(){
      sesion y cae en needSignIn si no; nunca hay link muerto. La vista queda en
      EI80 (docs) para que detras del PDF el usuario vea el registro completo. */
   else if(v==="doc" && rest[0]){ ROUTE={view:"docs"}; setTimeout(function(){ openDocNo(rest[0]); }, 0); }
+  else if(v==="people") ROUTE={view:"people"};   // [EI95] NEW — admin-only invitations panel
   else ROUTE={view:"home"};
   render();
 }
@@ -1290,6 +1295,15 @@ function buildTree(){
   <div class="tnode ${ROUTE.view==='spares'?'sel':''}" onclick="nav('spares')"><span class="tw">▤</span><span class="code">EI42</span><span class="lbl">Spare capacity per JB</span><span class="cnt" style="color:var(--blue)">${dq.spares}</span></div>
   <div class="tnode ${ROUTE.view==='unattrib'?'sel':''}" onclick="nav('unattrib')"><span class="tw">▤</span><span class="code">EI43</span><span class="lbl">Unattributed records</span><span class="cnt" style="color:${dq.unattrib?"var(--amber)":"var(--ok)"}">${dq.unattrib||"✓"}</span></div>
   <div class="tnode ${ROUTE.view==='consistency'?'sel':''}" onclick="nav('consistency')"><span class="tw">▤</span><span class="code">EI44</span><span class="lbl">Data consistency</span><span class="cnt" style="color:${dq.consistency?"var(--fail)":"var(--ok)"}">${dq.consistency||"✓"}</span></div>`;   // [DB-SYNC] NEW — conflicts + migration attention
+
+  /* [EI95] NEW — ADMIN — who gets in and with what permission. Hidden from anyone
+     who isn't ADMIN, but that is not the real defense: eni-invite re-checks the
+     group against the DATABASE on every call, never against the JWT, which lives
+     for 30 days and can be stale. */
+  if(SESSION && SESSION.group==="ADMIN"){
+    html+=`<div class="thead" style="margin-top:12px">ADMINISTRATION</div>
+    <div class="tnode ${ROUTE.view==='people'?'sel':''}" onclick="nav('people')"><span class="tw">▤</span><span class="code">EI95</span><span class="lbl">People &amp; access</span></div>`;
+  }
   t.innerHTML=html;
 }
 function toggleArea(code){
@@ -1323,6 +1337,7 @@ function render(){
   else if(ROUTE.view==="reports") renderReports(c);
   else if(ROUTE.view==="report") renderReport(c, ROUTE.rpt);
   else if(ROUTE.view==="search") renderSearch(c, ROUTE.q);
+  else if(ROUTE.view==="people") renderPeople(c);   // [EI95] NEW — admin-only invitations panel
   crumbs();
   hydrateDocImages(c);   // swap any data-sp placeholders for signed URLs
   hydrateDocRefs(c);     // fill any docsSection() reference tables (station card)
@@ -3897,6 +3912,143 @@ function renderUnattributed(c){
   <span class="mono">SQL/020</span> (Supabase Auth + per-group RLS, or RPC-gated writes).${byAct.length?`
   Affected activity types: <span class="mono">${byAct.map(a=>esc(a.replace(/_/g," "))).join(" · ")}</span>.`:""}</div>`;
 }
+
+/* ══ [EI95] NEW BLOCK ▼ (People & access — 2026-08-29, task 12) ══════════════
+   Admin-only invitation panel. The alta is invitation-only: the browser never
+   writes to eni_users, and the invite link's token is shown ONCE because the
+   database keeps only its hash — if it isn't copied at issue time there is no
+   way to show it again. Re-issuing an invite revokes the previous one and is
+   also the PIN-recovery path now that open self-registration is closed.
+
+   Hiding the EI95 tree entry (buildTree, above) and gating this view on
+   SESSION.group are NOT the real defense — they are just so a non-admin
+   never sees a panel that would 401 anyway. eni-invite re-checks the caller's
+   group against eni_users on every call (requireAdmin in the Edge Function),
+   never trusting the 30-day JWT's embedded group claim. */
+const INV_FN = FN_BASE + "/eni-invite";
+async function inviteCall(body){
+  const r = await fetch(INV_FN, { method:"POST", headers:{
+    "Content-Type":"application/json", apikey: window.SUPABASE_ANON_KEY,
+    Authorization: "Bearer " + (sessionToken()||"") }, body: JSON.stringify(body) });
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(j.error || ("request failed ("+r.status+")"));
+  return j;
+}
+
+async function renderPeople(c){
+  // Client-side gate: hides the panel from a non-ADMIN who lands on #people by
+  // hand (typed hash, stale bookmark). The server-side check in eni-invite is
+  // what actually protects the data — this is only so the reader sees a clear
+  // "restricted" message instead of an empty panel or a raw fetch error.
+  if(!SESSION || SESSION.group!=="ADMIN"){
+    c.innerHTML = `
+    <div class="kicker">TX EI95 <span class="sub">· ACCESS · INVITATION ONLY</span></div>
+    <h1>People &amp; access</h1>
+    <p class="lead">This view is restricted to administrators.</p>`;
+    return;
+  }
+  c.innerHTML = `
+  <div class="kicker">TX EI95 <span class="sub">· ACCESS · INVITATION ONLY</span></div>
+  <h1>People &amp; access</h1>
+  <p class="lead">Loading…</p>`;
+  let invites=[], users=[];
+  try{
+    const [a,b] = await Promise.all([
+      inviteCall({action:"list"}),
+      sb.from("eni_users").select("id,full_name,email,company,group_code,active,last_login").order("full_name")
+    ]);
+    if(b.error) throw new Error(b.error.message||"Could not load accounts");
+    invites = a.invites||[]; users = b.data||[];
+  }catch(e){
+    // A stale client-side session (SESSION says ADMIN, the server disagrees) lands
+    // here too: eni-invite answers 401 and its message ("Administrator sign-in
+    // required") comes straight through — the panel never fakes an empty list.
+    c.innerHTML = `
+    <div class="kicker">TX EI95 <span class="sub">· ACCESS · INVITATION ONLY</span></div>
+    <h1>People &amp; access</h1>
+    <p class="lead" style="color:var(--fail)">${esc(String(e.message||e))}</p>`;
+    return;
+  }
+  const pending = invites.filter(i=>i.status==="pending");
+  c.innerHTML = `
+  <div class="kicker">TX EI95 <span class="sub">· ACCESS · INVITATION ONLY</span></div>
+  <h1>People &amp; access</h1>
+  <p class="lead">Accounts are created by invitation. Issue a link, send it to the person,
+  and they set their own PIN. A link works once; re-issuing one cancels the previous link
+  and is also how a forgotten PIN is recovered.</p>
+  <div class="facts">
+    <div class="fact"><div class="n">${users.length}</div><div class="l">ACTIVE ACCOUNTS</div></div>
+    <div class="fact"><div class="n">${pending.length}</div><div class="l">INVITATIONS PENDING</div></div>
+  </div>
+  <div id="inviteBox"></div>
+  <h2>Invite someone</h2>
+  <!-- .toolrow / .flabel — the house form pattern (index.html ~229-231). index.html
+       does not style a bare label or input; those would show up with the browser's
+       default look and give away that this view was pasted in. -->
+  <div class="toolrow" style="margin:8px 0 18px">
+    <span class="flabel">EMAIL</span><input id="pEmail" type="email" placeholder="name@company.com" style="width:220px">
+    <span class="flabel">FULL NAME</span><input id="pName" placeholder="Name Surname" style="width:180px">
+    <span class="flabel">GROUP</span><select id="pGroup">${(DB.groups||[]).map(g=>`<option value="${esc(g.code)}">${esc(String(g.name||g.code).toUpperCase())}</option>`).join("")}</select>
+    <button class="btn mini" onclick="issueInvite()">Issue link →</button>
+  </div>
+  <h2>Invitations</h2>
+  ${invites.length?`<table class="data"><thead><tr><th>EMAIL</th><th>NAME</th><th>GROUP</th><th>ISSUED</th><th>STATUS</th><th></th></tr></thead>
+  <tbody>${invites.map(i=>`<tr>
+    <td class="mono">${esc(i.email)}</td><td>${esc(i.full_name||"—")}</td>
+    <td class="mono">${esc(i.group_code)}</td><td class="mono dim">${esc((i.created_at||"").slice(0,10))}</td>
+    <td><span class="chip ${i.status==="redeemed"?"ok":i.status==="revoked"?"dim":"warn"}">${esc(i.status.toUpperCase())}</span></td>
+    <td>${i.status==="pending"?`<button class="btn mini fail" onclick="revokeInvite(${i.id})">Cancel</button>`:""}
+        ${i.status!=="redeemed"?`<button class="btn mini" onclick="reissue('${esc(i.email)}','${esc(i.full_name||"")}','${esc(i.group_code)}')">Re-issue</button>`:""}</td>
+  </tr>`).join("")}</tbody></table>`
+  :`<div class="empty">No invitations yet. Everyone with an account got theirs before invitations existed.
+    Issue a link above to add someone.</div>`}
+  <h2>Accounts</h2>
+  <table class="data"><thead><tr><th>NAME</th><th>EMAIL</th><th>COMPANY</th><th>GROUP</th><th>LAST SIGN-IN</th></tr></thead>
+  <tbody>${users.map(u=>`<tr><td>${esc(u.full_name)}</td><td class="mono">${esc(u.email)}</td>
+    <td>${esc(u.company||"—")}</td><td class="mono">${esc(u.group_code)}</td>
+    <td class="mono dim">${esc((u.last_login||"").slice(0,10)||"never")}</td></tr>`).join("")}</tbody></table>`;
+}
+
+async function issueInvite(){
+  const email=document.getElementById("pEmail").value.trim().toLowerCase();
+  if(!email.includes("@")) return alert("Enter a valid email.");
+  try{
+    const r = await inviteCall({ action:"issue", email,
+      full_name:document.getElementById("pName").value.trim(),
+      group_code:document.getElementById("pGroup").value });
+    showLinkOnce(email, r.url);
+  }catch(e){ alert(String(e.message||e)); }
+}
+
+// The link is shown exactly once and never comes back: the database keeps only
+// its hash. If it is lost, the fix is to re-issue — which also revokes this one.
+function showLinkOnce(email, url){
+  const box=document.getElementById("inviteBox");
+  if(!box) return;
+  box.innerHTML = `
+  <div style="border:2px solid var(--crimson);border-radius:4px;padding:14px 16px;margin:14px 0;background:#FFF8F9">
+    <div class="kicker" style="margin-bottom:6px">COPY THIS LINK NOW — IT IS SHOWN ONCE</div>
+    <div style="font-size:13px;line-height:1.5">Send it to <b>${esc(email)}</b>. It works once and cannot be
+    shown again. If it is lost, re-issue — that cancels this one.</div>
+    <div class="toolrow" style="margin-top:9px">
+      <input readonly id="invUrl" value="${esc(url)}" style="flex:1;font-family:var(--mono);font-size:11.5px;padding:7px 9px;border:1px solid var(--line-strong);border-radius:3px;background:#fff;color:var(--ink)" onclick="this.select()">
+      <button class="btn primary" onclick="navigator.clipboard.writeText(document.getElementById('invUrl').value);this.textContent='Copied ✓'">Copy link</button>
+    </div>
+  </div>`;
+}
+async function revokeInvite(id){
+  if(!confirm("Cancel this invitation? The link will stop working.")) return;
+  try{ await inviteCall({action:"revoke", invite_id:id}); renderPeople($("#content")); }
+  catch(e){ alert(String(e.message||e)); }
+}
+async function reissue(email, name, group){
+  try{
+    const r = await inviteCall({action:"issue", email, full_name:name, group_code:group});
+    await renderPeople($("#content")); showLinkOnce(email, r.url);
+  }catch(e){ alert(String(e.message||e)); }
+}
+window.issueInvite=issueInvite; window.revokeInvite=revokeInvite; window.reissue=reissue;
+/* ══ [EI95] NEW BLOCK ▲ ══════════════════════════════════════════════════ */
 
 /* ══ [DB-SYNC] NEW BLOCK ▼ (lazy view loader + EI44 data consistency + EI05 plant structure) ══
    Added 2026-07-22 to bring the Navigator in line with the database structure after
