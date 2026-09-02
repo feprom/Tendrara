@@ -4183,7 +4183,8 @@ function parseBulk(text){
   String(text||"").split(/\r?\n/).forEach((raw,idx)=>{
     const line=raw.trim();
     if(!line || line.startsWith("#")) return;
-    const sep=line.includes(";")?";":line.includes("\t")?"\t":",";
+    // TAB first: it is what Excel pastes and never appears inside a name; then ';', then ','.
+    const sep=line.includes("\t")?"\t":line.includes(";")?";":",";
     const parts=line.split(sep).map(s=>s.trim());
     const row={ line:idx+1, email:(parts[0]||"").toLowerCase(), full_name:parts[1]||"",
                 group_code:(parts[2]||defGroup).toUpperCase(), error:null };
@@ -4216,20 +4217,32 @@ async function issueBulk(){
   if(!todo.length){ status("✗ Nothing to issue — fix the errors first.","err"); return; }
   btn.dataset.running="1"; btn.disabled=true;
   let k=0;
-  for(const r of todo){
-    k++; btn.textContent=`Issuing ${k}/${todo.length}…`;
-    try{
-      const j=await inviteCall({ action:"issue", email:r.email, full_name:r.full_name, group_code:r.group_code });
-      r.url=j.url; r.existing_account=!!j.existing_account; r.group_code=j.group_code||r.group_code;
-    }catch(e){ r.error=String(e.message||e); }
+  try{
+    for(const r of todo){
+      k++; btn.textContent=`Issuing ${k}/${todo.length}…`;
+      try{
+        const j=await inviteCall({ action:"issue", email:r.email, full_name:r.full_name, group_code:r.group_code });
+        r.url=j.url; r.existing_account=!!j.existing_account; r.group_code=j.group_code||r.group_code;
+      }catch(e){ r.error=String(e.message||e); r.server_failed=true; }
+    }
+    LAST_BULK=rows;
+    // Two different "not issued": SKIPPED never reached the server (rejected here,
+    // before the call — bad email, unknown group, duplicate) and FAILED is a row
+    // the server refused. Lumping them together made "3 failed" read as three
+    // server errors when nothing had been sent for them.
+    const ok=rows.filter(r=>r.url).length, failed=rows.filter(r=>r.server_failed).length,
+          skipped=rows.length-ok-failed;
+    // Rebuild the panel FIRST (fresh invitation list, fresh counters), then paint
+    // the results into the new #inviteBox — see issueInvite.
+    await renderPeople($("#content"));
+    showBulkLinks(rows);
+    status(`${failed?"△":"✓"} ${ok} ${ok===1?"link":"links"} issued`
+      +(failed?`, ${failed} failed`:"")+(skipped?`, ${skipped} skipped (fix the line and paste it again)`:""), failed?"err":"ok");
+  }finally{
+    // renderPeople normally replaced this button with a fresh one; if it threw,
+    // the old one is still on screen and must not stay disabled for good.
+    btn.dataset.running="0"; bulkPreview();
   }
-  LAST_BULK=rows;
-  const ok=rows.filter(r=>r.url).length, failed=rows.length-ok;
-  // Rebuild the panel FIRST (fresh invitation list, fresh counters), then paint
-  // the results into the new #inviteBox — see issueInvite.
-  await renderPeople($("#content"));
-  showBulkLinks(rows);
-  status(`${failed?"△":"✓"} ${ok} ${ok===1?"link":"links"} issued`+(failed?`, ${failed} failed`:""), failed?"err":"ok");
 }
 
 function bulkFirstName(r){
@@ -4243,7 +4256,11 @@ function inviteMessage(r){
   return `Hi ${bulkFirstName(r)},\n\nHere is your personal access link to the TAM E&I Navigator (Tendrara Micro-LNG):\n${r.url}\n\n${middle}\n\nThanks,\n${(SESSION&&SESSION.name)||""}`;
 }
 function bulkCopy(btn, text){
-  navigator.clipboard.writeText(text); btn.textContent="Copied ✓";
+  // clipboard.writeText needs a secure context and permission; on failure say so
+  // instead of showing "Copied ✓" over an empty clipboard.
+  Promise.resolve().then(()=>navigator.clipboard.writeText(text))
+    .then(()=>{ btn.textContent="Copied ✓"; })
+    .catch(()=>{ status("✗ Could not copy — click the link box, Ctrl+A, Ctrl+C.","err"); });
 }
 function bulkCopyOne(btn, i, what){
   const r=LAST_BULK[i]; if(!r||!r.url) return;
@@ -4262,11 +4279,12 @@ function showBulkLinks(results){
   const box=document.getElementById("inviteBox");
   if(!box) return;
   LAST_BULK=results||[];
-  const ok=LAST_BULK.filter(r=>r.url), resets=ok.filter(r=>r.existing_account).length, failed=LAST_BULK.length-ok.length;
+  const ok=LAST_BULK.filter(r=>r.url), resets=ok.filter(r=>r.existing_account).length,
+        failed=LAST_BULK.filter(r=>r.server_failed).length, skipped=LAST_BULK.length-ok.length-failed;
   box.innerHTML = `
   <div style="border:2px solid var(--crimson);border-radius:4px;padding:14px 16px;margin:14px 0;background:#FFF8F9">
     <div class="kicker" style="margin-bottom:6px">COPY THESE LINKS NOW — THEY ARE SHOWN ONCE</div>
-    <div style="font-size:13px;line-height:1.5">Issued <b>${ok.length}</b> · PIN resets <b>${resets}</b> (existing accounts) · failed <b>${failed}</b>.
+    <div style="font-size:13px;line-height:1.5">Issued <b>${ok.length}</b> · PIN resets <b>${resets}</b> (existing accounts) · failed on the server <b>${failed}</b> · skipped before sending <b>${skipped}</b>.
     Each link works once and cannot be shown again. If one is lost, re-issue it — that cancels the lost one.</div>
     <div class="toolrow" style="margin-top:9px">
       <button class="btn primary" onclick="bulkCopyAll(this,'msg')" ${ok.length?"":"disabled"}>Copy all</button>
