@@ -549,7 +549,7 @@ const IDX = {instByTag:new Map(), valveByTag:new Map(), alarmsByInst:new Map(), 
              // [UI-CUTOVER] NEW — normalized read-view indices (v_*_ui cutover — see HANDOVER_UI_CUTOVER.md).
              // Built in buildUiIndexes(); guarded no-op when the views are empty so the
              // instrument/valve cards degrade to their legacy renderers.
-             instUiByTag:new Map(), valveUiByTag:new Map(), ceByTag:new Map(), loopByField:new Map(),
+             instUiByTag:new Map(), valveUiByTag:new Map(), ceByTag:new Map(), loopByField:new Map(), loopIndByField:new Map(),
              // [UI-CUTOVER] NEW — equipment + electrical read-view indices (v_mechanical_ui / v_electrical_ui).
              mechUiByTag:new Map(), elecUiByTag:new Map()};
 
@@ -1038,13 +1038,14 @@ async function boot(){
     // and are consumed by the equipment card (normalized-first, legacy fallback).
     // Loaded here so the card can render from them; guarded via fetchOpt so a missing
     // view degrades to the legacy equipment card rather than breaking boot.
-    const [instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi,elecLoads] = await Promise.all([
+    const [instUi,valveUi,ceTrace,loopTrace,loopInd,mechUi,elecUi,elecLoads] = await Promise.all([
       fetchOpt("v_instrument_ui"), fetchOpt("v_valve_ui"),
       fetchOpt("v_cause_effect_trace"), fetchOpt("v_loop_trace"),
+      fetchOpt("v_loop_trace_indirect"),   // companion hop: primary element / valve body
       fetchOpt("v_mechanical_ui"), fetchOpt("v_electrical_ui"),   // [UI-CUTOVER] NEW
       fetchOpt("v_electrical_loads")   // [ELEC-FLOC] feed_role / fed_from / busbar_kw (SQL/135–138)
     ]);
-    Object.assign(DB,{instUi,valveUi,ceTrace,loopTrace,mechUi,elecUi,elecLoads});
+    Object.assign(DB,{instUi,valveUi,ceTrace,loopTrace,loopInd,mechUi,elecUi,elecLoads});
     // [ELEC-POS] ── switchgear layer (migrations 147–161) ──────────────────────
     // The single-line already renders from v_sld_nodes/v_sld_edges, but NOTHING in
     // the viewer could show what is inside a cubicle: the breaker, its settings, its
@@ -1139,7 +1140,7 @@ function buildIndexes(){
 // views are empty, so openInst() and friends keep falling back to the legacy path.
 // Kept separate from buildAssetIndexes() so the motor/asset registry is untouched.
 function buildUiIndexes(){
-  ["instUiByTag","valveUiByTag","ceByTag","loopByField","mechUiByTag","elecUiByTag"].forEach(k=>IDX[k].clear());
+  ["instUiByTag","valveUiByTag","ceByTag","loopByField","loopIndByField","mechUiByTag","elecUiByTag"].forEach(k=>IDX[k].clear());
   (DB.instUi||[]).forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.instUiByTag.set(t,r); });
   (DB.valveUi||[]).forEach(r=>{ const t=(r.tag||"").trim(); if(t) IDX.valveUiByTag.set(t,r); });
   // [UI-CUTOVER] NEW — v_mechanical_ui / v_electrical_ui keyed by tag (equipment card cutover).
@@ -1152,6 +1153,12 @@ function buildUiIndexes(){
   // several channels (multi-signal devices), so keep every row per field_tag.
   (DB.loopTrace||[]).forEach(r=>{ const t=(r.field_tag||"").trim(); if(!t) return;
     if(!IDX.loopByField.has(t)) IDX.loopByField.set(t,[]); IDX.loopByField.get(t).push(r); });
+  // v_loop_trace_indirect — the SECOND hop. A primary element (TE/FE/AE) and a valve
+  // body (XV/SDV/LV) never touch an IO channel: their companion does (the transmitter,
+  // the solenoid, the limit switch). Keyed by the orphan tag, so its card can show the
+  // path it rides on instead of an empty panel.
+  (DB.loopInd||[]).forEach(r=>{ const t=(r.field_tag||"").trim(); if(!t) return;
+    if(!IDX.loopIndByField.has(t)) IDX.loopIndByField.set(t,[]); IDX.loopIndByField.get(t).push(r); });
 }
 
 // ── normalized asset registry indices ────────────────────────────
@@ -4197,7 +4204,7 @@ function renderConsistency(c){
   c.innerHTML=`<div class="kicker">TX EI44 <span class="sub">· DATA QUALITY CHECK · DATA CONSISTENCY & MIGRATION ATTENTION</span></div>
   <h1>Data consistency report</h1>
   <div class="empty">Loading normalized model, provenance and reconciliation views…</div>`;
-  const wired={v_instrument_ui:"Instrument card",v_valve_ui:"Valve card",v_cause_effect_trace:"C&E card",v_loop_trace:"Signal-path panel",
+  const wired={v_instrument_ui:"Instrument card",v_valve_ui:"Valve card",v_cause_effect_trace:"C&E card",v_loop_trace:"Signal-path panel",v_loop_trace_indirect:"Signal-path panel (companion hop)",
     v_mechanical_ui:"Equipment card",v_electrical_ui:"Equipment electrical block / motor card"};   // [UI-CUTOVER] NEW — v_mechanical_ui + v_electrical_ui built (SQL/104–105) and consumed
   const pending={v_io_ui:"IO list (EI25)",v_measuring_ui:"Alarms / set points (EI30·EI41)",v_control_ui:"Stations & JBs (EI20)",v_network_ui:"Comms / network (EI60)",v_safety_ui:"Plant safety (EI85)"};
   const missing={};   // [UI-CUTOVER] every read view now exists + is consumed; nothing left as VIEW MISSING
@@ -5086,7 +5093,7 @@ function renderInstCardNorm(r, kind){
     isValve&&r.valve_size?kv("Valve size", nz(r.valve_size)):"",
     kv(isValve?"Instrument range":"Calibrated range (settings)", esc(rng)||"—"),
     kv("Signal in / out", nz(r.signal_type)+(r.signal_output?" → "+esc(r.signal_output):"")),
-    kv("Junction box (JB) — field enclosure the cable lands in", nz(r.junction_box_tag,"—")),
+    kv("Junction box (JB) — field enclosure the cable lands in", jbCellValue(tag, r.junction_box_tag)),
     kv("On equipment", r.equipment_tag?`<a style="color:var(--blue);cursor:pointer;font-weight:700" onclick="openAssetTag('${esc((r.equipment_tag||"").trim())}')">${esc(r.equipment_tag)} →</a>`:"—"),
     kv("Process line", nz(r.line_number,"—")),
     kv("Functional location", flocLine(r)),
@@ -5115,19 +5122,51 @@ function renderInstCardNorm(r, kind){
   instFinalizeCard(tag, h);
 }
 
+// JB cell value. A primary element / valve body has no JB of its own — the cable lands on
+// its companion's box. Show that instead of a bare dash, so nobody reads "—" as "not wired".
+function jbCellValue(tag, jb){
+  if(jb) return esc(jb);
+  const ind=IDX.loopIndByField.get(tag)||[];
+  if(!ind.length) return "—";
+  const seen=new Map();
+  ind.forEach(r=>{ const p=(r.panel_tag||"").trim(), v=(r.via_tag||"").trim();
+    if(p&&!seen.has(p)) seen.set(p,v); });
+  if(!seen.size) return "—";
+  return `<span class="dim">— none of its own ·</span> `
+    + [...seen].map(([p,v])=>`<span class="tag" onclick="nav('station/'+encodeURIComponent('${esc(p)}'))">${esc(p)}</span>`
+        + ` <span class="dim" style="font-size:10px">via ${esc(v)}</span>`).join(" ");
+}
+
 // v_loop_trace — the signal path for a field device: which IO channel(s) read it,
 // through which panel, and what monitors / control loops / cause-&-effect functions
 // depend on it. Additive; renders nothing when the tag has no loop-trace row.
 function loopPanelHtml(tag){
-  const rows=IDX.loopByField.get(tag)||[];
+  // Direct path first (this tag owns the IO channel). If it owns none, fall back to the
+  // companion hop: a primary element rides its transmitter, a valve body rides its
+  // solenoid / limit switches / positioner. Marked as indirect so nobody reads the panel
+  // as "this device is wired here".
+  let rows=IDX.loopByField.get(tag)||[], indirect=false;
+  if(!rows.length){ rows=IDX.loopIndByField.get(tag)||[]; indirect=rows.length>0; }
   if(!rows.length) return "";
   const ceChip=t=>{ const tt=(t||"").trim(); if(!tt) return "";
     return IDX.ceByTag.has(tt)
       ? `<span class="tag" onclick="event.stopPropagation();openCE('${esc(tt)}')" title="Open cause &amp; effect ${esc(tt)}">${esc(tt)}</span>`
       : `<span class="mono">${esc(tt)}</span>`; };
-  let h=`<h2 style="margin-top:16px">Signal path <span class="dim" style="font-weight:400">(v_loop_trace)</span></h2>`;
-  h+=`<table class="data"><thead><tr><th>IO CHANNEL</th><th>SYS</th><th>KIND</th><th>SIGNAL</th><th>PANEL</th><th>MONITORS</th><th>CONTROL LOOPS</th></tr></thead><tbody>`;
+  const viaRole={transmisor:"transmitter",solenoid:"solenoid",switch:"limit switch",
+    positioner:"positioner",position_transmitter:"position transmitter"};
+  let h=`<h2 style="margin-top:16px">Signal path <span class="dim" style="font-weight:400">(v_loop_trace${indirect?"_indirect":""})</span></h2>`;
+  if(indirect){
+    const vias=[...new Set(rows.map(r=>(r.via_tag||"").trim()).filter(Boolean))];
+    const fcLabel={PRIMARY_ELEMENT:"A primary element",ONOFF_VALVE:"An on/off valve body",
+      CONTROL_VALVE:"A control valve body"}[rows[0].field_class]||"This device";
+    h+=`<div class="note">This tag is <b>not wired to any IO channel</b> — ${esc(fcLabel).toLowerCase()}
+      never is. The signal reaches the panel through
+      ${vias.map(v=>`<span class="mono">${esc(v)}</span>`).join(", ")}; the path below is the
+      companion's. Terminate the field cable on the companion tag, not on this one.</div>`;
+  }
+  h+=`<table class="data"><thead><tr>${indirect?"<th>VIA</th>":""}<th>IO CHANNEL</th><th>SYS</th><th>KIND</th><th>SIGNAL</th><th>PANEL</th><th>MONITORS</th><th>CONTROL LOOPS</th></tr></thead><tbody>`;
   h+=rows.map(r=>`<tr>
+    ${indirect?`<td class="mono">${r.via_tag?`<span class="tag" onclick="openInst('${esc((r.via_tag||"").trim())}')">${esc(r.via_tag)}</span>`:"—"}<div class="dim" style="font-size:10px">${esc(viaRole[r.via_role]||r.via_role||"")}</div></td>`:""}
     <td class="mono">${r.io_tag?`<span class="tag" onclick="openInst('${esc((r.io_tag||"").trim())}')">${esc(r.io_tag)}</span>`:"—"}</td>
     <td class="mono dim">${nz(r.control_system,"—")}</td>
     <td class="mono">${nz(r.io_kind,"—")}</td>
@@ -5216,7 +5255,7 @@ function openInstLegacy(tag){
       ${kv("Calibrated range (settings)", esc(rng.trim())||"—")}
       ${kv("Operating point", nz(ref.op,"—"))}
       ${kv("Signal in / out", nz(ref.signal_type)+(ref.signal_output?" → "+esc(ref.signal_output):""))}
-      ${kv("Junction box (JB) — field enclosure the cable lands in", nz(ref.junction_box))}
+      ${kv("Junction box (JB) — field enclosure the cable lands in", jbCellValue(tag, ref.junction_box))}
       ${kv("Process line", nz(ref.line_number,"—"))}
       ${kv("On equipment", ref.equipment?`<a style="color:var(--blue);cursor:pointer;font-weight:700" onclick="openEquip('${esc((ref.equipment||"").trim())}')">${esc(ref.equipment)} →</a>`:"—")}
       ${(()=>{ const l=dwgLink(ref.tam_pid);
