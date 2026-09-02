@@ -4012,6 +4012,17 @@ async function renderPeople(c){
     <span class="flabel">GROUP</span><select id="pGroup">${(DB.groups||[]).map(g=>`<option value="${esc(g.code)}">${esc(String(g.name||g.code).toUpperCase())}</option>`).join("")}</select>
     <button class="btn mini" onclick="issueInvite()">Issue link →</button>
   </div>
+  <h2>Invite several people at once</h2>
+  <p class="lead" style="margin-top:-4px">One person per line: <span class="mono">email; Full Name; GROUP</span>.
+  GROUP is optional — when missing, the group selected above is used. Blank lines and lines starting with
+  <span class="mono">#</span> are ignored. Each link is issued one call at a time, exactly as above.</p>
+  <textarea id="pBulk" oninput="bulkPreview()" spellcheck="false" placeholder="email; Full Name; GROUP
+name@company.com; Name Surname; ${esc(String(((DB.groups||[])[0]||{}).code||"GROUP"))}
+other@company.com; Other Person" style="font-family:var(--mono);font-size:12px;width:100%;box-sizing:border-box;min-height:120px;border:1px solid var(--line-strong);border-radius:4px;padding:8px;color:var(--ink);background:#fff;resize:vertical"></textarea>
+  <div class="toolrow" style="margin:8px 0 18px">
+    <span id="pBulkSummary" class="mono dim" style="font-size:12px">0 people · 0 errors</span>
+    <button id="pBulkBtn" class="btn mini" onclick="issueBulk()" disabled>Issue 0 links →</button>
+  </div>
   <h2>Invitations</h2>
   ${invites.length?`<table class="data"><thead><tr><th>EMAIL</th><th>NAME</th><th>GROUP</th><th>FOR</th><th>ISSUED</th><th>STATUS</th><th></th></tr></thead>
   <tbody>${invites.map(i=>`<tr>
@@ -4143,6 +4154,140 @@ async function reissue(email, name, group){
   }catch(e){ status("✗ "+String(e.message||e),"err"); }
 }
 window.issueInvite=issueInvite; window.revokeInvite=revokeInvite; window.reissue=reissue; window.armCancel=armCancel;
+
+/* ── Bulk invitations (2026-09-02) ──────────────────────────────────────────
+   Onboarding a whole crew: the admin pastes one person per line and gets every
+   link back in one box, each with a ready-to-send message. Nothing changes in
+   the security model — every link still comes from the server action `issue`
+   of eni-invite, ONE call per person, and the server decides per row whether it
+   is a NEW ACCOUNT or a PIN RESET (r.existing_account).
+   - SEQUENTIAL, never Promise.all: eni-invite re-checks the admin against
+     eni_users on every call and each issue revokes the previous invite for that
+     email; firing 40 calls at once against the same Edge Function gives no
+     ordering, hits rate limits and makes a partial failure impossible to read.
+     One row failing is recorded and the batch goes on to the next.
+   - RENDER THEN PAINT: renderPeople rebuilds #content (and #inviteBox) with the
+     fresh invitation list; the results box is painted AFTER that, exactly as
+     issueInvite does, otherwise the refresh wipes it.
+   - SHOWN ONCE: the database keeps only the token hash, so these URLs exist
+     nowhere but in this box until they are copied out. Results live in
+     LAST_BULK so the copy buttons read by index instead of embedding URLs in
+     onclick strings. */
+let LAST_BULK=[];
+const BULK_EMAIL_RE=/^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/;
+
+function parseBulk(text){
+  const codes=new Set((DB.groups||[]).map(g=>String(g.code).toUpperCase()));
+  const defGroup=String((document.getElementById("pGroup")||{}).value||"").toUpperCase();
+  const seen=new Set(); const rows=[];
+  String(text||"").split(/\r?\n/).forEach((raw,idx)=>{
+    const line=raw.trim();
+    if(!line || line.startsWith("#")) return;
+    const sep=line.includes(";")?";":line.includes("\t")?"\t":",";
+    const parts=line.split(sep).map(s=>s.trim());
+    const row={ line:idx+1, email:(parts[0]||"").toLowerCase(), full_name:parts[1]||"",
+                group_code:(parts[2]||defGroup).toUpperCase(), error:null };
+    if(!BULK_EMAIL_RE.test(row.email)) row.error="invalid email";
+    else if(!codes.has(row.group_code)) row.error="unknown group "+row.group_code;
+    else if(seen.has(row.email)) row.error="duplicate in list";
+    if(!row.error) seen.add(row.email);
+    rows.push(row);
+  });
+  return rows;
+}
+
+function bulkPreview(){
+  const ta=document.getElementById("pBulk"), sum=document.getElementById("pBulkSummary"), btn=document.getElementById("pBulkBtn");
+  if(!ta||!sum||!btn) return;
+  const rows=parseBulk(ta.value);
+  const bad=rows.filter(r=>r.error), n=rows.length-bad.length;
+  sum.textContent=`${n} ${n===1?"person":"people"} · ${bad.length} ${bad.length===1?"error":"errors"}`
+    +(bad.length?` — line ${bad[0].line}: ${bad[0].error}`:"");
+  sum.style.color=bad.length?"var(--fail)":"";
+  btn.textContent=`Issue ${n} ${n===1?"link":"links"} →`;
+  btn.disabled=(n===0)||btn.dataset.running==="1";
+}
+
+async function issueBulk(){
+  const ta=document.getElementById("pBulk"), btn=document.getElementById("pBulkBtn");
+  if(!ta||!btn||btn.dataset.running==="1") return;
+  const rows=parseBulk(ta.value);
+  const todo=rows.filter(r=>!r.error);
+  if(!todo.length){ status("✗ Nothing to issue — fix the errors first.","err"); return; }
+  btn.dataset.running="1"; btn.disabled=true;
+  let k=0;
+  for(const r of todo){
+    k++; btn.textContent=`Issuing ${k}/${todo.length}…`;
+    try{
+      const j=await inviteCall({ action:"issue", email:r.email, full_name:r.full_name, group_code:r.group_code });
+      r.url=j.url; r.existing_account=!!j.existing_account; r.group_code=j.group_code||r.group_code;
+    }catch(e){ r.error=String(e.message||e); }
+  }
+  LAST_BULK=rows;
+  const ok=rows.filter(r=>r.url).length, failed=rows.length-ok;
+  // Rebuild the panel FIRST (fresh invitation list, fresh counters), then paint
+  // the results into the new #inviteBox — see issueInvite.
+  await renderPeople($("#content"));
+  showBulkLinks(rows);
+  status(`${failed?"△":"✓"} ${ok} ${ok===1?"link":"links"} issued`+(failed?`, ${failed} failed`:""), failed?"err":"ok");
+}
+
+function bulkFirstName(r){
+  const n=String(r.full_name||"").trim();
+  return n?n.split(/\s+/)[0]:r.email;
+}
+function inviteMessage(r){
+  const middle=r.existing_account
+    ?"Open it and choose a new PIN of 4-8 digits. Your account and everything you have signed stay as they are; your old PIN stops working once you set the new one. The link works once."
+    :"Open it, check your name, add your company, job title and mobile, and choose a PIN of 4-8 digits. The link works once and is only for you.\nAfterwards sign in at https://tendrara.neo-ware.com/eni/account.html with your email and that PIN.";
+  return `Hi ${bulkFirstName(r)},\n\nHere is your personal access link to the TAM E&I Navigator (Tendrara Micro-LNG):\n${r.url}\n\n${middle}\n\nThanks,\n${(SESSION&&SESSION.name)||""}`;
+}
+function bulkCopy(btn, text){
+  navigator.clipboard.writeText(text); btn.textContent="Copied ✓";
+}
+function bulkCopyOne(btn, i, what){
+  const r=LAST_BULK[i]; if(!r||!r.url) return;
+  bulkCopy(btn, what==="msg"?inviteMessage(r):r.url);
+}
+function bulkCopyAll(btn, what){
+  const ok=LAST_BULK.filter(r=>r.url);
+  if(!ok.length) return;
+  const text = what==="tsv"
+    ? ok.map(r=>[r.email,r.full_name||"",r.group_code||"",r.existing_account?"PIN RESET":"NEW ACCOUNT",r.url].join("\t")).join("\n")
+    : ok.map(inviteMessage).join("\n\n");
+  bulkCopy(btn, text);
+}
+
+function showBulkLinks(results){
+  const box=document.getElementById("inviteBox");
+  if(!box) return;
+  LAST_BULK=results||[];
+  const ok=LAST_BULK.filter(r=>r.url), resets=ok.filter(r=>r.existing_account).length, failed=LAST_BULK.length-ok.length;
+  box.innerHTML = `
+  <div style="border:2px solid var(--crimson);border-radius:4px;padding:14px 16px;margin:14px 0;background:#FFF8F9">
+    <div class="kicker" style="margin-bottom:6px">COPY THESE LINKS NOW — THEY ARE SHOWN ONCE</div>
+    <div style="font-size:13px;line-height:1.5">Issued <b>${ok.length}</b> · PIN resets <b>${resets}</b> (existing accounts) · failed <b>${failed}</b>.
+    Each link works once and cannot be shown again. If one is lost, re-issue it — that cancels the lost one.</div>
+    <div class="toolrow" style="margin-top:9px">
+      <button class="btn primary" onclick="bulkCopyAll(this,'msg')" ${ok.length?"":"disabled"}>Copy all</button>
+      <button class="btn mini" onclick="bulkCopyAll(this,'tsv')" ${ok.length?"":"disabled"}>Copy as table</button>
+    </div>
+    <table class="data" style="margin-top:10px"><thead><tr><th>EMAIL</th><th>NAME</th><th>GROUP</th><th>FOR</th><th>LINK</th><th></th></tr></thead>
+    <tbody>${LAST_BULK.map((r,i)=>`<tr>
+      <td class="mono">${esc(r.email)}</td><td>${esc(r.full_name||"—")}</td>
+      <td class="mono">${esc(r.group_code||"—")}</td>
+      <td>${r.url?`<span class="chip ${r.existing_account?"info":"dim"}">${r.existing_account?"PIN RESET":"NEW ACCOUNT"}</span>`:""}</td>
+      <td>${r.url
+        ?`<input readonly value="${esc(r.url)}" onclick="this.select()" style="width:100%;box-sizing:border-box;font-family:var(--mono);font-size:11px;padding:5px 7px;border:1px solid var(--line-strong);border-radius:3px;background:#fff;color:var(--ink)">`
+        :`<span style="color:var(--fail)">line ${r.line}: ${esc(r.error||"failed")}</span>`}</td>
+      <td style="white-space:nowrap">${r.url
+        ?`<button class="btn mini" onclick="bulkCopyOne(this,${i},'url')">Copy link</button>
+           <button class="btn mini" onclick="bulkCopyOne(this,${i},'msg')">Copy message</button>`:""}</td>
+    </tr>`).join("")}</tbody></table>
+  </div>`;
+}
+window.issueBulk=issueBulk; window.showBulkLinks=showBulkLinks; window.bulkPreview=bulkPreview;
+window.bulkCopyOne=bulkCopyOne; window.bulkCopyAll=bulkCopyAll; window.inviteMessage=inviteMessage;
 /* ══ [EI95] NEW BLOCK ▲ ══════════════════════════════════════════════════ */
 
 /* ══ [DB-SYNC] NEW BLOCK ▼ (lazy view loader + EI44 data consistency + EI05 plant structure) ══
