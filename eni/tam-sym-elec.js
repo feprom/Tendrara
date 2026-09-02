@@ -512,6 +512,14 @@
                c.ln(-8, 3.5, 8, 3.5) + c.ln(0, 3.5, 0, 10)
   });
 
+  /* v0.4.0 — body text follows the kernel's type scale.
+     `c.txt` takes a RAW size, so a symbol that prints inside its own body (a
+     cubicle header, the bands of a protection block) stayed at its literal size
+     while every kernel-placed label grew with TamSym.textScale. On slide 10 that
+     printed a 7.6 px cubicle header beside an 11 px tag, and audit.py flagged it
+     as unreadable. One helper, applied to the bodies below. */
+  const ts = v => +(v * (T.textScale || 1)).toFixed(2);
+
   /* ══ 5b. THE COMOS/IEC LAYER — v0.4.0 ══════════════════════════════════
      Every symbol below was read off a real sheet in `elec/ejemplos/`: three
      Reinhausen COMOS ET 10.1 sets, issued to IEC. The sheet reference is on
@@ -583,7 +591,7 @@
       fs.forEach((f, i) => {
         const y = -18 + i * bh;
         if (i) g += c.ln(-17, y, 17, y);
-        g += c.txt(0, y + bh / 2 + 2.8, f, 7.6, 600);
+        g += c.txt(0, y + bh / 2 + 2.8, f, ts(7.6), 600);
       });
       return g;
     }
@@ -610,7 +618,7 @@
       const use = lines.slice(0, 3);
       let g = c.rect(-23, -17, 46, 34, "#fff");
       const y0 = -(use.length - 1) * 4.5;
-      use.forEach((l, i) => { g += c.txt(0, y0 + i * 9 + 2.6, l, 7.2, 600); });
+      use.forEach((l, i) => { g += c.txt(0, y0 + i * 9 + 2.6, l, ts(7.2), 600); });
       return g;
     }
   });
@@ -627,12 +635,14 @@
       const o = c.o || {}, w = o.w || 120, h = o.h || 90;
       const x = -w / 2, y = -h / 2;
       let g = c.rect(x, y, w, h, "none", "9 3 2 3");
-      if (o.aspect)   g += c.txt(x, y - (o.location ? 13 : 4), o.aspect, 7.6, 700, "start");
-      if (o.location) g += c.txt(x, y - 4, o.location, 7.6, 700, "start");
+      /* the two header lines are spaced BY THE TYPE SCALE: at textScale 1.45 a
+         fixed 9 u gap put an 11 px "=480" on top of its own "+480-JG-691". */
+      if (o.aspect)   g += c.txt(x, y - (o.location ? ts(12.5) : ts(3.5)), o.aspect, ts(7.6), 700, "start");
+      if (o.location) g += c.txt(x, y - ts(3.5), o.location, ts(7.6), 700, "start");
       /* the plain-prose function caption the sheets put UNDER each block:
          "Incoming feeder", "Compensation step 1 / 1000 kvar / 189 Hz" */
       [].concat(o.caption || []).forEach((t, i) => {
-        g += c.txt(0, y + h + 14 + i * 10, t, 8, 600);
+        g += c.txt(0, y + h + 14 + i * 10, t, ts(8), 600);
       });
       return g;
     }
@@ -660,7 +670,7 @@
       return c.ln(0, -8, 0, -3.2) + c.cir(0, 0, 3.2, "#fff") + c.ln(0, 3.2, 0, 8) +
         (n == null ? "" :
           `<text transform="translate(12,7) rotate(-90)" text-anchor="start" ` +
-          `font-family="Consolas,monospace" font-size="6.4" font-weight="600" ` +
+          `font-family="Consolas,monospace" font-size="${ts(6.4)}" font-weight="600" ` +
           `fill="${c.col}">${String(n).replace(/[&<>"]/g, "")}</text>`);
     }
   });
@@ -676,11 +686,11 @@
       const o = c.o || {}, w = o.w || 150, h = o.h || 42;
       const x = -w / 2, y = -h / 2;
       const tri = tx => c.path(`M${tx},${y + 7} l6,11 l-12,0 Z`) +
-        c.txt(tx, y + 16.4, "!", 7, 700);
+        c.txt(tx, y + 16.4, "!", ts(7), 700);
       let g = c.rect(x, y, w, h, "none", "4 3") + tri(x + 14) + tri(x + w - 14) +
-        c.txt(0, y + 15, (o.title || "¡Atención!"), 7.6, 700);
+        c.txt(0, y + 15, (o.title || "¡Atención!"), ts(7.6), 700);
       [].concat(o.text || []).slice(0, 3).forEach((t, i) => {
-        g += c.txt(0, y + 27 + i * 8.6, t, 6.8, 600);
+        g += c.txt(0, y + 27 + i * 8.6, t, ts(6.8), 600);
       });
       return g;
     }
