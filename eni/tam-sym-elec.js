@@ -1,8 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    tam-sym-elec.js — ELECTRICAL symbol pack for tam-sym.js
    ─────────────────────────────────────────────────────────────────────────
-   34 IEC-style single-line symbols. Geometry only: no renderer, no layout,
+   48 IEC-style single-line symbols. Geometry only: no renderer, no layout,
    no data loading. Requires tam-sym.js to be loaded first.
+
+   v0.4.0 (2026-09-02) — THE COMOS/IEC LAYER, § 5b and 5c
+     Nine symbols and three conductor annotations, every one of them read off a
+     real issued sheet in `elec/ejemplos/` (three Reinhausen COMOS ET 10.1
+     sets, norm IEC). The doctrine those sheets impose — sheet anatomy, IEC
+     81346 tagging, the cross-sheet reference `/sheet.column`, and the four
+     things no house one-line may ship without — is written up in SOUL.md §E.
+     Added: CABLE_TERMINATION, EARTHING_SWITCH, REACTOR, PROTECTION_FUNCTION,
+     PROTECTION_RELAY, CUBICLE, RACKING_TRUCK, TERMINAL, WARNING_NOTE, plus
+     TamSym.ELEC_ANNOT.{conductors, xref, busData}.
+     Nothing existing changed: every caller of v0.3.4 renders byte-identical.
 
    CONVENTIONS THE WHOLE PACK OBEYS
      · Symbol origin is (0,0) at the CENTRE of the object.
@@ -501,6 +512,243 @@
                c.ln(-8, 3.5, 8, 3.5) + c.ln(0, 3.5, 0, 10)
   });
 
+  /* ══ 5b. THE COMOS/IEC LAYER — v0.4.0 ══════════════════════════════════
+     Every symbol below was read off a real sheet in `elec/ejemplos/`: three
+     Reinhausen COMOS ET 10.1 sets, issued to IEC. The sheet reference is on
+     each one. Nothing here is invented; what could not be decided from the
+     sheets is listed as an open point in SOUL.md §E.8.
+
+     Shorthand used in the citations:
+       A h1  = 20325865_010_20171220.pdf, sheet 1 (single line, 3.3 kV)
+       C h2  = 4084-DI-E-007=2, sheet 2   (esquema unifilar, 69 kV)
+       C h3  = 4084-DI-E-007=2, sheet 3   (diagrama del circuito, 125 V DC) */
+
+  /* Hollow triangle set INTO the conductor, at the point where it crosses a
+     cubicle boundary. C h2 puts it between the 69 kV busbar and the bay; A h1
+     puts one at the exit of each of the two cubicles. Read as a cable
+     termination / boundary crossing — see SOUL.md §E.8, still `[POR MEDIR]`.
+     `up:true` points it back toward the source, which is the C h2 form. */
+  def("CABLE_TERMINATION", {
+    name: "Cable termination", w: 18, h: H,
+    ports: PORTS_AB,
+    body: c => {
+      const up = !!(c.o && c.o.up);
+      return c.ln(0, TOP, 0, -5) + c.ln(0, 5, 0, BOT) +
+        (up ? c.path("M0,-5 L5.5,5 L-5.5,5 Z", "#fff")
+            : c.path("M0,5 L-5.5,-5 L5.5,-5 Z", "#fff"));
+    }
+  });
+
+  /* A h1 `-Q8`: a blade that closes onto earth instead of onto a conductor.
+     Not the same object as EARTH, which is a bonding point with no mechanism.
+     Drawn OPEN unless CLOSED is asked for: an earthing switch at rest is open,
+     and a closed one on a live drawing is a safety statement. */
+  def("EARTHING_SWITCH", {
+    name: "Earthing switch", std: "IEC 60617-07", w: 24, h: 30, stateful: true,
+    ports: { A: [0, -15, "N"] },
+    body: c => {
+      const closed = String((c.o && c.o.state) || "").toUpperCase() === "CLOSED" && !c.open;
+      /* the blade travels between TWO fixed contacts: the live one above and
+         the earthed one below. Open, it must not touch the lower contact —
+         drawing a return leg from the blade tip to earth showed an earthing
+         switch that is closed, which is a safety lie. */
+      return c.ln(0, -15, 0, -9) + c.dot(0, -9, 1.8) +
+        (closed ? c.ln(0, -9, 0, 2) : c.ln(0, -9, 9, 0)) +
+        c.dot(0, 2, 1.8) + c.ln(0, 2, 0, 5) +
+        c.ln(-7, 5, 7, 5) + c.ln(-4.5, 8, 4.5, 8) + c.ln(-2, 11, 2, 11) + motor(c);
+    }
+  });
+
+  /* C h2 `-L1;L2;L3` 38.01 mH, A h1 `-L1` 3 x 2.61 mH: a SOLID black bar in
+     the conductor. Solid is the whole message — an unfilled rectangle in this
+     position is a fuse or an instrument, and the sheets keep them apart by
+     fill alone. The value goes in `sub`, never inside the body. */
+  def("REACTOR", {
+    name: "Reactor", std: "IEC 60617-06", w: 18, h: H,
+    ports: PORTS_AB,
+    body: c => c.ln(0, TOP, 0, -8) + c.rect(-4.5, -8, 9, 16, c.col) + c.ln(0, 8, 0, BOT)
+  });
+
+  /* A h1 `-F100`, beside the 7SJ80: a box split into horizontal bands, one
+     protection function per band, top to bottom in the order the sheet prints
+     them. `functions:["I>>","I>","Δt"]` — that set is the sheet's own and the
+     default here. */
+  def("PROTECTION_FUNCTION", {
+    name: "Protection function", std: "IEC 60617-07", w: 34, h: 36,
+    ports: { A: [-17, 0, "W"] },
+    body: c => {
+      const fs = (c.o && c.o.functions) || ["I>>", "I>", "Δt"];
+      const n = Math.max(1, fs.length), bh = 36 / n;
+      let g = c.rect(-17, -18, 34, 36, "#fff");
+      fs.forEach((f, i) => {
+        const y = -18 + i * bh;
+        if (i) g += c.ln(-17, y, 17, y);
+        g += c.txt(0, y + bh / 2 + 2.8, f, 7.6, 600);
+      });
+      return g;
+    }
+  });
+
+  /* C h2: a plain rectangle carrying the device's own words ("Relé de
+     protección y BCU"), with `+lugar / -tag / modelo` printed OUTSIDE, to its
+     right. The kernel's label/sub own the outside; the body owns the inside.
+     So: `text` for what goes in the box, `label`/`sub` for what goes beside
+     it. Up to three wrapped lines, then it stops. */
+  def("PROTECTION_RELAY", {
+    name: "Protection relay / IED", w: 46, h: 34,
+    ports: { A: [0, -17, "N"], B: [0, 17, "S"], W: [-23, 0, "W"], E: [23, 0, "E"] },
+    body: c => {
+      const words = String((c.o && c.o.text) || "IED").split(/\s+/).filter(Boolean);
+      const lines = [];
+      let cur = "";
+      words.forEach(w => {
+        if (!cur) cur = w;
+        else if (cur.length + 1 + w.length <= 11) cur += " " + w;
+        else { lines.push(cur); cur = w; }
+      });
+      if (cur) lines.push(cur);
+      const use = lines.slice(0, 3);
+      let g = c.rect(-23, -17, 46, 34, "#fff");
+      const y0 = -(use.length - 1) * 4.5;
+      use.forEach((l, i) => { g += c.txt(0, y0 + i * 9 + 2.6, l, 7.2, 600); });
+      return g;
+    }
+  });
+
+  /* A h1 / C h2: the cubicle boundary is DASH-DOT, and `=aspect` / `+location`
+     sit stacked above its top-left corner, OUTSIDE the box. Sized by the
+     caller — a cubicle is furniture, not a fixed-size device — so the nominal
+     w/h here only feed the kernel's label placement, which this symbol does
+     not use: the header and the prose caption are drawn in the body. */
+  def("CUBICLE", {
+    name: "Cubicle / enclosure", w: 120, h: 90,
+    ports: { N: [0, -45, "N"], S: [0, 45, "S"] },
+    body: c => {
+      const o = c.o || {}, w = o.w || 120, h = o.h || 90;
+      const x = -w / 2, y = -h / 2;
+      let g = c.rect(x, y, w, h, "none", "9 3 2 3");
+      if (o.aspect)   g += c.txt(x, y - (o.location ? 13 : 4), o.aspect, 7.6, 700, "start");
+      if (o.location) g += c.txt(x, y - 4, o.location, 7.6, 700, "start");
+      /* the plain-prose function caption the sheets put UNDER each block:
+         "Incoming feeder", "Compensation step 1 / 1000 kvar / 189 Hz" */
+      [].concat(o.caption || []).forEach((t, i) => {
+        g += c.txt(0, y + h + 14 + i * 10, t, 8, 600);
+      });
+      return g;
+    }
+  });
+
+  /* A h1 `-Q1`: the racking symbol, a crossed square set into the mechanical
+     link of a withdrawable device. Kept apart from ACB_DRAWOUT's chevrons
+     because on that sheet it is its own object, between the motor operator and
+     the breaker, not a decoration on the breaker. */
+  def("RACKING_TRUCK", {
+    name: "Withdrawable unit", w: 14, h: 14,
+    ports: { W: [-7, 0, "W"], E: [7, 0, "E"] },
+    body: c => c.rect(-6, -6, 12, 12, "#fff") + c.ln(-6, 0, 6, 0) + c.ln(0, -6, 0, 6)
+  });
+
+  /* C h3: a terminal in a circuit diagram is a HOLLOW circle on the conductor.
+     The strip tag (-X81) goes left as the kernel `label`; the terminal number
+     (813) goes right, ROTATED 90°, which the kernel cannot do — so the number
+     is drawn here from `terminal`. */
+  def("TERMINAL", {
+    name: "Terminal", std: "IEC 60617-03", w: 20, h: 16,
+    ports: { A: [0, -8, "N"], B: [0, 8, "S"] },
+    body: c => {
+      const n = c.o && c.o.terminal;
+      return c.ln(0, -8, 0, -3.2) + c.cir(0, 0, 3.2, "#fff") + c.ln(0, 3.2, 0, 8) +
+        (n == null ? "" :
+          `<text transform="translate(12,7) rotate(-90)" text-anchor="start" ` +
+          `font-family="Consolas,monospace" font-size="6.4" font-weight="600" ` +
+          `fill="${c.col}">${String(n).replace(/[&<>"]/g, "")}</text>`);
+    }
+  });
+
+  /* C h3, column 2: a dashed box with a warning triangle at each end and the
+     hazard in prose — on that sheet, "Energizado, aúnque interruptor principal
+     esta apagado". It is part of the drawing standard, not decoration, so it
+     lives in the pack. */
+  def("WARNING_NOTE", {
+    name: "Warning note", std: "IEC 60617-02", w: 150, h: 42,
+    ports: {},
+    body: c => {
+      const o = c.o || {}, w = o.w || 150, h = o.h || 42;
+      const x = -w / 2, y = -h / 2;
+      const tri = tx => c.path(`M${tx},${y + 7} l6,11 l-12,0 Z`) +
+        c.txt(tx, y + 16.4, "!", 7, 700);
+      let g = c.rect(x, y, w, h, "none", "4 3") + tri(x + 14) + tri(x + w - 14) +
+        c.txt(0, y + 15, (o.title || "¡Atención!"), 7.6, 700);
+      [].concat(o.text || []).slice(0, 3).forEach((t, i) => {
+        g += c.txt(0, y + 27 + i * 8.6, t, 6.8, 600);
+      });
+      return g;
+    }
+  });
+
+  /* ══ 5c. ANNOTATION — the marks that live ON a conductor ═══════════════
+     These are not symbols: no ports, nothing routes to them. They are the
+     three marks that separate a sheet which LOOKS like a one-line from one
+     that IS a one-line, and a module drawing takes them from here instead of
+     hand-rolling <line> elements (SOUL.md §E.7 rule 1). */
+  const INK_A = "#15171A", SOFT_A = "#4A4F57", MONO_A = "Consolas,monospace";
+  const escA = s => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const ANNOT = {
+    /* the `///` phase ticks. A h1 and C h2 draw three for a three-phase run.
+       (x,y) is the point on the conductor; `dir` "V" for a vertical conductor
+       (the default) or "H". `count:true` also prints the number, which is what
+       C h2 does beside each CT tap. */
+    conductors(x, y, n, o) {
+      o = o || {};
+      const col = o.color || INK_A, sw = o.strokeWidth || 1.4;
+      const L = o.len || 9, gap = o.gap || 3.4, N = Math.max(1, n || 3);
+      const vert = String(o.dir || "V").toUpperCase() !== "H";
+      let s = "";
+      for (let i = 0; i < N; i++) {
+        const d = (i - (N - 1) / 2) * gap;
+        const cx = vert ? x : x + d, cy = vert ? y + d : y;
+        /* the tick leans 45° across the conductor, always the same way */
+        s += `<line x1="${cx - L / 2}" y1="${cy + L / 2}" x2="${cx + L / 2}" y2="${cy - L / 2}" ` +
+             `stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>`;
+      }
+      if (o.count) s += `<text x="${x + (vert ? 8 : 0)}" y="${y - (vert ? 6 : 9)}" ` +
+        `text-anchor="${vert ? "start" : "middle"}" font-family="${MONO_A}" font-size="7.2" ` +
+        `font-weight="600" fill="${col}">${N}</text>`;
+      return s;
+    },
+
+    /* the cross-sheet reference, SOUL.md §E.5. Always `/sheet.column`, always
+       with the leading slash — added here when the caller forgets it, because
+       a bare "7.8" on a sheet means nothing. `anchor` "start" | "end"; a rail's
+       left end takes "end" so the tag sits outside the drawing, as the sheets
+       do it. */
+    xref(x, y, ref, o) {
+      o = o || {};
+      const r = escA(ref);
+      return `<text x="${x}" y="${y}" text-anchor="${o.anchor || "start"}" ` +
+        `font-family="${MONO_A}" font-size="${o.size || 7}" font-weight="600" ` +
+        `fill="${o.color || SOFT_A}">${r.charAt(0) === "/" ? r : "/" + r}</text>`;
+    },
+
+    /* the system data printed ABOVE a busbar: `69 kV / 50 Hz / 3~` at the left
+       end, `25 kA / 1 sec.` at the right, both clear of the bar. C h2, A h1.
+       SOUL.md §E.7 rule 4: no house one-line ships without this. */
+    busData(x1, x2, y, left, right, o) {
+      o = o || {};
+      const col = o.color || INK_A, dy = o.dy || 9, size = o.size || 8.4;
+      let s = "";
+      if (left)  s += `<text x="${x1 + 4}" y="${y - dy}" text-anchor="start" ` +
+        `font-family="${MONO_A}" font-size="${size}" font-weight="600" fill="${col}">` +
+        escA(left) + `</text>`;
+      if (right) s += `<text x="${x2 - 4}" y="${y - dy}" text-anchor="end" ` +
+        `font-family="${MONO_A}" font-size="${size}" font-weight="600" fill="${col}">` +
+        escA(right) + `</text>`;
+      return s;
+    }
+  };
+
   /* ══ 6. DB MAPPING — the only place a column value meets a symbol ══════
      Left  = v_sld_nodes.symbol_kind as it exists in the database today
      Right = the kind registered above
@@ -535,7 +783,20 @@
     ELECTRICAL_LOAD:"ELECTRICAL_LOAD",
     LIGHTING:      "LIGHTING",
     SPARE:         "SPARE",
-    DISCONNECTOR:  "DISCONNECTOR"
+    DISCONNECTOR:  "DISCONNECTOR",
+    /* v0.4.0 — the COMOS/IEC layer, SOUL.md §E.3 */
+    EARTHING_SWITCH:    "EARTHING_SWITCH",
+    EARTH_SWITCH:       "EARTHING_SWITCH",
+    REACTOR:            "REACTOR",
+    CHOKE:              "REACTOR",
+    CABLE_TERMINATION:  "CABLE_TERMINATION",
+    PROTECTION_RELAY:   "PROTECTION_RELAY",
+    IED:                "PROTECTION_RELAY",
+    PROTECTION_FUNCTION:"PROTECTION_FUNCTION",
+    RACKING_TRUCK:      "RACKING_TRUCK",
+    TERMINAL:           "TERMINAL",
+    TERMINAL_BLOCK:     "TERMINAL",
+    CUBICLE:            "CUBICLE"
   };
 
   /* resolve a v_sld_nodes row to a drawable kind + the options the row implies.
@@ -560,6 +821,7 @@
   }
 
   T.ELEC_MAP = ELEC_MAP;
+  T.ELEC_ANNOT = ANNOT;
   T.fromNode = fromNode;
-  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.3.4", count: T.kinds().length }]);
+  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.4.0", count: T.kinds().length }]);
 })();
