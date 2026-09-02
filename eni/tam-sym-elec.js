@@ -256,7 +256,13 @@
     ports: PORTS_AB,
     body: c => stubs(c) + fixedTop(c) + blade(c) + motor(c) +
       c.ln(-3.5, TOP - 0.5, 3.5, TOP + 6.5) + c.ln(3.5, TOP - 0.5, -3.5, TOP + 6.5) +
-      (c.open ? c.txt(14, TOP + 6, "N.O.", 6.4, 700, "start") : "")
+      /* v0.4.0 — not when the symbol is ROTATED. A coupler laid onto a
+         horizontal busbar is drawn rot:90, and the group transform turns this
+         text with it: "N.O." came out reading down the page, half of it under
+         the bar. Text inside a body cannot survive an arbitrary rotation, so a
+         rotated instance leaves the state to the caller, who knows which way
+         up the drawing is. */
+      (c.open && !(c.o && c.o.rot) ? c.txt(14, TOP + 6, "N.O.", 6.4, 700, "start") : "")
   });
 
   def("EARTH", {
