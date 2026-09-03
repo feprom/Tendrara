@@ -505,6 +505,34 @@
     body: c => c.ln(0, -10, 0, -4) + c.path("M-7,-4 L7,-4 L0,9 Z", "#fff")
   });
 
+  /* A load fed from a busbar section, drawn as the BLOCK the distribution
+     sheets use when the thing behind the feeder is a group and not one machine:
+     a plain square with its figure inside. ELECTRICAL_LOAD (the triangle) is one
+     load on one conductor; this is "everything section D feeds, 7,190 kW". The
+     figure goes INSIDE the block and the prose function goes underneath, which
+     is rule 4 of SOUL.md SS E.7. Added v0.4.1 for module 109 slide 10.
+       lines:   the figures printed inside, top to bottom (["7,190", "kW"])
+       caption: the prose function, printed under the block */
+  def("LOAD_BLOCK", {
+    name: "Load block", w: 46, h: 46,
+    ports: { A: [0, -23, "N"] },
+    body: c => {
+      const o = c.o || {}, w = o.w || 46, h = o.h || 46;
+      const x = -w / 2, y = -h / 2;
+      const lines = [].concat(o.lines || []);
+      const step = ts(11);
+      let g = c.rect(x, y, w, h, "#fff", "", 2);
+      lines.forEach((t, i) => {
+        g += c.txt(0, (i - (lines.length - 1) / 2) * step + ts(3), t,
+                   ts(i ? 7.8 : 8.6), i ? 600 : 700);
+      });
+      [].concat(o.caption || []).forEach((t, i) => {
+        g += c.txt(0, y + h + ts(9) + i * ts(8), t, ts(7.6), 600);
+      });
+      return g;
+    }
+  });
+
   def("LIGHTING", {
     name: "Lighting", std: "IEC 60617-11", w: 22, h: 22,
     ports: { A: [0, -11, "N"] },
@@ -797,6 +825,7 @@
     HEATER:        "HEATER",
     ELECTRIC_HEATER:"HEATER",
     ELECTRICAL_LOAD:"ELECTRICAL_LOAD",
+    LOAD_BLOCK:    "LOAD_BLOCK",
     LIGHTING:      "LIGHTING",
     SPARE:         "SPARE",
     DISCONNECTOR:  "DISCONNECTOR",
@@ -839,5 +868,5 @@
   T.ELEC_MAP = ELEC_MAP;
   T.ELEC_ANNOT = ANNOT;
   T.fromNode = fromNode;
-  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.4.0", count: T.kinds().length }]);
+  T.packs = (T.packs || []).concat([{ discipline: "ELECTRICAL", version: "0.4.1", count: T.kinds().length }]);
 })();
